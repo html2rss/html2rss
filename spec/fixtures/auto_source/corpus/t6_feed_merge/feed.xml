@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example Daily</title>
+    <link>https://example.com/news/</link>
+    <description>Synthetic saved feed</description>
+    <item>
+      <title>Council vote on the new harbor budget</title>
+      <link>https://example.com/news/2026/11/feed-only-council-vote</link>
+      <guid isPermaLink="false">example-daily-100</guid>
+      <pubDate>Mon, 02 Nov 2026 08:00:00 GMT</pubDate>
+      <description>Feed summary for feed only council vote.</description>
+    </item>
+    <item>
+      <title>Harbor ferry schedule changes this winter (publisher title)</title>
+      <link>https://example.com/news/2026/11/harbor-ferry-schedule</link>
+      <guid isPermaLink="false">example-daily-101</guid>
+      <pubDate>Mon, 03 Nov 2026 08:00:00 GMT</pubDate>
+      <description>Feed summary for harbor ferry schedule.</description>
+    </item>
+    <item>
+      <title>Library reading week draws young readers (publisher title)</title>
+      <link>https://example.com/news/2026/11/library-reading-week</link>
+      <guid isPermaLink="false">example-daily-102</guid>
+      <pubDate>Mon, 04 Nov 2026 08:00:00 GMT</pubDate>
+      <description>Feed summary for library reading week.</description>
+    </item>
+    <item>
+      <title>River path reopens after flood repairs (publisher title)</title>
+      <link>https://example.com/news/2026/11/river-path-reopens</link>
+      <guid isPermaLink="false">example-daily-103</guid>
+      <pubDate>Mon, 05 Nov 2026 08:00:00 GMT</pubDate>
+      <description>Feed summary for river path reopens.</description>
+    </item>
+    <item>
+      <title>Save on your energy bill with our partner</title>
+      <link>https://example.com/news/2026/11/partner-energy-savings</link>
+      <guid isPermaLink="false">example-daily-104</guid>
+      <pubDate>Mon, 06 Nov 2026 08:00:00 GMT</pubDate>
+      <description>Feed summary for partner energy savings.</description>
+    </item>
+  </channel>
+</rss>

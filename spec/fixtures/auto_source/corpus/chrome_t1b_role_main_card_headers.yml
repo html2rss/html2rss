@@ -1,0 +1,8 @@
+---
+case: Card permalinks sit in per-card header elements inside a div with role="main"; role=main is sectioning like main, so the card headers are content, not page chrome.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/school-board-approves-budget
+- https://example.com/news/2026/10/night-market-opens-downtown

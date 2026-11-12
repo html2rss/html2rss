@@ -89,7 +89,7 @@ module Html2rss
         @degraded = false
         @parents = {}.compare_by_identity
         @depths = {}.compare_by_identity
-        @ignored_chrome = {}.compare_by_identity
+        @scopes = {}.compare_by_identity
       end
 
       ##
@@ -99,7 +99,7 @@ module Html2rss
         root = normalize_element(root_nk, depth: 0, path: '', scope: :page)
         return unless root
 
-        index = Index.new(root:, parents: @parents, depths: @depths, ignored_chrome: @ignored_chrome)
+        index = Index.new(root:, parents: @parents, depths: @depths, scopes: @scopes)
         Document.build(root:, index:, degraded: @degraded, node_count: @node_count)
       end
 
@@ -166,13 +166,13 @@ module Html2rss
         @node_count += 1
         tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
-        scope_here = Tags.chrome_scope(tag, scope)
+        scope_here = Tags.chrome_scope(nk_node, scope)
 
         children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, scope: scope_here)
 
         node = Node.build(name: tag, attrs:, own_text: [lead, *tails].join, children:, tag_path:, tails:)
         @depths[node] = depth
-        @ignored_chrome[node] = scope_here == :chrome
+        @scopes[node] = scope_here
         children.each { |child| @parents[child] = node }
 
         node

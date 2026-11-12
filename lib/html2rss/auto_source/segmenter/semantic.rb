@@ -13,16 +13,27 @@ module Html2rss
         # @param segmenter [Segmenter]
         # @return [Array<Segment>]
         def self.call(segmenter)
-          containers = collect_containers(segmenter.index)
-          primary = PrimaryLink.new(segmenter)
+          picks = linked_containers(segmenter)
+          # A link wrapping its container is a whole card: it roots one segment, not one per div inside
+          # it, and none when a container already selected that link from inside.
+          claimed = picks.filter_map { |_, link, inside| link if inside }.to_set.compare_by_identity
 
-          containers.each_with_index.filter_map do |container, position|
-            link = primary.select(container)
-            next unless link || segmenter.permit_unanchored
-
-            Segment.build(root_node: container, primary_link: link, strategy: :semantic, position:)
+          picks.each_with_index.filter_map do |(container, link, inside), position|
+            root = inside ? container : (link if claimed.add?(link))
+            Segment.build(root_node: root, primary_link: link, strategy: :semantic, position:) if root
           end
         end
+
+        # @return [Array<Array(SST::Node, SST::Node, Boolean)>] container, its primary link, link inside it
+        def self.linked_containers(segmenter)
+          index = segmenter.index
+          primary = PrimaryLink.new(segmenter)
+          collect_containers(index).filter_map do |container|
+            link = primary.select(container)
+            [container, link, index.descendant_of?(link, container)] if link
+          end
+        end
+        private_class_method :linked_containers
 
         def self.collect_containers(index)
           non_leaf = mark_non_leaf_candidates(index.root)

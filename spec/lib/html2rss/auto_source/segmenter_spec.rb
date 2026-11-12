@@ -231,13 +231,43 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         HTML
       end
 
-      it 'drops the container by default' do
+      it 'drops the container' do
         expect(segments).to be_empty
       end
+    end
 
-      it 'keeps the unanchored container when permitted' do
-        options[:permit_unanchored] = true
-        expect(segments.map(&:primary_link)).to eq([nil])
+    context 'when one link wraps a card of several leaf divs' do
+      let(:html) do
+        <<~HTML
+          <html><body><a class="clip" href="/play/clips/harbor-ferry-returns">
+            <div class="media"><img src="/img/ferry.jpg" alt=""></div>
+            <div class="title"><h3>Harbor ferry returns</h3></div>
+            <div class="lead"><p>The crossing resumes after weeks of repairs.</p></div>
+            <div class="note"><p>Captions are available for this clip.</p></div>
+          </a></body></html>
+        HTML
+      end
+
+      it 'roots one segment at the link', :aggregate_failures do
+        expect(hrefs).to eq(%w[/play/clips/harbor-ferry-returns])
+        expect(segments.first.root_node).to equal(segments.first.primary_link)
+      end
+    end
+
+    context 'when a list item holds a whole-card link of several leaf divs' do
+      let(:html) do
+        <<~HTML
+          <html><body><ul><li><a class="clip" href="/play/clips/harbor-ferry-returns">
+            <div class="title"><h3>Harbor ferry returns</h3></div>
+            <div class="lead"><p>The crossing resumes after weeks of repairs.</p></div>
+            <div class="note"><p>Captions are available for this clip.</p></div>
+          </a></li></ul></body></html>
+        HTML
+      end
+
+      it 'keeps only the list item segment', :aggregate_failures do
+        expect(hrefs).to eq(%w[/play/clips/harbor-ferry-returns])
+        expect(segments.first.root_node.name).to eq(:li)
       end
     end
   end
@@ -303,6 +333,81 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'returns nil' do
+        expect(picked).to be_nil
+      end
+    end
+
+    context 'when an empty overlay link sits beside the heading wrapper' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <a class="overlay" href="/local/harbor-ferry-returns"></a>
+            <div class="text"><h2>Harbor ferry returns</h2></div>
+            <a href="/local/ferry-schedule-archive">Ferry schedule archive</a>
+          </article></body></html>
+        HTML
+      end
+
+      it 'selects the overlay link as the heading link' do
+        expect(picked.attrs.href).to eq('/local/harbor-ferry-returns')
+      end
+    end
+
+    context 'when an empty link sits in a sub-block apart from the heading' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <h2>Harbor ferry returns</h2>
+            <div class="share"><a href="/local/harbor-ferry-returns"></a></div>
+          </article></body></html>
+        HTML
+      end
+
+      it 'returns nil' do
+        expect(picked).to be_nil
+      end
+    end
+
+    context 'when one anchor wraps the whole card' do
+      let(:html) do
+        <<~HTML
+          <html><body><a class="teaser" href="/local/harbor-ferry-returns">
+            <article><h2>Harbor ferry returns</h2><p>The crossing resumes.</p></article>
+          </a></body></html>
+        HTML
+      end
+
+      it 'selects the wrapping anchor' do
+        expect(picked.attrs.href).to eq('/local/harbor-ferry-returns')
+      end
+    end
+
+    context 'when an unclosed anchor spans a region holding other links' do
+      let(:document) { document_for(Nokogiri::HTML.parse(html)) }
+      let(:html) do
+        <<~HTML
+          <html><body><a class="teaser" href="/local/harbor-ferry-returns">
+            <article><h2>Video highlights</h2><p>Now playing</p></article>
+            <div><a href="/local/river-cleanup-record">River cleanup draws a record turnout</a></div>
+          </a></body></html>
+        HTML
+      end
+
+      it 'does not take the region anchor' do
+        expect(picked).to be_nil
+      end
+    end
+
+    context 'when an anchor without a heading wraps one live-blog entry' do
+      let(:html) do
+        <<~HTML
+          <html><body><a href="/local/harbor-ferry-returns/#entry-2">
+            <article><time datetime="2026-11-10T09:10:00Z">40 minutes ago</time><p>The vessel passed inspection.</p></article>
+          </a></body></html>
+        HTML
+      end
+
+      it 'does not take the entry anchor' do
         expect(picked).to be_nil
       end
     end
@@ -493,15 +598,15 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
           <main>
             <div class="card-item p-4">
               <span class="card-title font-bold">Release v1.0</span>
-              <p class="card-body">Description text for release one goes here.</p>
+              <p class="card-body"><a href="/releases/v1">Description text for release one goes here.</a></p>
             </div>
             <div class="card-item p-4">
               <span class="card-title font-bold">Release v2.0</span>
-              <p class="card-body">Description text for release two goes here.</p>
+              <p class="card-body"><a href="/releases/v2">Description text for release two goes here.</a></p>
             </div>
             <div class="card-item p-4">
               <span class="card-title font-bold">Release v3.0</span>
-              <p class="card-body">Description text for release three goes here.</p>
+              <p class="card-body"><a href="/releases/v3">Description text for release three goes here.</a></p>
             </div>
           </main>
         </body></html>
@@ -513,14 +618,13 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         document_for(html),
         base_url: 'https://example.com',
         strategy: :cluster,
-        minimum_selector_frequency: 3,
-        permit_unanchored: true
+        minimum_selector_frequency: 3
       )
 
       expect(segments.size).to eq(3)
       expect(segments.first.root_node.attrs.class_names).to include('card-item')
       expect(segments.map(&:strategy).uniq).to eq([:cluster])
-      expect(segments.map(&:primary_link)).to all(be_nil)
+      expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/releases/v1 /releases/v2 /releases/v3])
     end
 
     it 'groups mixed-case class tokens into one cluster', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -528,15 +632,15 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         <html><body>
           <div class="PostCard p-4">
             <span class="card-title font-bold">Release v1.0</span>
-            <p class="card-body">Description text for release one goes here.</p>
+            <p class="card-body"><a href="/releases/v1">Description text for release one goes here.</a></p>
           </div>
           <div class="postcard p-4">
             <span class="card-title font-bold">Release v2.0</span>
-            <p class="card-body">Description text for release two goes here.</p>
+            <p class="card-body"><a href="/releases/v2">Description text for release two goes here.</a></p>
           </div>
           <div class="PostCard p-4">
             <span class="card-title font-bold">Release v3.0</span>
-            <p class="card-body">Description text for release three goes here.</p>
+            <p class="card-body"><a href="/releases/v3">Description text for release three goes here.</a></p>
           </div>
         </body></html>
       HTML
@@ -545,14 +649,13 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         document_for(html),
         base_url: 'https://example.com',
         strategy: :cluster,
-        minimum_selector_frequency: 3,
-        permit_unanchored: true
+        minimum_selector_frequency: 3
       )
 
       expect(segments.size).to eq(3)
       expect(segments.first.root_node.attrs.class_names).to include('PostCard').or include('postcard')
       expect(segments.map(&:strategy).uniq).to eq([:cluster])
-      expect(segments.map(&:primary_link)).to all(be_nil)
+      expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/releases/v1 /releases/v2 /releases/v3])
     end
 
     it 'keeps the content href on anchored cards, not javascript: or mailto:', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -580,8 +683,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         document_for(html),
         base_url: 'https://example.com',
         strategy: :cluster,
-        minimum_selector_frequency: 3,
-        permit_unanchored: false
+        minimum_selector_frequency: 3
       )
 
       expect(segments.size).to eq(3)
@@ -594,7 +696,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       html = <<~HTML
         <html><body>
           <section>
-            <nav><a href="/news/alpha-sidebar-notes">Alpha sidebar notes extra words here</a></nav>
+            <nav role="navigation"><a href="/news/alpha-sidebar-notes">Alpha sidebar notes extra words here</a></nav>
             <div class="card-item">
               <a href="javascript:void(0)">Share</a>
               <h2><a href="/posts/alpha-release">Alpha release notes for the first card</a></h2>
@@ -602,7 +704,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
             </div>
           </section>
           <section>
-            <nav><a href="/news/beta-sidebar-notes">Beta sidebar notes extra words here</a></nav>
+            <nav role="navigation"><a href="/news/beta-sidebar-notes">Beta sidebar notes extra words here</a></nav>
             <div class="card-item">
               <a href="mailto:ed@example.com">Email</a>
               <h2><a href="/posts/beta-release">Beta release notes for the second card</a></h2>
@@ -610,7 +712,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
             </div>
           </section>
           <section>
-            <nav><a href="/news/gamma-sidebar-notes">Gamma sidebar notes extra words here</a></nav>
+            <nav role="navigation"><a href="/news/gamma-sidebar-notes">Gamma sidebar notes extra words here</a></nav>
             <div class="card-item">
               <a href="javascript:void(0)">Share</a>
               <h2><a href="/posts/gamma-release">Gamma release notes for the third card</a></h2>
@@ -623,7 +725,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
 
       list = described_class.call(document, base_url: 'https://example.com', strategy: :list)
       cluster = described_class.call(
-        document, base_url: 'https://example.com', strategy: :cluster, permit_unanchored: false
+        document, base_url: 'https://example.com', strategy: :cluster
       )
 
       expect(list).to be_empty
@@ -660,7 +762,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'drops the wrappers and keeps the cards', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('entry'))
         expect(segments.map { _1.primary_link.attrs.href })
@@ -680,7 +782,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'keeps the nested card body as the cluster root', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.size).to eq(3)
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('card-body'))
@@ -699,7 +801,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'keeps the outer wrapper as the cluster root', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: true)
+        segments = cluster_segments.call(html)
 
         expect(segments.size).to eq(3)
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('card-wrap'))
@@ -718,10 +820,10 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'emits one segment per block and honours the frequency floor', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.root_node.name }).to eq(%i[div div div])
-        expect(cluster_segments.call(html, permit_unanchored: false, minimum_selector_frequency: 4)).to be_empty
+        expect(cluster_segments.call(html, minimum_selector_frequency: 4)).to be_empty
       end
     end
 
@@ -729,15 +831,15 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       let(:html) do
         <<~HTML
           <html><body>
-            <div class="card b-x"><p>Description text for the first card goes here extra.</p></div>
-            <div class="b-x card"><p>Description text for the second card goes here extra.</p></div>
-            <div class="card b-x"><p>Description text for the third card goes here extra.</p></div>
+            <div class="card b-x"><p><a href="/cards/first">Description text for the first card goes here extra.</a></p></div>
+            <div class="b-x card"><p><a href="/cards/second">Description text for the second card goes here extra.</a></p></div>
+            <div class="card b-x"><p><a href="/cards/third">Description text for the third card goes here extra.</a></p></div>
           </body></html>
         HTML
       end
 
       it 'groups them into one cluster', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: true, minimum_selector_frequency: 3)
+        segments = cluster_segments.call(html, minimum_selector_frequency: 3)
 
         expect(segments.size).to eq(3)
       end
@@ -757,7 +859,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'selects the classed card group', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('card'))
         expect(segments.size).to eq(3)
@@ -770,7 +872,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'returns no cluster segments' do
-        expect(cluster_segments.call(html, permit_unanchored: true)).to be_empty
+        expect(cluster_segments.call(html)).to be_empty
       end
     end
 
@@ -785,9 +887,9 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'keeps the group at the floor and drops it below a higher floor', :aggregate_failures do
-        expect(cluster_segments.call(html, permit_unanchored: false).map { _1.primary_link.attrs.href })
+        expect(cluster_segments.call(html).map { _1.primary_link.attrs.href })
           .to eq(%w[/posts/alpha /posts/beta])
-        expect(cluster_segments.call(html, permit_unanchored: false, minimum_selector_frequency: 3)).to be_empty
+        expect(cluster_segments.call(html, minimum_selector_frequency: 3)).to be_empty
       end
     end
 
@@ -803,7 +905,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'groups the blocks by class token rather than child structure', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/posts/alpha /posts/beta /posts/gamma])
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('tile'))
@@ -826,7 +928,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'keeps only the content cards in the cluster', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/posts/alpha /posts/beta])
         expect(segments.map { _1.root_node.name }).to all(eq(:div))
@@ -844,7 +946,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'does not treat the single-card wrapper as a container', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.size).to eq(2)
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('row'))
@@ -862,7 +964,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'drops the wrapper that contains several cards', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('card'))
         expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/posts/alpha /posts/beta /posts/gamma])
@@ -873,14 +975,14 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       let(:html) do
         <<~HTML
           <html><body><main>
-            <div class="wrap"><span class="chip">Alpha chip label with eight words here</span><span class="chip">Beta chip label with eight words here</span> #{'Wrapper commentary words here. ' * 4}</div>
-            <div class="wrap"><span class="chip">Gamma chip label with eight words here</span><span class="chip">Delta chip label with eight words here</span> #{'Wrapper commentary words here. ' * 4}</div>
+            <div class="wrap"><span class="chip"><a href="/chips/alpha">Alpha chip label with eight words here</a></span><span class="chip">Beta chip label with eight words here</span> #{'Wrapper commentary words here. ' * 4}</div>
+            <div class="wrap"><span class="chip"><a href="/chips/gamma">Gamma chip label with eight words here</a></span><span class="chip">Delta chip label with eight words here</span> #{'Wrapper commentary words here. ' * 4}</div>
           </main></body></html>
         HTML
       end
 
       it 'keeps the wrapper because chips are not layout containers', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: true)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('wrap'))
         expect(segments.size).to eq(2)
@@ -891,16 +993,16 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       let(:html) do
         <<~HTML
           <html><body><main>
-            <div class="frame"><div class="inner">Alpha inner words for the first frame story here</div></div>
-            <div class="frame"><div class="inner">Beta inner words for the second frame story here</div></div>
-            <div class="frame">Gamma frame words without any inner wrapper here</div>
+            <div class="frame"><div class="inner"><a href="/frames/alpha">Alpha inner words for the first frame story here</a></div></div>
+            <div class="frame"><div class="inner"><a href="/frames/beta">Beta inner words for the second frame story here</a></div></div>
+            <div class="frame"><a href="/frames/gamma">Gamma frame words without any inner wrapper here</a></div>
             <div class="inner">Gamma inner words stranded outside the frame</div>
           </main></body></html>
         HTML
       end
 
       it 'keeps both groups when the pairing is not fully nested', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: true)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.root_node.attrs.class_names }).to all(include('frame'))
         expect(segments.size).to eq(3)
@@ -923,7 +1025,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       end
 
       it 'drops the smallest group when more than forty groups repeat', :aggregate_failures do
-        segments = cluster_segments.call(html, permit_unanchored: false)
+        segments = cluster_segments.call(html)
 
         expect(segments.map { _1.root_node.attrs.class_names }.flatten).not_to include('special')
         expect(segments.size).to eq(3)

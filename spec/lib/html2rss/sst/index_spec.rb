@@ -35,6 +35,17 @@ RSpec.describe Html2rss::SST::Index do
     end
   end
 
+  describe '#peripheral?' do
+    it 'flags nodes inside a non-chrome utility landmark only', :aggregate_failures do
+      doc = Html2rss::SST::Normalizer.call('<html><body><aside><a href="/a">A</a></aside>' \
+                                           '<nav><a href="/n">N</a></nav><p><a href="/p">P</a></p></body></html>')
+      aside_link, nav_link, plain_link = doc.root.find_all(&:link?)
+
+      expect([aside_link, nav_link, plain_link].map { doc.index.peripheral?(_1) }).to eq([true, false, false])
+      expect(doc.index.peripheral?(Html2rss::SST::Node.build(name: :span))).to be(false)
+    end
+  end
+
   describe '#descendant_of?' do
     it 'is true only for nodes strictly below the ancestor', :aggregate_failures do
       expect(index.descendant_of?(nav_link, wrapper)).to be(true)

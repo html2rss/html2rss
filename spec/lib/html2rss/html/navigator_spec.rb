@@ -6,8 +6,7 @@ RSpec.describe Html2rss::Html::Navigator do
   describe 'tag vocabulary' do
     {
       HEADING_TAGS: [:HEADING_NAMES, %w[h1 h2 h3 h4 h5 h6]],
-      IGNORED_CONTAINER_TAGS: [:IGNORED_CONTAINER_NAMES, %w[nav footer header svg script style]],
-      UTILITY_LANDMARK_TAGS: [:UTILITY_LANDMARK_NAMES, %w[nav aside footer menu]]
+      IGNORED_CONTAINER_TAGS: [:IGNORED_CONTAINER_NAMES, %w[nav footer header dialog svg script style]]
     }.each do |navigator_const, (tags_const, values)|
       it "derives #{navigator_const} from SST::Tags::#{tags_const} with no delta" do
         derived = Html2rss::SST::Tags.const_get(tags_const).to_set(&:to_s)
@@ -160,15 +159,35 @@ RSpec.describe Html2rss::Html::Navigator do
       expect(usable).to eq('ph' => false, 'pf' => false, 'ah' => true, 'af' => true, 'mh' => true, 'nh' => false)
     end
 
+    it 'stops at utility landmark roles and page-level banner/contentinfo roles' do # rubocop:disable RSpec/ExampleLength
+      html = '<body><div id="rn" role="navigation"></div><div id="rc" role="complementary"></div>' \
+             '<div id="rd" role="dialog"></div><dialog id="dl"></dialog><div id="rs" role="search"></div>' \
+             '<aside id="as"></aside><div id="pb" role="banner"></div>' \
+             '<article><div id="ab" role="banner"></div></article></body>'
+      ids = %w[rn rc rd dl rs as pb ab]
+      expected = { 'rn' => false, 'rc' => false, 'rd' => false, 'dl' => false, 'rs' => true, 'as' => false,
+                   'pb' => false, 'ab' => true }
+      sst_root = Html2rss::SST::Normalizer.call(html).root
+      nokogiri = ids.to_h { |id| [id, described_class.usable_card_parent?(Nokogiri::HTML(html).at_css("##{id}"))] }
+      sst = ids.to_h { |id| [id, described_class.usable_card_parent?(sst_root.find_all { _1.attrs.id == id }.first)] }
+
+      expect([nokogiri, sst]).to eq([expected, expected])
+    end
+
     describe 'chrome-scope parity between Nokogiri and SST nodes' do
       let(:html) do
         '<body><header id="page"></header>' \
           '<section><header id="sectioned"></header></section>' \
           '<nav><section><header id="inherited"></header></section></nav>' \
-          '<footer><article><footer id="in_footer"></footer></article></footer></body>'
+          '<footer><article><footer id="in_footer"></footer></article></footer>' \
+          '<div role="navigation"><section><header id="role_nav"></header></section></div>' \
+          '<main><nav><header id="main_nav"></header></nav></main></body>'
       end
-      let(:ids) { %w[page sectioned inherited in_footer] }
-      let(:expected) { { 'page' => false, 'sectioned' => true, 'inherited' => false, 'in_footer' => false } }
+      let(:ids) { %w[page sectioned inherited in_footer role_nav main_nav] }
+      let(:expected) do
+        { 'page' => false, 'sectioned' => true, 'inherited' => false, 'in_footer' => false,
+          'role_nav' => false, 'main_nav' => true }
+      end
 
       let(:document) { Nokogiri::HTML(html) }
       let(:sst_root) { Html2rss::SST::Normalizer.call(html).root }

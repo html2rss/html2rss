@@ -74,7 +74,7 @@ module Html2rss
 
       ##
       # @return [Boolean]
-      def utility_landmark? = Tags::UTILITY_LANDMARK_NAMES.include?(name)
+      def utility_landmark? = Tags.utility_landmark?(name.name, attrs.raw['role'])
 
       ##
       # @return [Boolean]

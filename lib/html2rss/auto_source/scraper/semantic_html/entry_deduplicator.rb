@@ -33,12 +33,8 @@ module Html2rss
           # @return [Html2rss::Article, nil]
           def article_for(entry)
             @article_cache.fetch(entry) do
-              @article_cache[entry] = ::Html2rss::Html::SstArticleExtractor.call(
-                entry,
-                base_url: @url,
-                scraper: @scraper,
-                fallback_anchorless: true
-              )
+              @article_cache[entry] =
+                ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: @scraper)
             end
           end
 

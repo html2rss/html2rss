@@ -40,9 +40,7 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document]
         # @param url [String, Html2rss::Url]
         # @param request_session [Html2rss::RequestSession, nil]
-        # @param _opts [Hash]
-        # @option _opts [Object] :_reserved reserved for future scraper-specific options
-        def initialize(parsed_body, url:, request_session: nil, **_opts)
+        def initialize(parsed_body, url:, request_session: nil)
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
           @request_session = request_session

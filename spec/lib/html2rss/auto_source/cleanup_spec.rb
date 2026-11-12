@@ -100,11 +100,54 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
                         title: 'Duplicated Article Title')
       end
 
-      before { articles << duplicated_url_article }
+      before do
+        allow(articles.first).to receive(:merge).and_return(articles.first)
+        articles << duplicated_url_article
+      end
 
-      it 'removes duplicate articles by URL', :aggregate_failures do
+      it 'folds the later copy into the first one', :aggregate_failures do
         expect(cleaned).not_to include(duplicated_url_article)
-        expect(cleaned.first.url).to eq(duplicated_url_article.url)
+        expect(cleaned.first).to be(articles.first)
+        expect(articles.first).to have_received(:merge).with(duplicated_url_article)
+        expect(result.drop_tallies['duplicate_url']).to eq(1)
+      end
+    end
+
+    # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- a feed item and its page card
+    context 'with a native feed item and a page card of the same article' do
+      let(:feed_item) do
+        Html2rss::Article.new(id: 'feed-1', title: 'Publisher headline of the story', url: 'https://example.com/story',
+                              guid: 'feed-guid-1', published_at: '2026-11-02T08:00:00Z', description: 'Feed summary.',
+                              scraper: Html2rss::AutoSource::Scraper::NativeFeed)
+      end
+      let(:page_card) do
+        Html2rss::Article.new(id: 'card-1', title: 'Kicker: Card headline of the story',
+                              url: 'https://example.com/story/', image: 'https://example.com/img/story.jpg',
+                              categories: ['City'], description: 'Card teaser.', published_at: '2026-11-10',
+                              scraper: Html2rss::AutoSource::Scraper::SemanticHtml)
+      end
+      let(:articles) { [feed_item, page_card] }
+
+      it 'keeps one item with the feed fields and the page image and categories', :aggregate_failures do
+        kept = { title: feed_item.title, guid: feed_item.guid, description: 'Feed summary.', url: feed_item.url,
+                 published_at: feed_item.published_at, scraper: feed_item.scraper }
+        expect(result.articles).to contain_exactly(have_attributes(**kept, image: page_card.image,
+                                                                           categories: ['City']))
+        expect(result.drop_tallies).to eq('duplicate_url' => 1)
+      end
+    end
+
+    context 'with a read-more copy of an article that also has a real title' do
+      let(:read_more_first) do
+        instance_double(Html2rss::Article, valid?: true, url: articles.first.url,
+                                           title: 'More about «Valid Article One»')
+      end
+
+      before { articles.unshift(read_more_first) }
+
+      it 'keeps the real title whichever copy comes first', :aggregate_failures do
+        expect(cleaned.map(&:title)).to include('Valid Article One')
+        expect(cleaned).not_to include(read_more_first)
         expect(result.drop_tallies['duplicate_url']).to eq(1)
       end
     end
@@ -173,14 +216,10 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         allow(page_links).to receive(:sponsored?) { sponsored_paths.include?(_1.path) }
       end
 
-      it 'drops page-derived sponsored items under the sponsored tally', :aggregate_failures do
-        expect(result.articles.map { _1.url.path }).to eq(%w[/story-one /paid-feed])
-        expect(result.drop_tallies).to eq('sponsored' => 2)
-      end
-
-      it 'never asks the page about publisher-declared items' do
-        result
-        expect(page_links).not_to have_received(:sponsored?).with(articles.last.url)
+      it 'drops sponsored items of every source, the native feed included, under the sponsored tally',
+         :aggregate_failures do
+        expect(result.articles.map { _1.url.path }).to eq(%w[/story-one])
+        expect(result.drop_tallies).to eq('sponsored' => 3)
       end
 
       it 'admits sponsored items unchanged when keep_sponsored is on, without reading the page',
@@ -194,7 +233,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
       it 'drops sponsored items when keep_sponsored is omitted' do
         omitted = described_class.call(articles, url:, page_links: -> { page_links })
-        expect(omitted.drop_tallies).to eq('sponsored' => 2)
+        expect(omitted.drop_tallies).to eq('sponsored' => 3)
       end
 
       it 'admits every item without page links' do
@@ -253,6 +292,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
                           title: 'Exact Self Link Title Words')
         ]
       end
+
+      before { articles.values_at(0, 2).each { |first| allow(first).to receive(:merge).and_return(first) } }
 
       it 'dedupes fragment variants and rejects page self-links', :aggregate_failures do
         expect(cleaned.map { |article| article.url.to_s }).to eq(['http://example.com/story-one'])
@@ -551,7 +592,13 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     [
       { title: 'Read More', reason: :cta },
       { title: 'learn more', reason: :cta },
-      { title: 'PDF', reason: :cta }
+      { title: 'PDF', reason: :cta },
+      { title: 'More about «Harbor ferry»', reason: :cta },
+      { title: 'Mehr zu «Hafen»', reason: :cta },
+      { title: 'En savoir plus sur «Port»', reason: :cta },
+      { title: 'Altro su «Porto»', reason: :cta },
+      { title: '「港」の続きを読む', reason: :cta },
+      { title: 'Harbor ferry route returns', reason: nil }
     ].each do |example|
       it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
         expect(described_class.junk_reason(example[:title])).to eq(example[:reason])

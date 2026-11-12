@@ -48,6 +48,45 @@ module Html2rss
       end
 
       ##
+      # Whether the page shows an item in its content. Only checked items can fail: one kept by
+      # score (rendered in chrome, a peripheral landmark, or nowhere) is not shown. Exempt items
+      # (publisher-declared, or read off the page by a heuristic tier) are taken as shown.
+      #
+      # @param article [Html2rss::Article] admitted item
+      # @return [Boolean]
+      def shown?(article)
+        !Scraper::CORROBORATED_SCRAPERS.include?(article.scraper) || page_links.placement(article.url) == :content
+      end
+
+      ##
+      # Whether the page is a media page (a podcast or video listing): more than half of the
+      # items read off the page ({Scraper::PAGE_SCRAPERS}) and shown in its content ({#shown?})
+      # are media items ({Html2rss::Article#media?}). Each article identity is one item: a
+      # structured media item and the card that renders it count once.
+      #
+      # @param articles [Array<Html2rss::Article>] admitted items
+      # @return [Boolean]
+      def media_page?(articles)
+        cards = articles.select { Scraper::PAGE_SCRAPERS.include?(_1.scraper) && shown?(_1) }
+                        .uniq { _1.url.article_identity }
+        cards.count(&:media?) * 2 > cards.size
+      end
+
+      ##
+      # A media page's order: its media items first, then the other items, each group in document
+      # order (the position of its content anchor), with items the page does not show in its
+      # content last in their given order.
+      #
+      # @param articles [Array<Html2rss::Article>]
+      # @return [Array<Html2rss::Article>]
+      def page_order(articles)
+        articles.partition(&:media?).flat_map do |group|
+          placed, unplaced = group.partition { page_links.content_position(_1.url) }
+          placed.sort_by { page_links.content_position(_1.url) } + unplaced
+        end
+      end
+
+      ##
       # The page's own form of a checked item's URL, when it differs only by scheme, tracking
       # params, trailing slash, or fragment from a rendered content anchor.
       #

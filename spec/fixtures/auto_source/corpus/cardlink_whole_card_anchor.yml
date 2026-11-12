@@ -1,0 +1,14 @@
+---
+case: Teasers where one anchor wraps the whole card (media, heading, text); the card
+  container holds no link, so its primary link is the wrapping anchor.
+expected:
+- https://example.com/city/harbor-ferry-route-returns-after-repairs/
+- https://example.com/city/library-extends-weekend-hours-for-families/
+- https://example.com/city/river-cleanup-draws-record-volunteer-turnout/
+- https://example.com/city/school-board-approves-the-new-budget-plan/
+- https://example.com/city/night-market-opens-in-the-downtown-square/
+- https://example.com/city/new-bike-lanes-connect-the-east-side/
+titles:
+  https://example.com/city/harbor-ferry-route-returns-after-repairs/: Harbor ferry route returns after repairs
+  https://example.com/city/library-extends-weekend-hours-for-families/: City library extends its weekend hours
+  https://example.com/city/new-bike-lanes-connect-the-east-side/: New bike lanes connect the east side

@@ -1,0 +1,9 @@
+---
+case: Teaser cards mixing real articles (a player signing, a contributor opinion, an office
+  note with a three-word slug) with non-ASCII games, obituary and crossword paths.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/football/players/striker-signs-new-deal-1
+- https://example.com/opinion/contributors/why-cities-fail
+- https://example.com/redaktion/in-eigener-sache
+- https://example.com/news/2026/10/school-board-approves-budget

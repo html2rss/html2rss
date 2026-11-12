@@ -950,13 +950,12 @@ RSpec.describe Html2rss::Config do
           limit: 25,
           entry_resolution: { enabled: true, max_probes: 5 },
           scraper: {
-            semantic_html: { enabled: true, fallback_anchorless: true }, # wasn't explicitly set -> default
+            semantic_html: { enabled: true }, # wasn't explicitly set -> default
             schema: { enabled: false },       # keeps the value from the config
             html: {
               enabled: true,
               minimum_selector_frequency: 3,  # was explicitly set -> overrides default
-              use_top_selectors: 5,           # wasn't explicitly set -> default
-              fallback_anchorless: true
+              use_top_selectors: 5            # wasn't explicitly set -> default
             },
             json_state: { enabled: true },    # wasn't explicitly set -> default
             json_document: { enabled: true }, # wasn't explicitly set -> default

@@ -11,7 +11,7 @@ module Html2rss
   # noise. Configured selector titles and publisher-declared headlines (feeds, structured data) stay verbatim.
   #
   # Description and enclosure wire presentation live in {FeedBuilder::ItemPresentation}.
-  class Article
+  class Article # rubocop:disable Metrics/ClassLength -- one reader per article attribute
     # Allowed article attributes accepted by the value object constructor.
     PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
     # Separator used to build deterministic deduplication fingerprints.
@@ -35,13 +35,14 @@ module Html2rss
     # @param enclosures [Array<Hash{Symbol => Object}>, nil] enclosure attribute hashes
     # @param categories [Array<String>, nil] category labels
     # @param scraper [Class, nil] scraper class that produced the article
+    # @param media [Boolean, nil] whether the item is an audio/video object (not an article)
     # @param compose_title [Boolean] opt in to kicker joining and noise stripping; default keeps the title verbatim
     # rubocop:disable-next Metrics/ParameterLists -- thirteen article inputs stay explicit
     def initialize(id: nil, title: nil, kicker: nil, description: nil, url: nil, image: nil, author: nil, guid: nil,
-                   published_at: nil, enclosures: nil, categories: nil, scraper: nil, compose_title: false)
+                   published_at: nil, enclosures: nil, categories: nil, scraper: nil, media: nil, compose_title: false)
       title = compose_title ? Title.compose(title, kicker:) : Title.collapse(title)
       @to_h = { id:, title:, description:, url:, image:, author:, guid:, published_at:,
-                enclosures:, categories:, scraper: }.compact.transform_values { freeze_option(_1) }.freeze
+                enclosures:, categories:, scraper:, media: }.compact.transform_values { freeze_option(_1) }.freeze
 
       @url = @image = @guid = @enclosures = @categories = @published_at = NOT_SET
     end
@@ -56,8 +57,21 @@ module Html2rss
     # @return [Article] a copy of this article carrying +new_url+
     def with_url(new_url) = self.class.new(**@to_h, url: new_url)
 
+    # Folds a later copy of the same article into this one: every field this copy carries wins
+    # (title, date, guid, description, scraper), and the other copy fills only the fields it lacks.
+    #
+    # @param other [Article] another copy of this article (same {Url#article_identity})
+    # @return [Article] self when +other+ adds nothing, else a copy carrying the filled fields
+    def merge(other)
+      filled = other.provided.reject { |key, _| present?(@to_h[key]) }
+      filled.empty? ? self : self.class.new(**@to_h, **filled)
+    end
+
     # @return [String, nil] stable article identifier
     def id = blank_string_to_nil(@to_h[:id])
+
+    # @return [Boolean] whether the scraper marked this item as an audio/video object
+    def media? = @to_h[:media] == true
 
     # @return [String, nil] whitespace-collapsed title; +Kicker: Headline+ without noise when composed
     def title = @to_h[:title]
@@ -136,7 +150,19 @@ module Html2rss
       @to_h[:scraper]
     end
 
+    protected
+
+    # @return [Hash{Symbol => Object}] the constructor payload, for {#merge}
+    def provided = @to_h
+
     private
+
+    def present?(value)
+      case value
+      when String, Array then !value.empty?
+      else !value.nil?
+      end
+    end
 
     # A {Url} is always normalized; http(s) ones need no re-parse. Others go through +Url.sanitize+.
     def http_url(value)

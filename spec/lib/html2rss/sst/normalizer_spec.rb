@@ -213,13 +213,87 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :footer })).to be(true)
     end
 
-    it 'keeps chrome for headers under nav or a page-level footer', :aggregate_failures do
-      doc = described_class.call('<html><body><article><nav><header id="n">N</header></nav></article><footer>' \
+    it 'keeps chrome for headers under a page-level nav or footer', :aggregate_failures do
+      doc = described_class.call('<html><body><div><nav><header id="n">N</header></nav></div><footer>' \
                                  '<article><header id="f"><a href="/f">F</a></header></article></footer></body></html>')
       chrome = %w[n f].map { |id| doc.index.ignored_chrome?(doc.root.find { _1.attrs.id == id }) }
 
       expect(chrome).to eq([true, true])
       expect(doc.index.ignored_chrome?(doc.root.find(&:link?))).to be(true)
+    end
+
+    it 'scopes nav and ARIA roles like header/footer, keeping pagers chrome' do # rubocop:disable RSpec/ExampleLength
+      doc = described_class.call(<<~HTML)
+        <html><body>
+          <div role="navigation"><a id="role_nav" href="/a">A</a></div>
+          <div role="Dialog Alert"><a id="role_dialog" href="/b">B</a></div>
+          <div role="banner"><a id="page_banner" href="/c">C</a></div>
+          <div role="search"><a id="search" href="/d">D</a></div>
+          <main>
+            <nav aria-label="Latest"><a id="main_nav" href="/e">E</a></nav>
+            <div role="contentinfo"><a id="main_contentinfo" href="/f">F</a></div>
+            <nav><a id="rel_pager" rel="prev" href="/g">G</a></nav>
+            <nav aria-label="Page navigation"><a id="nav_page_nav" href="/h">H</a></nav>
+            <ol aria-label="Pagination"><li><a id="list_pager" href="/i">2</a></li></ol>
+            <ul><li><a id="list_rel" rel="next" href="/j">J</a></li></ul>
+            <nav class="gsc-pagination"><a id="class_pager" href="/k">K</a></nav>
+            <ul class="paginated-list"><li><a id="paginated_list" href="/l">L</a></li></ul>
+            <div class="pagination" aria-label="Pagination"><a id="div_pager" href="/m?page=2">2</a></div>
+          </main>
+        </body></html>
+      HTML
+      chrome = doc.root.find_all(&:link?).to_h { [_1.attrs.id, doc.index.ignored_chrome?(_1)] }
+
+      expect(chrome).to eq('role_nav' => true, 'role_dialog' => true, 'page_banner' => true, 'search' => false,
+                           'main_nav' => false, 'main_contentinfo' => false, 'rel_pager' => true,
+                           'nav_page_nav' => true, 'list_pager' => true, 'list_rel' => false,
+                           'class_pager' => true, 'paginated_list' => false, 'div_pager' => false)
+    end
+
+    {
+      '<ul class="pagination"><li><a href="/news/?page=2">Older</a></li></ul>' => true,
+      '<ul class="Pager"><li><a href="/s">Story one</a></li><li><a href="/news/page/3">More</a></li></ul>' => true,
+      '<ul class="paging"><li><a href="/a">Next</a></li><li><a href="/b">«</a></li></ul>' => true,
+      '<ol aria-label="Paginación"><li><a rel="Prev" href="/a">Atrás</a></li></ol>' => true,
+      '<ul class="pagination"><li><a href="/a">Story one</a></li><li><a href="/b">Story two</a></li></ul>' => false,
+      '<ul class="pagination"></ul>' => false,
+      '<ul class="pagination"><li><a href="/a">2</a></li><li><a>B</a></li><li><a>C</a></li></ul>' => false,
+      '<ul class="pagination"><li><a href="/a"> 2 </a></li><li><a>Story</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a" data-next="/page/3">Story</a></li></ul>' => false,
+      '<nav><a href="/a">The pager returns</a></nav>' => false,
+      '<ul aria-label="Paginated list of articles"><li><a href="/news/?page=2">2</a></li></ul>' => false,
+      '<ul class="teaser-list js-pagination-container"><li><a href="/x?page=2">2</a></li></ul>' => false,
+      '<ol class="list paging-container"><li><a href="/x?page=2">2</a></li></ol>' => false,
+      '<ul class="list infinite-pager"><li><a href="/x?page=2">2</a></li></ul>' => false,
+      '<ul><li><a href="/x?page=2">2</a></li></ul>' => false,
+      '<nav aria-label="Paginated list of articles"><a href="/a">A</a></nav>' => false,
+      '<nav class="gsc-pagination" aria-label="Select a page"><a href="/a">A</a></nav>' => true
+    }.each do |markup, chrome|
+      it "treats #{markup[0, 60]}... inside main as chrome: #{chrome}" do
+        doc = described_class.call("<html><body><main>#{markup}</main></body></html>")
+        list = doc.root.find { _1.name == :main }.children.first
+
+        expect(doc.index.ignored_chrome?(list)).to be(chrome)
+      end
+    end
+
+    it 'records peripheral scope for utility landmarks that are not chrome' do # rubocop:disable RSpec/ExampleLength
+      doc = described_class.call(<<~HTML)
+        <html><body>
+          <aside><header><a id="aside_header" href="/a">A</a></header></aside>
+          <div role="complementary"><a id="complementary" href="/b">B</a></div>
+          <dialog open><a id="dialog" href="/c">C</a></dialog>
+          <div role="main"><header><a id="role_main_header" href="/d">D</a></header>
+            <nav aria-label="Latest"><a id="main_nav" href="/e">E</a></nav></div>
+        </body></html>
+      HTML
+      scopes = doc.root.find_all(&:link?).to_h do |link|
+        [link.attrs.id, [doc.index.ignored_chrome?(link), doc.index.peripheral?(link)]]
+      end
+
+      expect(scopes).to eq('aside_header' => [false, true], 'complementary' => [false, true],
+                           'dialog' => [true, false], 'role_main_header' => [false, false],
+                           'main_nav' => [false, true])
     end
   end
 
@@ -243,18 +317,51 @@ RSpec.describe Html2rss::SST::Normalizer do
 
   describe 'chrome scope rule (SST::Tags.chrome_scope)' do
     {
-      %w[div page] => :page,
-      %w[header page] => :chrome,
-      %w[footer page] => :chrome,
-      %w[nav page] => :chrome,
-      %w[nav sectioned] => :chrome,
-      %w[header sectioned] => :sectioned,
-      %w[section page] => :sectioned,
-      %w[article chrome] => :chrome,
-      %w[div sectioned] => :sectioned
-    }.each do |(tag, scope), expected|
-      it "maps #{tag} under #{scope} to #{expected}" do
-        expect(Html2rss::SST::Tags.chrome_scope(tag, scope.to_sym)).to eq(expected)
+      %w[<div> page] => :page,
+      %w[<header> page] => :chrome,
+      %w[<footer> page] => :chrome,
+      %w[<nav> page] => :chrome,
+      %w[<dialog> sectioned] => :chrome,
+      %w[<nav> sectioned] => :peripheral,
+      %w[<footer> sectioned] => :peripheral,
+      %w[<aside> page] => :peripheral,
+      %w[<menu> page] => :peripheral,
+      ['<div role="complementary">', 'page'] => :peripheral,
+      %w[<header> peripheral] => :peripheral,
+      %w[<article> peripheral] => :peripheral,
+      ['<div role="banner">', 'peripheral'] => :peripheral,
+      ['<div role="navigation">', 'peripheral'] => :chrome,
+      %w[<header> sectioned] => :sectioned,
+      %w[<section> page] => :sectioned,
+      ['<div role="main">', 'page'] => :sectioned,
+      ['<div role="MAIN">', 'page'] => :sectioned,
+      ['<div role="mainly">', 'page'] => :page,
+      %w[<article> chrome] => :chrome,
+      %w[<div> sectioned] => :sectioned,
+      %w[<svg> sectioned] => :chrome
+    }.each do |(markup, scope), expected|
+      it "maps #{markup} under #{scope} to #{expected}" do
+        element = Nokogiri::HTML::DocumentFragment.parse(markup).child
+
+        expect(Html2rss::SST::Tags.chrome_scope(element, scope.to_sym)).to eq(expected)
+      end
+    end
+
+    {
+      %w[nav] => true, %w[aside] => true, %w[footer] => true, %w[menu] => true, %w[div navigation] => true,
+      %w[div menubar] => true, %w[div alertdialog] => true, %w[div complementary] => true,
+      %w[div search] => false, %w[div] => false
+    }.each do |(tag, role), expected|
+      it "judges #{tag} role=#{role.inspect} as utility landmark: #{expected}" do
+        expect(Html2rss::SST::Tags.utility_landmark?(tag, role)).to be(expected)
+      end
+    end
+
+    {
+      %w[header] => true, %w[div Contentinfo] => true, %w[div banner] => true, %w[nav] => false, %w[div main] => false
+    }.each do |(tag, role), expected|
+      it "judges #{tag} role=#{role.inspect} as page-level chrome: #{expected}" do
+        expect(Html2rss::SST::Tags.page_level_chrome?(tag, role)).to be(expected)
       end
     end
   end

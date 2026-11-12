@@ -17,6 +17,11 @@ RSpec.describe Html2rss::Article do
       expect { described_class.new(**attrs) }.not_to raise_error
     end
 
+    it 'reports media items', :aggregate_failures do
+      expect(described_class.new(media: true).media?).to be(true)
+      expect(described_class.new.media?).to be(false)
+    end
+
     it 'composes the kicker and headline into the title when the caller opts in' do
       article = described_class.new(title: "Ferry\nreturns", kicker: 'Harbor :', compose_title: true)
 
@@ -107,6 +112,30 @@ RSpec.describe Html2rss::Article do
       expect(copy.url.to_s).to eq('https://example.com/a')
       expect(copy).to have_attributes(id: 'a', title: 'Sample instance', scraper: Object)
       expect(instance.url.to_s).to eq('http://example.com/a?utm_term=t')
+    end
+  end
+
+  describe '#merge' do
+    let(:options) do
+      { id: 'feed-1', title: 'Publisher headline', url: 'https://example.com/a', guid: 'g-1', categories: [],
+        description: '', published_at: '2026-11-02T08:00:00Z', scraper: Html2rss::AutoSource::Scraper::NativeFeed }
+    end
+    let(:page_copy) do
+      described_class.new(id: 'card-1', title: 'Kicker: Card headline', url: 'https://example.com/a/',
+                          image: 'https://example.com/a.jpg', categories: ['City'], description: 'Card teaser.',
+                          published_at: '2026-11-10', scraper: Html2rss::AutoSource::Scraper::Html)
+    end
+
+    it 'keeps every field it carries and fills the fields it lacks from the other copy', :aggregate_failures do
+      expect(instance.merge(page_copy)).to have_attributes(
+        id: 'feed-1', title: 'Publisher headline', guid: instance.guid, published_at: instance.published_at,
+        scraper: options[:scraper], description: 'Card teaser.', categories: ['City'], url: instance.url,
+        image: page_copy.image
+      )
+    end
+
+    it 'returns itself when the other copy adds nothing' do
+      expect(instance.merge(described_class.new(id: 'x', title: 'Other', url: 'https://example.com/a'))).to be(instance)
     end
   end
 

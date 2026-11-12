@@ -1,0 +1,13 @@
+---
+case: Cards in nine languages whose heading link is repeated by a read-more or "more about" link to
+  the same article; only the headlines are items, and the headline copy wins either way.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-route-returns
+- https://example.com/news/2026/11/library-extends-weekend-hours
+- https://example.com/news/2026/11/river-cleanup-volunteers-record
+- https://example.com/news/2026/11/school-board-approves-budget
+- https://example.com/news/2026/11/night-market-opens-downtown
+- https://example.com/news/2026/11/bridge-repair-finishes-early
+- https://example.com/news/2026/11/bus-line-adds-evening-trips
+- https://example.com/news/2026/11/pool-reopens-after-renovation
+- https://example.com/news/2026/11/festival-schedule-announced

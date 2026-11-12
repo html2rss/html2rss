@@ -2,6 +2,8 @@
 
 # rubocop:disable RSpec/MultipleMemoizedHelpers
 
+require_relative '../../support/saved_responses'
+
 RSpec.describe Html2rss::AutoSource do
   subject(:auto_source) { described_class.new(response, config, request_session:) }
 
@@ -139,6 +141,38 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when structured items reach the limit only before Cleanup' do
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 3) }
+      let(:body) do
+        headlines = ['Schema story number one', 'Schema story number two', 'Too short']
+        items = headlines.each_with_index.map do |headline, index|
+          { '@type' => 'NewsArticle', 'headline' => headline, 'url' => "https://example.com/news/schema-#{index}" }
+        end
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => items }
+        list = items.map { %(<li><a href="#{_1['url']}">#{_1['headline']}</a></li>) }.join
+        card = '<article><h2><a href="/news/page-story">Page story read by the heuristic tier</a></h2></article>'
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><ul>#{list}</ul>#{card}</body></html>)
+      end
+
+      it 'counts admitted items only and reads the heuristic tier' do
+        expect(articles.map { _1.url.path }).to include('/news/page-story')
+      end
+    end
+
+    context 'when a matching scraper yields nothing' do
+      let(:body) do
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => [] }
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><p>Quiet page.</p></body></html>)
+      end
+
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      it 'does not warn that admission emptied the capture' do
+        articles
+        expect(Html2rss::Log).not_to have_received(:warn).with(/admission_emptied/)
+      end
+    end
+
     context 'when the response body is empty' do
       let(:body) { '' }
 
@@ -166,7 +200,7 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'when structured scrapers already yield enough articles' do
       let(:schema_items) do
-        Array.new(5) do |index|
+        Array.new(6) do |index|
           {
             '@type' => 'NewsArticle',
             'headline' => "Schema Story #{index} Extra Words Here",
@@ -198,6 +232,13 @@ RSpec.describe Html2rss::AutoSource do
             meta_oembed: { enabled: false }
           )
         )
+      end
+
+      it 'never builds the heuristic tier, also when the items exactly fill the limit', :aggregate_failures do
+        allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new).and_call_original
+        articles
+        described_class.new(response, config.merge(limit: schema_items.size)).articles
+        expect(Html2rss::AutoSource::Scraper::SemanticHtml).not_to have_received(:new)
       end
 
       it 'keeps Schema articles and skips heuristic titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -358,12 +399,147 @@ RSpec.describe Html2rss::AutoSource do
         expect(counts).to eq(sst: 1, resolver: 1)
       end
 
-      it 'builds no SST when an exempt native feed already fills the limit', :aggregate_failures do
+      it 'builds the SST once to check a native feed that fills the limit for sponsorship', :aggregate_failures do
         allow(Html2rss::AutoSource::Scraper::NativeFeed).to receive(:new).and_return(native_feed)
         limited = described_class.new(response, described_class::DEFAULT_CONFIG.merge(limit: 1)).articles
 
         expect(limited.map { _1.url.path }).to eq(['/news/feed-1'])
-        expect(counts[:sst]).to eq(0)
+        expect(counts[:sst]).to eq(1)
+      end
+    end
+
+    context 'when structured items of the limit are kept by score but not shown on the page' do
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 3) }
+      let(:body) do
+        items = Array.new(3) do |index|
+          { '@type' => 'NewsArticle', 'headline' => "Archive story number #{index}", 'datePublished' => '2026-11-01',
+            'image' => "https://example.com/img/#{index}.jpg", 'description' => 'Archive summary.',
+            'url' => "https://example.com/news/2026/11/archive-story-#{index}" }
+        end
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => items }
+        cards = Array.new(3) do |index|
+          %(<article><h2><a href="/news/2026/11/page-story-#{index}">Page story number #{index}</a></h2></article>)
+        end
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{cards.join}</main></body></html>)
+      end
+
+      it 'reads the page tiers and puts the shown items first' do
+        expect(articles.map { _1.url.path }).to eq(Array.new(3) { "/news/2026/11/page-story-#{_1}" })
+      end
+    end
+
+    context 'with a few audio items shown among more news cards' do
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 3) }
+      let(:body) do
+        audio = Array.new(3) do |index|
+          { '@type' => 'ListItem', 'item' => { '@type' => 'AudioObject', 'name' => "Audio briefing number #{index}",
+                                               'url' => "https://example.com/audio/briefing-#{index}" } }
+        end
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => audio }
+        links = audio.map { %(<li><a href="#{_1['item']['url']}">#{_1['item']['name']}</a></li>) }.join
+        cards = Array.new(4) do |index|
+          %(<article><h2><a href="/news/2026/11/story-#{index}">News story number #{index}</a></h2></article>)
+        end
+        script = %(<script type="application/ld+json">#{ld.to_json}</script>)
+        %(<html><body>#{script}<main><ul>#{links}</ul>#{cards.join}</main></body></html>)
+      end
+
+      it 'is no media page: the audio items do not stop the tiers and the news comes first' do
+        expect(articles.map { _1.url.path }).to eq(Array.new(3) { "/news/2026/11/story-#{_1}" })
+      end
+    end
+
+    context 'with six audio cards in main among ten news cards' do
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_media_minority_in_main.html') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+
+      it 'is no media page: the news comes first, then the audio items', :aggregate_failures do
+        expect(articles.first(10).map(&:media?)).to all(be(false))
+        expect(articles.drop(10).map(&:media?)).to eq([true] * 6)
+      end
+    end
+
+    context 'with schema media items rendered in main beside news cards' do
+      let(:media_body) do
+        lambda do |news:, media:, type:, news_first:|
+          items = Array.new(media) do |index|
+            { '@type' => 'ListItem', 'item' => { '@type' => type, 'name' => "#{type} item number #{index}",
+                                                 'url' => "https://example.com/media/item-#{index}" } }
+          end
+          ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => items }
+          list = "<ul>#{items.map { %(<li><a href="#{_1['item']['url']}">#{_1['item']['name']}</a></li>) }.join}</ul>"
+          cards = Array.new(news) do |index|
+            %(<article><h2><a href="/news/2026/11/story-#{index}">News story number #{index}</a></h2></article>)
+          end.join
+          main = news_first ? cards + list : list + cards
+          %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{main}</main></body></html>)
+        end
+      end
+      let(:news_paths) { ->(count) { Array.new(count) { "/news/2026/11/story-#{_1}" } } }
+      let(:media_paths) { ->(count) { Array.new(count) { "/media/item-#{_1}" } } }
+
+      it 'puts the media of a media page first, then the news, each in document order' do
+        allow(response).to receive(:body).and_return(media_body.call(news: 8, media: 12, type: 'VideoObject',
+                                                                     news_first: true))
+        expect(articles.map { _1.url.path }).to eq(media_paths[12] + news_paths[8])
+      end
+
+      it 'is a media page when the media are more than half of the shown cards, so media fill the limit' do
+        allow(response).to receive(:body).and_return(media_body.call(news: 10, media: 25, type: 'AudioObject',
+                                                                     news_first: false))
+        expect(articles.map { _1.url.path }).to eq(media_paths[25])
+      end
+    end
+
+    context 'with a podcast page of episodes and promo cards' do
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_podcast_episode_page.html') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/podcasts/harbor-hour/') }
+
+      it 'counts the episodes and keeps the first ones in page order' do
+        expect(articles.map { _1.url.path }).to eq((1..25).map { "/podcasts/harbor-hour/episode-#{_1}" })
+      end
+    end
+
+    context 'with a Schema audio list of the item limit beside a news list' do
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_media_list_news.html') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+
+      it 'reads the news before the media items, which fill the rest of the limit', :aggregate_failures do
+        news, media = articles.partition { _1.url.path.start_with?('/news/2026/') }
+
+        expect(articles.size).to eq(described_class::DEFAULT_LIMIT)
+        expect(news.size).to eq(10)
+        expect(articles.first(10)).to eq(news)
+        expect(media).to all(be_media)
+      end
+    end
+
+    context 'with a native feed and a page of cards' do
+      let(:dir) { 'spec/fixtures/auto_source/corpus/t6_feed_merge' }
+      let(:body) { File.read("#{dir}.html") }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+      let(:request_session) { SavedResponses.new(dir) }
+      let(:slugs) { articles.map { _1.url.path.delete_prefix('/news/2026/11/') } }
+      let(:feed_items) { articles.select { _1.scraper == Html2rss::AutoSource::Scraper::NativeFeed } }
+
+      it 'puts the feed items first and fills up with page items', :aggregate_failures do
+        expect(slugs).to eq(%w[feed-only-council-vote harbor-ferry-schedule library-reading-week river-path-reopens
+                               night-market-vendors school-garden-harvest bridge-paint-survey museum-late-opening])
+        expect(feed_items.size).to eq(4)
+      end
+
+      it 'drops the sponsored feed item', :aggregate_failures do
+        expect(slugs).not_to include('partner-energy-savings')
+        expect(auto_source.admission_drops).to include('sponsored' => 1, 'duplicate_url' => 4)
+      end
+
+      it 'merges each article in both into one feed item carrying the page image', :aggregate_failures do
+        merged = feed_items.drop(1)
+
+        expect(merged.map(&:title)).to all(end_with('(publisher title)'))
+        slugs = %w[harbor-ferry-schedule library-reading-week river-path-reopens]
+        expect(merged.map { _1.image&.path }).to eq(slugs.map { "/img/#{_1}.jpg" })
+        expect(feed_items.first.image).to be_nil
       end
     end
 
@@ -444,13 +620,11 @@ RSpec.describe Html2rss::AutoSource do
           limit: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
-                                                              semantic_html: { enabled: true,
-                                                                               fallback_anchorless: true },
+                                                              semantic_html: { enabled: true },
                                                               html: {
                                                                 enabled: true,
                                                                 minimum_selector_frequency: 2,
-                                                                use_top_selectors: 5,
-                                                                fallback_anchorless: true
+                                                                use_top_selectors: 5
                                                               }
                                                             )
         )
@@ -487,13 +661,11 @@ RSpec.describe Html2rss::AutoSource do
           limit: 10,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
-                                                              semantic_html: { enabled: true,
-                                                                               fallback_anchorless: true },
+                                                              semantic_html: { enabled: true },
                                                               html: {
                                                                 enabled: true,
                                                                 minimum_selector_frequency: 2,
-                                                                use_top_selectors: 10,
-                                                                fallback_anchorless: true
+                                                                use_top_selectors: 10
                                                               }
                                                             )
         )
@@ -530,13 +702,11 @@ RSpec.describe Html2rss::AutoSource do
           limit: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
-                                                              semantic_html: { enabled: true,
-                                                                               fallback_anchorless: true },
+                                                              semantic_html: { enabled: true },
                                                               html: {
                                                                 enabled: true,
                                                                 minimum_selector_frequency: 1,
-                                                                use_top_selectors: 5,
-                                                                fallback_anchorless: true
+                                                                use_top_selectors: 5
                                                               }
                                                             )
         )
@@ -624,10 +794,7 @@ RSpec.describe Html2rss::AutoSource do
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
                                                               schema: { enabled: true },
-                                                              semantic_html: {
-                                                                enabled: true,
-                                                                fallback_anchorless: true
-                                                              }
+                                                              semantic_html: { enabled: true }
                                                             )
         )
       end
@@ -749,7 +916,8 @@ RSpec.describe Html2rss::AutoSource do
           expect(parsed).to include(
             'event_name' => 'auto_source.admission_emptied',
             'host' => url.host,
-            'hint' => Html2rss::AutoSource::Cleanup::DIFFERENT_DOMAIN_HINT
+            'hint' => Html2rss::AutoSource::Cleanup::DIFFERENT_DOMAIN_HINT,
+            'captured_count' => 2
           )
           expect(parsed['drop_tallies']).to include('different_domain' => 2)
         end
@@ -766,8 +934,10 @@ RSpec.describe Html2rss::AutoSource do
         described_class::DEFAULT_CONFIG.merge(cleanup: { keep_different_domain: true })
       end
 
-      it 'keeps the long-named off-domain item', :aggregate_failures do
+      it 'keeps the long-named off-domain item without an emptied warning', :aggregate_failures do
+        allow(Html2rss::Log).to receive(:warn)
         expect(articles.map(&:title)).to eq(['Long Enough App Name'])
+        expect(Html2rss::Log).not_to have_received(:warn)
         expect(articles.first.url.to_s).to eq('https://apps.example.net/app/id1234567890')
         expect(articles.first.scraper).to eq(Html2rss::AutoSource::Scraper::JsonDocument)
       end
@@ -863,7 +1033,7 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     it 'normalizes each URL once and reuses one Cleanup result', :aggregate_failures do
-      expect(auto_source.articles.size).to eq(13)
+      expect(auto_source.articles.size).to eq(25)
       expect(counts[:cleanup]).to eq(1)
       expect(counts[:normalize]).to be <= 260 # master: 358
     end
@@ -871,8 +1041,10 @@ RSpec.describe Html2rss::AutoSource do
     it 'keeps drop tallies stable', :aggregate_failures do
       auto_source.articles
 
+      # One segment per whole-card link frees top-K slots for the fixture's absolute-host
+      # footer links, which Cleanup drops as different_domain.
       expect(auto_source.admission_drops)
-        .to eq('invalid' => 1, 'duplicate_url' => 47, 'self_link' => 1, 'different_domain' => 4)
+        .to eq('invalid' => 1, 'different_domain' => 35, 'low_word_count' => 1)
     end
   end
 end

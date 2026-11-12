@@ -273,7 +273,7 @@ RSpec.describe Html2rss::RequestService::Policy do
 
     it 'uses the documented defaults when no limits are given', :aggregate_failures do
       expect(policy).to have_attributes(
-        max_redirects: 5, max_response_bytes: 5_242_880, max_decompressed_bytes: 10_485_760, max_requests: 1
+        max_redirects: 5, max_response_bytes: 10_485_760, max_decompressed_bytes: 10_485_760, max_requests: 1
       )
       expect(policy.allow_private_networks?).to be(false)
       expect(policy.allow_cross_origin_followups?).to be(false)

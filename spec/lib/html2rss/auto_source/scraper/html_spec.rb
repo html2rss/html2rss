@@ -125,7 +125,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
           <ul>
             <li>
               <a href="?ts=deadh0rse">[Plonk]</a>
-              <a href="https://www.tagesschau.de/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html">Bla bla bla</a>
+              <a href="https://www.example.net/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html">Bla bla bla</a>
           </ul>
           </html>
         HTML
@@ -338,22 +338,20 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       expect(described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com')).to be_extractable
     end
 
-    it 'is false for anchorless cards unless fallback_anchorless is requested', :aggregate_failures do
-      expect(described_class.new(anchorless_html, url: 'https://page.com')).not_to be_extractable
-      expect(described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true))
-        .to be_extractable
+    it 'is false for anchorless cards' do
+      expect(described_class.new(anchorless_html, url: 'https://example.com')).not_to be_extractable
     end
   end
 
   describe '#initialize' do
-    it 'drops anchorless cards by default' do
-      expect(described_class.new(anchorless_html, url: 'https://page.com').to_a).to eq([])
+    it 'emits no page-fragment items for anchorless cards' do
+      expect(described_class.new(anchorless_html, url: 'https://example.com').to_a).to eq([])
     end
 
     it 'resolves relative article links against the given url' do
-      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'https://page.example/').to_a
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'https://example.net/').to_a
 
-      expect(articles.map { _1.url.to_s }).to include('https://page.example/article1/')
+      expect(articles.map { _1.url.to_s }).to include('https://example.net/article1/')
     end
   end
 
@@ -390,28 +388,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
       expect(articles).not_to be_empty
       expect(articles.map(&:scraper).uniq).to eq([described_class])
-    end
-
-    it 'keeps anchorless cards only when fallback_anchorless is requested' do
-      articles = described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a
-
-      expect(articles.map(&:title)).to eq(['No Link One', 'No Link Two'])
-    end
-  end
-
-  describe '#materialize' do
-    it 'stamps the scraper class on fallback anchorless articles' do
-      articles = described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a
-
-      expect(articles.map(&:scraper).uniq).to eq([described_class])
-    end
-  end
-
-  describe '#cluster_ranked' do
-    it 'only supplies anchorless clusters when fallback_anchorless is requested', :aggregate_failures do
-      expect(described_class.new(anchorless_html, url: 'https://page.com').to_a).to be_empty
-      expect(described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a.size)
-        .to eq(2)
     end
   end
 

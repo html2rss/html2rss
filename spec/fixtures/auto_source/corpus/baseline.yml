@@ -24,6 +24,102 @@ card_header_time_kicker.html:
   expected: 5
   title_misses: 0
   sst_built: true
+cardlink_cluster_consent_only.html:
+  junk: 0
+  real: 0
+  expected: 0
+  title_misses: 0
+  sst_built: true
+cardlink_empty_overlay_heading.html:
+  junk: 0
+  real: 7
+  expected: 7
+  title_misses: 0
+  sst_built: true
+cardlink_nested_div_clips.html:
+  junk: 0
+  real: 25
+  expected: 110
+  title_misses: 0
+  sst_built: true
+cardlink_whole_card_anchor.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  sst_built: true
+chrome_f2_teaser_lists_named_like_pagers.html:
+  junk: 0
+  real: 25
+  expected: 32
+  title_misses: 0
+  sst_built: true
+chrome_role_consent_dialog.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_role_div_menu.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_role_main_nav_list.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  sst_built: true
+chrome_role_main_pager.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_role_search_results.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_t1b_complementary_peripheral.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  sst_built: true
+chrome_t1b_dialog_element.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_t1b_role_main_card_headers.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+f3_recipe_tiles_with_people.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  sst_built: true
+f5_encoded_non_article_paths.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+f6_find_out_more_links.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  sst_built: true
 json_response_articles.json:
   junk: 0
   real: 4
@@ -112,6 +208,12 @@ plain_listing.html:
   junk: 0
   real: 6
   expected: 6
+  title_misses: 0
+  sst_built: true
+read_more_multilingual.html:
+  junk: 0
+  real: 9
+  expected: 9
   title_misses: 0
   sst_built: true
 schema_footer_extras.html:
@@ -244,6 +346,48 @@ structured_tracked_urls.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
+  sst_built: true
+t3_non_article_destinations.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+t3b_staff_profile_teasers.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+t6_feed_merge.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  sst_built: true
+t6_media_list_news.html:
+  junk: 0
+  real: 10
+  expected: 10
+  title_misses: 0
+  sst_built: true
+t6_media_minority_in_main.html:
+  junk: 0
+  real: 10
+  expected: 10
+  title_misses: 0
+  sst_built: true
+t6_podcast_episode_page.html:
+  junk: 0
+  real: 25
+  expected: 30
+  title_misses: 0
+  sst_built: true
+t6_podcast_promos_above.html:
+  junk: 0
+  real: 25
+  expected: 30
   title_misses: 0
   sst_built: true
 title_clock_prefix.html:

@@ -132,6 +132,13 @@ RSpec.describe Html2rss::Config::Schema do
       expect(json_schema.dig('properties', 'auto_source', 'default', 'scraper', 'json_document', 'enabled')).to be(true)
     end
 
+    it 'rejects auto_source scraper keys the contract does not name', :aggregate_failures do
+      scraper = json_schema.dig('properties', 'auto_source', 'properties', 'scraper')
+
+      expect(scraper.fetch('additionalProperties')).to be false
+      expect(scraper.fetch('properties').values.map { _1.fetch('additionalProperties') }).to all(be false)
+    end
+
     it 'enforces non-empty selector reference arrays', :aggregate_failures do
       selectors_schema = json_schema.dig('properties', 'selectors', 'properties')
 

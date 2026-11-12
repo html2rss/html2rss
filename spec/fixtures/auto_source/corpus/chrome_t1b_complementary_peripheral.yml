@@ -1,0 +1,7 @@
+---
+case: 'Schema ItemList: four teasers rendered in main, two extra entries rendered only in a div with role="complementary" (the aside role); the sidebar is peripheral, so the thin extras do not pass the page check.'
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/school-board-approves-budget

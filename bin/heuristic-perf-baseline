@@ -21,14 +21,11 @@ FIXTURES = [
 
 BASE_URL = 'https://example.com/'
 
-def run_heuristics(parsed_body) # rubocop:disable Metrics/MethodLength
-  semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(
-    parsed_body, url: BASE_URL, fallback_anchorless: true
-  )
+def run_heuristics(parsed_body)
+  semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(parsed_body, url: BASE_URL)
   html = Html2rss::AutoSource::Scraper::Html.new(
     parsed_body,
     url: BASE_URL,
-    fallback_anchorless: true,
     minimum_selector_frequency: 2,
     use_top_selectors: 5
   )

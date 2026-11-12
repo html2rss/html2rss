@@ -71,14 +71,12 @@ module Html2rss
           enabled: true
         },
         semantic_html: {
-          enabled: true,
-          fallback_anchorless: true
+          enabled: true
         },
         html: {
           enabled: true,
           minimum_selector_frequency: Scraper::Html::DEFAULT_MINIMUM_SELECTOR_FREQUENCY,
-          use_top_selectors: Scraper::Html::DEFAULT_USE_TOP_SELECTORS,
-          fallback_anchorless: true
+          use_top_selectors: Scraper::Html::DEFAULT_USE_TOP_SELECTORS
         }
       },
       cleanup: Cleanup::DEFAULT_CONFIG
@@ -120,6 +118,7 @@ module Html2rss
       @captured_responses = response.captured_responses
       @opts = opts
       @request_session = request_session
+      @cards_read = false
     end
 
     ##
@@ -128,7 +127,9 @@ module Html2rss
     # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
     # SST is built at most once, lazily, by the first consumer: a heuristic tier or the
     # {Corroboration} page check of structured-tier items. Later tiers are skipped once
-    # +limit+ articles with url+title remain after Cleanup; the result is capped to +limit+.
+    # +limit+ counting articles with url+title remain after Cleanup ({#counting}); the result
+    # is capped to +limit+, counting articles first. A native feed's items come first, and
+    # Cleanup merges a page copy of the same article into them.
     # Html is skipped when earlier tiers already admitted at least one clean article
     # below +limit+ — quality over padding with weaker heuristic junk.
     #
@@ -170,6 +171,7 @@ module Html2rss
         break if enough_articles?(articles)
         break if skip_html_padding?(tier, articles)
 
+        @cards_read = true if Scraper.heuristic_tier?(tier)
         tier.each do |scraper_class|
           instance = Scraper.build_instance(
             scraper_class,
@@ -226,7 +228,8 @@ module Html2rss
       result = cleanup_result(articles)
       @admission_drops = result.drop_tallies
       log_admission_emptied(captured_count, result) if captured_count.positive? && result.articles.empty?
-      result.articles.first(article_limit)
+      counting = counting(result.articles)
+      (counting + (result.articles - counting)).first(article_limit)
     end
 
     def log_admission_emptied(captured_count, result)
@@ -244,7 +247,19 @@ module Html2rss
     def enough_articles?(articles)
       return false if articles.size < article_limit
 
-      admitted_articles(articles).size >= article_limit
+      counting(admitted_articles(articles)).size >= article_limit
+    end
+
+    # The articles that count toward +limit+, in order: those the page shows in its content
+    # ({Corroboration#shown?}), media items (audio, video) only on a media page
+    # ({Corroboration#media_page?}). The others stay admitted after the counting ones. A page is
+    # judged a media page only once a heuristic tier has read its cards: structured items alone
+    # cannot tell a podcast page from a news page with an audio list. A media page's counting
+    # items are in page order ({Corroboration#page_order}), not tier order.
+    def counting(articles)
+      media_page = @cards_read && corroboration.media_page?(articles)
+      counted = articles.select { (media_page || !_1.media?) && corroboration.shown?(_1) }
+      media_page ? corroboration.page_order(counted) : counted
     end
 
     # Prefer fewer clean items over refilling +limit+ from the Html heuristic tier.

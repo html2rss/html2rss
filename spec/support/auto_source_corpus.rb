@@ -6,9 +6,11 @@ require 'yaml'
 # Labeled auto-source corpus under spec/fixtures/auto_source/corpus/.
 #
 # Each page (+.html+ or +.json+) has a +.yml+ sidecar listing its expected article URLs and,
-# optionally, a +titles+ map (expected URL => exact expected title).
-# {.run} feeds every page through {Html2rss::AutoSource} with a fixed base URL and no
-# request session (no network), then scores the admitted URLs against the sidecar.
+# optionally, a +titles+ map (expected URL => exact expected title), a +media+ list (audio or
+# video URLs the page may admit beside its articles: scored neither real nor junk), and a
+# +responses+ directory (relative to the corpus root) of saved follow-up responses ({SavedResponses}).
+# {.run} feeds every page through {Html2rss::AutoSource} with a fixed base URL, no network, and a
+# request session only when the sidecar names saved responses, then scores the admitted URLs against the sidecar.
 # Shared by bin/auto-source-corpus (table + baseline recording) and the ratchet spec.
 #
 # Saved pages are UTF-8 by contract (the capture tool re-encodes them, so an in-page
@@ -18,11 +20,12 @@ module AutoSourceCorpus
   BASELINE_PATH = File.join(ROOT, 'baseline.yml')
   BASE_URL = 'https://example.com/news/'
   CONTENT_TYPES = { '.html' => 'text/html', '.json' => 'application/json' }.freeze
+  FEED_CONTENT_TYPE = 'application/xml'
   SAVED_PAGE_CHARSET = 'utf-8'
   RECORD_COMMAND = 'mise exec -- make corpus-baseline'
   SST_CALLS = :auto_source_corpus_sst_calls
 
-  # Per-page score: junk = admitted URLs not in the sidecar; real = admitted sidecar URLs;
+  # Per-page score: junk = admitted URLs not in the sidecar (+media+ URLs excepted); real = admitted sidecar URLs;
   # title_misses = sidecar titles the admitted article does not carry verbatim (absent counts).
   Row = Data.define(:page, :junk, :real, :expected, :title_misses, :sst_built) do
     # @return [Array<String, Integer>] table cells in column order
@@ -51,20 +54,31 @@ module AutoSourceCorpus
       pages.map { run_page(_1) }
     end
 
-    # Runs one saved page file through {Html2rss::AutoSource} offline (no request session).
-    # The one builder of a Response from a saved page, shared with the revision-comparison tool:
-    # the file is read and declared as UTF-8, so a stale in-page meta charset never decodes it.
+    # Runs one saved page file through {Html2rss::AutoSource} offline. Without a request session the
+    # follow-up tiers (native feed, WordPress API, sitemap, oEmbed) are skipped; pass a
+    # {SavedResponses} to serve them from saved files instead (still no network).
     #
     # @param path [String] saved page file (+.html+, or +.json+ for a JSON document)
     # @param url [String] absolute page URL
+    # @param request_session [#follow_up, nil] session for follow-up fetches
     # @return [Html2rss::AutoSource] not yet extracted; call +articles+
-    def auto_source(path:, url: BASE_URL)
-      content_type = "#{CONTENT_TYPES.fetch(File.extname(path), 'text/html')}; charset=#{SAVED_PAGE_CHARSET}"
-      response = Html2rss::RequestService::Response.new(
-        body: File.read(path, encoding: Encoding::UTF_8), headers: { 'content-type' => content_type },
-        url: Html2rss::Url.from_absolute(url)
+    def auto_source(path:, url: BASE_URL, request_session: nil)
+      Html2rss::AutoSource.new(response(path:, url:), request_session:)
+    end
+
+    # The one builder of a Response from a saved file, shared with {SavedResponses}: pages are read
+    # and declared as UTF-8 so a stale in-page meta charset never decodes them; +.xml+ feeds are read
+    # as bytes, since they carry their own encoding declaration.
+    #
+    # @param path [String] saved file (+.html+, +.json+ or +.xml+)
+    # @param url [String] absolute URL the file stands for
+    # @return [Html2rss::RequestService::Response]
+    def response(path:, url:)
+      feed = File.extname(path) == '.xml'
+      Html2rss::RequestService::Response.new(
+        body: feed ? File.binread(path) : File.read(path, encoding: Encoding::UTF_8),
+        headers: { 'content-type' => content_type(path, feed) }, status: 200, url: Html2rss::Url.from_absolute(url)
       )
-      Html2rss::AutoSource.new(response)
     end
 
     # @param rows [Array<Row>]
@@ -105,6 +119,12 @@ module AutoSourceCorpus
 
     private
 
+    def content_type(path, feed)
+      return FEED_CONTENT_TYPE if feed
+
+      "#{CONTENT_TYPES.fetch(File.extname(path), 'text/html')}; charset=#{SAVED_PAGE_CHARSET}"
+    end
+
     def install_sst_probe
       normalizer = Html2rss::SST::Normalizer.singleton_class
       normalizer.prepend(SstProbe) unless normalizer.include?(SstProbe)
@@ -112,13 +132,13 @@ module AutoSourceCorpus
 
     def run_page(page)
       sidecar = YAML.load_file(File.join(ROOT, "#{File.basename(page, '.*')}.yml"))
-      articles, sst_calls = with_sst_count { page_articles(page) }
+      articles, sst_calls = with_sst_count { page_articles(page, sidecar['responses']) }
       score(page, sidecar, articles, sst_calls.positive?)
     end
 
     def score(page, sidecar, articles, sst_built)
-      expected = sidecar.fetch('expected').map { normalize(_1) }
-      admitted = articles.map { _1.url.to_s }.uniq
+      expected = sidecar_urls(sidecar, 'expected')
+      admitted = articles.map { _1.url.to_s }.uniq - sidecar_urls(sidecar, 'media')
       real = (admitted & expected).size
       Row.new(page:, junk: admitted.size - real, real:, expected: expected.size, sst_built:,
               title_misses: title_misses(articles, sidecar.fetch('titles', {})))
@@ -131,6 +151,8 @@ module AutoSourceCorpus
 
     def normalize(url) = Html2rss::Url.from_absolute(url).to_s
 
+    def sidecar_urls(sidecar, key) = sidecar.fetch(key, []).map { normalize(_1) }
+
     def with_sst_count
       Thread.current[SST_CALLS] = 0
       [yield, Thread.current[SST_CALLS]]
@@ -138,8 +160,16 @@ module AutoSourceCorpus
       Thread.current[SST_CALLS] = nil
     end
 
-    def page_articles(page)
-      auto_source(path: File.join(ROOT, page)).articles
+    def page_articles(page, responses)
+      auto_source(path: File.join(ROOT, page), request_session: saved_responses(responses)).articles
+    end
+
+    # Loaded on first use: SavedResponses builds its responses through this module.
+    def saved_responses(dir)
+      return unless dir
+
+      require_relative 'saved_responses'
+      SavedResponses.new(File.join(ROOT, dir))
     end
   end
 end

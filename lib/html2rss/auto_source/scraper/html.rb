@@ -4,7 +4,7 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Fallback HTML list/cluster scraper via SST pipeline
+      # Fallback HTML list scraper via SST pipeline
       # (Normalizer → Segmenter → Scoring::Engine → Html::SstArticleExtractor).
       class Html
         include Enumerable
@@ -41,7 +41,6 @@ module Html2rss
         # @param document [SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
         # @param opts [Hash]
-        # @option opts [Boolean] :fallback_anchorless keep anchorless cluster cards
         # @option opts [Integer] :minimum_selector_frequency list frequency floor
         # @option opts [Integer] :use_top_selectors list selector budget
         def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, **opts)
@@ -50,7 +49,6 @@ module Html2rss
           @provided_link_resolver = link_resolver
           @url = url
           @opts = opts
-          @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
         end
 
         ##
@@ -71,48 +69,22 @@ module Html2rss
         private
 
         def articles
-          @articles ||= begin
-            ranked = list_ranked
-            if ranked.empty? && @fallback_anchorless
-              materialize(cluster_ranked, fallback_anchorless: true)
-            else
-              materialize(ranked)
-            end
-          end
+          @articles ||= materialize(ranked_segments)
         end
 
         def ranked_segments
-          @ranked_segments ||= begin
-            ranked = list_ranked
-            ranked = cluster_ranked if @fallback_anchorless && ranked.empty?
-            ranked
-          end
+          @ranked_segments ||= if document
+                                 segments = Segmenter.call(document, base_url: @url, strategy: :list, link_resolver:,
+                                                                     minimum_selector_frequency:, use_top_selectors:)
+                                 engine.select_eligible(segments, limit: TOP_K)
+                               else
+                                 []
+                               end
         end
 
-        def list_ranked
-          @list_ranked ||= document ? rank_strategy(:list, permit_unanchored: false) : []
-        end
-
-        def cluster_ranked
-          @cluster_ranked ||= document ? rank_strategy(:cluster, permit_unanchored: true) : []
-        end
-
-        def rank_strategy(strategy, permit_unanchored:)
-          segments = Segmenter.call(
-            document,
-            base_url: @url,
-            strategy:,
-            permit_unanchored:,
-            minimum_selector_frequency:,
-            use_top_selectors:,
-            link_resolver:
-          )
-          engine.select_eligible(segments, limit: TOP_K)
-        end
-
-        def materialize(ranked, fallback_anchorless: false)
+        def materialize(ranked)
           ranked.filter_map do |entry|
-            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class, fallback_anchorless:)
+            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class)
           end
         end
 

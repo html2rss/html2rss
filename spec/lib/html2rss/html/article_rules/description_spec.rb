@@ -65,6 +65,12 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
       expect(described_class.keep?('Press release • 16 juli, 2026')).to be(false)
     end
 
+    ['Read more', 'Weiterlesen', 'Lire la suite', 'Find out more', 'Meer informatie', 'Más información'].each do |line|
+      it "drops the read-more line #{line.inspect}" do
+        expect(described_class.keep?(line)).to be(false)
+      end
+    end
+
     it 'keeps a longer read-more sentence' do
       expect(described_class.keep?('Read more about the trial')).to be(true)
     end

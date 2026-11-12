@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe '#each' do
-    subject(:new) { described_class.new(parsed_body, url: 'https://page.com') }
+    subject(:new) { described_class.new(parsed_body, url: 'https://example.com') }
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/multi_link_block.html')) }
     let(:articles) { new.each.to_a }
@@ -11,29 +11,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
     let(:excluded_urls) do
       %w[
-        https://page.com/category/news
-        https://page.com/article/1#comments
+        https://example.com/category/news
+        https://example.com/article/1#comments
         https://twitter.com/share?url=...
-        https://page.com/about
-        https://page.com/contact
-        https://page.com/newsletter/signup
-        https://page.com/gallery/3
-        https://page.com/author/jane
-        https://page.com/newsletter/4
+        https://example.com/about
+        https://example.com/contact
+        https://example.com/newsletter/signup
+        https://example.com/gallery/3
+        https://example.com/author/jane
+        https://example.com/newsletter/4
       ]
     end
 
     it 'prefers the intended content links', :aggregate_failures do
-      expect(articles_by_url.fetch('https://page.com/article/1').title).to eq('Main Article Title')
-      expect(articles_by_url.fetch('https://page.com/article/3').title).to eq('Correct Title Link')
-      expect(articles_by_url.fetch('https://page.com/article/4').title).to eq('Actual Article Text')
+      expect(articles_by_url.fetch('https://example.com/article/1').title).to eq('Main Article Title')
+      expect(articles_by_url.fetch('https://example.com/article/3').title).to eq('Correct Title Link')
+      expect(articles_by_url.fetch('https://example.com/article/4').title).to eq('Actual Article Text')
     end
 
     it 'suppresses utility and duplicate link variants' do
       expect(articles_by_url.keys).to contain_exactly(
-        'https://page.com/article/1',
-        'https://page.com/article/3',
-        'https://page.com/article/4'
+        'https://example.com/article/1',
+        'https://example.com/article/3',
+        'https://example.com/article/4'
       )
     end
 
@@ -44,7 +44,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'chrome suppression' do
     subject(:articles_by_url) do
-      scraper = described_class.new(parsed_body, url: 'https://page.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
       scraper.each.to_a.to_h { |article| [article.url.to_s, article] }
     end
 
@@ -68,7 +68,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     it 'keeps content links while excluding common nav chrome' do
-      expect(articles_by_url.keys).to contain_exactly('https://page.com/news/launch-update')
+      expect(articles_by_url.keys).to contain_exactly('https://example.com/news/launch-update')
     end
   end
 

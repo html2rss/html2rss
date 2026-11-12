@@ -6,13 +6,21 @@
 # DIR holds the saved pages plus a manifest.tsv of "<file><TAB><base url>" lines. Each
 # revision is checked out as a detached temporary worktree (removed on exit), every page
 # runs offline in both, and per page the report shows item counts, items gained or lost,
-# title changes, Cleanup drop tallies and wall time. Pages that errored in either revision
+# title changes, Cleanup drop tallies and wall time; on a page where the native feed
+# contributed, a feed line shows feed items, page items added, and feed items a page copy
+# merged into ("-" on a revision that cannot merge). Pages that errored in either revision
 # count as errored in the TOTAL line, not as lost or gained items. Nothing is written into the repo.
 # Needs the gems the revisions' Gemfile.lock pins (set BUNDLE_PATH when the bundle is not
 # under ./vendor/bundle).
 #
-# Usage: mise exec -- bin/compare-revisions BASE HEAD --pages DIR [--limit N]
-#   --limit N  compare only the first N manifest entries
+# By default no request session is used, so follow-up tiers (native feed, WordPress API, sitemap,
+# oEmbed) are skipped. --responses DIR opts in to answering them from saved responses: DIR holds a
+# manifest.tsv of "<file><TAB><absolute url>" lines (files relative to DIR); any other URL fails
+# like an unreachable host. See spec/support/saved_responses.rb. No network is ever used.
+#
+# Usage: mise exec -- bin/compare-revisions BASE HEAD --pages DIR [--responses DIR] [--limit N]
+#   --responses DIR  serve follow-up requests from saved responses in DIR
+#   --limit N        compare only the first N manifest entries
 
 # The worker pins the revision's gems before anything else loads (json is a default gem).
 require 'bundler/setup' if ARGV.include?('--worker')
@@ -22,14 +30,16 @@ require 'optparse'
 require 'rbconfig'
 require 'tmpdir'
 require_relative '../spec/support/revision_comparison'
+require_relative '../spec/support/saved_responses'
 
 REPO_ROOT = File.expand_path('..', __dir__)
 
 # Worker mode (internal): runs inside a revision's worktree so that revision's lib/ is loaded.
-def run_worker(dir, out, limit)
+def run_worker(dir, out, limit, responses_dir)
   ENV['LOG_LEVEL'] ||= 'error'
   require 'html2rss'
-  runs = RevisionComparison.measure(RevisionComparison.load_pages(dir, limit:), dir)
+  responses = SavedResponses.new(responses_dir) if responses_dir
+  runs = RevisionComparison.measure(RevisionComparison.load_pages(dir, limit:), dir, responses:)
   File.write(out, JSON.generate(runs.map(&:to_h)))
 end
 
@@ -68,10 +78,11 @@ def worker_env(tree)
   env
 end
 
-def measure_revision(tree, dir, limit)
+def measure_revision(tree, dir, limit, responses_dir)
   out = "#{tree}.json"
   command = [RbConfig.ruby, File.expand_path(__FILE__), '--pages', dir, '--worker', out]
   command.push('--limit', limit.to_s) if limit
+  command.push('--responses', responses_dir) if responses_dir
   _, err, status = Open3.capture3(worker_env(tree), *command, chdir: tree)
   abort "worker failed in #{tree}:\n#{err}" unless status.success?
   JSON.parse(File.read(out)).map { RevisionComparison::Run.from_h(_1) }
@@ -80,26 +91,27 @@ end
 def parse_options
   options = {}
   OptionParser.new do |opts|
-    opts.banner = 'Usage: bin/compare-revisions BASE HEAD --pages DIR [--limit N]'
+    opts.banner = 'Usage: bin/compare-revisions BASE HEAD --pages DIR [--responses DIR] [--limit N]'
     opts.on('--pages DIR', 'directory of saved pages with manifest.tsv') { options[:pages] = File.expand_path(_1) }
+    opts.on('--responses DIR', 'saved responses dir with manifest.tsv') { options[:responses] = File.expand_path(_1) }
     opts.on('--limit N', Integer, 'compare only the first N manifest entries') { options[:limit] = _1 }
     opts.on('--worker OUT', 'internal: measure pages in this process') { options[:worker] = _1 }
   end.parse!
   options
 end
 
-def compare(revisions, dir, limit)
+def compare(revisions, dir, limit, responses_dir)
   shas = revisions.map { git('rev-parse', '--verify', '--quiet', "#{_1}^{commit}") }
-  runs = with_worktrees(shas) { |trees| trees.map { measure_revision(_1, dir, limit) } }
+  runs = with_worktrees(shas) { |trees| trees.map { measure_revision(_1, dir, limit, responses_dir) } }
   pages = RevisionComparison.load_pages(dir, limit:)
   puts RevisionComparison.report(RevisionComparison.diffs(pages, *runs), shas.map { _1[0, 10] })
 end
 
 options = parse_options
 if options[:worker]
-  run_worker(options.fetch(:pages), options[:worker], options[:limit])
+  run_worker(options.fetch(:pages), options[:worker], options[:limit], options[:responses])
 else
   abort 'Usage: bin/compare-revisions BASE HEAD --pages DIR [--limit N]' unless ARGV.size == 2 && options[:pages]
 
-  compare(ARGV, options[:pages], options[:limit])
+  compare(ARGV, options[:pages], options[:limit], options[:responses])
 end

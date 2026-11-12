@@ -177,16 +177,6 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(title_for.call(html)).to eq('Tram line extends')
     end
 
-    it 'keeps the kicker of an anchorless card without a heading' do
-      html = '<div id="storm-card">Storm ahead tonight <span class="kicker">Weather</span></div>'
-      root = document_for(html).root.find { |n| n.name == :div }
-      segment = build_segment(root:)
-
-      article = described_class.call(segment, base_url: 'https://example.com', fallback_anchorless: true)
-
-      expect(article&.title).to eq('Weather: Storm ahead tonight')
-    end
-
     it 'titles a kicker-only card with the kicker alone' do
       html = '<article><span class="eyebrow">Weather</span><a href="/news/story"><img src="/a.jpg"></a></article>'
 
@@ -219,11 +209,12 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(article.enclosures).not_to be_empty
   end
 
-  it 'accepts RankedSegment and anchorless fallback', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    html = '<html><body><div><strong>Anchorless card text here</strong><p>More words.</p></div></body></html>'
+  it 'accepts a RankedSegment' do # rubocop:disable RSpec/ExampleLength
+    html = '<div><h3><a href="/news/card">Linked card text here</a></h3><p>More words.</p></div>'
     doc = Html2rss::SST::Normalizer.call(html)
-    root = doc.root.find { |n| n.name == :div && n.find { |c| c.name == :strong } }
-    segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :cluster, position: 0)
+    root = doc.root.find { |n| n.name == :div }
+    segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :cluster,
+                                                  position: 0)
     ranked = Html2rss::Scoring::RankedSegment.new(
       segment:,
       score: Html2rss::Scoring::Score.new(
@@ -234,9 +225,15 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       )
     )
 
-    article = described_class.call(ranked, base_url: 'https://example.com', fallback_anchorless: true)
-    expect(article).to be_a(Html2rss::Article)
-    expect(article.title).to eq('Anchorless card text here')
+    expect(described_class.call(ranked, base_url: 'https://example.com')&.title).to eq('Linked card text here')
+  end
+
+  it 'emits no article for a card without a primary link (no page#fragment URL)' do
+    html = '<div id="notice"><h3>Water main maintenance</h3><p>Crews work overnight.</p></div>'
+    root = Html2rss::SST::Normalizer.call(html).root.find { |n| n.name == :div }
+    segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :cluster, position: 0)
+
+    expect(described_class.call(segment, base_url: 'https://example.com')).to be_nil
   end
 
   it 'prefers heading over credit-shaped anchor text', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

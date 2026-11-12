@@ -32,12 +32,12 @@ module Html2rss
       # @param root [Node]
       # @param parents [Hash{Node => Node, nil}]
       # @param depths [Hash{Node => Integer}]
-      # @param ignored_chrome [Hash{Node => Boolean}]
-      def initialize(root:, parents:, depths:, ignored_chrome:)
+      # @param scopes [Hash{Node => Symbol}] {Tags.chrome_scope} of each node
+      def initialize(root:, parents:, depths:, scopes:)
         @root = root
         @parents = parents
         @depths = depths
-        @ignored_chrome = ignored_chrome
+        @scopes = scopes
         @visible_text = {}.compare_by_identity
         @run_count = {}.compare_by_identity
         bind_tree(root)
@@ -58,7 +58,14 @@ module Html2rss
       ##
       # @param node [Node]
       # @return [Boolean]
-      def ignored_chrome?(node) = @ignored_chrome.fetch(node, false)
+      def ignored_chrome?(node) = @scopes[node] == :chrome
+
+      ##
+      # Inside a utility landmark that is not chrome (aside, in-content nav, sectioned footer).
+      #
+      # @param node [Node]
+      # @return [Boolean]
+      def peripheral?(node) = @scopes[node] == :peripheral
 
       ##
       # Memoized default visible text (separator space, no excludes).

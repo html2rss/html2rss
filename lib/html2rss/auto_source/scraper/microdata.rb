@@ -81,10 +81,8 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML5::Document, Nokogiri::HTML4::Document, Nokogiri::XML::Node, nil]
         #   the parsed response body to inspect for top-level Microdata items.
         # @param url [Html2rss::Url] the absolute page URL used to resolve relative links.
-        # @param _opts [Hash] unused scraper-specific options.
-        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         # @return [void]
-        def initialize(parsed_body, url:, **_opts)
+        def initialize(parsed_body, url:)
           @parsed_body = parsed_body
           @url = url
         end

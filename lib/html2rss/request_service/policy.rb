@@ -13,14 +13,17 @@ module Html2rss
       # Hard ceiling for configured max_requests during a feed build.
       MAX_REQUESTS_CEILING = 10
 
+      # Default response-size ceiling (10 MiB); owns both streamed and decompressed defaults.
+      MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+
       # Default policy values used when request controls are not explicitly set.
       DEFAULTS = {
         connect_timeout_seconds: Integer(ENV.fetch('HTML2RSS_CONNECT_TIMEOUT_SECONDS', 5)),
         read_timeout_seconds: Integer(ENV.fetch('HTML2RSS_READ_TIMEOUT_SECONDS', 10)),
         total_timeout_seconds: Integer(ENV.fetch('HTML2RSS_TOTAL_TIMEOUT_SECONDS', 30)),
         max_redirects: 5,
-        max_response_bytes: 5_242_880,
-        max_decompressed_bytes: 10_485_760,
+        max_response_bytes: MAX_RESPONSE_BYTES,
+        max_decompressed_bytes: MAX_RESPONSE_BYTES,
         max_requests: 1,
         allow_private_networks: false,
         allow_cross_origin_followups: false

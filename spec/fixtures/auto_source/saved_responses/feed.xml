@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example News</title>
+    <link>https://example.com/news/</link>
+    <description>Synthetic saved feed</description>
+    <item>
+      <title>Feed tier first story</title>
+      <link>https://example.com/news/feed-first</link>
+      <pubDate>Mon, 03 Jun 2024 10:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Feed tier second story</title>
+      <link>https://example.com/news/feed-second</link>
+      <pubDate>Tue, 04 Jun 2024 10:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

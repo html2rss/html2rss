@@ -1,0 +1,9 @@
+---
+case: Teaser cards inside main mixing real articles (one about a club's coaching staff) with
+  staff, author and newsroom profile pages and an author index.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/sport/team-staff-changes-before-derby
+- https://example.com/news/2026/10/school-board-approves-budget

@@ -295,7 +295,7 @@ module Html2rss
 
       SEGMENT_STRATEGIES.flat_map do |strategy|
         segments = AutoSource::Segmenter.call(
-          sst, base_url: @url, strategy:, permit_unanchored: false, link_resolver:
+          sst, base_url: @url, strategy:, link_resolver:
         )
         matched = match_segments_to_articles(segments, articles)
         next [] if matched.size < MIN_SELECTOR_MATCHES

@@ -1,0 +1,33 @@
+---
+case: A podcast page whose main content is 30 Schema PodcastEpisode entries plus 10 "other shows" promo cards; a media page, so the episodes count toward the limit and keep page order (the first 25 episodes, no promos).
+expected:
+- https://example.com/podcasts/harbor-hour/episode-1
+- https://example.com/podcasts/harbor-hour/episode-2
+- https://example.com/podcasts/harbor-hour/episode-3
+- https://example.com/podcasts/harbor-hour/episode-4
+- https://example.com/podcasts/harbor-hour/episode-5
+- https://example.com/podcasts/harbor-hour/episode-6
+- https://example.com/podcasts/harbor-hour/episode-7
+- https://example.com/podcasts/harbor-hour/episode-8
+- https://example.com/podcasts/harbor-hour/episode-9
+- https://example.com/podcasts/harbor-hour/episode-10
+- https://example.com/podcasts/harbor-hour/episode-11
+- https://example.com/podcasts/harbor-hour/episode-12
+- https://example.com/podcasts/harbor-hour/episode-13
+- https://example.com/podcasts/harbor-hour/episode-14
+- https://example.com/podcasts/harbor-hour/episode-15
+- https://example.com/podcasts/harbor-hour/episode-16
+- https://example.com/podcasts/harbor-hour/episode-17
+- https://example.com/podcasts/harbor-hour/episode-18
+- https://example.com/podcasts/harbor-hour/episode-19
+- https://example.com/podcasts/harbor-hour/episode-20
+- https://example.com/podcasts/harbor-hour/episode-21
+- https://example.com/podcasts/harbor-hour/episode-22
+- https://example.com/podcasts/harbor-hour/episode-23
+- https://example.com/podcasts/harbor-hour/episode-24
+- https://example.com/podcasts/harbor-hour/episode-25
+- https://example.com/podcasts/harbor-hour/episode-26
+- https://example.com/podcasts/harbor-hour/episode-27
+- https://example.com/podcasts/harbor-hour/episode-28
+- https://example.com/podcasts/harbor-hour/episode-29
+- https://example.com/podcasts/harbor-hour/episode-30

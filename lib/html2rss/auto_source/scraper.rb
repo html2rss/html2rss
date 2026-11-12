@@ -45,8 +45,8 @@ module Html2rss
       # In-page structured scrapers whose items {Corroboration} checks against the rendered page.
       # Publisher-declared sources (NativeFeed, WordpressApi, Sitemap, MetaOembed) stay exempt.
       CORROBORATED_SCRAPERS = Set[Schema, Microdata, Microformats2, JsonState, XhrArticles, JsonDocument].freeze
-      # Scrapers whose items are read off the rendered page (sponsorship markers visible).
-      # Every other scraper is publisher-declared: sponsorship does not apply.
+      # Scrapers whose items are read off the rendered page: such an item needs a title ({Cleanup}
+      # drops it as +blank_title+), while a publisher-declared item (feed, API) may be untitled.
       PAGE_SCRAPERS = (CORROBORATED_SCRAPERS | HEURISTIC_SCRAPERS).freeze
       # Scrapers that accept a shared follow-up +request_session+.
       REQUEST_SESSION_SCRAPERS = Set[NativeFeed, WordpressApi, Sitemap, MetaOembed].freeze

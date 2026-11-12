@@ -1,0 +1,14 @@
+---
+case: Cards whose only item link is an empty overlay anchor beside the heading wrapper;
+  the title comes from the heading. Two linked lead cards make the semantic tier win.
+expected:
+- https://example.com/local/council-adopts-new-transit-plan
+- https://example.com/local/stadium-roof-repairs-finish-early
+- https://example.com/local/harbor-ferry-route-returns-after-repairs
+- https://example.com/local/library-extends-weekend-hours
+- https://example.com/local/river-cleanup-draws-record-turnout
+- https://example.com/local/school-board-approves-budget
+- https://example.com/local/night-market-opens-downtown
+titles:
+  https://example.com/local/library-extends-weekend-hours: City library extends its weekend hours
+  https://example.com/local/night-market-opens-downtown: Night market opens in the downtown square

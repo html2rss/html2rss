@@ -1,0 +1,6 @@
+case: 'Schema ItemList of Recipe tiles plus Person entries, all rendered as image-only tiles; recipes are content, the people are not.'
+expected:
+- https://example.com/recipes/tomato-soup
+- https://example.com/recipes/lentil-salad
+- https://example.com/recipes/overnight-oats
+- https://example.com/recipes/potato-flatbread

@@ -26,6 +26,14 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
   let(:url_at) { ->(path) { Html2rss::Url.from_absolute("https://example.com#{path}") } }
 
+  describe '#content_position' do
+    it 'gives content URLs their document order and nothing for other placements', :aggregate_failures do
+      expect(%w[/news/one /news/two /news/three].map { page_links.content_position(url_at[_1]) }).to eq([0, 1, 2])
+      expect(page_links.content_position(url_at['/news/aside-pick'])).to be_nil
+      expect(page_links.content_position(nil)).to be_nil
+    end
+  end
+
   describe '.build' do
     it 'is the only constructor' do
       expect { described_class.new(document, link_resolver) }.to raise_error(NoMethodError)

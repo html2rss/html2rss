@@ -150,6 +150,65 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ItemList do
       end
     end
 
+    context 'when ListItem wraps typed non-article entities' do
+      let(:schema_object) do
+        {
+          '@type': 'ItemList',
+          itemListElement: %w[Person Organization Product Place].map do |type|
+            { '@type': 'ListItem', item: { '@type': type, name: "A #{type}", url: "https://www.example.com/#{type}" } }
+          end
+        }
+      end
+
+      it 'drops them' do
+        expect(call).to eq([])
+      end
+    end
+
+    context 'when ListItem wraps editorial creative works or a mixed entity type' do
+      let(:schema_object) do
+        {
+          '@type': 'ItemList',
+          itemListElement: [%w[Recipe], %w[HowTo], %w[Review], %w[CreativeWork], %w[Person Article]].map do |type|
+            { '@type': 'ListItem', item: { '@type': type, name: "Entry #{type.join}", url: "https://www.example.com/#{type.join}" } }
+          end
+        }
+      end
+
+      it 'admits them' do
+        expect(call.size).to eq(5)
+      end
+    end
+
+    context 'when ListItem wraps media objects' do
+      let(:schema_object) do
+        {
+          '@type': 'ItemList',
+          itemListElement: [
+            { '@type': 'ListItem', item: { '@type': 'AudioObject', name: 'Show', url: 'https://www.example.com/e' } },
+            { '@type': 'ListItem', item: { '@type': 'Article', headline: 'Story', url: 'https://www.example.com/s' } }
+          ]
+        }
+      end
+
+      it 'admits them marked media, and leaves articles unmarked', :aggregate_failures do
+        expect(call).to contain_exactly(hash_including(title: 'Show', media: true), hash_excluding(:media))
+      end
+    end
+
+    context 'when ListItem is bare with url and name' do
+      let(:schema_object) do
+        {
+          '@type': 'ItemList',
+          itemListElement: [{ '@type': 'ListItem', name: 'Bare entry', url: 'https://www.example.com/bare' }]
+        }
+      end
+
+      it 'admits it' do
+        expect(call).to contain_exactly(hash_including(title: 'Bare entry', id: '/bare'))
+      end
+    end
+
     context 'when itemListElement holds a bare unsupported type' do
       let(:schema_object) do
         {
@@ -206,6 +265,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ItemList do
       expect(call.map { _1[:author] }).to eq(['Hall', 'Acme', nil])
       expect(call[1][:categories]).to eq(['Software'])
       expect(call[2][:enclosures].first[:url].to_s).to eq('https://cdn.example.com/c.mp4')
+    end
+
+    it 'marks only media items', :aggregate_failures do
+      expect(call.map { _1[:media] }).to eq([nil, nil, true])
     end
 
     it 'ignores standalone Event and VideoObject objects', :aggregate_failures do

@@ -7,8 +7,9 @@ module Html2rss
       # Leftover visible-text keep/drop for article descriptions.
       # Split once on block newlines; Date and Category consume the same keepers.
       module Description
-        # CTA lines dropped by whole-line equality (case-insensitive).
-        CTA = Set['read more', 'learn more'].freeze
+        # Owner of the read-more vocabulary; a whole line that is one is chrome, not a dek.
+        TEXT_CLASSIFIER = LinkDestination::TextClassifier.new
+        private_constant :TEXT_CLASSIFIER
         # Listing section names that are chrome, not a dek.
         SECTION_NAMES = Set['press releases'].freeze
         # Skip date detection / DateTime.parse above this length.
@@ -96,7 +97,7 @@ module Html2rss
 
           def chrome?(normalized, title:, type_chips:)
             key = normalized.downcase
-            CTA.include?(key) || (type_chips && Article::Title::TYPE_MARKERS.include?(key)) ||
+            TEXT_CLASSIFIER.read_more?(normalized) || (type_chips && Article::Title::TYPE_MARKERS.include?(key)) ||
               SECTION_NAMES.include?(key) || normalized.end_with?(':') ||
               date_shaped?(normalized) || title_echo?(key, title)
           end

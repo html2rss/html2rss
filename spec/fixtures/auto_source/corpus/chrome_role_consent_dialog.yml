@@ -1,0 +1,8 @@
+---
+case: Consent layer in a div with role="dialog" listing purpose links beside a teaser stream; the dialog is chrome.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/school-board-approves-budget
+- https://example.com/news/2026/10/night-market-opens-downtown

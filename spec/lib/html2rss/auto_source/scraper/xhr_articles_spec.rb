@@ -29,7 +29,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::XhrArticles do
   describe '#initialize' do
     it 'resolves relative links against the page url', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       scraper = described_class.new(
-        parsed_body, url: base_url, captured_responses: [{ 'body' => article_json }], _reserved: true
+        parsed_body, url: base_url, captured_responses: [{ 'body' => article_json }]
       )
 
       expect(scraper.each.to_a).to contain_exactly(

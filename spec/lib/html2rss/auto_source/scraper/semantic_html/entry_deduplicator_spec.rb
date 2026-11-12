@@ -192,13 +192,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
   describe '#article_for' do
     let(:article) { build_article.call(description: 'Summary') }
 
-    it 'extracts with the page base url, the scraper class and anchorless fallback', :aggregate_failures do
+    it 'extracts with the page base url and the scraper class', :aggregate_failures do
       ranked = build_ranked.call
       allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
 
       expect(deduplicator.article_for(ranked)).to be(article)
       expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
-        ranked, base_url: 'https://example.com', scraper: scraper_class, fallback_anchorless: true
+        ranked, base_url: 'https://example.com', scraper: scraper_class
       )
     end
 
