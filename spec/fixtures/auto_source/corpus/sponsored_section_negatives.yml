@@ -1,0 +1,16 @@
+---
+case: No section marking for an editorial section titled "Partners", a section about
+  advertising headed "Werbung", an empty ad slot captioned "Anzeige" or "Sponsored" beside
+  editorial cards, a paid badge beside an editorial section heading, or a footer "Werbung"
+  link. Every story is expected.
+expected:
+- https://example.com/news/2026/11/allies-agree-energy-pact
+- https://example.com/news/2026/11/trade-partners-meet
+- https://example.com/news/2026/11/agencies-win-retail-accounts
+- https://example.com/news/2026/11/billboard-rules-tighten
+- https://example.com/news/2026/11/river-cleanup-collects-tonnes
+- https://example.com/news/2026/11/market-square-gets-new-trees
+- https://example.com/news/2026/11/night-buses-return
+- https://example.com/news/2026/11/school-garden-wins-award
+- https://example.com/news/2026/11/coalition-talks-resume
+- https://example.com/news/2026/11/mayor-announces-housing-plan

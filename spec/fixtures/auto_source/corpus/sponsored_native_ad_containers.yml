@@ -1,0 +1,10 @@
+---
+case: Native-advertising class tokens are container markers (an adv-native block, a teaser--native
+  modifier, a whole native token); look-alikes (native-input, nativeApp, native-teaser, a bare
+  --native modifier) are not. Only the editorial cards are expected.
+expected:
+- https://example.com/news/2026/11/hospital-wing-opens
+- https://example.com/news/2026/11/app-store-rules
+- https://example.com/news/2026/11/city-app-relaunch
+- https://example.com/news/2026/11/mountain-roads-closed
+- https://example.com/news/2026/11/languages-week

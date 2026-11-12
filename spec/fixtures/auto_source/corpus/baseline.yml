@@ -162,6 +162,24 @@ sponsored_label_vocabulary.html:
   expected: 10
   title_misses: 0
   sst_built: true
+sponsored_label_vocabulary_languages.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  sst_built: true
+sponsored_linked_labels.html:
+  junk: 0
+  real: 7
+  expected: 7
+  title_misses: 0
+  sst_built: true
+sponsored_native_ad_containers.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 sponsored_paywall_markers.html:
   junk: 0
   real: 6
@@ -178,6 +196,18 @@ sponsored_rel_link.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
+  sst_built: true
+sponsored_section_labels.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  sst_built: true
+sponsored_section_negatives.html:
+  junk: 0
+  real: 10
+  expected: 10
   title_misses: 0
   sst_built: true
 sponsored_story_about_ads.html:
