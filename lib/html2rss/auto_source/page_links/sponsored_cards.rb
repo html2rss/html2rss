@@ -18,21 +18,12 @@ module Html2rss
       #   destination: its only one, else its only headline destination (an anchor in or around a heading);
       #   a card with several headlines marks nothing, and so does a label outside every card.
       # - A +:paid_label+ outside every anchor binds at its first ancestor holding a destination after it
-      #   (none before it) and climbs no further. When that ancestor is one card unit with a heading, the
-      #   label marks that card (a bare +div+ card included). When it holds at least two card units and no
-      #   heading outside them, the label heads a section ({#section?}) and every destination in it is
-      #   marked; such a label sits in a header, never in a card: beside card units, its wrapper holds nothing
-      #   but the label (an ad box holding a slot is no header). A section is never a page region
-      #   ({PAGE_REGIONS}).
+      #   (none before it) and climbs no further. There {LabelBinding} decides whether it marks every
+      #   destination of that frame: one card with a heading or a section, never when it captions an ad slot.
       #
       # Marking is per card: a URL is sponsored only when every anchor to it sits in a marked card,
       # so a promo slot never hides the editorial card linking the same story.
       class SponsoredCards
-        # Elements that hold a page, never a section: a section label stops below them.
-        PAGE_REGIONS = Set[:html, :body, :main].freeze
-        # Text that holds a word.
-        WORD = /[[:alnum:]]/
-
         LinkedLabel = Data.define(:range, :headings)
         ##
         # A label inside an anchor, climbing to its card unit: the anchor range and heading count of the
@@ -112,7 +103,7 @@ module Html2rss
         # stops at a card or page region: {#section?} would reject anything above, so it saves the survey.
         def settle(node, start, headings, pending, bound:)
           range = start...@claims.size
-          boundary = LinkDestination::Sponsorship::CARD_NAMES.include?(node.name) || PAGE_REGIONS.include?(node.name)
+          boundary = LinkDestination::Sponsorship::CARD_NAMES.include?(node.name) || LabelBinding::PAGE_REGIONS.include?(node.name)
           climbing = pending.filter_map do |label|
             case label
             in LinkedLabel then climb(label, range, headings)
@@ -140,28 +131,8 @@ module Html2rss
           return if bound || range.begin < label.before
           return (label unless boundary) unless range.end > label.after
 
-          units = CardUnits.new(node, skip: label.label, claims: @claims)
-          @claims.claim(range) if units.card? || section?(node, label.label, units)
+          @claims.claim(range) if LabelBinding.new(node, label.label, @claims).marks?
           nil
-        end
-
-        # Whether +label+ heads +node+ as a section: no page region, at least two card units and no heading
-        # outside them, and the label in a header (holding only the label when card units sit beside it).
-        def section?(node, label, units)
-          return false if node.find { PAGE_REGIONS.include?(_1.name) }
-
-          units.cards >= 2 && !units.stray? && (!units.peers? || alone?(node, label))
-        end
-
-        # Whether the child of +node+ around +label+ holds nothing but the label.
-        def alone?(node, label)
-          wrapper = node.children.find { SST::Index.descendant_or_self?(label, _1) }
-          until wrapper.equal?(label)
-            return false unless wrapper.children.one? && !wrapper.own_text.match?(WORD)
-
-            wrapper = wrapper.children.first
-          end
-          true
         end
 
         def bind(start)

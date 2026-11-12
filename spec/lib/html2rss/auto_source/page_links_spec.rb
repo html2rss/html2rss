@@ -628,6 +628,42 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       end
     end
 
+    context 'when a paid label captions an ad slot' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="row"><p class="ad-caption">Sponsored</p><div class="ad-slot"></div>
+              <div class="c"><h3><a href="/news/cap-a">A</a></h3></div><div class="c"><h3><a href="/news/cap-b">B</a></h3></div>
+              <div class="c"><h3><a href="/news/cap-c">C</a></h3></div></div>
+            <div class="row"><div class="ad"><span>Sponsored</span><div class="slot"></div></div>
+              <ul><li><h3><a href="/news/list-a">A</a></h3></li><li><h3><a href="/news/list-b">B</a></h3></li>
+                <li><h3><a href="/news/list-c">C</a></h3></li></ul></div>
+            <div class="row"><div class="ad"><span>Sponsored</span><ins class="slot"></ins></div>
+              <article><h3><a href="/news/one">One</a></h3></article></div>
+            <div class="row"><div class="ad"><div class="slot"><div></div></div><span>Sponsored</span></div>
+              <article><h3><a href="/news/below-a">A</a></h3></article><article><h3><a href="/news/below-b">B</a></h3></article></div>
+            <div class="module"><div class="module__head"><span>Sponsored</span><div class="logo"><img src="/l.png" alt=""></div></div>
+              <ul><li><h3><a href="/news/paid-a">A</a></h3></li><li><h3><a href="/news/paid-b">B</a></h3></li></ul></div>
+            <div class="module"><div class="module__head"><span>Sponsored</span><i class="info"></i></div>
+              <ul><li><h3><a href="/news/icon-a">A</a></h3></li><li><h3><a href="/news/icon-b">B</a></h3></li></ul></div>
+          </main></body></html>
+        HTML
+      end
+
+      let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
+
+      it 'marks no card after an empty slot beside the label or its wrapper' do
+        paths = %w[/news/cap-a /news/cap-b /news/cap-c /news/list-a /news/list-b /news/list-c /news/one
+                   /news/below-a /news/below-b]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+
+      it 'marks the cards under a header holding a sponsor logo or an icon beside the label' do
+        paths = %w[/news/paid-a /news/paid-b /news/icon-a /news/icon-b]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, true] })
+      end
+    end
+
     context 'when a paid label opens a page region' do
       let(:html) do
         <<~HTML

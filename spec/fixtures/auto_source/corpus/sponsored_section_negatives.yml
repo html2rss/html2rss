@@ -3,8 +3,9 @@ case: No section marking for an editorial section titled "Partners", a section a
   advertising headed "Werbung", an empty ad slot captioned "Anzeige" or "Sponsored" beside
   editorial cards, a paid badge beside an editorial section heading, a footer "Werbung"
   link, a paid label in the first of a row of bare-div cards (only its own card is paid), or an
-  empty ad box captioned "Sponsored" opening a row of bare-div cards. Every editorial story is
-  expected; the paid card is not.
+  empty ad box captioned "Sponsored" opening a row of bare-div cards, a list of cards or a single
+  card. A paid section header with a sponsor logo still marks its cards. Every editorial story is
+  expected; the paid cards are not.
 expected:
 - https://example.com/news/2026/11/allies-agree-energy-pact
 - https://example.com/news/2026/11/trade-partners-meet
@@ -22,3 +23,10 @@ expected:
 - https://example.com/news/2026/11/swimming-pool-reopens
 - https://example.com/news/2026/11/winter-market-dates
 - https://example.com/news/2026/11/night-library-hours
+- https://example.com/news/2026/11/harbor-crane-replaced
+- https://example.com/news/2026/11/choir-records-album
+- https://example.com/news/2026/11/tram-depot-open-day
+- https://example.com/news/2026/11/bakery-wins-prize
+- https://example.com/news/2026/11/park-benches-repainted
+- https://example.com/news/2026/11/river-walk-lights
+- https://example.com/news/2026/11/chess-club-anniversary
