@@ -1,16 +1,16 @@
 # Selectors performance baseline
 
-Captured: 2026-11-12T09:11:10Z
+Captured: 2026-11-12T12:25:49Z
 Ruby: 4.0.0
 Cases: performance_optimized_site, combined_scraper_sources, conditional_processing_site, page_1
 Warmup runs: 1; measured runs: 5
 
 | Metric | Value |
 | --- | --- |
-| wall_time_s (min of 5) | 0.017955 |
-| allocations (median of 5) | 46934 |
-| wall_budget_s (1.1x min, advisory) | 0.019750 |
-| alloc_budget (1.15x median, hard gate) | 53975 |
+| wall_time_s (min of 5) | 0.019289 |
+| allocations (median of 5) | 52557 |
+| wall_budget_s (1.1x min, advisory) | 0.021218 |
+| alloc_budget (1.15x median, hard gate) | 60441 |
 
 Article counts per case:
 - performance_optimized_site: 4
