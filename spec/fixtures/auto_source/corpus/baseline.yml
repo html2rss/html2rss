@@ -352,6 +352,14 @@ native_feed_news_before_cross_origin_podcast.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+news_only_podcast_alternate.html:
+  junk: 0
+  real: 3
+  expected: 3
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 plain_listing.html:
   junk: 0
   real: 6

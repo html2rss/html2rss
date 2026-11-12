@@ -64,7 +64,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
                                      https://example.com/feed/ https://example.com/comments/feed/])
     end
 
-    it 'keeps the first alternate on a news page that also advertises a podcast feed' do
+    it 'ranks the podcast alternate after the guesses on a news page', :aggregate_failures do
       doc = Nokogiri::HTML(<<~HTML)
         <html><head>
           <title>Example Daily: local news</title>
@@ -77,24 +77,37 @@ RSpec.describe Html2rss::Syndication::Discovery do
 
       urls = described_class.candidate_urls(page_url: 'https://example.com/news/', parsed_body: doc).map(&:to_s)
 
-      expect(urls.first(2)).to eq(%w[https://example.com/news.xml https://example.com/podcast.xml])
+      expect(urls.first(2)).to eq(%w[https://example.com/news.xml https://example.com/news/feed])
+      expect(urls.last).to eq('https://example.com/podcast.xml')
     end
 
-    it 'ranks audio-hinted alternates last, in document order, on a page without podcast signals' do
-      doc = Nokogiri::HTML(<<~HTML)
-        <html><head>
-          <title>Example Daily: local news</title>
+    context 'with a mix of audio-hinted alternates, other alternates and path guesses' do
+      let(:alternates) do
+        <<~HTML
           <link rel="alternate" type="application/rss+xml" title="Tide Talk podcast" href="https://feeds.example.net/tide-talk/rss">
           <link rel="alternate" type="application/rss+xml" title="Example Daily news" href="https://example.com/feed.xml">
           <link rel="alternate" type="application/rss+xml" title="Show" href="/feed/mp3/">
           <link rel="alternate" type="application/rss+xml" title="Comments" href="/comments.xml">
-        </head></html>
-      HTML
+        HTML
+      end
+      let(:guesses) do
+        described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: Nokogiri::HTML('')).map(&:to_s)
+      end
+      let(:podcast_urls) { %w[https://feeds.example.net/tide-talk/rss https://example.com/feed/mp3/] }
+      let(:other_urls) { %w[https://example.com/feed.xml https://example.com/comments.xml] }
 
-      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc).map(&:to_s)
+      def ranked(title)
+        doc = Nokogiri::HTML("<html><head><title>#{title}</title>#{alternates}</head></html>")
+        described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc).map(&:to_s)
+      end
 
-      expect(urls.first(4)).to eq(%w[https://example.com/feed.xml https://example.com/comments.xml
-                                     https://feeds.example.net/tide-talk/rss https://example.com/feed/mp3/])
+      it 'ranks audio-hinted alternates after the path guesses on a page without podcast signals' do
+        expect(ranked('Example Daily: local news')).to eq((other_urls + guesses + podcast_urls).uniq)
+      end
+
+      it 'ranks audio-hinted alternates first, then other alternates, then guesses on a podcast page' do
+        expect(ranked('Example Podcast')).to eq((podcast_urls + other_urls + guesses).uniq)
+      end
     end
 
     {

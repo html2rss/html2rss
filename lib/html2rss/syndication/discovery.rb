@@ -6,12 +6,14 @@ module Html2rss
     # Finds an RSS/Atom URL for a page via head alternates and same-origin path guesses.
     #
     # Ports configs +probe_rss+ path/alternate logic onto {RequestSession#follow_up}.
-    # Head alternates go first, in document order within two groups: those whose title or URL
+    # Head alternates keep document order within two groups: those whose title or URL
     # hints audio ({AUDIO_HINT}) and the rest. On a page that shows podcast signals
     # ({PODCAST_PAGE_HINT} in its URL path or +<title>+, an +og:type+ matching {MEDIA_OG_TYPE},
-    # or a {PODCAST_SCHEMA_TYPE} in its JSON-LD) the audio-hinted ones go first; on any other
-    # page they go last, so a news page that advertises its podcast first still yields its news
-    # feed. Alternates are fetched as +:advertised_feed+ with the
+    # or a {PODCAST_SCHEMA_TYPE} in its JSON-LD) the order is audio-hinted alternates, other
+    # alternates, path guesses. On any other page it is other alternates, path guesses, then the
+    # audio-hinted alternates, so a news page that advertises only a podcast feed does not become
+    # a media feed. This is the one ordering owner: {.best_feed_url}, {.candidate_urls} and the
+    # feed-resolution feed slot all read it. Alternates are fetched as +:advertised_feed+ with the
     # page's {RequestService::FeedAdvertisement}, so a feed the page advertises on another host
     # is followed (see {RequestService::Policy}). Path guesses stay same-origin.
     module Discovery
@@ -96,7 +98,8 @@ module Html2rss
         end
 
         ##
-        # Ordered candidate feed URLs (head alternates first, then path guesses).
+        # Ordered candidate feed URLs (head alternates, then path guesses; on a page without podcast
+        # signals the audio-hinted alternates come after the guesses).
         #
         # @param page_url [String, Html2rss::Url]
         # @param parsed_body [Nokogiri::HTML::Document, nil]
@@ -157,7 +160,8 @@ module Html2rss
         end
 
         def candidates(page, advertisement, doc:, html:, extra_paths:)
-          (alternate_feed_urls(page, advertisement, doc:, html:) + path_guess_urls(page, extra_paths:)).uniq
+          leading, trailing = alternate_feed_urls(page, advertisement, doc:, html:)
+          (leading + path_guess_urls(page, extra_paths:) + trailing).uniq
         end
 
         # An HTML page without a parsed document still gets an (empty) advertisement.
@@ -165,12 +169,13 @@ module Html2rss
           parsed_body.is_a?(Nokogiri::HTML::Document) ? parsed_body : Nokogiri::HTML::Document.new
         end
 
+        # @return [Array(Array, Array)] alternates ranked before the path guesses, and those after them
         def alternate_feed_urls(page, advertisement, doc:, html:)
           feeds = advertisement.feeds
-          return AlternateLinks.hrefs(html.to_s).filter_map { |href| absolute_url(page, href) } if feeds.empty?
+          return [AlternateLinks.hrefs(html.to_s).filter_map { |href| absolute_url(page, href) }, []] if feeds.empty?
 
           audio, other = feeds.keys.partition { |url| AUDIO_HINT.match?("#{feeds.fetch(url)} #{url}") }
-          podcast_page?(doc, page) ? audio + other : other + audio
+          podcast_page?(doc, page) ? [audio + other, []] : [other, audio]
         end
 
         # The page itself looks like a podcast page: cheap signals only (no request, no JSON parse).

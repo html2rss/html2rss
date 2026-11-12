@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Harbour Hour</title>
+    <link>https://podhost.example.net/harbour-hour</link>
+    <description>Synthetic podcast feed whose episode pages live on the hosting platform</description>
+    <item>
+      <title>Harbour Hour 7: the ferry timetable shake-up</title>
+      <link>https://podhost.example.net/harbour-hour/episodes/7-ferry-timetable</link>
+      <guid isPermaLink="false">harbour-hour-7</guid>
+      <pubDate>Thu, 05 Nov 2026 08:00:00 GMT</pubDate>
+      <description>Why the winter ferry timetable changes again this year.</description>
+      <enclosure url="https://media.example.net/harbour-hour/7.mp3" type="audio/mpeg" length="30000000"/>
+    </item>
+    <item>
+      <title>Harbour Hour 6: the lighthouse keepers</title>
+      <link>https://podhost.example.net/harbour-hour/episodes/6-lighthouse-keepers</link>
+      <guid isPermaLink="false">harbour-hour-6</guid>
+      <pubDate>Thu, 29 Oct 2026 08:00:00 GMT</pubDate>
+      <description>Three generations of keepers on the last manned light.</description>
+      <enclosure url="https://media.example.net/harbour-hour/6.mp3" type="audio/mpeg" length="31000000"/>
+    </item>
+    <item>
+      <title>Harbour Hour 5: the fish auction at dawn</title>
+      <guid isPermaLink="false">https://podhost.example.net/harbour-hour/episodes/5-fish-auction</guid>
+      <pubDate>Thu, 22 Oct 2026 08:00:00 GMT</pubDate>
+      <description>Bidding on the morning catch before the sun is up.</description>
+      <enclosure url="https://media.example.net/harbour-hour/5.mp3" type="audio/mpeg" length="32000000"/>
+    </item>
+    <item>
+      <title>Harbour Hour 4: the dredger that never sleeps</title>
+      <guid isPermaLink="false">harbour-hour-4</guid>
+      <pubDate>Thu, 15 Oct 2026 08:00:00 GMT</pubDate>
+      <description>A night aboard the dredger that keeps the channel open.</description>
+      <enclosure url="https://media.example.net/harbour-hour/4.mp3" type="audio/mpeg" length="33000000"/>
+    </item>
+  </channel>
+</rss>
