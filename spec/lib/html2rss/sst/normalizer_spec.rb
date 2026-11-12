@@ -320,15 +320,22 @@ RSpec.describe Html2rss::SST::Normalizer do
       end
     end
 
-    it 'judges utility landmarks and page-level chrome by tag and role', :aggregate_failures do
-      tags = Html2rss::SST::Tags
+    {
+      %w[nav] => true, %w[aside] => true, %w[footer] => true, %w[menu] => true, %w[div navigation] => true,
+      %w[div menubar] => true, %w[div alertdialog] => true, %w[div complementary] => true,
+      %w[div search] => false, %w[div] => false
+    }.each do |(tag, role), expected|
+      it "judges #{tag} role=#{role.inspect} as utility landmark: #{expected}" do
+        expect(Html2rss::SST::Tags.utility_landmark?(tag, role)).to be(expected)
+      end
+    end
 
-      expect(%w[nav aside footer menu].map { tags.utility_landmark?(_1, nil) }).to all(be(true))
-      expect(%w[navigation menu menubar dialog alertdialog complementary].map { tags.utility_landmark?('div', _1) })
-        .to all(be(true))
-      expect([tags.utility_landmark?('div', 'search'), tags.utility_landmark?('div', nil)]).to eq([false, false])
-      expect([tags.page_level_chrome?('header', nil), tags.page_level_chrome?('div', 'Contentinfo')]).to eq([true, true])
-      expect([tags.page_level_chrome?('nav', nil), tags.page_level_chrome?('div', 'main')]).to eq([false, false])
+    {
+      %w[header] => true, %w[div Contentinfo] => true, %w[div banner] => true, %w[nav] => false, %w[div main] => false
+    }.each do |(tag, role), expected|
+      it "judges #{tag} role=#{role.inspect} as page-level chrome: #{expected}" do
+        expect(Html2rss::SST::Tags.page_level_chrome?(tag, role)).to be(expected)
+      end
     end
   end
 end

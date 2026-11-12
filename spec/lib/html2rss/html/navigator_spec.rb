@@ -162,10 +162,11 @@ RSpec.describe Html2rss::Html::Navigator do
     it 'stops at utility landmark roles and page-level banner/contentinfo roles' do # rubocop:disable RSpec/ExampleLength
       html = '<body><div id="rn" role="navigation"></div><div id="rc" role="complementary"></div>' \
              '<div id="rd" role="dialog"></div><dialog id="dl"></dialog><div id="rs" role="search"></div>' \
-             '<div id="pb" role="banner"></div><article><div id="ab" role="banner"></div></article></body>'
-      ids = %w[rn rc rd dl rs pb ab]
-      expected = { 'rn' => false, 'rc' => false, 'rd' => false, 'dl' => false, 'rs' => true, 'pb' => false,
-                   'ab' => true }
+             '<aside id="as"></aside><div id="pb" role="banner"></div>' \
+             '<article><div id="ab" role="banner"></div></article></body>'
+      ids = %w[rn rc rd dl rs as pb ab]
+      expected = { 'rn' => false, 'rc' => false, 'rd' => false, 'dl' => false, 'rs' => true, 'as' => false,
+                   'pb' => false, 'ab' => true }
       sst_root = Html2rss::SST::Normalizer.call(html).root
       nokogiri = ids.to_h { |id| [id, described_class.usable_card_parent?(Nokogiri::HTML(html).at_css("##{id}"))] }
       sst = ids.to_h { |id| [id, described_class.usable_card_parent?(sst_root.find_all { _1.attrs.id == id }.first)] }

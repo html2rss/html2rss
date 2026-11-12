@@ -75,6 +75,13 @@ RSpec.describe Html2rss::SST::Node do
       expect(span).not_to be_image
     end
 
+    it 'recognises utility landmark roles on any element', :aggregate_failures do
+      role_div = ->(role) { described_class.build(name: :div, attrs: Html2rss::SST::Attrs.build(raw: { 'role' => role })) }
+
+      expect(role_div.call('complementary')).to be_utility_landmark
+      expect(role_div.call('search')).not_to be_utility_landmark
+    end
+
     it 'treats only img elements as images' do
       expect(described_class.build(name: :img)).to be_image
     end
