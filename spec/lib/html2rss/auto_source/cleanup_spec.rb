@@ -376,7 +376,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         { 'https://podhost.example.net/show/ep2' => Html2rss::AutoSource::Scraper::NativeFeed,
           'https://example.com/show/ep1' => Html2rss::AutoSource::Scraper::NativeFeed,
           'https://podhost.example.net/show/ep3' => Html2rss::AutoSource::Scraper::SemanticHtml,
-          'https://example.org/show/ep4' => Html2rss::AutoSource::Scraper::NativeFeed }.map do |link, scraper|
+          'https://192.0.2.10/show/ep4' => Html2rss::AutoSource::Scraper::NativeFeed }.map do |link, scraper|
           Html2rss::Article.new(id: link, title: "Episode at #{link}", url: link, scraper:)
         end
       end
