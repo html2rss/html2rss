@@ -38,6 +38,23 @@ RSpec.describe Html2rss::RequestService::ResponseGuard do
       end.to raise_error(Html2rss::RequestService::ResponseTooLarge, 'Response exceeded 1000 bytes')
     end
 
+    context 'with the default policy' do
+      let(:policy) { Html2rss::RequestService::Policy.new }
+
+      it 'defaults the response cap to 10 MiB' do
+        expect(policy.max_response_bytes).to eq(10 * 1024 * 1024)
+      end
+
+      it 'accepts a ~9.2 MiB body' do
+        expect { guard.inspect_body!('x' * 9_646_899) }.not_to raise_error
+      end
+
+      it 'rejects a body just above 10 MiB' do
+        expect { guard.inspect_body!('x' * ((10 * 1024 * 1024) + 1)) }
+          .to raise_error(Html2rss::RequestService::ResponseTooLarge, 'Response exceeded 10485760 bytes')
+      end
+    end
+
     it 'raises when the body matches an anti-bot interstitial signature' do # rubocop:disable RSpec/ExampleLength
       expect { guard.inspect_body!(blocked_body) }
         .to raise_error(
