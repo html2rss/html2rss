@@ -24,6 +24,30 @@ card_header_time_kicker.html:
   expected: 5
   title_misses: 0
   sst_built: true
+cardlink_anchorless_cards.html:
+  junk: 0
+  real: 0
+  expected: 0
+  title_misses: 0
+  sst_built: true
+cardlink_cluster_consent_only.html:
+  junk: 0
+  real: 0
+  expected: 0
+  title_misses: 0
+  sst_built: true
+cardlink_empty_overlay_heading.html:
+  junk: 0
+  real: 7
+  expected: 7
+  title_misses: 0
+  sst_built: true
+cardlink_whole_card_anchor.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  sst_built: true
 chrome_role_consent_dialog.html:
   junk: 0
   real: 5
