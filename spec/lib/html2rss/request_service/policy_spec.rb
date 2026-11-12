@@ -223,7 +223,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the follow-up points at another host on the same port' do
-      let(:url) { Html2rss::Url.from_absolute('https://example.org/feed?page=2') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.net/feed?page=2') }
 
       it 'rejects the follow-up as cross-origin' do
         expect { validate_follow_up! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
@@ -362,7 +362,7 @@ RSpec.describe Html2rss::RequestService::Policy do
       ['http://example.com/', 'http://EXAMPLE.com/x'] => true,
       ['http://example.com/', 'http://user:pass@example.com/x'] => true,
       ['http://example.com/', 'http://example.com.evil.test/'] => false,
-      ['http://example.com/', 'http://evil.test@example.org/'] => false,
+      ['http://example.com/', 'http://evil.test@example.net/'] => false,
       ['http://example.com/', 'http://sub.example.com/'] => false
     }.each do |(origin, target), allowed|
       it "#{allowed ? 'allows' : 'denies'} follow-up #{target} from origin #{origin}", :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -380,16 +380,16 @@ RSpec.describe Html2rss::RequestService::Policy do
 
     it 'raises the cross-origin error naming the url for other hosts' do
       origin_url = Html2rss::Url.from_absolute('http://example.com/')
-      url = Html2rss::Url.from_absolute('http://example.org:81/x')
+      url = Html2rss::Url.from_absolute('http://example.net:81/x')
 
       expect { policy.validate_request!(url:, origin_url:, relation: :auto_source) }
         .to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied,
-                        'Cross-origin follow-up denied for http://example.org:81/x')
+                        'Cross-origin follow-up denied for http://example.net:81/x')
     end
 
     it 'does not apply origin rules to the initial request' do
       origin_url = Html2rss::Url.from_absolute('https://example.com/')
-      url = Html2rss::Url.from_absolute('http://example.org/')
+      url = Html2rss::Url.from_absolute('http://example.net/')
 
       expect { policy.validate_request!(url:, origin_url:, relation: :initial) }.not_to raise_error
     end
@@ -538,8 +538,18 @@ RSpec.describe Html2rss::RequestService::Policy do
       end
     end
 
+    context 'when the proof was copied around its builder (unfrozen)' do
+      let(:advertisement) do
+        Marshal.load(Marshal.dump(Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML(head), page_url:)))
+      end
+
+      it 'denies the cross-origin follow-up' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
     context 'when the advertisement belongs to another page origin' do
-      let(:page_url) { Html2rss::Url.from_absolute('https://example.org/news/') }
+      let(:page_url) { Html2rss::Url.from_absolute('https://example.net/news/') }
 
       it 'denies the cross-origin follow-up' do
         expect { validate_request! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
@@ -641,7 +651,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the advertisement belongs to another page origin' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:page_url) { Html2rss::Url.from_absolute('https://example.org/news/') }
+      let(:page_url) { Html2rss::Url.from_absolute('https://example.net/news/') }
 
       it 'denies the cross-origin hop' do
         expect { validate_redirect! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)

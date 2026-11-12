@@ -178,9 +178,10 @@ module Html2rss
         raise CrossOriginFollowUpDenied, "Cross-origin follow-up denied for #{url}"
       end
 
-      # The proof must come from the page this follow-up originates from.
+      # The proof must come from the page this follow-up originates from; an unfrozen one was not built by
+      # {FeedAdvertisement.from_document}.
       def advertised_feed?(origin_url, relation, advertisement)
-        relation == :advertised_feed && advertisement.instance_of?(FeedAdvertisement) &&
+        relation == :advertised_feed && advertisement.instance_of?(FeedAdvertisement) && advertisement.frozen? &&
           self.class.same_origin?(advertisement.page_url, origin_url)
       end
 

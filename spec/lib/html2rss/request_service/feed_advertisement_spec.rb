@@ -22,7 +22,7 @@ RSpec.describe Html2rss::RequestService::FeedAdvertisement do
           <link rel="alternate" type="application/rss+xml" title="Script" href="javascript:void(0)">
           <link rel="alternate" type="application/rss+xml" title="Mail" href="mailto:feed@example.com">
         </head><body>
-          <link rel="alternate" type="application/rss+xml" href="https://example.org/body.xml">
+          <link rel="alternate" type="application/rss+xml" href="https://example.net/body.xml">
         </body></html>
       HTML
     end
@@ -43,7 +43,7 @@ RSpec.describe Html2rss::RequestService::FeedAdvertisement do
     it 'advertises only the listed URLs', :aggregate_failures do
       expect(advertisement.advertises?(url['https://feeds.example.net/show.xml'])).to be(true)
       expect(advertisement.advertises?(url['http://feeds.example.net/plain.xml'])).to be(false)
-      expect(advertisement.advertises?(url['https://example.org/body.xml'])).to be(false)
+      expect(advertisement.advertises?(url['https://example.net/body.xml'])).to be(false)
       expect(advertisement.advertises?(url['https://example.net/oembed.json'])).to be(false)
     end
 
@@ -66,8 +66,29 @@ RSpec.describe Html2rss::RequestService::FeedAdvertisement do
     end
   end
 
-  it 'cannot be minted for arbitrary URLs', :aggregate_failures do
-    expect { described_class.new(page_url: url['https://example.com/'], feeds: {}) }.to raise_error(NoMethodError)
-    expect { described_class[url['https://example.com/'], {}] }.to raise_error(NoMethodError)
+  describe 'minting' do
+    subject(:advertisement) { described_class.from_document(Nokogiri::HTML(head), page_url: 'https://example.com/') }
+
+    let(:head) { '<head><link rel="alternate" type="application/rss+xml" href="https://feeds.example.net/a.xml"></head>' }
+    let(:evil) { url['https://evil.example.net/x.xml'] }
+
+    it 'is closed to constructors', :aggregate_failures do
+      expect { described_class.new(page_url: url['https://example.com/'], feeds: {}) }.to raise_error(NoMethodError)
+      expect { described_class.allocate }.to raise_error(NoMethodError)
+      expect { described_class[url['https://example.com/'], {}] }.to raise_error(NoMethodError)
+    end
+
+    it 'has no copy-with-changes path', :aggregate_failures do
+      expect(advertisement).not_to respond_to(:with)
+      expect(advertisement.dup).to be(advertisement)
+      expect(advertisement.clone).to be(advertisement)
+      expect(advertisement.clone(freeze: false)).to be(advertisement)
+    end
+
+    it 'is frozen with frozen feeds', :aggregate_failures do
+      expect(advertisement).to be_frozen
+      expect { advertisement.feeds[evil] = 'Evil' }.to raise_error(FrozenError)
+      expect(advertisement.advertises?(evil)).to be(false)
+    end
   end
 end
