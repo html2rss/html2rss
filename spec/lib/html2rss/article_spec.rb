@@ -17,6 +17,11 @@ RSpec.describe Html2rss::Article do
       expect { described_class.new(**attrs) }.not_to raise_error
     end
 
+    it 'reports media items', :aggregate_failures do
+      expect(described_class.new(media: true).media?).to be(true)
+      expect(described_class.new.media?).to be(false)
+    end
+
     it 'composes the kicker and headline into the title when the caller opts in' do
       article = described_class.new(title: "Ferry\nreturns", kicker: 'Harbor :', compose_title: true)
 

@@ -19,11 +19,12 @@ module Html2rss
             ReviewNewsArticle SatiricalArticle ScholarlyArticle SocialMediaPosting TechArticle
           ].to_set.freeze
 
-          # Schema.org types emitted only as elements of an ItemList (never standalone).
-          ITEM_LIST_TYPES = Set['Event', 'JobPosting', 'VideoObject', 'PodcastEpisode'].freeze
+          # Schema.org media types: ItemList items of these types carry `media: true`, and their own `contentUrl`
+          # (when present) is the media enclosure.
+          MEDIA_TYPES = Set['VideoObject', 'AudioObject', 'PodcastEpisode', 'Clip'].freeze
 
-          # Schema.org types whose own `contentUrl` is the media enclosure.
-          MEDIA_TYPES = Set['VideoObject'].freeze
+          # Schema.org types emitted only as elements of an ItemList (never standalone).
+          ITEM_LIST_TYPES = (Set['Event', 'JobPosting'] | MEDIA_TYPES).freeze
 
           # @param schema_object [Hash{Symbol => Object}] parsed schema.org object
           # @param url [String, Html2rss::Url, nil] base URL used for relative normalization

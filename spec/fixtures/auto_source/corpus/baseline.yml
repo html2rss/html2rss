@@ -246,6 +246,12 @@ structured_tracked_urls.html:
   expected: 5
   title_misses: 0
   sst_built: true
+t4_person_list_entries.html:
+  junk: 5
+  real: 4
+  expected: 4
+  title_misses: 0
+  sst_built: true
 title_clock_prefix.html:
   junk: 0
   real: 5
