@@ -6,7 +6,7 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       dating jobs job career careers deals deal shopping shop trading broker
       versicherung tierversicherung insurance vergleich comparison
       partnerboerse singleboerse krypto crypto
-      casinos casino kreditkarten kreditkarte kredit echtgeld vpn games kaufberater leasing
+      casinos casino kreditkarten kreditkarte kredit echtgeld vpn kaufberater leasing
     ].each do |segment|
       it "marks /#{segment}/ routes as utility and high-confidence junk", :aggregate_failures do
         classifier = classifier_for(segment)
@@ -138,7 +138,7 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       %w[news 2026 Platform] => 'tfffffff', %w[news 2026-x] => 'tfffftff', %w[news 2026 slug-a-b] => 'tfffftff',
       %w[news slug-a-b-c] => 'tfffftff', %w[news about-us-team] => 'tfffftff', %w[news x-y-z] => 'tfffftff',
       %w[about news 2026 slug-a-b-c] => 'ftfffftf', %w[misc press big-news-story-here] => 'ffffftff',
-      %w[misc press Big-news-story] => 'ffffftff', %w[misc blog] => 'tfffffff', %w[misc blog about] => 'ttffffff',
+      %w[misc press Big-news-story] => 'ffffftff', %w[misc blog] => 'tffffftt', %w[misc blog about] => 'ttffffff',
       %w[blog contact-us-today] => 'tfffftff', %w[blog 2026 contact-us-today] => 'tfffftff',
       %w[blog page-two] => 'tfffffff', %w[misc 2026] => 'ffffffff', %w[misc join plan-a-b] => 'fttfffft',
       %w[join membership-plan-a] => 'fttfffft', %w[plus] => 'fttftftt', %w[subscribe] => 'fttftftt',
@@ -153,7 +153,7 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       %w[comments 2026 big-news-x] => 'ftfffftf', %w[press 2026-x] => 'tfffftff',
       %w[politik 2026 gesetz-a-b] => 'tfffftff', %w[politik gesetz-a-b-c] => 'ffffffff',
       %w[newsroom annual-report-2026] => 'ffffftff', %w[press newsroom news-today-one] => 'ffffftff',
-      %w[datenschutz erklaerung] => 'ftfffftt', %w[nachrichten] => 'tffftfff',
+      %w[datenschutz erklaerung] => 'ftfffftt', %w[nachrichten] => 'tffftftt',
       %w[nachrichten 2026 neuigkeiten-zum-produkt] => 'tfffftff', %w[artikel 2026 eine-geschichte-b] => 'tfffftff',
       %w[misc about contact-us-today-x] => 'ftfffftf', %w[about contact] => 'ftfftftt', %w[news about] => 'ttfftfff',
       %w[news dating] => 'ttfftfff', %w[misc news-tag-1] => 'ffffffff', %w[123 news slug-a-b-c] => 'tfffftff',
@@ -171,6 +171,51 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
 
         expect(classifier.segments).to eq(segments)
         expect(route_flags.call(classifier)).to eq(flags)
+      end
+    end
+  end
+
+  describe 'non-article destinations' do
+    [
+      %w[games], %w[spiele tetris-online], %w[juegos], %w[jeux], %w[giochi], %w[spellen], %w[gry], %w[ゲーム],
+      %w[horoskop heute-widder], %w[oroscopo], %w[horoscopo], %w[horoscoop], %w[quiz], %w[kviz], %w[クイズ],
+      %w[nachrufe], %w[necrologie], %w[esquelas], %w[nekrologi], %w[livestream], %w[live-stream], %w[player],
+      %w[popup-audio-player], %w[popupaudioplayer episode-12-a-b]
+    ].each do |segments|
+      it "marks /#{segments.join('/')} as non-article", :aggregate_failures do
+        classifier = classifier_for(*segments)
+
+        expect(classifier.non_article_path?).to be(true)
+        expect(classifier.junk_path?).to be(true)
+        expect(classifier.utility_destination?).to be(true)
+      end
+    end
+
+    [
+      %w[sport city-wins-home-games-opener], %w[sport 2026 10 cup-games-preview-notes], %w[news games-board-review],
+      %w[games 2026 10 dated-slug-stays], %w[podcast episode-12-harbor-stories], %w[audio episode-3-river-walk],
+      %w[news obituaries 2026 harbor-pilot-remembered]
+    ].each do |segments|
+      it "keeps /#{segments.join('/')} as content", :aggregate_failures do
+        classifier = classifier_for(*segments)
+
+        expect(classifier.non_article_path?).to be(false)
+        expect(classifier.junk_path?).to be(false)
+      end
+    end
+
+    it 'flags an obituary subdomain through the host label' do
+      expect(described_class.new(%w[maria-keller-1 x], host_label: 'obituaries').non_article_path?).to be(true)
+    end
+
+    it 'keeps a section path with a query string as content' do
+      expect(described_class.new(%w[blog], query: true).non_article_path?).to be(false)
+    end
+
+    %w[news blog nieuws nyheter notizie wiadomosci ニュース].each do |word|
+      it "treats a path ending in /#{word} as a section index", :aggregate_failures do
+        expect(classifier_for('en', word).non_article_path?).to be(true)
+        expect(classifier_for(word, '2026', 'platform-launch-notes').non_article_path?).to be(false)
       end
     end
   end

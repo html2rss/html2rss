@@ -15,13 +15,32 @@ module Html2rss
       # Segment groups used to classify article, taxonomy, utility, and vanity routes.
       # Utility = taxonomy ∪ chrome ∪ soft utility (do not re-list taxonomy tokens).
       SEGMENT_SETS = begin
-        content = Set[
-          'article', 'articles', 'blog', 'blogs', 'changelog', 'changelogs', 'insight', 'insights',
-          'launch', 'launches', 'news', 'post', 'posts', 'release', 'releases', 'story', 'stories',
-          'update', 'updates', 'artikel', 'beitrag', 'beitraege', 'nachrichten', 'neuigkeiten',
-          'aktuelles', 'articulo', 'articulos', 'noticia', 'noticias', 'entrada', 'entradas',
-          'publicacion', 'publicaciones', 'actualite', 'actualites', 'nouvelle', 'nouvelles',
-          'teaser', 'teasers', 'card', 'cards'
+        # Listing words: a path ending in one is a section index, not an article.
+        section = Set[
+          'articles', 'blog', 'blogs', 'changelogs', 'insights', 'launches', 'news', 'posts', 'releases',
+          'stories', 'updates', 'nachrichten', 'neuigkeiten', 'aktuelles', 'beitraege', 'articulos', 'noticias',
+          'entradas', 'publicaciones', 'actualites', 'nouvelles', 'teasers', 'cards',
+          'aktualnosci', 'aktualności', 'wiadomosci', 'wiadomości', 'artykuly', 'artykuły', 'wpisy', 'notizie',
+          'articoli', 'novita', 'novità', 'aggiornamenti', 'nieuws', 'nieuwsberichten', 'artikelen', 'berichten',
+          'nyheter', 'artiklar', 'ニュース', '記事', 'お知らせ', 'ブログ'
+        ].freeze
+        content = (section | Set[
+          'article', 'changelog', 'insight', 'launch', 'post', 'release', 'story', 'update', 'artikel', 'beitrag',
+          'articulo', 'noticia', 'entrada', 'publicacion', 'actualite', 'nouvelle', 'teaser', 'card',
+          'artykul', 'artykuł', 'wpis', 'notizia', 'articolo', 'bericht', 'nyhet', 'inlagg', 'inlägg'
+        ]).freeze
+        # Destinations that are never articles: games, horoscopes, quizzes, obituaries, livestreams, players.
+        non_article = Set[
+          'games', 'spiele', 'juegos', 'jeux', 'giochi', 'spellen', 'spel', 'gry', 'ゲーム',
+          'sudoku', 'crossword', 'crosswords', 'kreuzwortraetsel', 'kreuzworträtsel', 'crucigrama', 'crucigramas',
+          'quiz', 'quizzes', 'quizze', 'quizzen', 'kviz', 'クイズ',
+          'horoscope', 'horoscopes', 'horoskop', 'horoskope', 'horoscopo', 'horoscopos', 'oroscopo', 'oroscopi',
+          'horoscoop', 'horoskopy', '星座占い', '占い',
+          'obituary', 'obituaries', 'nachruf', 'nachrufe', 'traueranzeigen', 'todesanzeigen', 'necrologie',
+          'nécrologie', 'necrologio', 'necrologi', 'esquelas', 'obituarios', 'overlijdensberichten', 'nekrolog',
+          'nekrologi', 'dodsannonser', 'dödsannonser', '訃報', 'おくやみ',
+          'livestream', 'livestreams', 'endirect', 'envivo', 'indiretta', 'nazywo', 'ライブ配信',
+          'player', 'players'
         ].freeze
         taxonomy = Set[
           'category', 'categories', 'tag', 'tags', 'topic', 'topics',
@@ -52,15 +71,17 @@ module Html2rss
           'career', 'careers', 'deals', 'deal', 'shopping', 'shop', 'trading', 'broker',
           'versicherung', 'tierversicherung', 'insurance', 'vergleich', 'comparison',
           'partnerboerse', 'singleboerse', 'krypto', 'crypto', 'casinos', 'casino',
-          'kreditkarten', 'kreditkarte', 'kredit', 'echtgeld', 'vpn', 'games', 'kaufberater',
+          'kreditkarten', 'kreditkarte', 'kredit', 'echtgeld', 'vpn', 'kaufberater',
           'leasing'
         ].freeze
         utility = (taxonomy | chrome | SOFT_UTILITY).freeze
         {
           content:,
+          section:,
           utility:,
           high_confidence_junk: (utility - SOFT_UTILITY).freeze,
           taxonomy:,
+          non_article:,
           vanity:,
           deep_post_context: Set['press', 'newsroom', 'presse', 'pressemitteilungen', 'prensa'].freeze
         }.freeze
@@ -75,9 +96,16 @@ module Html2rss
       # Common file-extension suffixes excluded from host-shaped junk matching.
       FILE_EXTENSION_SEGMENT = /\.(?:pdf|jpe?g|png|gif|svg|webp|css|js|mjs|html?|xml|json|mp4|webm|zip|gz)\z/i
 
+      # Pop-up / embedded player segments such as `popup-audio-player` (hyphens removed before matching).
+      PLAYER_SEGMENT = /\A(?:(?:pop(?:up|out)|embed|audio|video|media)\w*)?player\z/
+
       # @param segments [Array<String>] normalized URL path segments
-      def initialize(segments)
+      # @param host_label [String, nil] first host label (e.g. an obituary subdomain)
+      # @param query [Boolean] whether the URL carries a query string (`/blog?p=12` selects one post)
+      def initialize(segments, host_label: nil, query: false)
         @segments = segments
+        @query = query
+        @host_label = host_label.to_s.downcase
         @lexicon = segments.map { ::Html2rss::Html::Probe.fold(_1) }.freeze
       end
 
@@ -131,8 +159,17 @@ module Html2rss
         all_junk?(segments.size - 1)
       end
 
+      # @return [Boolean] true when the host or a path segment names a game, horoscope, quiz,
+      #   obituary, livestream or player destination, or the path is a bare section index
+      def non_article_path?
+        return @non_article_path if defined?(@non_article_path)
+
+        @non_article_path = section_index? || (!strong_post_suffix? && non_article_word_present?)
+      end
+
       # @return [Boolean] true when the route is shallow and contains high-confidence noise
       def junk_path?
+        return true if non_article_path?
         return false if excluded_content_route?
 
         any_high_confidence_junk_segment? || shallow_vanity_route?
@@ -140,12 +177,27 @@ module Html2rss
 
       # @return [Boolean] true when the route points at conversion or account chrome
       def utility_destination?
+        return true if non_article_path?
         return false if excluded_content_route?
 
         vanity_path? || utility_route?
       end
 
       private
+
+      def non_article_word_present?
+        ([@host_label] + @lexicon).any? { non_article_word?(_1) }
+      end
+
+      def non_article_word?(word)
+        joined = word.delete('-_')
+        SEGMENT_SETS[:non_article].include?(joined) || joined.match?(PLAYER_SEGMENT)
+      end
+
+      # A path ending in a section word (no slug) lists articles instead of being one.
+      def section_index?
+        !@query && segments.any? && SEGMENT_SETS[:section].include?(@lexicon.last)
+      end
 
       def leading_high_confidence_junk?
         segments.any? && high_confidence_junk_at?(0)

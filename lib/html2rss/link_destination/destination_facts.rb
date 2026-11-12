@@ -21,7 +21,7 @@ module Html2rss
       # @param url [Html2rss::Url] normalized destination URL
       # @return [DestinationFacts] route facts for downstream link scoring
       def self.build(url) # rubocop:disable Metrics/MethodLength
-        classifier = PathClassifier.new(url.path_segments)
+        classifier = classifier_for(url)
 
         new(
           url:,
@@ -37,6 +37,13 @@ module Html2rss
           high_confidence_utility_destination: classifier.utility_destination?
         )
       end
+
+      # @param url [Html2rss::Url]
+      # @return [PathClassifier] path classifier that also sees the first host label (an obituary subdomain)
+      def self.classifier_for(url)
+        PathClassifier.new(url.path_segments, host_label: url.host.to_s.split('.').first, query: !url.query.nil?)
+      end
+      private_class_method :classifier_for
     end
   end
 end

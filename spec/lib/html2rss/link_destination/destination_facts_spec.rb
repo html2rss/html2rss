@@ -75,5 +75,14 @@ RSpec.describe Html2rss::LinkDestination::DestinationFacts do
         expect(facts.destination).to eq('https://example.com/')
       end
     end
+
+    context 'with an obituary subdomain' do
+      let(:url) { Html2rss::Url.from_absolute('https://obituaries.example.com/maria-keller-remembered-by-friends') }
+
+      it 'flags the host label as junk', :aggregate_failures do
+        expect(facts.high_confidence_junk_path).to be(true)
+        expect(facts.high_confidence_utility_destination).to be(true)
+      end
+    end
   end
 end

@@ -1,0 +1,9 @@
+---
+case: Teaser cards mixing real articles (a sports story whose slug contains a game word, an audio
+  episode page) with game, horoscope, obituary-subdomain, pop-up player, livestream and section-index links.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/sport/city-wins-home-games-opener
+- https://example.com/podcast/episode-12-harbor-stories
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/school-board-approves-budget
