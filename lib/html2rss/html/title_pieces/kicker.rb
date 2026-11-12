@@ -13,7 +13,10 @@ module Html2rss
         MEDIA_NAMES = Set['img', 'picture', 'figure', 'video', 'svg', :img, :picture, :figure, :video, :svg].freeze
         # Paragraphs of both node kinds: running prose, never a kicker.
         PARAGRAPH_NAMES = Set['p', :p].freeze
-        private_constant :MEDIA_NAMES, :PARAGRAPH_NAMES
+        # Class tokens that may hold a {KICKER_WORDS} word: each word with any +-+ or +_+ between its letters,
+        # in any case. A cheap gate before the class words are split.
+        KICKER_TOKEN = Regexp.new(KICKER_WORDS.map { _1.chars.join('[-_]*') }.join('|'), Regexp::IGNORECASE)
+        private_constant :MEDIA_NAMES, :PARAGRAPH_NAMES, :KICKER_TOKEN
 
         ##
         # @param nodes [Nodes] reader of the card's nodes
@@ -47,7 +50,8 @@ module Html2rss
         end
 
         def marked?(node)
-          @nodes.attribute(node, KICKER_ATTRIBUTE) || @nodes.class_words(node).intersect?(KICKER_WORDS)
+          @nodes.attribute(node, KICKER_ATTRIBUTE) ||
+            (@nodes.class_names(node).any?(KICKER_TOKEN) && @nodes.class_words(node).intersect?(KICKER_WORDS))
         end
 
         # A label leaf opening the source text, with headline text after it.
