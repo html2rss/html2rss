@@ -5,7 +5,7 @@ module Html2rss
     # Classifies visible anchor text for utility, recommendation and read-more chrome in en, de, fr, es, it,
     # nl, pl, sv and ja. Letters with an accented variant are alternations, not classes: with +/i+, Ruby on
     # Linux does not fold an uppercase accented letter against a class that also holds its ASCII base.
-    class TextClassifier
+    class TextClassifier # rubocop:disable Metrics/ClassLength -- nine-language vocabulary tables
       # Prefix labels that usually identify navigation or subscription links.
       UTILITY_PREFIX_PATTERN = /
         \A\s*(
@@ -119,26 +119,42 @@ module Html2rss
         )[\s\p{P}\p{S}]*\z
       /ix
 
+      # Visible new-window notice that trails a link label, in parentheses or brackets.
+      NEW_WINDOW_NOTICE = /
+        \s*[(\[（【]\s*(?:
+          opens\s+in\s+(?:a\s+)?new\s+(?:window|tab)|
+          (?:ö|oe)ffnet\s+(?:sich\s+)?in\s+(?:einem\s+)?neuem\s+(?:fenster|tab)|
+          ouvre\s+dans\s+(?:une\s+)?nouvel(?:le)?\s+(?:fen(?:ê|e)tre|onglet)|
+          se\s+abre\s+en\s+(?:una\s+)?nueva\s+(?:ventana|pesta(?:ñ|n)a)|
+          si\s+apre\s+in\s+(?:una\s+)?nuova\s+(?:finestra|scheda)|
+          opent\s+in\s+(?:een\s+)?nieuw(?:e)?\s+(?:venster|tabblad)|
+          otwiera\s+si(?:ę|e)\s+w\s+nowym\s+(?:oknie|karcie)|
+          (?:ö|o)ppnas\s+i\s+(?:ett\s+)?nytt\s+(?:f(?:ö|o)nster|flik)|
+          新しい(?:ウィンドウ|ウインドウ|タブ)で開く
+        )\s*[)\]）】]\s*\z
+      /ix
+
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text matches a utility label
-      def utility?(text) = nfc(text).match?(UTILITY_PATTERN)
+      def utility?(text) = normalize(text).match?(UTILITY_PATTERN)
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text begins with a utility label
-      def utility_prefix?(text) = nfc(text).match?(UTILITY_PREFIX_PATTERN)
+      def utility_prefix?(text) = normalize(text).match?(UTILITY_PREFIX_PATTERN)
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text identifies recommendation chrome
-      def recommended?(text) = nfc(text).match?(RECOMMENDED_PATTERN)
+      def recommended?(text) = normalize(text).match?(RECOMMENDED_PATTERN)
 
       # @param text [String, #to_s] visible anchor text or extracted title
       # @return [Boolean] true when the whole text is a read-more label, bare or with its topic
-      def read_more?(text) = nfc(text).match?(READ_MORE_PATTERN)
+      def read_more?(text) = normalize(text).match?(READ_MORE_PATTERN)
 
       private
 
-      # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary.
-      def nfc(text) = text.to_s.unicode_normalize(:nfc)
+      # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, and without
+      # its trailing new-window notice ("(opens in new tab)").
+      def normalize(text) = text.to_s.unicode_normalize(:nfc).sub(NEW_WINDOW_NOTICE, '')
     end
   end
 end

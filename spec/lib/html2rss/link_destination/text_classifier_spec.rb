@@ -119,4 +119,23 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect(classifier.read_more?(nil)).to be(false)
     end
   end
+
+  describe 'new-window notices' do
+    [
+      '(opens in new window)', '(opens in a new tab)', '(öffnet in neuem Fenster)', '(öffnet in neuem Tab)',
+      '(ouvre dans une nouvelle fenêtre)', '(se abre en una nueva ventana)', '(si apre in una nuova finestra)',
+      '(opent in nieuw venster)', '(otwiera się w nowym oknie)', '(öppnas i nytt fönster)', '（新しいウィンドウで開く）'
+    ].each do |notice|
+      it "ignores the trailing notice #{notice.inspect}", :aggregate_failures do
+        expect(classifier.read_more?("Meer informatie #{notice}")).to be(true)
+        expect(classifier.utility?("Contact #{notice}")).to be(true)
+        expect(classifier.recommended?("Recommended #{notice}")).to be(true)
+      end
+    end
+
+    it 'keeps a headline that only mentions a window', :aggregate_failures do
+      expect(classifier.read_more?('Opens in new window as the museum reopens')).to be(false)
+      expect(classifier.read_more?('(opens in new window)')).to be(false)
+    end
+  end
 end
