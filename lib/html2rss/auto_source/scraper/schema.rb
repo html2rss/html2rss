@@ -25,7 +25,7 @@ module Html2rss
 
         # Canonical Schema.org type names keyed by folded wire forms (case-insensitive lookup).
         CANONICAL_BY_DOWNCASE = begin
-          canonical_types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES | Thing::ITEM_LIST_TYPES |
+          canonical_types = Thing::ITEM_TYPES | ItemList::SUPPORTED_TYPES | Thing::ITEM_LIST_TYPES |
                             DENIED_CONTAINER_TYPES | Set['Product']
           canonical_types.to_h { |type| [::Html2rss::Html::Probe.fold(type), type] }.freeze
         end.freeze
@@ -33,7 +33,7 @@ module Html2rss
         # Pre-compiled regex for supported schema types (short name or schema.org URL; string or array @type).
         # Allows preceding entries in a JSON @type array (e.g. ["WebPage","NewsArticle"]).
         SUPPORTED_TYPES_RE = begin
-          types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
+          types = Thing::ITEM_TYPES | ItemList::SUPPORTED_TYPES
           type_re = Regexp.union(types.to_a)
           %r{(?i)"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
         end.freeze
@@ -45,7 +45,7 @@ module Html2rss
         EMPTY_TYPES = Set.new.freeze
 
         # Keys whose `{"@id": ...}` stubs are resolved against sibling nodes of the same JSON-LD document.
-        REFERENCE_KEYS = %i[author publisher image].freeze
+        REFERENCE_KEYS = (%i[author publisher image] + Thing::MEDIA_KEYS).freeze
 
         # @return [Symbol] scraper config key
         def self.options_key = :schema
@@ -115,7 +115,7 @@ module Html2rss
             # Prefer article/list extractors over denied containers for multi-type @type arrays
             # (e.g. ["NewsArticle","WebPage"]).
             return ItemList if types.intersect?(ItemList::SUPPORTED_TYPES)
-            return Thing if types.intersect?(Thing::SUPPORTED_TYPES)
+            return Thing if types.intersect?(Thing::ITEM_TYPES)
             return nil if types.intersect?(DENIED_CONTAINER_TYPES)
 
             Log.debug("#{name}: unsupported schema object @type=#{schema_object[:@type].inspect}")

@@ -11,7 +11,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
           { '@type': 'NewsArticle', headline: 'Ref', url: 'https://example.com/r', **references },
           { '@id': '#person', '@type': 'Person', name: 'Jane Doe' },
           { '@id': '#org', '@type': 'Organization', name: 'Example Org' },
-          { '@id': '#img', '@type': 'ImageObject', url: 'https://example.com/i.jpg' }
+          { '@id': '#img', '@type': 'ImageObject', url: 'https://example.com/i.jpg' },
+          { '@id': '#clip', '@type': 'VideoObject', contentUrl: 'https://example.com/c.mp4' }
         ]
       }
     end
@@ -30,6 +31,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       let(:references) { { publisher: [{ '@id': '#org' }] } }
 
       it { expect(article[:author]).to eq('Example Org') }
+    end
+
+    context 'when an associatedMedia stub names a sibling media node' do
+      let(:references) { { associatedMedia: [{ '@id': '#clip' }] } }
+
+      it { expect(article[:enclosures].map { _1[:url].to_s }).to eq(['https://example.com/c.mp4']) }
     end
 
     context 'when the stub has no sibling node' do

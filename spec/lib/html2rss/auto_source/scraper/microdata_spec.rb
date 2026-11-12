@@ -537,6 +537,32 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
       end
     end
 
+    context 'with nested audio and associatedMedia AudioObjects' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <h1 itemprop="headline">Story</h1>
+            <a itemprop="url" href="/stories/s">Read</a>
+            <div itemprop="audio" itemscope itemtype="https://schema.org/AudioObject">
+              <link itemprop="contentUrl" href="/media/a.mp3">
+            </div>
+            <div itemprop="associatedMedia" itemscope itemtype="https://schema.org/AudioObject">
+              <link itemprop="contentUrl" href="/media/s.mp3">
+              <meta itemprop="contentSize" content="2 MB">
+              <meta itemprop="duration" content="PT2M30S">
+            </div>
+          </article>
+        HTML
+      end
+
+      it 'emits both audio enclosures, each with its own size and duration' do
+        expect(articles.first[:enclosures].map { _1.merge(url: _1[:url].to_s) }).to eq(
+          [{ url: 'https://example.com/media/a.mp3', type: nil, bytes_length: nil, duration: nil },
+           { url: 'https://example.com/media/s.mp3', type: nil, bytes_length: 2_000_000, duration: 150 }]
+        )
+      end
+    end
+
     {
       'nested Person' => ['<span itemprop="author" itemscope itemtype="https://schema.org/Person">' \
                           '<span itemprop="name">Jane Doe</span></span>', 'Jane Doe'],

@@ -50,6 +50,18 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       it 'returns nil for every absent attribute', :aggregate_failures do
         expect(call).to include(id: nil, description: nil, author: nil, url: nil, image: nil, published_at: nil)
         expect(call[:categories]).to eq([])
+        expect(call).not_to have_key(:media)
+      end
+    end
+
+    context 'when the schema object is a media object' do
+      let(:schema_object) do
+        { '@type': 'https://schema.org/AudioObject', name: 'Episode one', url: '/e/1', contentUrl: '/e/1.mp3' }
+      end
+
+      it 'marks the item media and carries its file', :aggregate_failures do
+        expect(call).to include(title: 'Episode one', media: true)
+        expect(call[:enclosures].map { _1[:url].to_s }).to eq(['https://example.com/e/1.mp3'])
       end
     end
   end
@@ -747,6 +759,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       'explicit url over fallbacks' => [{ url: 'https://example.com/u#frag', mainEntityOfPage: 'https://e.com/m' },
                                         'https://example.com/u#frag'],
       'non-http mainEntityOfPage' => [{ mainEntityOfPage: 'urn:uuid:1', '@id': 'ftp://example.com/x' }, nil],
+      'embedUrl as the last resort' => [{ embedUrl: 'https://example.com/embed/1#t' }, 'https://example.com/embed/1'],
+      '@id over embedUrl' => [{ '@id': 'https://example.com/i', embedUrl: 'https://example.com/embed/1' },
+                              'https://example.com/i'],
+      'page url over embedUrl' => [{ url: 'https://example.com/v/1', embedUrl: 'https://example.com/embed/1' },
+                                   'https://example.com/v/1'],
+      'contentUrl never' => [{ contentUrl: 'https://example.com/v.mp4' }, nil],
       'relative @id' => [{ '@id': '/relative' }, nil]
     }.each do |name, (object, expected)|
       context "when falling back with #{name}" do
@@ -760,25 +778,69 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   end
 
   describe '#enclosures' do
-    subject(:enclosures) { instance.call[:enclosures]&.map { |enc| { url: enc[:url].to_s, type: enc[:type] } } }
+    subject(:enclosures) do
+      instance.call[:enclosures]&.map { |enc| enc.except(:url).compact.merge(url: enc[:url].to_s) }
+    end
 
     {
       'video with encodingFormat' => [{ video: { '@type': 'VideoObject', contentUrl: 'https://example.com/v.mp4',
                                                  encodingFormat: 'video/mp4' } },
                                       [{ url: 'https://example.com/v.mp4', type: 'video/mp4' }]],
       'audio without encodingFormat' => [{ audio: { '@type': 'AudioObject', contentUrl: '/a.mp3' } },
-                                         [{ url: 'https://example.com/a.mp3', type: nil }]],
+                                         [{ url: 'https://example.com/a.mp3' }]],
       'video and audio lists' => [{ video: [{ contentUrl: 'https://example.com/1.mp4' }],
                                     audio: [{ contentUrl: 'https://example.com/2.mp3' }, 'junk'] },
-                                  [{ url: 'https://example.com/1.mp4', type: nil },
-                                   { url: 'https://example.com/2.mp3', type: nil }]],
+                                  [{ url: 'https://example.com/1.mp4' }, { url: 'https://example.com/2.mp3' }]],
       'embedUrl only' => [{ video: { embedUrl: 'https://example.com/embed' } }, nil],
-      'no media' => [{}, nil]
+      'no media' => [{}, nil],
+      'associatedMedia with size and duration' => [
+        { associatedMedia: { '@type': 'MediaObject', contentUrl: '/e.mp3', encodingFormat: 'audio/mpeg',
+                             contentSize: '12.3 MB', duration: 'PT1M5S' } },
+        [{ url: 'https://example.com/e.mp3', type: 'audio/mpeg', bytes_length: 12_300_000, duration: 65 }]
+      ],
+      'associatedMedia list with an image' => [
+        { associatedMedia: [{ '@type': 'ImageObject', contentUrl: '/p.jpg' }, { contentUrl: '/r.pdf' }] },
+        [{ url: 'https://example.com/r.pdf' }]
+      ],
+      'video before audio before associatedMedia' => [
+        { associatedMedia: { contentUrl: '/3.mp3' }, audio: { contentUrl: '/2.mp3' }, video: { contentUrl: '/1.mp4' } },
+        [{ url: 'https://example.com/1.mp4' }, { url: 'https://example.com/2.mp3' },
+         { url: 'https://example.com/3.mp3' }]
+      ],
+      'a format name, not a MIME type' => [{ audio: { contentUrl: '/a.mp3', encodingFormat: 'mp3' } },
+                                           [{ url: 'https://example.com/a.mp3' }]],
+      'a MIME type with parameters' => [{ audio: { contentUrl: '/a.mp3', encodingFormat: 'Audio/MPEG; rate=44100' } },
+                                        [{ url: 'https://example.com/a.mp3', type: 'audio/mpeg' }]],
+      'a non-String encodingFormat' => [{ audio: { contentUrl: '/a.mp3', encodingFormat: ['audio/mpeg'] } },
+                                        [{ url: 'https://example.com/a.mp3' }]],
+      'a contentUrl list' => [{ video: { contentUrl: ['', 'https://example.com/v.mp4'] } },
+                              [{ url: 'https://example.com/v.mp4' }]],
+      'a duration on the episode' => [
+        { '@type': 'PodcastEpisode', duration: 'PT2M', associatedMedia: { contentUrl: '/e.mp3', duration: 'bad' } },
+        [{ url: 'https://example.com/e.mp3', duration: 120 }]
+      ],
+      'the media object itself' => [{ '@type': 'AudioObject', contentUrl: '/self.mp3', contentSize: '1 KiB',
+                                      duration: 'PT1H' },
+                                    [{ url: 'https://example.com/self.mp3', bytes_length: 1024, duration: 3600 }]],
+      'an unusable contentUrl' => [{ video: { contentUrl: 'http://' } }, nil],
+      'an empty contentUrl' => [{ video: { contentUrl: '' } }, nil],
+      'a non-String contentUrl' => [{ video: { contentUrl: 42 } }, nil],
+      'a contentUrl on an article' => [{ '@type': 'NewsArticle', contentUrl: '/a.pdf' }, nil]
     }.each do |name, (extra, expected)|
       context "with #{name}" do
         let(:schema_object) { extra }
 
         it { is_expected.to eq(expected) }
+      end
+    end
+
+    context 'without a page url' do
+      subject(:instance) { described_class.new(schema_object, url: nil) }
+
+      let(:schema_object) { { audio: [{ contentUrl: '/relative.mp3' }, { contentUrl: 'https://example.com/a.mp3' }] } }
+
+      it 'keeps only absolute files' do
+        expect(enclosures).to eq([{ url: 'https://example.com/a.mp3' }])
       end
     end
   end

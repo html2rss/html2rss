@@ -448,7 +448,8 @@ module Html2rss
               image: ValueNormalizer.image_value(properties.delete(:image), properties.delete(:thumbnailUrl),
                                                  properties.delete(:thumbnail)),
               video: properties.delete(:video),
-              audio: properties.delete(:audio)
+              audio: properties.delete(:audio),
+              associatedMedia: properties.delete(:associatedMedia)
             }
           end
 

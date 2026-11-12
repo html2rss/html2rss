@@ -32,14 +32,7 @@ module Html2rss
             return unless emit?(object, from_list_item:)
 
             # Leave empty titles empty — do not invent from URL path (Cleanup allows nil).
-            item = Thing.new(object, url: base_url || '').call
-            media?(object) ? item.merge(media: true) : item
-          end
-
-          # @param object [Hash] schema object
-          # @return [Boolean] whether the object is an audio/video object, which must not count as an article
-          def media?(object)
-            Schema.normalize_types(object[:@type]).intersect?(Thing::MEDIA_TYPES)
+            Thing.new(object, url: base_url || '').call
           end
 
           # @param element [Object] raw list entry
@@ -57,12 +50,12 @@ module Html2rss
           # @param object [Hash] candidate schema object
           # @param from_list_item [Boolean] whether object came from a ListItem unwrap
           # @return [Boolean] whether to emit this object: a ListItem unwrap admits everything except pure
-          #   entities ({Thing::ENTITY_TYPES}); a bare element must be an article, Event, JobPosting or media type
+          #   entities ({Thing::ENTITY_TYPES}); a bare element must be an article, media, Event or JobPosting type
           def emit?(object, from_list_item:)
             types = Schema.normalize_types(object[:@type])
             return types.empty? || !types.subset?(Thing::ENTITY_TYPES) if from_list_item
 
-            types.intersect?(Thing::SUPPORTED_TYPES | Thing::ITEM_LIST_TYPES)
+            types.intersect?(Thing::ITEM_TYPES | Thing::ITEM_LIST_TYPES)
           end
         end
       end

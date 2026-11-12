@@ -261,7 +261,7 @@ media_schema_article_associated_video.html:
   real: 6
   expected: 6
   title_misses: 0
-  enclosure_misses: 2
+  enclosure_misses: 0
   image_misses: 0
   sst_built: true
 media_schema_graph_podcast_episodes.html:
@@ -269,7 +269,7 @@ media_schema_graph_podcast_episodes.html:
   real: 6
   expected: 6
   title_misses: 0
-  enclosure_misses: 6
+  enclosure_misses: 0
   image_misses: 0
   sst_built: true
 media_schema_player_only_video.html:
@@ -277,7 +277,7 @@ media_schema_player_only_video.html:
   real: 6
   expected: 6
   title_misses: 0
-  enclosure_misses: 2
+  enclosure_misses: 0
   image_misses: 0
   sst_built: true
 media_schema_standalone_video_list.html:
@@ -285,7 +285,7 @@ media_schema_standalone_video_list.html:
   real: 6
   expected: 6
   title_misses: 0
-  enclosure_misses: 6
+  enclosure_misses: 0
   image_misses: 0
   sst_built: true
 media_video_cards.html:
