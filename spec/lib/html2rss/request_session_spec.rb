@@ -214,7 +214,7 @@ RSpec.describe Html2rss::RequestSession do
       before do
         allow(Html2rss::RequestService).to receive(:execute).and_call_original
         allow(resolver).to receive(:each_address) do |host, &block|
-          block.call(host.start_with?('internal.') ? '10.0.0.9' : '93.184.216.34')
+          block.call(host.start_with?('internal.') ? '10.0.0.9' : '192.0.2.10')
         end
         stub_request(:get, page_url.to_s).to_return(status: 200, body: '<html></html>',
                                                     headers: { 'Content-Type' => 'text/html' })
