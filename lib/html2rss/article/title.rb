@@ -27,9 +27,10 @@ module Html2rss
     module Title
       # Joins a kicker to its headline.
       SEPARATOR = ': '
-      # Characters that render nothing inside a word: soft hyphen, zero-width space / non-joiner / joiner,
-      # word joiner and byte-order mark. Every title drops them, verbatim publisher titles included.
-      INVISIBLE = /[\u00AD\u200B-\u200D\u2060\uFEFF]/
+      # Characters that render nothing inside a word: soft hyphen, zero-width space, word joiner and
+      # byte-order mark. Every title drops them, verbatim publisher titles included. Zero-width non-joiner
+      # and joiner (U+200C, U+200D) stay: they shape Persian, Urdu and Indic spelling and join emoji.
+      INVISIBLE = /[\u00AD\u200B\u2060\uFEFF]/
       # Clock time of day (24h, or 12h with AM/PM). Description chip peeling reuses it. Case-sensitive:
       # a spaced lowercase +am+ is the German preposition (+9:15 am Bahnhof+), so only +9:15am+ takes it.
       CLOCK = /(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?(?:\s*(?:AM|PM)|am|pm)?/

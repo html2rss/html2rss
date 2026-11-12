@@ -7,7 +7,9 @@ RSpec.describe Html2rss::Article::Title do
       '10:00 Budget vote' => '10:00 Budget vote',
       'Video: Harbor tour' => 'Video: Harbor tour',
       "Straßen\u00ADbahn" => 'Straßenbahn',
-      "Zero\u200Bwidth\u200C non\u200Djoiner\u2060 mark\uFEFF" => 'Zerowidth nonjoiner mark',
+      "Zero\u200Bwidth\u2060 mark\uFEFF" => 'Zerowidth mark',
+      "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645" => "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645",
+      "\u{1F469}\u200D\u{1F4BB} Coders meet" => "\u{1F469}\u200D\u{1F4BB} Coders meet",
       "\uFEFF \u00AD " => nil,
       "  \n " => nil,
       nil => nil
