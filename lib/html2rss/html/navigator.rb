@@ -12,16 +12,10 @@ module Html2rss
       # Element tags that indicate ignored DOM chrome when found in a container path.
       IGNORED_CONTAINER_TAGS = SST::Tags::IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze
 
-      # Ancestor tags that usually indicate navigation/utility regions inside a content container.
-      UTILITY_LANDMARK_TAGS = SST::Tags::UTILITY_LANDMARK_NAMES.to_set(&:to_s).freeze
-
-      # header/footer: a card-walk stop only at page level (see {SST::Tags::PAGE_CHROME_NAMES}).
-      PAGE_CHROME_TAGS = SST::Tags::PAGE_CHROME_NAMES.to_set(&:to_s).freeze
-
-      # Immediate parent walk stops here — not a usable article card. Page-level
-      # header/footer stop too, via {usable_card_parent?}.
-      CARD_WALK_STOP_TAGS =
-        ((UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | Set['html', 'body']) - PAGE_CHROME_TAGS).freeze
+      # Immediate parent walk stops here — not a usable article card. Utility landmarks
+      # (tags and roles, {SST::Tags.utility_landmark?}) stop too, and page-level header/footer
+      # (or banner/contentinfo roles), via {usable_card_parent?}.
+      CARD_WALK_STOP_TAGS = (IGNORED_CONTAINER_TAGS | Set['html', 'body']).freeze
 
       # Inner tags that mean a wrapping <a> is a card, not a span-styled list link.
       WRAPPING_ANCHOR_CHILD_TAGS = (HEADING_TAGS + %w[p]).freeze
@@ -82,9 +76,10 @@ module Html2rss
           return false if node.is_a?(Nokogiri::XML::Document)
 
           tag = Probe.tag(node)
-          return !page_chrome?(node) if PAGE_CHROME_TAGS.include?(tag)
+          role = node.is_a?(SST::Node) ? node.attrs.raw['role'] : node['role']
+          return !page_chrome?(node) if SST::Tags.page_level_chrome?(tag, role)
 
-          !CARD_WALK_STOP_TAGS.include?(tag)
+          !CARD_WALK_STOP_TAGS.include?(tag) && !SST::Tags.utility_landmark?(tag, role)
         end
 
         ##

@@ -11,10 +11,10 @@ module Html2rss
       BLOCK_NAMES = Set[:p, :div, :li, :ul, :ol, :h1, :h2, :h3, :h4, :h5, :h6, :tr, :br].freeze
       # Names skipped when collecting visible text.
       INVISIBLE_NAMES = Set[:svg, :script, :noscript, :style, :template].freeze
-      # Landmark names treated as utility chrome.
+      # Utility landmark names: peripheral unless chrome (see {.chrome_scope}).
       UTILITY_LANDMARK_NAMES = Set[:nav, :aside, :footer, :menu].freeze
       # Container names ignored as article roots.
-      IGNORED_CONTAINER_NAMES = Set[:nav, :footer, :header, :svg, :script, :style].freeze
+      IGNORED_CONTAINER_NAMES = Set[:nav, :footer, :header, :dialog, :svg, :script, :style].freeze
       # Ignored containers that are chrome only at page level (ARIA banner/contentinfo scoping).
       PAGE_CHROME_NAMES = Set[:header, :footer].freeze
       # Ancestors that scope a header/footer to their own section instead of the page.
@@ -27,13 +27,16 @@ module Html2rss
       LAYOUT_NAMES = Set[:div, :section, :article, :li, :ul, :ol].freeze
 
       # header/footer/nav: chrome at page level, their parent's scope inside sectioning content.
-      SCOPED_CHROME = (PAGE_CHROME_NAMES | Set[:nav]).to_set(&:to_s).freeze
-      ALWAYS_CHROME = IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze - SCOPED_CHROME
+      PAGE_CHROME = PAGE_CHROME_NAMES.to_set(&:to_s).freeze
+      ALWAYS_CHROME = IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze - PAGE_CHROME - Set['nav']
+      UTILITY_LANDMARK = UTILITY_LANDMARK_NAMES.to_set(&:to_s).freeze
       SECTIONING = SECTIONING_NAMES.to_set(&:to_s).freeze
       # ARIA roles whose subtree is chrome anywhere (+search+ is not: it may wrap the result list).
       CHROME_ROLES = Set['navigation', 'menu', 'menubar', 'dialog', 'alertdialog'].freeze
       # ARIA landmark roles that, like header/footer, are chrome only at page level.
       PAGE_CHROME_ROLES = Set['banner', 'contentinfo'].freeze
+      # Utility landmark roles: the chrome roles plus +complementary+ (the aside role).
+      UTILITY_ROLES = (CHROME_ROLES | Set['complementary']).freeze
       # A nav or list labelled (aria-label) or classed as pagination is chrome in any scope.
       PAGER_NAMES = Set['nav', 'ul', 'ol'].freeze
       PAGER_LABEL = /pagin(?:at|ac|az|er|ier)|\bpager\b|\bpaging\b|\bpage navigation\b/i
@@ -42,37 +45,59 @@ module Html2rss
       # A nav linking rel=next/prev is a pager; lists are exempt (a feed list may end in a "more" link).
       PAGER_LINK_XPATH = %w[next prev previous].map { "contains(concat(' ', normalize-space(@rel), ' '), ' #{_1} ')" }
                                                .join(' or ').then { ".//a[#{_1}]" }.freeze
-      private_constant :SCOPED_CHROME, :ALWAYS_CHROME, :SECTIONING, :CHROME_ROLES, :PAGE_CHROME_ROLES,
-                       :PAGER_NAMES, :PAGER_LABEL, :PAGER_CLASS, :PAGER_LINK_XPATH
+      private_constant :PAGE_CHROME, :ALWAYS_CHROME, :UTILITY_LANDMARK, :SECTIONING, :CHROME_ROLES,
+                       :PAGE_CHROME_ROLES, :UTILITY_ROLES, :PAGER_NAMES, :PAGER_LABEL, :PAGER_CLASS,
+                       :PAGER_LINK_XPATH
 
       ##
       # The single chrome-scope rule, folded down the tree by both the SST normalizer
-      # and the Nokogiri ancestor walk: +:chrome+ sticks; ARIA navigation, menu and dialog
-      # roles are chrome; header/footer/nav and the banner/contentinfo roles are chrome only
-      # at +:page+ level, so card headers and in-content nav lists inside
-      # article/section/aside/main stay content; a pager (a nav or list labelled or classed
-      # as pagination, or a nav linking rel=next/prev) is chrome in any scope.
+      # and the Nokogiri ancestor walk. +:chrome+ sticks: dialog and the ARIA navigation,
+      # menu and dialog roles are chrome; header/footer/nav and the banner/contentinfo roles
+      # are chrome only at +:page+ level; a pager (a nav or list labelled or classed as
+      # pagination, or a nav linking rel=next/prev) is chrome in any scope. Otherwise a
+      # utility landmark ({.utility_landmark?}) opens a sticky +:peripheral+ scope, and
+      # article/section/main (or role=main) open +:sectioned+, so card headers and in-content
+      # nav lists stay out of chrome.
       #
       # @param element [Nokogiri::XML::Element] element being entered
-      # @param scope [Symbol] parent scope: +:page+, +:sectioned+, or +:chrome+
+      # @param scope [Symbol] parent scope: +:page+, +:sectioned+, +:peripheral+, or +:chrome+
       # @return [Symbol] scope the element's subtree inherits
       def self.chrome_scope(element, scope)
         tag = Html::Probe.tag(element)
-        return :chrome if scope == :chrome || chrome?(element, tag, scope)
+        roles = role_tokens(element['role'])
+        return :chrome if scope == :chrome || chrome?(element, tag, roles, scope)
+        return :peripheral if scope == :peripheral || utility?(tag, roles)
 
-        SECTIONING.include?(tag) ? :sectioned : scope
+        SECTIONING.include?(tag) || roles.include?('main') ? :sectioned : scope
       end
 
-      def self.chrome?(element, tag, scope)
-        return true if ALWAYS_CHROME.include?(tag) || chrome_role?(element['role'], scope)
+      ##
+      # Utility landmark: nav/aside/footer/menu, or a navigation, menu, dialog or
+      # complementary role. Peripheral content when not chrome; never an article card.
+      #
+      # @param tag [String] folded tag name
+      # @param role [String, nil] raw +role+ attribute
+      # @return [Boolean]
+      def self.utility_landmark?(tag, role) = utility?(tag, role_tokens(role))
 
-        (scope == :page && SCOPED_CHROME.include?(tag)) || pager?(element, tag)
-      end
+      ##
+      # Chrome only at page level: header/footer, or the banner/contentinfo role.
+      #
+      # @param tag [String] folded tag name
+      # @param role [String, nil] raw +role+ attribute
+      # @return [Boolean]
+      def self.page_level_chrome?(tag, role) = page_level?(tag, role_tokens(role))
 
-      def self.chrome_role?(role, scope)
-        role.to_s.downcase.split.any? do |token|
-          CHROME_ROLES.include?(token) || (scope == :page && PAGE_CHROME_ROLES.include?(token))
-        end
+      def self.role_tokens(role) = role ? role.downcase.split : []
+
+      def self.utility?(tag, roles) = UTILITY_LANDMARK.include?(tag) || roles.any? { UTILITY_ROLES.include?(_1) }
+
+      def self.page_level?(tag, roles) = PAGE_CHROME.include?(tag) || roles.any? { PAGE_CHROME_ROLES.include?(_1) }
+
+      def self.chrome?(element, tag, roles, scope)
+        return true if ALWAYS_CHROME.include?(tag) || roles.any? { CHROME_ROLES.include?(_1) }
+
+        (scope == :page && (tag == 'nav' || page_level?(tag, roles))) || pager?(element, tag)
       end
 
       def self.pager?(element, tag)
@@ -81,7 +106,7 @@ module Html2rss
 
         tag == 'nav' && !element.at_xpath(PAGER_LINK_XPATH).nil?
       end
-      private_class_method :chrome?, :chrome_role?, :pager?
+      private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?
     end
   end
 end

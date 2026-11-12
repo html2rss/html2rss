@@ -249,6 +249,25 @@ RSpec.describe Html2rss::SST::Normalizer do
                            'nav_page_nav' => true, 'list_pager' => true, 'list_rel' => false,
                            'class_pager' => true, 'paginated_list' => false, 'div_pager' => false)
     end
+
+    it 'records peripheral scope for utility landmarks that are not chrome' do # rubocop:disable RSpec/ExampleLength
+      doc = described_class.call(<<~HTML)
+        <html><body>
+          <aside><header><a id="aside_header" href="/a">A</a></header></aside>
+          <div role="complementary"><a id="complementary" href="/b">B</a></div>
+          <dialog open><a id="dialog" href="/c">C</a></dialog>
+          <div role="main"><header><a id="role_main_header" href="/d">D</a></header>
+            <nav aria-label="Latest"><a id="main_nav" href="/e">E</a></nav></div>
+        </body></html>
+      HTML
+      scopes = doc.root.find_all(&:link?).to_h do |link|
+        [link.attrs.id, [doc.index.ignored_chrome?(link), doc.index.peripheral?(link)]]
+      end
+
+      expect(scopes).to eq('aside_header' => [false, true], 'complementary' => [false, true],
+                           'dialog' => [true, false], 'role_main_header' => [false, false],
+                           'main_nav' => [false, true])
+    end
   end
 
   describe '.call text order' do
@@ -271,22 +290,45 @@ RSpec.describe Html2rss::SST::Normalizer do
 
   describe 'chrome scope rule (SST::Tags.chrome_scope)' do
     {
-      %w[div page] => :page,
-      %w[header page] => :chrome,
-      %w[footer page] => :chrome,
-      %w[nav page] => :chrome,
-      %w[nav sectioned] => :sectioned,
-      %w[header sectioned] => :sectioned,
-      %w[section page] => :sectioned,
-      %w[article chrome] => :chrome,
-      %w[div sectioned] => :sectioned,
-      %w[svg sectioned] => :chrome
-    }.each do |(tag, scope), expected|
-      it "maps #{tag} under #{scope} to #{expected}" do
-        element = Nokogiri::HTML::DocumentFragment.parse("<#{tag}></#{tag}>").child
+      %w[<div> page] => :page,
+      %w[<header> page] => :chrome,
+      %w[<footer> page] => :chrome,
+      %w[<nav> page] => :chrome,
+      %w[<dialog> sectioned] => :chrome,
+      %w[<nav> sectioned] => :peripheral,
+      %w[<footer> sectioned] => :peripheral,
+      %w[<aside> page] => :peripheral,
+      %w[<menu> page] => :peripheral,
+      ['<div role="complementary">', 'page'] => :peripheral,
+      %w[<header> peripheral] => :peripheral,
+      %w[<article> peripheral] => :peripheral,
+      ['<div role="banner">', 'peripheral'] => :peripheral,
+      ['<div role="navigation">', 'peripheral'] => :chrome,
+      %w[<header> sectioned] => :sectioned,
+      %w[<section> page] => :sectioned,
+      ['<div role="main">', 'page'] => :sectioned,
+      ['<div role="MAIN">', 'page'] => :sectioned,
+      ['<div role="mainly">', 'page'] => :page,
+      %w[<article> chrome] => :chrome,
+      %w[<div> sectioned] => :sectioned,
+      %w[<svg> sectioned] => :chrome
+    }.each do |(markup, scope), expected|
+      it "maps #{markup} under #{scope} to #{expected}" do
+        element = Nokogiri::HTML::DocumentFragment.parse(markup).child
 
         expect(Html2rss::SST::Tags.chrome_scope(element, scope.to_sym)).to eq(expected)
       end
+    end
+
+    it 'judges utility landmarks and page-level chrome by tag and role', :aggregate_failures do
+      tags = Html2rss::SST::Tags
+
+      expect(%w[nav aside footer menu].map { tags.utility_landmark?(_1, nil) }).to all(be(true))
+      expect(%w[navigation menu menubar dialog alertdialog complementary].map { tags.utility_landmark?('div', _1) })
+        .to all(be(true))
+      expect([tags.utility_landmark?('div', 'search'), tags.utility_landmark?('div', nil)]).to eq([false, false])
+      expect([tags.page_level_chrome?('header', nil), tags.page_level_chrome?('div', 'Contentinfo')]).to eq([true, true])
+      expect([tags.page_level_chrome?('nav', nil), tags.page_level_chrome?('div', 'main')]).to eq([false, false])
     end
   end
 end

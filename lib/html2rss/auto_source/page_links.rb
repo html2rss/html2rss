@@ -6,9 +6,10 @@ module Html2rss
     # Where each URL is rendered on the page, and which URLs the page marks as sponsored.
     #
     # Keys are {Html2rss::Url#article_identity}, so scheme, tracking query params, trailing
-    # slashes and fragments do not split a URL; other query params stay significant. Chrome
-    # comes from the SST chrome flag ({SST::Normalizer}); utility landmarks that are not chrome
-    # (+aside+, +menu+, sectioned +footer+) are peripheral.
+    # slashes and fragments do not split a URL; other query params stay significant. Chrome and
+    # peripheral both come from the one SST scope rule ({SST::Tags.chrome_scope}, read through
+    # {SST::Index#ignored_chrome?} and {SST::Index#peripheral?}): utility landmarks that are not
+    # chrome (+aside+, +menu+, role=complementary, in-content +nav+, sectioned +footer+) are peripheral.
     # A URL rendered several times keeps its strongest placement.
     #
     # Each {LinkDestination::Sponsorship} marker is scoped by {SponsoredCards}: a container marks every
@@ -103,7 +104,7 @@ module Html2rss
           @content_urls = {}
           @index = document&.index
           @link_resolver = link_resolver
-          walk(document.root, false) if document
+          @index&.each_node { record(_1) if _1.link? }
           @sparse = document.nil? || document.degraded || content_link_count <= SPARSE_MAX_CONTENT_LINKS
           freeze
         end
@@ -121,18 +122,12 @@ module Html2rss
 
         private
 
-        def walk(node, peripheral)
-          peripheral ||= node.utility_landmark?
-          record(node, peripheral) if node.link?
-          node.children.each { walk(_1, peripheral) }
-        end
-
-        def record(anchor, peripheral)
+        def record(anchor)
           url = @link_resolver.destination_facts(anchor)&.url
           return unless url
 
           key = url.article_identity
-          placement = anchor_placement(anchor, peripheral)
+          placement = anchor_placement(anchor)
           current = @by_key[key]
           return unless current.nil? || RANKS.fetch(placement) < RANKS.fetch(current)
 
@@ -140,10 +135,10 @@ module Html2rss
           @content_urls[key] = url if placement == :content
         end
 
-        def anchor_placement(anchor, peripheral)
+        def anchor_placement(anchor)
           return :chrome if @index.ignored_chrome?(anchor)
 
-          peripheral ? :peripheral : :content
+          @index.peripheral?(anchor) ? :peripheral : :content
         end
 
         def content_link_count = @by_key.count { |_key, placement| placement == :content }

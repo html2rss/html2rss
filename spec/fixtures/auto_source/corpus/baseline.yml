@@ -78,6 +78,24 @@ chrome_role_search_results.html:
   expected: 5
   title_misses: 0
   sst_built: true
+chrome_t1b_complementary_peripheral.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  sst_built: true
+chrome_t1b_dialog_element.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_t1b_role_main_card_headers.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 json_response_articles.json:
   junk: 0
   real: 4

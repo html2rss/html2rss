@@ -6,8 +6,7 @@ RSpec.describe Html2rss::Html::Navigator do
   describe 'tag vocabulary' do
     {
       HEADING_TAGS: [:HEADING_NAMES, %w[h1 h2 h3 h4 h5 h6]],
-      IGNORED_CONTAINER_TAGS: [:IGNORED_CONTAINER_NAMES, %w[nav footer header svg script style]],
-      UTILITY_LANDMARK_TAGS: [:UTILITY_LANDMARK_NAMES, %w[nav aside footer menu]]
+      IGNORED_CONTAINER_TAGS: [:IGNORED_CONTAINER_NAMES, %w[nav footer header dialog svg script style]]
     }.each do |navigator_const, (tags_const, values)|
       it "derives #{navigator_const} from SST::Tags::#{tags_const} with no delta" do
         derived = Html2rss::SST::Tags.const_get(tags_const).to_set(&:to_s)
@@ -158,6 +157,20 @@ RSpec.describe Html2rss::Html::Navigator do
       usable = %w[ph pf ah af mh nh].to_h { |id| [id, described_class.usable_card_parent?(document.at_css("##{id}"))] }
 
       expect(usable).to eq('ph' => false, 'pf' => false, 'ah' => true, 'af' => true, 'mh' => true, 'nh' => false)
+    end
+
+    it 'stops at utility landmark roles and page-level banner/contentinfo roles' do # rubocop:disable RSpec/ExampleLength
+      html = '<body><div id="rn" role="navigation"></div><div id="rc" role="complementary"></div>' \
+             '<div id="rd" role="dialog"></div><dialog id="dl"></dialog><div id="rs" role="search"></div>' \
+             '<div id="pb" role="banner"></div><article><div id="ab" role="banner"></div></article></body>'
+      ids = %w[rn rc rd dl rs pb ab]
+      expected = { 'rn' => false, 'rc' => false, 'rd' => false, 'dl' => false, 'rs' => true, 'pb' => false,
+                   'ab' => true }
+      sst_root = Html2rss::SST::Normalizer.call(html).root
+      nokogiri = ids.to_h { |id| [id, described_class.usable_card_parent?(Nokogiri::HTML(html).at_css("##{id}"))] }
+      sst = ids.to_h { |id| [id, described_class.usable_card_parent?(sst_root.find_all { _1.attrs.id == id }.first)] }
+
+      expect([nokogiri, sst]).to eq([expected, expected])
     end
 
     describe 'chrome-scope parity between Nokogiri and SST nodes' do
