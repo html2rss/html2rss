@@ -198,6 +198,12 @@ sponsored_rel_link.html:
   expected: 4
   title_misses: 0
   sst_built: true
+sponsored_section_headers.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 sponsored_section_labels.html:
   junk: 0
   real: 4

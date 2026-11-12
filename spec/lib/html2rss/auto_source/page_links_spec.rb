@@ -522,9 +522,13 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
 
       it 'marks every card unit of a section the label opens' do
-        paths = %w[/news/pub-one /news/pub-two /news/pub-three /news/rail-one /news/rail-two /news/strip-one
-                   /news/strip-two]
+        paths = %w[/news/pub-one /news/pub-two /news/pub-three /news/rail-one /news/rail-two]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, true] })
+      end
+
+      it 'marks no section from a bare label in plain text before the cards' do
+        expect(sponsored['/news/strip-one',
+                         '/news/strip-two']).to eq('/news/strip-one' => false, '/news/strip-two' => false)
       end
 
       it 'marks no section with its own heading, an anchor before the label, an ad word, or headings as cards' do
@@ -577,12 +581,13 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
       it 'marks no card beside an ad box or a wrapper holding more than the label' do
         paths = %w[/news/box-a /news/box-b /news/trail-a /news/trail-b /news/trail-c /news/trail-d /news/note-a
-                   /news/note-b /news/nest-a /news/nest-b]
+                   /news/note-b]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
       end
 
-      it 'marks the cards beside a wrapper holding only the label' do
-        expect(sponsored['/news/head-a', '/news/head-b']).to eq('/news/head-a' => true, '/news/head-b' => true)
+      it 'marks the cards beside a header box around the label' do
+        paths = %w[/news/head-a /news/head-b /news/nest-a /news/nest-b]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, true] })
       end
     end
 
@@ -598,7 +603,7 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
               <article><h3><a href="/news/split-b">B</a></h3></article><h4>Aside</h4></div></div>
             <div class="row"><article><p>Sponsored</p></article>
               <article><h3><a href="/news/past-a">A</a></h3></article><article><h3><a href="/news/past-b">B</a></h3></article></div>
-            <div class="row"><img src="/logo.png" alt=""><div><p>Sponsored</p></div>
+            <div class="row"><img src="/logo.png" alt=""><div class="head"><p>Sponsored</p></div>
               <div class="c"><h3><a href="/news/later-a">A</a></h3></div><div class="c"><h3><a href="/news/later-b">B</a></h3></div></div>
           </main></body></html>
         HTML
@@ -623,15 +628,22 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
         expect(sponsored['/news/past-a', '/news/past-b']).to eq('/news/past-a' => false, '/news/past-b' => false)
       end
 
-      it 'finds the wrapper around the label behind an earlier child' do
+      it 'finds the header box behind an earlier wordless child' do
         expect(sponsored['/news/later-a', '/news/later-b']).to eq('/news/later-a' => true, '/news/later-b' => true)
       end
     end
 
-    context 'when a paid label captions an ad slot' do
+    context 'when a paid label sits in plain text or an ad box before cards' do
       let(:html) do
         <<~HTML
           <html><body><main>
+            <div class="row"><p>Sponsored</p><iframe class="ad" src="/ads/frame"></iframe>
+              <div class="c"><h3><a href="/news/frame-a">A</a></h3></div><div class="c"><h3><a href="/news/frame-b">B</a></h3></div>
+              <div class="c"><h3><a href="/news/frame-c">C</a></h3></div></div>
+            <section><header><span>Sponsored</span><img src="/partner.png" alt=""></header>
+              <article><h3><a href="/news/logo-a">A</a></h3></article><article><h3><a href="/news/logo-b">B</a></h3></article></section>
+            <div class="module"><div class="module__head"><span>Sponsored</span><div class="logo"><svg></svg></div></div>
+              <div class="c"><h3><a href="/news/svg-a">A</a></h3></div><div class="c"><h3><a href="/news/svg-b">B</a></h3></div></div>
             <div class="row"><p class="ad-caption">Sponsored</p><div class="ad-slot"></div>
               <div class="c"><h3><a href="/news/cap-a">A</a></h3></div><div class="c"><h3><a href="/news/cap-b">B</a></h3></div>
               <div class="c"><h3><a href="/news/cap-c">C</a></h3></div></div>
@@ -657,14 +669,15 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
       let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
 
-      it 'marks no card after an empty slot beside the label or its wrapper, nor beside a fuller header' do
-        paths = %w[/news/cap-a /news/cap-b /news/cap-c /news/list-a /news/list-b /news/list-c /news/one
-                   /news/below-a /news/below-b /news/fuller-a /news/fuller-b]
+      it 'marks no card after a plain-text label or an ad box, whatever the slot' do
+        paths = %w[/news/frame-a /news/frame-b /news/frame-c /news/cap-a /news/cap-b /news/cap-c /news/list-a
+                   /news/list-b /news/list-c /news/one /news/below-a /news/below-b]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
       end
 
-      it 'marks cards under a header with a logo, a name or an icon by the label, ahead of an empty box' do
-        paths = %w[/news/paid-a /news/paid-b /news/named-a /news/named-b /news/icon-a /news/icon-b]
+      it 'marks cards under a header holding a logo, a name, a line or an icon beside the label' do
+        paths = %w[/news/logo-a /news/logo-b /news/svg-a /news/svg-b /news/paid-a /news/paid-b /news/named-a
+                   /news/named-b /news/fuller-a /news/fuller-b /news/icon-a /news/icon-b]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, true] })
       end
     end

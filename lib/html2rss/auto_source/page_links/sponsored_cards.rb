@@ -19,7 +19,7 @@ module Html2rss
       #   a card with several headlines marks nothing, and so does a label outside every card.
       # - A +:paid_label+ outside every anchor binds at its first ancestor holding a destination after it
       #   (none before it) and climbs no further. There {LabelBinding} decides whether it marks every
-      #   destination of that frame: one card with a heading or a section, never when it captions an ad slot.
+      #   destination of that frame: the one card it labels alone, or the section it heads.
       #
       # Marking is per card: a URL is sponsored only when every anchor to it sits in a marked card,
       # so a promo slot never hides the editorial card linking the same story.
