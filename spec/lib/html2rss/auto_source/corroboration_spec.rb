@@ -300,6 +300,13 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
 
       expect(corroboration.page_order(items).map { _1.url.path }).to eq(%w[/a /b /c /d /e /f /x /y /z])
     end
+
+    it 'puts media items first, then the other items, each in document order' do
+      items = [build_article['/a'], build_article['/f', media: true], build_article['/y', media: true],
+               build_article['/c'], build_article['/e', media: true], build_article['/b']]
+
+      expect(corroboration.page_order(items).map { _1.url.path }).to eq(%w[/e /f /y /a /b /c])
+    end
   end
 
   describe '#media_page?' do

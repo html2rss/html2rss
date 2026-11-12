@@ -123,7 +123,7 @@ module Html2rss
       NEW_WINDOW_NOTICE = /
         \s*[(\[（【]\s*(?:
           opens\s+in\s+(?:a\s+)?new\s+(?:window|tab)|
-          (?:ö|oe)ffnet\s+(?:sich\s+)?in\s+(?:einem\s+)?neuem\s+(?:fenster|tab)|
+          (?:ö|oe)ffnet\s+(?:sich\s+)?in\s+(?:einem\s+neuen|neuem)\s+(?:fenster|tab)|
           ouvre\s+dans\s+(?:une\s+)?nouvel(?:le)?\s+(?:fen(?:ê|e)tre|onglet)|
           se\s+abre\s+en\s+(?:una\s+)?nueva\s+(?:ventana|pesta(?:ñ|n)a)|
           si\s+apre\s+in\s+(?:una\s+)?nuova\s+(?:finestra|scheda)|

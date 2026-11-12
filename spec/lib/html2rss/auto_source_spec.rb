@@ -478,10 +478,10 @@ RSpec.describe Html2rss::AutoSource do
       let(:news_paths) { ->(count) { Array.new(count) { "/news/2026/11/story-#{_1}" } } }
       let(:media_paths) { ->(count) { Array.new(count) { "/media/item-#{_1}" } } }
 
-      it 'keeps a media page in document order, news before the videos that follow it' do
+      it 'puts the media of a media page first, then the news, each in document order' do
         allow(response).to receive(:body).and_return(media_body.call(news: 8, media: 12, type: 'VideoObject',
                                                                      news_first: true))
-        expect(articles.map { _1.url.path }).to eq(news_paths[8] + media_paths[12])
+        expect(articles.map { _1.url.path }).to eq(media_paths[12] + news_paths[8])
       end
 
       it 'is a media page when the media are more than half of the shown cards, so media fill the limit' do

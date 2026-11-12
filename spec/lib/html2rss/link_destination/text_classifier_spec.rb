@@ -123,6 +123,7 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
   describe 'new-window notices' do
     [
       '(opens in new window)', '(opens in a new tab)', '(öffnet in neuem Fenster)', '(öffnet in neuem Tab)',
+      '(öffnet sich in einem neuen Fenster)', '(öffnet sich in einem neuen Tab)',
       '(ouvre dans une nouvelle fenêtre)', '(se abre en una nueva ventana)', '(si apre in una nuova finestra)',
       '(opent in nieuw venster)', '(otwiera się w nowym oknie)', '(öppnas i nytt fönster)', '（新しいウィンドウで開く）'
     ].each do |notice|
