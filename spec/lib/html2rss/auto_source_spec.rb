@@ -141,6 +141,38 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when structured items reach the limit only before Cleanup' do
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 3) }
+      let(:body) do
+        headlines = ['Schema story number one', 'Schema story number two', 'Too short']
+        items = headlines.each_with_index.map do |headline, index|
+          { '@type' => 'NewsArticle', 'headline' => headline, 'url' => "https://example.com/news/schema-#{index}" }
+        end
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => items }
+        list = items.map { %(<li><a href="#{_1['url']}">#{_1['headline']}</a></li>) }.join
+        card = '<article><h2><a href="/news/page-story">Page story read by the heuristic tier</a></h2></article>'
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><ul>#{list}</ul>#{card}</body></html>)
+      end
+
+      it 'counts admitted items only and reads the heuristic tier' do
+        expect(articles.map { _1.url.path }).to include('/news/page-story')
+      end
+    end
+
+    context 'when a matching scraper yields nothing' do
+      let(:body) do
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => [] }
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><p>Quiet page.</p></body></html>)
+      end
+
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      it 'does not warn that admission emptied the capture' do
+        articles
+        expect(Html2rss::Log).not_to have_received(:warn).with(/admission_emptied/)
+      end
+    end
+
     context 'when the response body is empty' do
       let(:body) { '' }
 
@@ -168,7 +200,7 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'when structured scrapers already yield enough articles' do
       let(:schema_items) do
-        Array.new(5) do |index|
+        Array.new(6) do |index|
           {
             '@type' => 'NewsArticle',
             'headline' => "Schema Story #{index} Extra Words Here",
@@ -200,6 +232,13 @@ RSpec.describe Html2rss::AutoSource do
             meta_oembed: { enabled: false }
           )
         )
+      end
+
+      it 'never builds the heuristic tier, also when the items exactly fill the limit', :aggregate_failures do
+        allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new).and_call_original
+        articles
+        described_class.new(response, config.merge(limit: schema_items.size)).articles
+        expect(Html2rss::AutoSource::Scraper::SemanticHtml).not_to have_received(:new)
       end
 
       it 'keeps Schema articles and skips heuristic titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -805,7 +844,8 @@ RSpec.describe Html2rss::AutoSource do
           expect(parsed).to include(
             'event_name' => 'auto_source.admission_emptied',
             'host' => url.host,
-            'hint' => Html2rss::AutoSource::Cleanup::DIFFERENT_DOMAIN_HINT
+            'hint' => Html2rss::AutoSource::Cleanup::DIFFERENT_DOMAIN_HINT,
+            'captured_count' => 2
           )
           expect(parsed['drop_tallies']).to include('different_domain' => 2)
         end
@@ -822,8 +862,10 @@ RSpec.describe Html2rss::AutoSource do
         described_class::DEFAULT_CONFIG.merge(cleanup: { keep_different_domain: true })
       end
 
-      it 'keeps the long-named off-domain item', :aggregate_failures do
+      it 'keeps the long-named off-domain item without an emptied warning', :aggregate_failures do
+        allow(Html2rss::Log).to receive(:warn)
         expect(articles.map(&:title)).to eq(['Long Enough App Name'])
+        expect(Html2rss::Log).not_to have_received(:warn)
         expect(articles.first.url.to_s).to eq('https://apps.example.net/app/id1234567890')
         expect(articles.first.scraper).to eq(Html2rss::AutoSource::Scraper::JsonDocument)
       end
