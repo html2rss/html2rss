@@ -238,7 +238,7 @@ RSpec.describe Html2rss::SST::Normalizer do
             <ul><li><a id="list_rel" rel="next" href="/j">J</a></li></ul>
             <nav class="gsc-pagination"><a id="class_pager" href="/k">K</a></nav>
             <ul class="paginated-list"><li><a id="paginated_list" href="/l">L</a></li></ul>
-            <div class="pagination" aria-label="Pagination"><a id="div_pager" href="/m">M</a></div>
+            <div class="pagination" aria-label="Pagination"><a id="div_pager" href="/m?page=2">2</a></div>
           </main>
         </body></html>
       HTML
@@ -257,6 +257,11 @@ RSpec.describe Html2rss::SST::Normalizer do
       '<ol aria-label="Paginación"><li><a rel="Prev" href="/a">Atrás</a></li></ol>' => true,
       '<ul class="pagination"><li><a href="/a">Story one</a></li><li><a href="/b">Story two</a></li></ul>' => false,
       '<ul class="pagination"></ul>' => false,
+      '<ul class="pagination"><li><a href="/a">2</a></li><li><a href="/b">B b</a></li><li><a href="/c">C c</a></li></ul>' =>
+        false,
+      '<ul class="pagination"><li><a href="/a"> 2 </a></li><li><a>Story</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a" data-next="/page/3">Story</a></li></ul>' => false,
+      '<nav><a href="/a">The pager returns</a></nav>' => false,
       '<ul aria-label="Paginated list of articles"><li><a href="/news/?page=2">2</a></li></ul>' => false,
       '<ul class="teaser-list js-pagination-container"><li><a href="/x?page=2">2</a></li></ul>' => false,
       '<ol class="list paging-container"><li><a href="/x?page=2">2</a></li></ol>' => false,
