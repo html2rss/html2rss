@@ -5,7 +5,11 @@ require 'rss'
 module Html2rss
   module Syndication
     ##
-    # Parses RSS 2.0, RSS 1.0 (RDF), and Atom documents into AutoSource article hashes.
+    # Parses RSS 2.0, RSS 1.0 (RDF), and Atom documents into AutoSource article hashes, with the media
+    # files and image each item declares ({ItemMedia}).
+    #
+    # An Atom entry's URL is its +rel="alternate"+ link or a link without +rel+; an entry with neither
+    # (only +enclosure+, +self+ or other links) has no URL and is skipped like any item without one.
     module Parser
       class << self
         ##
@@ -23,9 +27,10 @@ module Html2rss
         # @param base_url [String, Html2rss::Url, nil] fallback base for relative item links
         # @return [Array<Hash{Symbol => Object}>]
         def parse(body, base_url: nil)
-          feed = RSS::Parser.parse(body.to_s, false)
+          items = items_from(RSS::Parser.parse(body.to_s, false))
+          media = ItemMedia.for_items(body, count: items.size) { |raw| absolute_url(raw, base_url:) }
 
-          items_from(feed).filter_map { |item| article_hash(item, base_url:) }
+          items.zip(media).filter_map { |item, item_media| article_hash(item, item_media, base_url:) }
         rescue RSS::Error => error
           Log.warn({
             event_name: 'syndication.parse_failed',
@@ -45,33 +50,33 @@ module Html2rss
           end
         end
 
-        def article_hash(item, base_url:)
+        def article_hash(item, media, base_url:)
           case item
-          when RSS::Rss::Channel::Item then rss_item_hash(item, base_url:)
-          when RSS::RDF::Item then rdf_item_hash(item, base_url:)
-          when RSS::Atom::Feed::Entry then atom_entry_hash(item, base_url:)
+          when RSS::Rss::Channel::Item then rss_item_hash(item, media, base_url:)
+          when RSS::RDF::Item then rdf_item_hash(item, media, base_url:)
+          when RSS::Atom::Feed::Entry then atom_entry_hash(item, media, base_url:)
           end
         end
 
-        def rss_item_hash(item, base_url:)
+        def rss_item_hash(item, media, base_url:)
           article(
-            absolute_url(item.link, base_url:),
+            absolute_url(item.link, base_url:), media,
             id: item.guid&.content, title: item.title, description: item.description,
             published_at: item.pubDate, author: item.author, categories: item.categories.map(&:content)
           )
         end
 
-        def rdf_item_hash(item, base_url:)
+        def rdf_item_hash(item, media, base_url:)
           article(
-            absolute_url(item.link, base_url:),
+            absolute_url(item.link, base_url:), media,
             id: item.about, title: item.title, description: item.description,
             published_at: item.dc_date, author: item.dc_creator, categories: item.dc_subjects.map(&:content)
           )
         end
 
-        def atom_entry_hash(entry, base_url:)
+        def atom_entry_hash(entry, media, base_url:)
           article(
-            atom_link(entry, base_url:),
+            atom_link(entry, base_url:), media,
             id: entry.id&.content, title: entry.title&.content, description: atom_text(entry.content, entry.summary),
             published_at: atom_text(entry.published, entry.updated),
             author: atom_author(entry), categories: entry.categories.map(&:term)
@@ -79,18 +84,19 @@ module Html2rss
         end
 
         ##
-        # Single owner of the article hash shape: blank text becomes absent, +id+ falls back to the url.
-        def article(url, id:, title:, description:, published_at:, author:, categories:) # rubocop:disable Metrics/ParameterLists -- the article shape
+        # Single owner of the article hash shape: blank text becomes absent, +id+ falls back to the url,
+        # +media+ adds the item's +enclosures+ and +image+.
+        def article(url, media, id:, title:, description:, published_at:, author:, categories:) # rubocop:disable Metrics/ParameterLists -- the article shape
           return unless url
 
           {
             id: present(id) || url.to_s,
             title: present(title),
             description: present(description),
-            url:,
-            published_at:,
+            url:, published_at:,
             author: present(author),
-            categories: categories.filter_map { |category| present(category) }
+            categories: categories.filter_map { |category| present(category) },
+            **media
           }.compact
         end
 
@@ -98,7 +104,7 @@ module Html2rss
 
         def atom_link(entry, base_url:)
           links = entry.links
-          link = links.find { |node| node.rel.nil? || node.rel == 'alternate' } || links.first
+          link = links.find { |node| node.rel.nil? || node.rel == 'alternate' }
           absolute_url(link&.href, base_url:)
         end
 

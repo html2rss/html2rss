@@ -137,6 +137,27 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with a native feed episode and a page card carrying another file' do
+      let(:feed_item) do
+        Html2rss::Article.new(id: 'feed-1', title: 'Episode one of the show', url: 'https://example.com/story',
+                              enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/feed/1.mp3'),
+                                             type: 'audio/mpeg', bytes_length: 12_345, duration: 2700 }],
+                              scraper: Html2rss::AutoSource::Scraper::NativeFeed)
+      end
+      let(:articles) do
+        [feed_item,
+         Html2rss::Article.new(id: 'card-1', title: 'Episode one of the show', url: 'https://example.com/story/',
+                               enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/page/1.mp3') }],
+                               scraper: Html2rss::AutoSource::Scraper::SemanticHtml)]
+      end
+
+      it 'keeps the feed enclosure' do
+        feed_file = have_attributes(url: Html2rss::Url.from_absolute('https://example.com/feed/1.mp3'),
+                                    duration: 2700)
+        expect(result.articles).to contain_exactly(have_attributes(enclosures: contain_exactly(feed_file)))
+      end
+    end
+
     context 'with a read-more copy of an article that also has a real title' do
       let(:read_more_first) do
         instance_double(Html2rss::Article, valid?: true, url: articles.first.url,

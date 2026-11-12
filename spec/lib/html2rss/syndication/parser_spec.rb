@@ -138,6 +138,22 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(described_class.parse(body).first[:id]).to eq('https://example.com/a')
     end
 
+    it 'carries RSS 1.0 (RDF) item media files' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/"
+                 xmlns:media="http://search.yahoo.com/mrss/">
+          <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link>
+            <description>d</description></channel>
+          <item rdf:about="https://example.com/r/1"><title>Talk</title><link>https://example.com/r/1</link>
+            <media:content url="https://example.com/r/1.mp3" type="audio/mpeg"/></item>
+        </rdf:RDF>
+      XML
+
+      expect(described_class.parse(body).first[:enclosures])
+        .to eq([{ url: Html2rss::Url.from_absolute('https://example.com/r/1.mp3'), type: 'audio/mpeg' }])
+    end
+
     it 'parses RSS 1.0 (RDF) items with Dublin Core fields', :aggregate_failures do
       body = File.read('spec/fixtures/syndication/rss1_dc_date.xml')
 
@@ -257,7 +273,7 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(described_class.parse(body).first[:categories]).to eq(%w[News Tech])
     end
 
-    it 'prefers the Atom alternate link over self links', :aggregate_failures do
+    it 'takes the Atom alternate link and skips an entry with only a self link', :aggregate_failures do
       body = <<~XML
         <?xml version="1.0"?>
         <feed xmlns="http://www.w3.org/2005/Atom">
@@ -278,7 +294,7 @@ RSpec.describe Html2rss::Syndication::Parser do
 
       urls = described_class.parse(body).map { |article| article[:url].to_s }
 
-      expect(urls).to eq(%w[https://example.com/e/alt https://example.com/self/only.atom])
+      expect(urls).to eq(%w[https://example.com/e/alt])
     end
 
     it 'resolves relative Atom links against base_url and drops them without one', :aggregate_failures do
@@ -370,6 +386,47 @@ RSpec.describe Html2rss::Syndication::Parser do
       XML
 
       expect(described_class.parse(body)).to eq([])
+    end
+
+    it 'never takes an Atom enclosure link as the entry URL', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>Feed</title>
+          <entry><id>urn:example:episode</id><title>Episode</title>
+            <link rel="enclosure" type="audio/mpeg" length="12345" href="https://example.com/media/episode.mp3"/>
+            <link rel="alternate" href="https://example.com/episodes/1"/></entry>
+          <entry><id>urn:example:file</id><title>File only</title>
+            <link rel="enclosure" type="audio/mpeg" href="https://example.com/media/file.mp3"/></entry>
+        </feed>
+      XML
+
+      articles = described_class.parse(body)
+
+      expect(articles.map { |article| article[:url].to_s }).to eq(%w[https://example.com/episodes/1])
+      expect(articles.first[:enclosures]).to eq([{ url: Html2rss::Url.from_absolute('https://example.com/media/episode.mp3'),
+                                                   type: 'audio/mpeg', bytes_length: 12_345 }])
+    end
+
+    it 'carries RSS item enclosures and image, resolved against base_url', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+          <channel><title>Podcast</title>
+            <item><title>Episode 1</title><link>https://example.com/episodes/1</link>
+              <itunes:duration>45:00</itunes:duration><itunes:image href="art/1.jpg"/>
+              <enclosure url="media/1.mp3" type="audio/mpeg" length="12345"/></item>
+            <item><title>Post</title><link>https://example.com/posts/2</link></item>
+          </channel>
+        </rss>
+      XML
+
+      first, second = described_class.parse(body, base_url: 'https://example.com/feed.xml')
+
+      expect(first).to include(image: Html2rss::Url.from_absolute('https://example.com/art/1.jpg'),
+                               enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/media/1.mp3'),
+                                              type: 'audio/mpeg', bytes_length: 12_345, duration: 2700 }])
+      expect(second.keys).not_to include(:image, :enclosures)
     end
 
     it 'falls back to updated when Atom published is missing, and prefers published otherwise', :aggregate_failures do

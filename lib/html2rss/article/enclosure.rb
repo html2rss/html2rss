@@ -21,6 +21,8 @@ module Html2rss
       }.freeze
       # An ISO 8601 duration of days and time parts (+PT1H2M3S+, +PT45M+, +P1DT2H+).
       DURATION = /\AP(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?\z/
+      # A clock duration (+itunes:duration+, Media RSS): +HH:MM:SS+, +MM:SS+ or plain seconds.
+      CLOCK = /\A(?:(?:(\d+):)?(\d+):)?(\d+(?:\.\d+)?)\z/
       # Types of web pages (embed players, article pages), never a media file.
       PAGE_TYPES = %w[application/xhtml+xml].freeze
 
@@ -51,16 +53,24 @@ module Html2rss
         end
 
         ##
-        # Parses an ISO 8601 duration (Schema.org +duration+) into seconds.
+        # Parses a declared playback duration into seconds: ISO 8601 (Schema.org +duration+) or a
+        # clock (+itunes:duration+, Media RSS +duration+).
         #
-        # @param value [String, nil] e.g. +"PT1H2M3S"+, +"PT45M"+
+        # @param value [String, Integer, nil] e.g. +"PT1H2M3S"+, +"PT45M"+, +"1:02:03"+, +"45:00"+, +"2700"+
         # @return [Integer, nil] positive seconds, or nil when unparseable
         def parse_duration(value)
-          return unless (match = DURATION.match(value.to_s.strip.upcase))
+          return unless (parts = duration_parts(value.to_s.strip.upcase))
 
-          days, hours, minutes, seconds = match.captures.map(&:to_f)
+          days, hours, minutes, seconds = parts.map(&:to_f)
           total = ((days * 86_400) + (hours * 3600) + (minutes * 60) + seconds).round
           total if total.positive?
+        end
+
+        private
+
+        # @return [Array<String, nil>, nil] days, hours, minutes and seconds, or nil when no duration shape matches
+        def duration_parts(text)
+          DURATION.match(text)&.captures || CLOCK.match(text)&.captures&.unshift(nil)
         end
       end
 

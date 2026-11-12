@@ -8,6 +8,7 @@ Native RSS/Atom/RDF discovery and parse for auto-source promotion and direct fee
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Head `rel=alternate` + common path probes + status-gated feedish | `Syndication::Discovery`                                                                           |
 | RSS 2.0 / RSS 1.0 (RDF) / Atom → article hashes                  | `Syndication::Parser`                                                                              |
+| Item media files and image (enclosure, Media RSS, iTunes) → item | `Syndication::ItemMedia` (called by `Parser`; sizes and durations parse via `Article::Enclosure`) |
 | Strict head-only link parse (no path guessing)                   | `Html::FeedLink`                                                                                   |
 | Response Content-Type / body feed sniff                          | `RequestService::Response#feed_response?` (sole sniff owner; Discovery only adds HTTP status gate) |
 
