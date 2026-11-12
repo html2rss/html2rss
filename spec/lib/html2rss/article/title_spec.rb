@@ -34,6 +34,7 @@ RSpec.describe Html2rss::Article::Title do
       ['Storm ahead', 'Rubrique : Transports'] => 'Transports: Storm ahead',
       ['Storm ahead', 'Sección: Transporte'] => 'Transporte: Storm ahead',
       ['Storm ahead', 'Section: Harbor'] => 'Harbor: Storm ahead',
+      ['Storm ahead', 'Artikel: Verkehr'] => 'Verkehr: Storm ahead',
       ['Storm ahead', '09:05'] => 'Storm ahead',
       ['Storm ahead', 'Video'] => 'Storm ahead',
       ['Storm ahead', '   '] => 'Storm ahead',
@@ -195,6 +196,8 @@ RSpec.describe Html2rss::Article::Title do
       'Ämne:' => true, 'カテゴリー：' => true, 'Tipo di articolo: Video' => true, 'Artikeltype: Persbericht' => true,
       'Typ artykułu: Galeria' => true, 'Innehållstyp: Bildspel' => true, '記事の種類：動画' => true,
       '11月12日 16:42' => true, '2026年11月12日' => true, '11月12日' => true, '11月12日の会見' => false,
+      'Article:' => true, 'Artikel :' => true, 'Artículo:' => true, 'Articolo:' => true, 'Artykuł:' => true,
+      '記事：' => true, 'Article' => false, 'Article: Harbor' => false, 'Articles:' => false,
       'Video' => false, 'Conflict:' => false, 'Section: Harbor' => false,
       '10:00 Budget vote' => false, '' => false, nil => false
     }.each do |text, expected|
@@ -220,8 +223,9 @@ RSpec.describe Html2rss::Article::Title do
       'Thema:' => true, 'Thème :' => true, 'Tema:' => true, 'Topic:' => true, ' Section: ' => true, '19:47' => true,
       'Video' => true, 'Live Blog' => true, 'Diretta streaming' => true, 'Persbericht' => true,
       'Na żywo' => true, 'Liverapport' => true, '速報' => true, 'プレスリリース' => true, 'Sezione:' => true,
-      'Ämne:' => true, 'セクション：' => true, ' ' => true, nil => true, 'Verkehr' => false, 'Conflict:' => false,
-      'Hafen-Streit:' => false, 'Thema: Verkehr' => false, '28:25' => false, 'Video tour' => false
+      'Ämne:' => true, 'セクション：' => true, 'Article:' => true, 'Artikel:' => true, 'Artículo :' => true,
+      ' ' => true, nil => true, 'Verkehr' => false, 'Conflict:' => false,
+      'Hafen-Streit:' => false, 'Thema: Verkehr' => false, 'Artikel' => false, '28:25' => false, 'Video tour' => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
         expect(described_class.noise_piece?(text)).to be(expected)

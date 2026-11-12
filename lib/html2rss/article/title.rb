@@ -64,12 +64,14 @@ module Html2rss
       # followed by whitespace, so a sign (+–5 Grad+), a path (+/e/+) or a German »quote« is not one, nor
       # a comparison before a number (+> 50 Prozent+).
       SEPARATOR_MARK = %r{(?:[:|•·–—/»›→-]|>(?![[:space:]]*\d))(?=[[:space:]]|\z)}
-      # Screen-reader field labels (+Section:+) and type labels with their marker (+Article type: Video+).
+      # Screen-reader field labels (+Section:+, +Artikel:+) and type labels with their marker
+      # (+Article type: Video+). Each field label needs its colon: a bare +Article+ is a word.
       LABEL = /
         (?:section|category|topic|rubrik|ressort|kategorie|thema|rubrique|cat[ée]gorie|th[èe]me|secci[óo]n
           |categor[íi]a|tema|sezione|categoria|argomento|rubrica|sectie|categorie|onderwerp|rubriek
           |sekcja|kategoria|temat|dzia[łl]|sektion|kategori|[äa]mne
-          |セクション|カテゴリー?|ジャンル|分類)\s*[:：]
+          |article|artikel|art[íi]culo|articolo|artyku[łl]
+          |セクション|カテゴリー?|ジャンル|分類|記事)\s*[:：]
         | (?:article\s+type|content\s+type|artikeltyp|beitragstyp|inhaltstyp|type\s+d['’]article
             |type\s+de\s+contenu|tipo\s+de\s+art[íi]culo|tipo\s+de\s+contenido
             |tipo\s+di\s+articolo|tipo\s+di\s+contenuto|artikeltype|inhoudstype|soort\s+artikel
