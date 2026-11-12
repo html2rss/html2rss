@@ -175,6 +175,31 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
     end
   end
 
+  describe 'profile pages' do
+    [
+      %w[news staff maria-keller], %w[staff], %w[news authors], %w[autoren jonas-weber], %w[redaktion jonas-weber],
+      %w[redaccion ana-lopez], %w[auteur jean-dupont], %w[redazione giulia-ferri], %w[autori mario-rossi],
+      %w[redactie piet-jansen], %w[redakcja jan-kowalski], %w[skribent anna-lind], %w[著者 田中], %w[記者 山田-太郎]
+    ].each do |segments|
+      it "marks /#{segments.join('/')} as non-article", :aggregate_failures do
+        classifier = classifier_for(*segments)
+
+        expect(classifier.non_article_path?).to be(true)
+        expect(classifier.junk_path?).to be(true)
+      end
+    end
+
+    [
+      %w[news staff 2026 10 new-hires-announced], %w[sport team-staff-changes-before-derby],
+      %w[news author maria-keller story-of-the-week-here], %w[team maria-keller], %w[people maria-keller],
+      %w[news staff harbor-ferry-route-returns-after-repairs], %w[news staff 2026-10-hires]
+    ].each do |segments|
+      it "keeps /#{segments.join('/')} as content" do
+        expect(classifier_for(*segments).non_article_path?).to be(false)
+      end
+    end
+  end
+
   describe 'non-article destinations' do
     [
       %w[games], %w[spiele tetris-online], %w[juegos], %w[jeux], %w[giochi], %w[spellen], %w[gry], %w[ゲーム],

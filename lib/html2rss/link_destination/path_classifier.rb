@@ -29,6 +29,16 @@ module Html2rss
           'articulo', 'noticia', 'entrada', 'publicacion', 'actualite', 'nouvelle', 'teaser', 'card',
           'artykul', 'artykuł', 'wpis', 'notizia', 'articolo', 'bericht', 'nyhet', 'inlagg', 'inlägg'
         ]).freeze
+        # People pages. `team` and `people` are left out on purpose: they name sports teams and
+        # newsmakers in article paths. The words below are unambiguous byline/staff words.
+        profile = Set[
+          'author', 'authors', 'staff', 'journalist', 'journalists', 'contributor', 'contributors',
+          'autor', 'autoren', 'redaktion', 'redakteure', 'autores', 'redaccion', 'redacción', 'periodista',
+          'periodistas', 'auteur', 'auteurs', 'redaction', 'rédaction', 'journaliste', 'journalistes',
+          'autore', 'autori', 'redazione', 'giornalista', 'giornalisti', 'redactie', 'journalisten',
+          'autorzy', 'redakcja', 'dziennikarz', 'dziennikarze', 'skribent', 'skribenter', 'forfattare',
+          'författare', '著者', '執筆者', '記者', '編集部', 'ライター'
+        ].freeze
         # Destinations that are never articles: games, horoscopes, quizzes, obituaries, livestreams, players.
         non_article = Set[
           'games', 'spiele', 'juegos', 'jeux', 'giochi', 'spellen', 'spel', 'gry', 'ゲーム',
@@ -82,6 +92,7 @@ module Html2rss
           high_confidence_junk: (utility - SOFT_UTILITY).freeze,
           taxonomy:,
           non_article:,
+          profile:,
           vanity:,
           deep_post_context: Set['press', 'newsroom', 'presse', 'pressemitteilungen', 'prensa'].freeze
         }.freeze
@@ -95,6 +106,9 @@ module Html2rss
       HOST_SHAPED_SEGMENT = /\A(?:www\.)?(?:[\w-]+\.)+[a-z]{2,24}\z/i
       # Common file-extension suffixes excluded from host-shaped junk matching.
       FILE_EXTENSION_SEGMENT = /\.(?:pdf|jpe?g|png|gif|svg|webp|css|js|mjs|html?|xml|json|mp4|webm|zip|gz)\z/i
+
+      # A single person-name slug: letters only, up to three words (dated and id slugs carry digits).
+      NAME_SLUG = /\A\p{L}+(?:-\p{L}+){0,2}\z/
 
       # Pop-up / embedded player segments such as `popup-audio-player` (hyphens removed before matching).
       PLAYER_SEGMENT = /\A(?:(?:pop(?:up|out)|embed|audio|video|media)\w*)?player\z/
@@ -164,7 +178,7 @@ module Html2rss
       def non_article_path?
         return @non_article_path if defined?(@non_article_path)
 
-        @non_article_path = section_index? || (!strong_post_suffix? && non_article_word_present?)
+        @non_article_path = section_index? || profile_route? || (!strong_post_suffix? && non_article_word_present?)
       end
 
       # @return [Boolean] true when the route is shallow and contains high-confidence noise
@@ -192,6 +206,14 @@ module Html2rss
       def non_article_word?(word)
         joined = word.delete('-_')
         SEGMENT_SETS[:non_article].include?(joined) || joined.match?(PLAYER_SEGMENT)
+      end
+
+      # A people word that ends the path (an index) or is followed by one name slug (a profile page).
+      def profile_route?
+        profile = SEGMENT_SETS[:profile]
+        last = segments.size - 1
+        profile.include?(@lexicon[last]) ||
+          (last.positive? && profile.include?(@lexicon[last - 1]) && segments[last].match?(NAME_SLUG))
       end
 
       # A path ending in a section word (no slug) lists articles instead of being one.
