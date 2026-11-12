@@ -82,20 +82,29 @@ module Html2rss
 
       # Whole read-more labels that stand alone ("Continue reading", "Lire la suite", "続きを読む").
       READ_MORE_PHRASE = /
-        read\s+more|read\s+on|continue\s+reading|keep\s+reading|learn\s+more|read\s+the\s+(?:full\s+)?(?:story|article)|
-        weiterlesen|weiter\s+lesen|mehr\s+lesen|mehr\s+erfahren|
-        lire\s+la\s+suite|lire\s+plus|lire\s+l['’]article|en\s+savoir\s+plus|
+        read\s+more|read\s+on|continue\s+reading|keep\s+reading|learn\s+more|find\s+out\s+more|
+        read\s+(?:the\s+)?(?:full\s+|whole\s+)?(?:story|article)|read\s+the\s+rest|
+        weiterlesen|weiter\s+lesen|mehr\s+lesen|mehr\s+erfahren|mehr\s+dazu|mehr\s+zum\s+thema|
+        lesen\s+sie\s+(?:mehr|weiter)|(?:den\s+)?(?:ganzen|gesamten|vollst(?:ä|a)ndigen)\s+artikel\s+lesen|
+        lire\s+la\s+suite|lire\s+plus|lire\s+l['’]article(?:\s+complet)?|en\s+savoir\s+plus|
+        pour\s+en\s+savoir\s+plus|plus\s+d['’]infos?|plus\s+d['’]informations?|
         leer\s+m(?:á|a)s|seguir\s+leyendo|continuar\s+leyendo|saber\s+m(?:á|a)s|
+        m(?:á|a)s\s+informaci(?:ó|o)n|leer\s+(?:todo|el\s+art(?:í|i)culo\s+completo)|
         leggi\s+tutto|leggi\s+di\s+pi(?:ù|u)|leggi\s+l['’]articolo|continua\s+a\s+leggere|scopri\s+di\s+pi(?:ù|u)|
-        lees\s+meer|lees\s+verder|verder\s+lezen|meer\s+lezen|
-        czytaj\s+wi(?:ę|e)cej|czytaj\s+dalej|dowiedz\s+si(?:ę|e)\s+wi(?:ę|e)cej|
-        l(?:ä|a)s\s+mer|l(?:ä|a)s\s+vidare|forts(?:ä|a)tt\s+l(?:ä|a)sa|
-        続きを読む|もっと読む|続きはこちら|詳しくはこちら|詳細を見る
+        maggiori\s+informazioni|ulteriori\s+informazioni|per\s+saperne\s+di\s+pi(?:ù|u)|approfondisci|
+        lees\s+meer|lees\s+verder|verder\s+lezen|meer\s+lezen|meer\s+informatie|meer\s+weten|
+        lees\s+(?:het\s+)?(?:hele|volledige)\s+artikel|
+        czytaj\s+wi(?:ę|e)cej|czytaj\s+dalej|dowiedz\s+si(?:ę|e)\s+wi(?:ę|e)cej|wi(?:ę|e)cej\s+informacji|
+        czytaj\s+ca(?:ł|l)o(?:ś|s)(?:ć|c)|zobacz\s+wi(?:ę|e)cej|
+        l(?:ä|a)s\s+mer|l(?:ä|a)s\s+vidare|forts(?:ä|a)tt\s+l(?:ä|a)sa|mer\s+information|
+        l(?:ä|a)s\s+hela\s+artikeln|
+        続きを読む|もっと読む|続きはこちら|詳しくはこちら|詳細を見る|詳細はこちら|全文を読む|続きを見る
       /ix
       # "More about X" lead-ins: a read-more phrase or a bare "more", then a topic preposition.
       READ_MORE_TOPIC_LEAD = /
         (?:#{READ_MORE_PHRASE.source}|more|mehr|plus\s+d['’]infos?|m(?:á|a)s|altro|di\s+pi(?:ù|u)|meer|wi(?:ę|e)cej|mer)
-        \s+(?:about|on|from|zu|zum|zur|(?:ü|ue)ber|von|sur|(?:à|a)\s+propos\s+de|de|sobre|su|riguardo|over|van|
+        \s+(?:about|on|from|zu|zum\s+thema|zum|zur|(?:ü|ue)ber|von|sur|
+        (?:à|a)\s+propos\s+de|de|sobre|su|riguardo|over|van|
         o|na\s+temat|om|av)
       /ix
       # A read-more label as a whole text, optionally wrapped in punctuation or arrows. The topic after a
@@ -112,19 +121,24 @@ module Html2rss
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text matches a utility label
-      def utility?(text) = text.to_s.match?(UTILITY_PATTERN)
+      def utility?(text) = nfc(text).match?(UTILITY_PATTERN)
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text begins with a utility label
-      def utility_prefix?(text) = text.to_s.match?(UTILITY_PREFIX_PATTERN)
+      def utility_prefix?(text) = nfc(text).match?(UTILITY_PREFIX_PATTERN)
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text identifies recommendation chrome
-      def recommended?(text) = text.to_s.match?(RECOMMENDED_PATTERN)
+      def recommended?(text) = nfc(text).match?(RECOMMENDED_PATTERN)
 
       # @param text [String, #to_s] visible anchor text or extracted title
       # @return [Boolean] true when the whole text is a read-more label, bare or with its topic
-      def read_more?(text) = text.to_s.unicode_normalize(:nfc).match?(READ_MORE_PATTERN)
+      def read_more?(text) = nfc(text).match?(READ_MORE_PATTERN)
+
+      private
+
+      # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary.
+      def nfc(text) = text.to_s.unicode_normalize(:nfc)
     end
   end
 end

@@ -1,0 +1,17 @@
+---
+case: Link-only teasers labelled "Find out more" style (en de nl es) beside a headline list to the same
+  articles; only the headlines are items.
+expected:
+- https://example.com/news/2026/11/tram-depot-expansion-approved
+- https://example.com/news/2026/11/lake-path-resurfacing-done
+- https://example.com/news/2026/11/gemeinde-radweg-eroeffnet
+- https://example.com/news/2026/11/schule-bekommt-neue-aula
+- https://example.com/news/2026/11/markt-verhuist-naar-plein
+- https://example.com/news/2026/11/museo-abre-sala-nueva
+titles:
+  https://example.com/news/2026/11/tram-depot-expansion-approved: Tram depot expansion approved by the council
+  https://example.com/news/2026/11/lake-path-resurfacing-done: Lake path resurfacing is finished ahead of summer
+  https://example.com/news/2026/11/gemeinde-radweg-eroeffnet: Gemeinde eröffnet den neuen Radweg am Fluss
+  https://example.com/news/2026/11/schule-bekommt-neue-aula: Grundschule bekommt eine neue Aula
+  https://example.com/news/2026/11/markt-verhuist-naar-plein: De weekmarkt verhuist naar het stationsplein
+  https://example.com/news/2026/11/museo-abre-sala-nueva: El museo abre una sala nueva dedicada a la costa

@@ -85,7 +85,10 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     [
       'Read more', 'Continue reading »', 'Learn more', 'More about «Harbor ferry»',
       'More about „Hafen“', 'Mehr über "Hafen"', "More about 'Harbor'", 'More about “Harbor”', 'Mehr über 「港」',
-      'Weiterlesen', 'Mehr zu «Hafen»', 'MEHR ÜBER «Hafen»', 'Lire la suite', 'En savoir plus sur «Port»',
+      'Find out more', 'Read full story', 'Lesen Sie mehr …', 'Mehr zum Thema', 'Mehr zum Thema «Rente»',
+      'Meer informatie', 'Más información', 'Maggiori informazioni', 'Więcej informacji', 'Mer information',
+      'Pour en savoir plus', 'Zobacz więcej', '詳細はこちら', 'Weiterlesen',
+      'Mehr zu «Hafen»', 'MEHR ÜBER «Hafen»', 'Lire la suite', 'En savoir plus sur «Port»',
       'Leer más', 'Más sobre «Puerto»', 'Leggi tutto', 'Altro su «Porto»', 'Lees meer', 'Meer over «Haven»',
       'Czytaj więcej', 'Więcej o «Porcie»', 'Läs mer', 'Mer om «Hamnen»', '続きを読む', '「港」の続きを読む',
       '港について詳しく', "Leggi l'articolo", "  \u2192 Read more  "
@@ -95,13 +98,17 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       end
     end
 
-    it 'reads decomposed accents', :aggregate_failures do
-      expect(classifier.read_more?("Leer ma\u0301s".unicode_normalize(:nfd))).to be(true)
+    it 'reads decomposed accents in every label kind', :aggregate_failures do
+      expect(classifier.read_more?("Leer ma\u0301s")).to be(true)
+      expect(classifier.utility?("U\u0308ber uns")).to be(true)
+      expect(classifier.recommended?("Recommande\u0301 pour vous")).to be(true)
+      expect(classifier.utility?("A\u0300 propos")).to be(true)
     end
 
     [
       'PDF', 'Der Hafen wächst', 'Mehr Lohn für alle',
-      'More about the budget fight is expected tomorrow in the council', 'Reading list', 'Plus', ''
+      'More about the budget fight is expected tomorrow in the council', 'Reading list', 'Plus',
+      'Mehr zum Thema Rente', ''
     ].each do |text|
       it "rejects non-label text #{text.inspect}" do
         expect(classifier.read_more?(text)).to be(false)
