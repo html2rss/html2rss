@@ -26,21 +26,21 @@ module Html2rss
           # @return [nil]
           def call(node_name:, node:, **_env)
             if node_name == 'source'
-              node.unlink unless playable_src!(node)
+              node.unlink unless absolutize_src(node)
             elsif PLAYERS.include?(node_name)
               # Children are transformed after their parent, so child sources are only checked here.
-              node.unlink unless playable_src!(node) || node.css('source').any? { playable_url(_1['src']) }
+              node.unlink unless absolutize_src(node) || node.css('source').any? { playable_url(_1['src']) }
             end
             nil
           end
 
           private
 
-          # Rewrites +src+ to its absolute playable URL or removes it; true when one was kept.
-          def playable_src!(node)
+          # Rewrites +src+ to its absolute playable URL or removes it; returns the URL kept, if any.
+          def absolutize_src(node)
             url = playable_url(node['src'])
             url ? node['src'] = url : node.remove_attribute('src')
-            !url.nil?
+            url
           end
 
           def playable_url(src)

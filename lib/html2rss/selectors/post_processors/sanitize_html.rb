@@ -109,6 +109,9 @@ module Html2rss
           'source' => %w[src type]
         }.freeze
 
+        # The only +src+ schemes media keeps (after {HtmlTransformers::KeepPlayableMedia} absolutizes it).
+        MEDIA_PROTOCOLS = MEDIA_ATTRIBUTES.keys.to_h { [_1, { 'src' => %w[http https] }] }.freeze
+
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_export = SchemaExport.for_post_processor(name: :sanitize_html, klass: self)
 
@@ -157,13 +160,14 @@ module Html2rss
         ##
         # @param base_url [String, Html2rss::Url]
         # @return [Hash] the memoized sanitize configuration
-        # rubocop:disable-next Metrics/MethodLength, ThreadSafety/ClassInstanceVariable
+        # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, ThreadSafety/ClassInstanceVariable
         def self.sanitize_config(base_url)
           @sanitize_configs ||= {}
           @sanitize_configs[base_url] ||= begin
             config = Sanitize::Config.merge(
               Sanitize::Config::RELAXED,
-              attributes: { all: %w[dir lang alt title translate] },
+              attributes: { all: %w[dir lang alt title translate], **MEDIA_ATTRIBUTES },
+              protocols: MEDIA_PROTOCOLS,
               add_attributes: TAG_ATTRIBUTES,
               transformers: [
                 lambda { |env|
@@ -176,8 +180,6 @@ module Html2rss
             config[:elements].delete('style')
             config.delete(:css)
             config[:elements].push(*MEDIA_ATTRIBUTES.keys)
-            config[:attributes].merge!(MEDIA_ATTRIBUTES)
-            config[:protocols].merge!(MEDIA_ATTRIBUTES.keys.to_h { [_1, { 'src' => %w[http https] }] })
             config.freeze
           end
         end

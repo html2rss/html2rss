@@ -151,7 +151,9 @@ RSpec.describe Html2rss::FeedResolution do
     before do
       allow(pipeline).to receive_messages(
         request_session_for: retry_session,
-        extract: Html2rss::FeedPipeline::Extraction.new(articles: [], dedup_dropped: 0, admission_drops: {}, feed_channel: nil)
+        extract: Html2rss::FeedPipeline::Extraction.new(
+          articles: [], dedup_dropped: 0, admission_drops: {}, feed_channel: nil
+        )
       )
       allow(retry_session).to receive(:fetch_initial_response).and_return(
         Html2rss::RequestService::Response.new(
@@ -206,7 +208,9 @@ RSpec.describe Html2rss::FeedResolution do
       feed_channel = Html2rss::Syndication::ChannelFacts.new(author: 'Listing Feed Author')
       allow(session).to receive(:follow_up).and_return(listing)
       allow(pipeline).to receive(:extract)
-        .and_return(Html2rss::FeedPipeline::Extraction.new(articles: [article], dedup_dropped: 1, admission_drops: { 'sponsored' => 2 }, feed_channel:))
+        .and_return(Html2rss::FeedPipeline::Extraction.new(
+                      articles: [article], dedup_dropped: 1, admission_drops: { 'sponsored' => 2 }, feed_channel:
+                    ))
 
       outcome = described_class.try_apply!(
         pipeline:, config:, response:, session:, strategy: :default, resources:,

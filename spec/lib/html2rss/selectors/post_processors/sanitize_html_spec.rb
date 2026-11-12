@@ -69,15 +69,17 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       expect(described_class.call(dirty, 'http://example.com')).to eq('<p>Styled text</p>')
     end
 
-    it 'keeps audio and video with an absolute http(s) src and adds their safe defaults' do
-      dirty = '<audio src="/a.mp3" autoplay onplay="x()"></audio><video src="https://example.net/v.mp4" poster="/p.jpg"></video>'
-
-      expect(described_class.call(dirty, 'http://example.com/list/')).to eq(
+    {
+      '<audio src="/a.mp3" autoplay onplay="x()"></audio>' =>
         '<audio src="http://example.com/a.mp3" referrerpolicy="no-referrer" crossorigin="anonymous" ' \
-        'preload="none" controls="true"></audio>' \
+        'preload="none" controls="true"></audio>',
+      '<video src="https://example.net/v.mp4" poster="/p"></video>' =>
         '<video src="https://example.net/v.mp4" referrerpolicy="no-referrer" crossorigin="anonymous" ' \
         'preload="none" playsinline="true" controls="true"></video>'
-      )
+    }.each_pair do |dirty, clean|
+      it "keeps #{dirty} with an absolute http(s) src and adds its safe defaults" do
+        expect(described_class.call(dirty, 'http://example.com/list/')).to eq(clean)
+      end
     end
 
     it 'keeps playable source children with their type and drops the others' do
@@ -89,13 +91,13 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       )
     end
 
-    it 'removes players without a playable src, keeping the text around them', :aggregate_failures do
-      [
-        '<audio></audio>', '<audio src=" "></audio>', '<audio src="javascript:alert(1)"></audio>',
-        '<video src="data:video/mp4;base64,AA"></video>', '<video src="http://exa mple.com/v.mp4"></video>',
-        '<video>Your browser cannot play this.</video>', '<video><source type="video/mp4"></video>',
-        '<audio><source src="ftp://example.com/a.mp3"></audio>'
-      ].each do |player|
+    [
+      '<audio></audio>', '<audio src=" "></audio>', '<audio src="javascript:alert(1)"></audio>',
+      '<video src="data:video/mp4;base64,AA"></video>', '<video src="http://exa mple.com/v.mp4"></video>',
+      '<video>Your browser cannot play this.</video>', '<video><source type="video/mp4"></video>',
+      '<audio><source src="ftp://example.com/a.mp3"></audio>'
+    ].each do |player|
+      it "removes #{player}, a player without a playable src, keeping the text around it" do
         expect(described_class.call("<p>Text</p>#{player}", 'https://example.com/')).to eq('<p>Text</p>')
       end
     end

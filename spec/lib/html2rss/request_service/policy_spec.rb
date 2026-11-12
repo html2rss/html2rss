@@ -540,7 +540,8 @@ RSpec.describe Html2rss::RequestService::Policy do
 
     context 'when the proof was copied around its builder (unfrozen)' do
       let(:advertisement) do
-        Marshal.load(Marshal.dump(Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML(head), page_url:)))
+        proof = Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML(head), page_url:)
+        Marshal.load(Marshal.dump(proof))
       end
 
       it 'denies the cross-origin follow-up' do

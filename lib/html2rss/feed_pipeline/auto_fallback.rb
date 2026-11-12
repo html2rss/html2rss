@@ -115,8 +115,8 @@ module Html2rss
         # @return [void]
         def succeed!(response:, extraction:, selected_strategy:, attempt_count:, scrape_target:)
           @result = PipelineOutcome.new(
-            **extraction.to_h, response:, selected_strategy:, attempt_count:, strategy_attempts: attempts,
-            scrape_target:, entry_resolution:
+            response:, selected_strategy:, attempt_count:, strategy_attempts: attempts,
+            scrape_target:, entry_resolution:, **extraction.to_h
           )
         end
 

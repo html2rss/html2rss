@@ -44,9 +44,7 @@ module Html2rss
         # rubocop:disable-next Metrics/ParameterLists -- discovery kwargs stay co-located
         def best_feed_url(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
                           max_probes: nil)
-          best_feed_response(
-            page_url:, request_session:, parsed_body:, html:, extra_paths:, max_probes:
-          )&.url
+          best_feed_response(page_url:, request_session:, parsed_body:, html:, extra_paths:, max_probes:)&.url
         end
 
         ##
@@ -136,10 +134,7 @@ module Html2rss
 
         private
 
-        def successful_status?(response)
-          status = response.status
-          status.nil? || status.between?(200, 299)
-        end
+        def successful_status?(response) = response.status.nil? || response.status.between?(200, 299)
 
         def first_feedish_response(urls, request_session:, origin_url:, advertisement:, max_probes: nil)
           scoped = max_probes.nil? ? urls.lazy : urls.lazy.take(max_probes)

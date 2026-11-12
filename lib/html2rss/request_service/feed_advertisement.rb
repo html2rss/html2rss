@@ -66,9 +66,10 @@ module Html2rss
       # @return [FeedAdvertisement] itself: a proof is immutable, so no copy is ever minted
       def dup = self
 
-      # @param freeze [Boolean, nil] ignored; the proof stays frozen
+      # The proof stays frozen whatever +freeze:+ asks.
+      #
       # @return [FeedAdvertisement] itself
-      def clone(freeze: nil) = self
+      def clone(**) = self
     end
   end
 end

@@ -107,8 +107,8 @@ module Html2rss
       raise_empty_auto_source!(strategy:, response:) if config.auto_source && extraction.articles.empty?
 
       PipelineOutcome.new(
-        **extraction.to_h, response:, selected_strategy: nil, attempt_count: 0, strategy_attempts: [],
-        scrape_target: ScrapeTarget.from_config(config), entry_resolution: nil
+        response:, selected_strategy: nil, attempt_count: 0, strategy_attempts: [],
+        scrape_target: ScrapeTarget.from_config(config), entry_resolution: nil, **extraction.to_h
       )
     end
 
