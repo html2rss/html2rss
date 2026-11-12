@@ -1025,7 +1025,7 @@ RSpec.describe Html2rss::Capture do
       html = <<~HTML
         <html><body>
           <section>
-            <nav><a href="/news/alpha-sidebar-notes">Alpha sidebar notes extra words here</a></nav>
+            <nav role="navigation"><a href="/news/alpha-sidebar-notes">Alpha sidebar notes extra words here</a></nav>
             <div class="card-item">
               <a href="javascript:void(0)">Share</a>
               <h2><a href="/posts/alpha-release">Alpha release notes for the first card</a></h2>
@@ -1033,7 +1033,7 @@ RSpec.describe Html2rss::Capture do
             </div>
           </section>
           <section>
-            <nav><a href="/news/beta-sidebar-notes">Beta sidebar notes extra words here</a></nav>
+            <nav role="navigation"><a href="/news/beta-sidebar-notes">Beta sidebar notes extra words here</a></nav>
             <div class="card-item">
               <a href="mailto:ed@example.com">Email</a>
               <h2><a href="/posts/beta-release">Beta release notes for the second card</a></h2>
@@ -1041,7 +1041,7 @@ RSpec.describe Html2rss::Capture do
             </div>
           </section>
           <section>
-            <nav><a href="/news/gamma-sidebar-notes">Gamma sidebar notes extra words here</a></nav>
+            <nav role="navigation"><a href="/news/gamma-sidebar-notes">Gamma sidebar notes extra words here</a></nav>
             <div class="card-item">
               <a href="javascript:void(0)">Share</a>
               <h2><a href="/posts/gamma-release">Gamma release notes for the third card</a></h2>
