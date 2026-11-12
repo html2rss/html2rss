@@ -228,7 +228,7 @@ module Html2rss
       result = cleanup_result(articles)
       @admission_drops = result.drop_tallies
       log_admission_emptied(captured_count, result) if captured_count.positive? && result.articles.empty?
-      counting = counting(result.articles)
+      counting = counting(result.articles, ordered: true)
       (counting + (result.articles - counting)).first(article_limit)
     end
 
@@ -254,10 +254,12 @@ module Html2rss
     # ({Corroboration#shown?}), media items (audio, video) only on a media page
     # ({Corroboration#media_page?}). The others stay admitted after the counting ones. A page is
     # judged a media page only once a heuristic tier has read its cards: structured items alone
-    # cannot tell a podcast page from a news page with an audio list.
-    def counting(articles)
+    # cannot tell a podcast page from a news page with an audio list. +ordered+ puts a media
+    # page's counting items in page order ({Corroboration#page_order}) instead of tier order.
+    def counting(articles, ordered: false)
       media_page = @cards_read && corroboration.media_page?(articles)
-      articles.select { (media_page || !_1.media?) && corroboration.shown?(_1) }
+      counted = articles.select { (media_page || !_1.media?) && corroboration.shown?(_1) }
+      ordered && media_page ? corroboration.page_order(counted) : counted
     end
 
     # Prefer fewer clean items over refilling +limit+ from the Html heuristic tier.

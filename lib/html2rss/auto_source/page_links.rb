@@ -76,6 +76,16 @@ module Html2rss
       def sparse? = placements.sparse?
 
       ##
+      # Document position of the first content anchor to the article +url+ names, among the
+      # page's distinct content URLs (from the placement walk; no second walk).
+      #
+      # @param url [Html2rss::Url, nil] candidate item URL
+      # @return [Integer, nil] nil unless +url+ is placed as +:content+
+      def content_position(url)
+        url && content_positions[url.article_identity]
+      end
+
+      ##
       # True when +url+ is rendered inside a card carrying a sponsorship marker.
       #
       # @param url [Html2rss::Url, nil] candidate item URL
@@ -92,6 +102,8 @@ module Html2rss
       def placements = @walks[:placements] ||= Placements.new(@document, @link_resolver)
 
       def sponsored_cards = @walks[:sponsored_cards] ||= SponsoredCards.new(@document, @link_resolver)
+
+      def content_positions = @walks[:content_positions] ||= placements.content_keys.each_with_index.to_h
 
       ##
       # Strongest placement and content anchor URL per article identity, from one walk that
@@ -119,6 +131,9 @@ module Html2rss
 
         # @return [Boolean]
         def sparse? = @sparse
+
+        # @return [Array<String>] article identities placed as +:content+, in document order
+        def content_keys = @content_urls.keys
 
         private
 

@@ -61,13 +61,27 @@ module Html2rss
       ##
       # Whether the page is a media page (a podcast or video listing): more than half of the
       # items read off the page ({Scraper::PAGE_SCRAPERS}) and shown in its content ({#shown?})
-      # are media items ({Html2rss::Article#media?}).
+      # are media items ({Html2rss::Article#media?}). Each article identity is one item: a
+      # structured media item and the card that renders it count once.
       #
       # @param articles [Array<Html2rss::Article>] admitted items
       # @return [Boolean]
       def media_page?(articles)
         cards = articles.select { Scraper::PAGE_SCRAPERS.include?(_1.scraper) && shown?(_1) }
+                        .uniq { _1.url.article_identity }
         cards.count(&:media?) * 2 > cards.size
+      end
+
+      ##
+      # The items in page order: by the document position of their content anchor, items the
+      # page does not show in its content last, each group keeping its given order.
+      #
+      # @param articles [Array<Html2rss::Article>]
+      # @return [Array<Html2rss::Article>]
+      def page_order(articles)
+        last = articles.size
+        articles.each_with_index.sort_by { |article, index| [page_links.content_position(article.url) || last, index] }
+                .map(&:first)
       end
 
       ##

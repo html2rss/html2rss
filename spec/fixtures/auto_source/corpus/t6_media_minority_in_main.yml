@@ -1,0 +1,20 @@
+---
+case: Six Schema audio cards rendered in main among ten news cards; a minority of the shown cards are media, so this is no media page and the news comes first.
+expected:
+- https://example.com/news/2026/11/harbor-board-meets-1
+- https://example.com/news/2026/11/library-board-meets-2
+- https://example.com/news/2026/11/river-board-meets-3
+- https://example.com/news/2026/11/school-board-meets-4
+- https://example.com/news/2026/11/market-board-meets-5
+- https://example.com/news/2026/11/bridge-board-meets-6
+- https://example.com/news/2026/11/museum-board-meets-7
+- https://example.com/news/2026/11/garden-board-meets-8
+- https://example.com/news/2026/11/station-board-meets-9
+- https://example.com/news/2026/11/festival-board-meets-10
+media:
+- https://example.com/news/audio/evening-roundup-1
+- https://example.com/news/audio/evening-roundup-2
+- https://example.com/news/audio/evening-roundup-3
+- https://example.com/news/audio/evening-roundup-4
+- https://example.com/news/audio/evening-roundup-5
+- https://example.com/news/audio/evening-roundup-6

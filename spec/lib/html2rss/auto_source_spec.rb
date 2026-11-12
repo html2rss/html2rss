@@ -449,6 +449,48 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'with six audio cards in main among ten news cards' do
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_media_minority_in_main.html') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+
+      it 'is no media page: the news comes first, then the audio items', :aggregate_failures do
+        expect(articles.first(10).map(&:media?)).to all(be(false))
+        expect(articles.drop(10).map(&:media?)).to eq([true] * 6)
+      end
+    end
+
+    context 'with schema media items rendered in main beside news cards' do
+      let(:media_body) do
+        lambda do |news:, media:, type:, news_first:|
+          items = Array.new(media) do |index|
+            { '@type' => 'ListItem', 'item' => { '@type' => type, 'name' => "#{type} item number #{index}",
+                                                 'url' => "https://example.com/media/item-#{index}" } }
+          end
+          ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => items }
+          list = "<ul>#{items.map { %(<li><a href="#{_1['item']['url']}">#{_1['item']['name']}</a></li>) }.join}</ul>"
+          cards = Array.new(news) do |index|
+            %(<article><h2><a href="/news/2026/11/story-#{index}">News story number #{index}</a></h2></article>)
+          end.join
+          main = news_first ? cards + list : list + cards
+          %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{main}</main></body></html>)
+        end
+      end
+      let(:news_paths) { ->(count) { Array.new(count) { "/news/2026/11/story-#{_1}" } } }
+      let(:media_paths) { ->(count) { Array.new(count) { "/media/item-#{_1}" } } }
+
+      it 'keeps a media page in document order, news before the videos that follow it' do
+        allow(response).to receive(:body).and_return(media_body.call(news: 8, media: 12, type: 'VideoObject',
+                                                                     news_first: true))
+        expect(articles.map { _1.url.path }).to eq(news_paths[8] + media_paths[12])
+      end
+
+      it 'is a media page when the media are more than half of the shown cards, so media fill the limit' do
+        allow(response).to receive(:body).and_return(media_body.call(news: 10, media: 25, type: 'AudioObject',
+                                                                     news_first: false))
+        expect(articles.map { _1.url.path }).to eq(media_paths[25])
+      end
+    end
+
     context 'with a podcast page of episodes and promo cards' do
       let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_podcast_episode_page.html') }
       let(:url) { Html2rss::Url.from_absolute('https://example.com/podcasts/harbor-hour/') }

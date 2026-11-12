@@ -60,6 +60,18 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
       expect(builds.size).to eq(1)
     end
 
+    describe '#page_order' do
+      before do
+        allow(page_links).to receive(:content_position) { |url| { '/b' => 0, '/a' => 1 }[url.path] }
+      end
+
+      it 'orders items by content position, unplaced items last in their given order' do
+        items = %w[/x /a /y /b].map { build_article[_1] }
+
+        expect(corroboration.page_order(items).map { _1.url.path }).to eq(%w[/b /a /x /y])
+      end
+    end
+
     describe '#media_page?' do
       let(:media) { Array.new(3) { |index| build_article["/podcasts/episode-#{index}", media: true] } }
       let(:stories) { Array.new(2) { |index| build_article["/news/story-#{index}"] } }
@@ -73,6 +85,14 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
       it 'is no media page when media items are half of the shown page items or fewer', :aggregate_failures do
         expect(corroboration.media_page?(media.first(2) + stories)).to be(false)
         expect(corroboration.media_page?([])).to be(false)
+      end
+
+      it 'counts a structured media item and the card rendering it once' do
+        cards = media.map { build_article[_1.url.path, scraper: Html2rss::AutoSource::Scraper::SemanticHtml] }
+        stories.concat(Array.new(2) { |index| build_article["/news/more-#{index}"] })
+        stories.each { placements[_1.url.path] = :content }
+
+        expect(corroboration.media_page?(media + cards + stories)).to be(false)
       end
 
       it 'leaves out media items the page does not show in its content' do
