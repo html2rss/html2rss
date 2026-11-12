@@ -16,17 +16,15 @@ module Html2rss
     #   lead paragraphs) are no part of the title.
     # - Headline text leaves out the kicker, concealed elements ({Visibility.concealed?}; they stay when they
     #   hold the only words, the accessible name of an otherwise empty link), date and time
-    #   elements ({#date_element?}) unless direct text holding a word touches them, lead pieces
+    #   elements ({Nodes#dropped_date?}) unless direct text holding a word touches them, lead pieces
     #   ({LEAD_WORDS}), tag pieces closing the text ({TAG_WORDS}), clock-only or label-only elements before
     #   its first word, and date chips closing it ({#date_chip?}).
     # - A paid-content label ({LinkDestination::Sponsorship.paid_text?}) is item metadata, never title text:
     #   it is no kicker and leaves the headline text where it opens it, so a kept sponsored item (cleanup
     #   +keep_sponsored+) is titled by its headline alone. An ad word ("Anzeige", "Werbung") also names a
     #   topic and stays a kicker.
-    # - Kicker, first match: the outermost kicker-marked element beside the headline ({KICKER_CLASS},
-    #   {KICKER_ATTRIBUTE}) holding no word besides its noise and kicker-marked parts; else a label leaf
-    #   ({LABEL_WORDS}) opening the heading or anchor text; else the piece right before the headline piece.
-    class TitlePieces # rubocop:disable Metrics/ClassLength
+    # - Kicker: {Kicker}.
+    class TitlePieces
       # Class-token marks of kicker / eyebrow text anywhere in the card.
       KICKER_CLASS = /kicker|eyebrow|pre-title|pretitle|overline|topline/i
       # Attribute marking kicker text.
@@ -47,51 +45,38 @@ module Html2rss
       TAG_WORDS = Set['tag', 'tags', 'subtitle'].freeze
 
       # Text that holds a word.
-      WORD = /[[:alnum:]]/
-      # Splits a class token into words.
-      CLASS_WORD_BREAK = /[-_]+|(?<=[[:lower:][:digit:]])(?=[[:upper:]])/
-      # +time+ element names of both node kinds.
-      TIME_NAMES = Set['time', :time].freeze
-      # Media element names of both node kinds: a piece holding one is a picture, not a kicker.
-      MEDIA_NAMES = Set['img', 'picture', 'figure', 'video', 'svg', :img, :picture, :figure, :video, :svg].freeze
-      # Paragraphs of both node kinds: running prose, never a kicker.
-      PARAGRAPH_NAMES = Set['p', :p].freeze
+      WORD = Nodes::WORD
       # Link element names of both node kinds.
       LINK_NAMES = Set['a', :a].freeze
-      private_constant :WORD, :CLASS_WORD_BREAK, :TIME_NAMES, :MEDIA_NAMES, :PARAGRAPH_NAMES, :LINK_NAMES
+      private_constant :WORD, :LINK_NAMES
 
       ##
       # @param root [Nokogiri::XML::Node, SST::Node] card root
       # @param source [Nokogiri::XML::Node, SST::Node, nil] headline source: the heading, else the anchor
       # @param anchor [Nokogiri::XML::Node, SST::Node, nil] the card's selected anchor
       def initialize(root, source, anchor: nil)
-        @root = root
-        @source = source
         @anchor = anchor
-        @sst = root.instance_of?(SST::Node)
-        @words = {}.compare_by_identity
-        @elements = {}.compare_by_identity
-        @texts = {}.compare_by_identity
-        @kicker = marked_kicker || (label_kicker || preceding_kicker if @source)
+        @nodes = Nodes.for(root)
+        @kicker = Kicker.new(@nodes, root, source) { headline_piece(source) }
       end
 
       ##
-      # @return [Nokogiri::XML::Node, SST::Node, nil] the kicker element
-      attr_reader :kicker
+      # @return [Nokogiri::XML::Node, SST::Node, nil] the kicker element ({Kicker})
+      def kicker = @kicker.element
 
       ##
       # @return [String, nil] kicker text without its noise pieces ({Article::Title.noise_piece?})
-      def kicker_text = kicker && text_without_noise(kicker)
+      def kicker_text = @kicker.text
 
       ##
       # @param node [Nokogiri::XML::Node, SST::Node, nil] heading or anchor
       # @return [String, nil] its headline text (see the class notes)
       def headline_text(node)
         return unless node
-        return attribute(node, TITLE_ATTRIBUTE) if attribute(node, TITLE_ATTRIBUTE).to_s.match?(WORD)
+        return @nodes.attribute(node, TITLE_ATTRIBUTE) if @nodes.attribute(node, TITLE_ATTRIBUTE).to_s.match?(WORD)
 
         node = headline_piece(node) || node
-        text(node, headline_drops(node))
+        @nodes.text(node, headline_drops(node))
       end
 
       private
@@ -100,10 +85,10 @@ module Html2rss
 
       # The piece of +node+ holding the headline when +node+ is made only of element pieces.
       def headline_piece(node)
-        return if own_words?(node)
+        return if @nodes.own_words?(node)
 
-        marked = elements(node).select { headline_marked?(_1) }
-        outermost = marked.reject { |el| marked.any? { |other| !other.equal?(el) && inside?(el, other) } }
+        marked = @nodes.elements(node).select { headline_marked?(_1) }
+        outermost = marked.reject { |el| marked.any? { |other| !other.equal?(el) && @nodes.inside?(el, other) } }
         return outermost.first if outermost.one?
 
         @anchor if sole_anchor_inside?(node)
@@ -112,18 +97,18 @@ module Html2rss
       # Whether the selected anchor is the only link inside +node+ (a headline split over several links
       # stays whole).
       def sole_anchor_inside?(node)
-        links = elements(node).select { LINK_NAMES.include?(_1.name) }
+        links = @nodes.elements(node).select { LINK_NAMES.include?(_1.name) }
         links.one? && links.first.equal?(@anchor)
       end
 
       def headline_marked?(node)
-        words = class_words(node)
+        words = @nodes.class_words(node)
         words.intersect?(HEADLINE_WORDS) && !words.include?('subtitle') && !words.intersect?(LABEL_WORDS)
       end
 
       # Elements left out of the headline text of +node+, in rule order.
       def headline_drops(node)
-        dropped = drop_concealed!(node, [kicker, *elements(node).select { dropped_date?(_1) }].compact)
+        dropped = drop_concealed!(node, [kicker, *@nodes.elements(node).select { @nodes.dropped_date?(_1) }].compact)
         drop_pieces!(node, dropped, LEAD_WORDS) { |rest, _| rest.match?(WORD) }
         drop_pieces!(node, dropped, TAG_WORDS) { |rest, piece| rest.match?(WORD) && closing?(node, dropped, piece) }
         drop_opening_noise!(node, dropped)
@@ -132,22 +117,22 @@ module Html2rss
 
       # Concealed elements leave unless they hold the only words (the name of an otherwise empty link).
       def drop_concealed!(node, dropped)
-        concealed = elements(node).select { concealed?(_1) }
-        text(node, dropped + concealed).to_s.match?(WORD) ? dropped.concat(concealed) : dropped
+        concealed = @nodes.elements(node).select { @nodes.concealed?(_1) }
+        @nodes.text(node, dropped + concealed).to_s.match?(WORD) ? dropped.concat(concealed) : dropped
       end
 
       # Drops each +words+-marked piece of +node+ the block admits, given the text left without it.
       def drop_pieces!(node, dropped, words)
-        elements(node).each do |element|
-          next unless class_words(element).intersect?(words)
+        @nodes.elements(node).each do |element|
+          next unless @nodes.class_words(element).intersect?(words)
 
-          dropped << element if yield(text(node, dropped + [element]).to_s, element)
+          dropped << element if yield(@nodes.text(node, dropped + [element]).to_s, element)
         end
       end
 
       def drop_opening_noise!(node, dropped)
-        elements(node).each do |element|
-          next if within?(element, dropped) || !noise_text?(text(element))
+        @nodes.elements(node).each do |element|
+          next if within?(element, dropped) || !@nodes.noise?(element)
           break unless opening?(node, dropped, element)
 
           dropped << element
@@ -157,7 +142,7 @@ module Html2rss
 
       # Date chips ({#date_chip?}) closing the text.
       def drop_closing_dates!(node, dropped)
-        elements(node).reverse_each do |element|
+        @nodes.elements(node).reverse_each do |element|
           next if within?(element, dropped) || !date_chip?(element)
           break unless closing?(node, dropped, element)
 
@@ -169,230 +154,17 @@ module Html2rss
       # The date chip of a teaser card: a date-only element ({Article::Title.date_piece?}), or a date element
       # holding only a clock time (+late <time>22:10</time>+, while +at <b>20:15</b>+ is headline text).
       def date_chip?(element)
-        Article::Title.date_piece?(text(element)) || (date_element?(element) && Article::Title.clock_piece?(text(element)))
+        Article::Title.date_piece?(@nodes.text(element)) || (@nodes.date_element?(element) && Article::Title.clock_piece?(@nodes.text(element)))
       end
 
       # Whether +element+ opens the text of +node+ left after +dropped+.
-      def opening?(node, dropped, element) = text(node, dropped).to_s.start_with?(text(element))
+      def opening?(node, dropped, element) = @nodes.text(node, dropped).to_s.start_with?(@nodes.text(element))
 
       # Whether +element+ closes the text of +node+ left after +dropped+.
-      def closing?(node, dropped, element) = text(node, dropped).to_s.end_with?(text(element).to_s)
+      def closing?(node, dropped, element) = @nodes.text(node, dropped).to_s.end_with?(@nodes.text(element).to_s)
 
       # Whether +element+ is or sits inside a dropped element.
-      def within?(element, dropped) = dropped.any? { inside?(element, _1) }
-
-      # --- Kicker --------------------------------------------------------------------------------------
-
-      # A kicker inside the heading or anchor wins over one beside it (a topline in the heading over a
-      # type badge above it).
-      def marked_kicker
-        candidates = marked.select { kicker_text?(_1) && beside_headline?(_1) }
-        kickers = candidates.select { |node| parts_only?(node, candidates) }
-        kickers.find { inside?(_1, @source) } || kickers.first
-      end
-
-      # A label leaf opening the source text, with headline text after it.
-      def label_kicker
-        rest = text(@source, unseen(@source)).to_s
-        elements(@source).find { label_leaf?(_1) && opening_kicker?(_1, rest) }
-      end
-
-      # A label-marked element that is no paid-content label.
-      def label_leaf?(element) = class_words(element).intersect?(LABEL_WORDS) && !paid_label?(element)
-
-      # Whether +element+ opens +rest+, the source text, with headline words after it.
-      def opening_kicker?(element, rest)
-        rest.start_with?(text(element).to_s) && text(@source, unseen(@source) + [element]).to_s.match?(WORD)
-      end
-
-      # The nearest worded piece before the source's headline piece, when it is a kicker-shaped leaf.
-      def preceding_kicker
-        candidate = piece_before(headline_piece(@source))
-        return unless candidate && kicker_shaped?(candidate)
-
-        leaf = nearest_leaf(candidate)
-        leaf if kicker_shaped?(leaf)
-      end
-
-      # Walks from +piece+ up to the source, looking back over element siblings; direct text stops it.
-      def piece_before(piece)
-        current = piece
-        until current.nil? || current.equal?(@source)
-          before = siblings_before(current)
-          return if before.nil?
-
-          worded = before.reverse.find { |sibling| !skipped_piece?(sibling) }
-          return worded if worded
-
-          current = parent(current)
-        end
-      end
-
-      # Descends into the last worded child of a piece made only of elements: the leaf next to the
-      # headline (a topic span after a badge in one box).
-      def nearest_leaf(node)
-        while !own_words?(node) && (child = node.children.reverse.find { !skipped_piece?(_1) })
-          node = child
-        end
-        node
-      end
-
-      def skipped_piece?(node) = concealed?(node) || date_element?(node) || !text_without_noise(node).to_s.match?(WORD)
-
-      def kicker_shaped?(node)
-        !PARAGRAPH_NAMES.include?(node.name) && !class_words(node).intersect?(LEAD_WORDS) &&
-          elements(node).none? { MEDIA_NAMES.include?(_1.name) }
-      end
-
-      def kicker_text?(node)
-        !noise_element?(node) && !concealed?(node) && text_without_noise(node).to_s.match?(WORD)
-      end
-
-      def text_without_noise(node) = text(node, kicker_noise(node))
-
-      # Kicker pieces that are noise on their own: date and time elements, concealed elements and
-      # {Article::Title.noise_piece?}.
-      def kicker_noise(node)
-        elements(node).select { date_element?(_1) || concealed?(_1) || paid_label?(_1) || Article::Title.noise_piece?(text(_1)) }
-      end
-
-      def noise_element?(node) = date_element?(node) || noise_text?(text(node))
-
-      # Headline noise ({Article::Title.headline_noise_piece?}) or a paid-content label.
-      def noise_text?(text)
-        Article::Title.headline_noise_piece?(text) || LinkDestination::Sponsorship.paid_text?(text)
-      end
-
-      def paid_label?(node) = LinkDestination::Sponsorship.paid_text?(text(node))
-
-      def beside_headline?(node)
-        return true unless @source
-        return false if inside?(@source, node)
-
-        !inside?(node, @source) || text(@source, [node]).to_s.match?(WORD)
-      end
-
-      # Whether +node+ holds no word outside its noise and its nested kicker candidates.
-      def parts_only?(node, candidates)
-        parts = candidates.select { |other| !other.equal?(node) && inside?(other, node) }
-        return true if parts.empty?
-
-        !text(node, kicker_noise(node) + parts).to_s.match?(WORD)
-      end
-
-      # --- Element facts -------------------------------------------------------------------------------
-
-      # Elements of +node+ a reader does not see as text of it: concealed and dropped date elements.
-      def unseen(node) = elements(node).select { concealed?(_1) || dropped_date?(_1) }
-
-      # A +time+ element or an element whose class marks a date, time or duration ({DATE_WORDS}).
-      def date_element?(node) = TIME_NAMES.include?(node.name) || class_words(node).intersect?(DATE_WORDS)
-
-      # Date elements leave the headline unless they sit in running text (+resume on <time>Friday</time>+):
-      # direct text holding a word right before or right after them.
-      def dropped_date?(node) = date_element?(node) && !touching?(node)
-
-      # Whether a sighted reader does not see +node+ ({Visibility.concealed?}).
-      def concealed?(node)
-        style = @sst ? node.attrs.style : node['style']
-        Visibility.concealed?(class_names(node), style:, hidden: !attribute(node, 'hidden').nil?)
-      end
-
-      def kicker_marked?(node) = attribute(node, KICKER_ATTRIBUTE) || class_names(node).any?(KICKER_CLASS)
-
-      # Lowercase words of all class tokens, plus each pair of neighbours joined (+region+ +Name+ gives
-      # +regionname+, +sub+ +title+ gives +subtitle+).
-      def class_words(node)
-        @words[node] ||= class_names(node).each_with_object(Set.new) do |token, words|
-          parts = token.split(CLASS_WORD_BREAK).map(&:downcase)
-          words.merge(parts).merge(parts.each_cons(2).map(&:join))
-        end
-      end
-
-      # --- Node reads: SST nodes or Nokogiri nodes -----------------------------------------------------
-
-      def marked
-        return @root.find_all { kicker_marked?(_1) } if @sst
-
-        @root.xpath('descendant-or-self::*[@class or @data-tb-kicker]').select { kicker_marked?(_1) }
-      end
-
-      # Element descendants of +node+, read once per node.
-      def elements(node) = @elements[node] ||= @sst ? node.descendants : node.css('*')
-      def class_names(node) = @sst ? node.attrs.class_names : node['class'].to_s.split
-      def attribute(node, name) = @sst ? node.attrs.raw[name] : node[name]
-
-      def parent(node) = @sst ? SST::Index.for_node(node)&.parent_of(node) : node.parent
-
-      # Visible text of +node+ without +exclude+ elements; text read without exclusions is read once per node.
-      def text(node, exclude = nil)
-        return visible_text(node, exclude) if exclude&.any?
-
-        @texts[node] ||= visible_text(node, nil)
-      end
-
-      def visible_text(node, exclude)
-        @sst ? node.visible_text(exclude:) : Navigator.extract_visible_text(node, exclude_nodes: exclude)
-      end
-
-      # Whether +node+ is +ancestor+ or inside it.
-      def inside?(node, ancestor)
-        return SST::Index.descendant_or_self?(node, ancestor) if @sst
-
-        node == ancestor || Navigator.descendant_of?(node, ancestor)
-      end
-
-      # Whether +node+'s own direct text (outside its child elements) holds a word.
-      def own_words?(node)
-        return node.own_text.match?(WORD) if @sst
-
-        node.children.any? { _1.text? && _1.text.match?(WORD) }
-      end
-
-      # Siblings before +node+, or nil when a word in direct text sits between them and +node+.
-      def siblings_before(node)
-        @sst ? sst_siblings_before(node) : nokogiri_siblings_before(node)
-      end
-
-      def sst_siblings_before(node)
-        up = parent(node)
-        return unless up
-
-        index = up.children.index { _1.equal?(node) }
-        up.children.take(index) unless [up.lead_text, *up.tails][..index].any? { _1.match?(WORD) }
-      end
-
-      def nokogiri_siblings_before(node)
-        before = []
-        sibling = node.previous_sibling
-        while sibling
-          return if sibling.text? && sibling.text.match?(WORD)
-
-          before.unshift(sibling)
-          sibling = sibling.previous_sibling
-        end
-        before
-      end
-
-      # Whether direct text holding a word sits right before or right after +node+.
-      def touching?(node)
-        @sst ? sst_touching?(node) : nokogiri_touching?(node)
-      end
-
-      def sst_touching?(node)
-        up = parent(node)
-        return false unless up
-
-        index = up.children.index { _1.equal?(node) }
-        before, after = [up.lead_text, *up.tails][index, 2]
-        before.match?(WORD) || after.match?(WORD)
-      end
-
-      def nokogiri_touching?(node)
-        before = node.previous_sibling
-        after = node.next_sibling
-        [before, after].any? { _1&.text? && _1.text.match?(WORD) }
-      end
+      def within?(element, dropped) = dropped.any? { @nodes.inside?(element, _1) }
     end
   end
 end
