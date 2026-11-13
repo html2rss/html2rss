@@ -165,7 +165,7 @@ RSpec.describe Html2rss do
           selectors: {
             items: { selector: 'object > headers' },
             title: { selector: 'host' },
-            url: { extractor: 'static', static: 'https://httpbin.org/headers' },
+            url: { extractor: 'static', static: 'https://example.com/headers' },
             something: { selector: 'x-something' },
             authorization: { selector: 'authorization' },
             cookie: { selector: 'cookie' },
