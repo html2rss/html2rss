@@ -571,7 +571,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
                                [{ url: 'https://example.com/v/a.mp4', type: 'video/mp4' }]],
       'og:audio without type' => ['<meta property="og:audio" content="https://cdn.example.com/a.mp3">',
                                   [{ url: 'https://cdn.example.com/a.mp3', type: nil }]],
-      'og:video page embed' => ['<meta property="og:video" content="https://e.com/embed">' \
+      'og:video page embed' => ['<meta property="og:video" content="https://example.net/embed">' \
                                 '<meta property="og:video:type" content="text/html">',
                                 nil],
       'none' => ['', nil]

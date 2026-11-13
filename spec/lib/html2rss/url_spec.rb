@@ -51,12 +51,12 @@ RSpec.describe Html2rss::Url do
       nil => nil,
       ' ' => nil,
       'http://example.com/ ' => 'http://example.com/',
-      'http://ex.ampl/page?sc=345s#abc' => 'http://ex.ampl/page?sc=345s#abc',
+      'http://ex.example/page?sc=345s#abc' => 'http://ex.example/page?sc=345s#abc',
       'https://example.com/sprite.svg#play' => 'https://example.com/sprite.svg#play',
       'mailto:bogus@void.space' => 'mailto:bogus@void.space',
-      'http://übermedien.de' => 'http://xn--bermedien-p9a.de/',
-      'http://www.詹姆斯.com/' => 'http://www.xn--8ws00zhy3a.com/',
-      ',https://wurstfing.er:4711' => 'https://wurstfing.er:4711/',
+      'http://übermedien.example' => 'http://xn--bermedien-p9a.example/',
+      'http://www.詹姆斯.example/' => 'http://www.xn--8ws00zhy3a.example/',
+      ',https://wurstfing.example:4711' => 'https://wurstfing.example:4711/',
       'feed:https://h2r.example.com/auto_source/aHR123' => 'https://h2r.example.com/auto_source/aHR123',
       'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/' => 'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/',
       'ftp://example.com/file' => 'ftp://example.com/file',
@@ -422,7 +422,7 @@ RSpec.describe Html2rss::Url do
     end
 
     it 'returns the registrable domain (eTLD+1)' do
-      expect(described_class.from_absolute('https://www.wp.pl/').domain).to eq('wp.pl')
+      expect(described_class.from_absolute('https://www.news.example.com/').domain).to eq('example.com')
     end
 
     it 'uses the host for IP addresses instead of a public-suffix suffix' do
@@ -567,7 +567,7 @@ RSpec.describe Html2rss::Url do
         'http://subdomain.example.com:8080/path?query=value#fragment' => 'http://subdomain.example.com:8080/path?query=value#fragment',
         'https://example.com/path with spaces' => 'https://example.com/path%20with%20spaces',
         'https://example.com/path@segment' => 'https://example.com/path@segment',
-        'https://truthsocial.com/@realDonaldTrump' => 'https://truthsocial.com/@realDonaldTrump'
+        'https://social.example/@someone' => 'https://social.example/@someone'
       }.each_pair do |input_url, expected_url|
         it "accepts #{input_url.inspect} and returns normalized URL" do
           result = described_class.for_channel(input_url)

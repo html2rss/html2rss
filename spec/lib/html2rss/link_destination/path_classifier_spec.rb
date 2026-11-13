@@ -34,7 +34,7 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
     end
 
     it 'marks nested host-shaped affiliate chrome as junk', :aggregate_failures do
-      classifier = classifier_for('www.bild.de', 'energieloesungen', 'photovoltaik')
+      classifier = classifier_for('www.daily.example', 'energieloesungen', 'photovoltaik')
 
       expect(classifier.junk_path?).to be(true)
       expect(classifier.content_path?).to be(false)
@@ -48,7 +48,7 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
     end
 
     [
-      { segments: %w[www.partner-casino.de], junk: true },
+      { segments: %w[www.partner-casino.example], junk: true },
       { segments: %w[casino-bonus.example.com angebot], junk: true },
       { segments: %w[casinos echtgeld-bonus], junk: true },
       { segments: %w[kreditkarten vergleich-2026], junk: true },
@@ -146,8 +146,8 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       %w[tag foo] => 'ftftfftt', %w[topic x y] => 'ftftfftt', %w[shop] => 'ftfftftt',
       %w[shop products] => 'ftfffftt', %w[shop products item-a-b-c] => 'ftfffftf', %w[docs guide] => 'ffffffff',
       %w[docs v2.0] => 'ffffffff', %w[download file.pdf] => 'ffffffff', %w[assets image.jpg] => 'ffffffff',
-      %w[www.example.com] => 'fffftftt', %w[sub.example.co.uk story] => 'fffffftt',
-      %w[www.bild.de energieloesungen photovoltaik] => 'fffffftf', %w[misc www.bild.de] => 'fffftftf',
+      %w[www.example.com] => 'fffftftt', %w[sub.example.net story] => 'fffffftt',
+      %w[www.daily.example energieloesungen photovoltaik] => 'fffffftf', %w[misc www.daily.example] => 'fffftftf',
       %w[misc casino-bonus.example.com] => 'fffftftf', %w[casino-bonus.example.com angebot] => 'fffffftt',
       %w[archive 2026 news-slug-a] => 'ftfffftf', %w[archive 2026] => 'ftfffftt',
       %w[comments 2026 big-news-x] => 'ftfffftf', %w[press 2026-x] => 'tfffftff',

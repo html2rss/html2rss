@@ -13,7 +13,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       %w[
         https://example.com/category/news
         https://example.com/article/1#comments
-        https://twitter.com/share?url=...
+        https://social.example/share?url=...
         https://example.com/about
         https://example.com/contact
         https://example.com/newsletter/signup
@@ -90,8 +90,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
     end
 
-    context 'with a spotify-like newsroom page' do
-      let(:base_url) { 'https://newsroom.spotify.com' }
+    context 'with a brand newsroom page' do
+      let(:base_url) { 'https://newsroom.example.com' }
       let(:parsed_body) do
         Nokogiri::HTML.parse(<<~HTML)
           <html><body>
@@ -100,7 +100,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
                 <a href="/newsroom/view-all">View all</a>
                 <a href="/category/company-news">Company News</a>
               </nav>
-              <article><h2><a href="/news/2026/02/launch-alpha">Spotify launches alpha</a></h2><p>Detailed update text for users and creators.</p></article>
+              <article><h2><a href="/news/2026/02/launch-alpha">Example launches alpha</a></h2><p>Detailed update text for users and creators.</p></article>
               <article><h2><a href="/news/2026/01/platform-improvements">Platform improvements for podcasts</a></h2><time datetime="2026-01-11"></time></article>
               <article><h2><a href="/news/2025/12/artist-tools">New artist tools</a></h2><p>Expanded publishing controls and analytics this week.</p></article>
             </section>
@@ -109,21 +109,21 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
       let(:expected_story_urls) do
         %w[
-          https://newsroom.spotify.com/news/2026/01/platform-improvements
-          https://newsroom.spotify.com/news/2026/02/launch-alpha
-          https://newsroom.spotify.com/news/2025/12/artist-tools
+          https://newsroom.example.com/news/2026/01/platform-improvements
+          https://newsroom.example.com/news/2026/02/launch-alpha
+          https://newsroom.example.com/news/2025/12/artist-tools
         ]
       end
       let(:suppressed_noise_urls) do
         %w[
-          https://newsroom.spotify.com/newsroom/view-all
-          https://newsroom.spotify.com/category/company-news
+          https://newsroom.example.com/newsroom/view-all
+          https://newsroom.example.com/category/company-news
         ]
       end
 
-      it_behaves_like 'top-5 prefers post-like entries', 'Spotify'
+      it_behaves_like 'top-5 prefers post-like entries', 'brand newsroom'
 
-      it 'keeps expected top ordering/composition for Spotify', :aggregate_failures do
+      it 'keeps expected top ordering/composition for the brand newsroom', :aggregate_failures do
         expect(urls.first(3)).to eq(expected_story_urls)
         expect(urls.first(3).uniq).to eq(expected_story_urls)
       end
@@ -169,9 +169,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 
-  describe 'non-regression baseline (Anthropic-like)' do
+  describe 'non-regression baseline (product newsroom)' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://www.anthropic.com')
+      scraper = described_class.new(parsed_body, url: 'https://www.example.org')
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -180,7 +180,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         <html><body>
           <section class="updates">
             <article>
-              <h2><a href="/news/claude-platform-update">Claude platform update</a></h2>
+              <h2><a href="/news/model-platform-update">Model platform update</a></h2>
               <p>Model updates, safety improvements, and API changes.</p>
               <time datetime="2026-03-25"></time>
             </article>
@@ -200,15 +200,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     let(:expected_top_urls) do
       [
-        'https://www.anthropic.com/news/claude-platform-update',
-        'https://www.anthropic.com/news/research-system-card',
-        'https://www.anthropic.com/news/enterprise-rollout'
+        'https://www.example.org/news/model-platform-update',
+        'https://www.example.org/news/research-system-card',
+        'https://www.example.org/news/enterprise-rollout'
       ]
     end
 
     it 'keeps known-good story links ahead of chrome', :aggregate_failures do
       expect(urls.uniq.first(3)).to eq(expected_top_urls)
-      expect(urls).not_to include('https://www.anthropic.com/subscribe')
+      expect(urls).not_to include('https://www.example.org/subscribe')
     end
   end
 

@@ -24,10 +24,10 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       <<~HTML
         <html lang="en">
           <body>
-            <script src="http://evil.js"></script>
+            <script src="http://evil.example/miner.js"></script>
             <script>alert('lol')</script>
             <marquee>Breaking news: I'm a deprecated tag</marquee>
-            <iframe hidden src="http://mine.currency"></iframe>
+            <iframe hidden src="http://miner.example"></iframe>
             <div>
               <img src='/lol.gif' id="funnypic" alt="An animal looking cute">
               </html>
