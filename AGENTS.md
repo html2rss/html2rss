@@ -14,6 +14,7 @@ Architecture and seam ownership map: `CONTEXT.md`.
 
 - Raise only `Html2rss::Error` subclasses defined next to their owner (e.g. `Url::InvalidUrlError`, `Article::Enclosure::InvalidError`); never bare `ArgumentError`, `TypeError`, `RuntimeError` or `StandardError`.
 - Never write to stderr (`warn`, `$stderr`, `puts` in `lib/`); log through `Html2rss::Log`.
+- Both rules are enforced by `Html2rss/LocalErrorClass` and `Html2rss/NoConsoleOutput` (CLI excluded from the latter); never disable them inline. Details: `CONTEXT.md` § Error handling.
 - Rescue named classes only.
 
 ## Testing Contracts

@@ -1,5 +1,7 @@
 require:
   - ./.rubocop/cops/html2rss/no_metaprogramming.rb
+  - ./.rubocop/cops/html2rss/local_error_class.rb
+  - ./.rubocop/cops/html2rss/no_console_output.rb
 
 plugins:
   - rubocop-performance
@@ -57,3 +59,15 @@ Layout/ClassStructure:
 Html2rss/NoMetaprogramming:
   Include:
     - 'lib/**/*.rb'
+
+Html2rss/LocalErrorClass:
+  Include:
+    - 'lib/**/*.rb'
+
+# The CLI (Thor commands and their renderers) owns user-facing stdout/stderr.
+Html2rss/NoConsoleOutput:
+  Include:
+    - 'lib/**/*.rb'
+  Exclude:
+    - 'lib/html2rss/cli.rb'
+    - 'lib/html2rss/cli/**/*.rb'
