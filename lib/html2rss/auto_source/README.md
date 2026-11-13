@@ -33,6 +33,8 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
 
 7. **Entry URL resolution** (pipeline, not this class) — when AutoFallback sees a weak homepage extract, `FeedResolution` may rewrite the scrape URL to a listing/feed before escalating strategies. See {Html2rss::FeedPipeline} and {Html2rss::FeedResolution}.
 
+Semantic leaf containers: a container holding a same-name container is a wrapper, not a card, except a `div` with exactly one heading, that heading linked, no heading inside its inner divs, and at least half of its links to the heading's destination: a card whose inner divs are info blocks (time, topic chips), so a deep grid of cards inside cards yields one item per inner card (`Segmenter::Semantic::NonLeaf`).
+
 Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (cards grouped by parent; `main` is a filter), `:cluster` (class/structure grids for anchorless cards). Scoring ranks and demotes; `LinkDestination::NoisePolicy` owns content-anchor eligibility. Cleanup owns feed-item admission.
 
 ## Nokogiri vs SST boundaries

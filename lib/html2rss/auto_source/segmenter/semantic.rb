@@ -36,7 +36,7 @@ module Html2rss
         private_class_method :linked_containers
 
         def self.collect_containers(index)
-          non_leaf = mark_non_leaf_candidates(index.root)
+          non_leaf = NonLeaf.call(index.root)
           candidates = []
           index.each_node do |node|
             next unless CANDIDATE_NAMES.include?(node.name)
@@ -50,27 +50,6 @@ module Html2rss
           sort_by_depth(candidates, index)
         end
         private_class_method :collect_containers
-
-        TAG_MASKS = { article: 1, section: 2, li: 4, tr: 8, div: 16 }.freeze
-        private_constant :TAG_MASKS
-
-        # Single O(N) post-order pass: mark candidate nodes that contain a same-name candidate.
-        def self.mark_non_leaf_candidates(root) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-          non_leaf = Set.new.compare_by_identity
-          visit = lambda do |node|
-            seen_mask = 0
-            node.children.each do |child|
-              child_mask = visit.call(child)
-              seen_mask |= child_mask | (TAG_MASKS[child.name] || 0)
-            end
-            node_mask = TAG_MASKS[node.name]
-            non_leaf.add(node) if node_mask && seen_mask.anybits?(node_mask)
-            seen_mask
-          end
-          visit.call(root)
-          non_leaf
-        end
-        private_class_method :mark_non_leaf_candidates
 
         def self.filter_nested(candidates, index)
           candidate_set = {}.compare_by_identity

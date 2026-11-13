@@ -248,6 +248,14 @@ kicker_heading_teaser.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+leafdiv_item_with_info_block.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 media_audio_cards.html:
   junk: 0
   real: 6
