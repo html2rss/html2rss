@@ -2,6 +2,7 @@ require:
   - ./.rubocop/cops/html2rss/no_metaprogramming.rb
   - ./.rubocop/cops/html2rss/local_error_class.rb
   - ./.rubocop/cops/html2rss/no_console_output.rb
+  - ./.rubocop/cops/html2rss/contract_error_reraise.rb
 
 plugins:
   - rubocop-performance
@@ -61,6 +62,10 @@ Html2rss/NoMetaprogramming:
     - 'lib/**/*.rb'
 
 Html2rss/LocalErrorClass:
+  Include:
+    - 'lib/**/*.rb'
+
+Html2rss/ContractErrorReraise:
   Include:
     - 'lib/**/*.rb'
 

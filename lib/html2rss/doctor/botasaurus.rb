@@ -74,6 +74,8 @@ module Html2rss
 
         body = JSON.parse(response.body.to_s)
         { ok: response.status == 200, status: response.status, version: body['version'] }
+      rescue Html2rss::ContractError
+        raise
       rescue StandardError => error
         { ok: false, error: "#{error.class}: #{error.message}" }
       end

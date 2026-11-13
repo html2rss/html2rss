@@ -691,6 +691,13 @@ RSpec.describe Html2rss::MCP::Server do
         end
       end
 
+      it 'surfaces a ContractError as a JSON-RPC internal error, not a tool error envelope' do
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(Html2rss::RequestService::Context::InvalidError, 'bug')
+
+        result = call_tool.call('scrape', { url: 'https://example.com' })
+        expect(result).to include(error: include(code: -32_603, message: 'Internal error'))
+      end
+
       it 'logs tool exceptions to the gem logger' do
         allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
 

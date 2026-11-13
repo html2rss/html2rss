@@ -53,6 +53,14 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
       end
     end
 
+    it 'propagates contract errors from the health request' do
+      allow(Html2rss::Url).to receive(:for_channel).and_raise(Html2rss::Url::InvalidError)
+
+      ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
+        expect { described_class.call }.to raise_error(Html2rss::ContractError)
+      end
+    end
+
     it 'runs sample scrape when sample_url is given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- multi-step preflight assertions
       stub_request(:get, 'http://127.0.0.1:4010/health')
         .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })

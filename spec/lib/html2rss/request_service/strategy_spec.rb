@@ -81,6 +81,22 @@ RSpec.describe Html2rss::RequestService::Strategy do
     end
   end
 
+  describe 'contract errors' do
+    let(:adapter) do
+      Class.new(described_class) do
+        private
+
+        def fetch
+          raise Html2rss::RequestService::Context::InvalidError, 'bug'
+        end
+      end
+    end
+
+    it 're-raises a ContractError untouched' do
+      expect { adapter.new(ctx).execute }.to raise_error(Html2rss::RequestService::Context::InvalidError, 'bug')
+    end
+  end
+
   describe 'timeout logging' do
     let(:adapter) do
       Class.new(described_class) do

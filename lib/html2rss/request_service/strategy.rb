@@ -23,6 +23,8 @@ module Html2rss
         response = perform_execute
         postflight!(response)
         response
+      rescue Html2rss::ContractError
+        raise
       rescue StandardError => error
         handle_error(error)
       end
