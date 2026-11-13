@@ -583,6 +583,20 @@ RSpec.describe Html2rss::FeedPipeline do
       expect(extraction.admission_drops).to eq('missing_url' => 2)
     end
 
+    it 'tallies the unlinked items of a page that ends pagination', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      config = Html2rss::Config.from_hash(
+        { channel: { url: 'https://example.com/news' }, strategy: :default,
+          selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a' } } }
+      )
+      page1 = build_response.call(body: '<article><h1>A</h1><a href="/a">a</a></article><article><h1>B</h1></article>')
+      page2 = build_response.call(body: '<article><h1>C</h1></article>' * 3, url: 'https://example.com/news?page=2')
+      session = instance_double(Html2rss::RequestSession, page_responses: [page1, page2])
+      extraction = described_class.new({}).extract(config:, response: page1, request_session: session)
+
+      expect(extraction.articles.size).to eq(1)
+      expect(extraction.admission_drops).to eq('missing_url' => 4)
+    end
+
     # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength -- inline configs and HTML fixtures
     describe '#selector_articles' do
       let(:selector_config) do

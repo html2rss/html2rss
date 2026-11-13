@@ -158,10 +158,10 @@ module Html2rss
       drops = Hash.new(0)
       engines.each do |engine|
         page_articles = engine.articles
+        engine.admission_drops.each { |reason, count| drops[reason] += count }
         break if page_articles.empty? && articles.any?
 
         articles.concat(page_articles)
-        engine.admission_drops.each { |reason, count| drops[reason] += count }
       end
       [articles, drops]
     end
