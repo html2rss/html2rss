@@ -254,6 +254,8 @@ module Html2rss
     # @return [void]
     def mcp
       Html2rss::MCP.start(transport: options[:transport].to_sym, port: options[:port])
+    rescue Html2rss::MCP::Server::HttpTransportUnavailable => error
+      raise Thor::Error, error.message
     end
 
     desc 'doctor [TYPE]', 'Runtime preflight checks (botasaurus)'

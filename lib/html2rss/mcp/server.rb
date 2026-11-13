@@ -23,6 +23,9 @@ module Html2rss
       # Supported transport names.
       TRANSPORTS = Set[:stdio, :http].freeze
 
+      # Raised when the HTTP transport's optional gems (+rackup+, +webrick+) cannot be loaded.
+      class HttpTransportUnavailable < Html2rss::Error; end
+
       # Declarative MCP resource registrations consumed by {register_resources}.
       RESOURCES = [
         {
@@ -95,6 +98,8 @@ module Html2rss
         #
         # @param transport [Symbol] +:stdio+ or +:http+
         # @param port [Integer] port for HTTP transport
+        # @raise [InvalidOption] for an unknown transport
+        # @raise [HttpTransportUnavailable] when +:http+ is requested without the rackup and webrick gems
         def start(transport: :stdio, port: 8080)
           raise InvalidOption, "Unknown transport: #{transport.inspect}" unless TRANSPORTS.include?(transport)
 
@@ -205,7 +210,7 @@ module Html2rss
             Logger: Html2rss.logger
           )
         rescue LoadError => error
-          raise LoadError,
+          raise HttpTransportUnavailable,
                 'HTTP transport requires the rackup and webrick gems ' \
                 "(#{error.message}). Install them or use --transport stdio."
         end

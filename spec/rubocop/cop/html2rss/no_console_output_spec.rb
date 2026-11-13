@@ -38,6 +38,33 @@ RSpec.describe RuboCop::Cop::Html2rss::NoConsoleOutput, :config do
         end
       RUBY
     end
+
+    it 'registers an offense for self.warn and Warning.warn' do
+      expect_offense(<<~RUBY)
+        self.warn('x')
+        ^^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`warn`).
+        self.puts 'x'
+        ^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`puts`).
+        Warning.warn('x')
+        ^^^^^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`warn`).
+        ::Warning.warn('x')
+        ^^^^^^^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`warn`).
+        Object::Kernel.puts('x')
+        ^^^^^^^^^^^^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`puts`).
+      RUBY
+    end
+
+    it 'registers an offense for display on any receiver' do
+      expect_offense(<<~RUBY)
+        'x'.display
+        ^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`display`).
+        value.display($stderr)
+                      ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stderr`).
+        ^^^^^^^^^^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`display`).
+        display
+        ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`display`).
+      RUBY
+    end
   end
 
   context 'when a standard stream is referenced' do
@@ -68,6 +95,24 @@ RSpec.describe RuboCop::Cop::Html2rss::NoConsoleOutput, :config do
         ^^^^^^ Log through Html2rss::Log instead of writing to the console (`STDERR`).
         ::STDOUT.write('x')
         ^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`STDOUT`).
+      RUBY
+    end
+
+    it 'registers an offense for $> and $DEFAULT_OUTPUT' do
+      expect_offense(<<~RUBY)
+        $> << 'x'
+        ^^ Log through Html2rss::Log instead of writing to the console (`$>`).
+        $DEFAULT_OUTPUT.puts('x')
+        ^^^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$DEFAULT_OUTPUT`).
+      RUBY
+    end
+
+    it 'registers an offense for an Object::-qualified stream' do
+      expect_offense(<<~RUBY)
+        Object::STDERR.write('x')
+        ^^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`STDERR`).
+        ::Object::STDOUT.method(:puts).call('x')
+        ^^^^^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`STDOUT`).
       RUBY
     end
 
@@ -105,6 +150,19 @@ RSpec.describe RuboCop::Cop::Html2rss::NoConsoleOutput, :config do
         Logger.new($stderr)
         ::Logger.new($stdout)
         Logger.new(STDERR)
+      RUBY
+    end
+
+    it 'allows warn and write methods on other receivers' do
+      expect_no_offenses(<<~RUBY)
+        Foo::Warning.warn('x')
+        Warning.categories
+        Warning[:deprecated]
+        logger.puts('x')
+        Foo::Object::STDERR
+        $stdin.read
+        Logger.new($>)
+        Object::Logger.new($DEFAULT_OUTPUT)
       RUBY
     end
 

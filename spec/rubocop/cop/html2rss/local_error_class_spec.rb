@@ -61,6 +61,52 @@ RSpec.describe RuboCop::Cop::Html2rss::LocalErrorClass, :config do
       RUBY
     end
 
+    it 'registers an offense for any exception class Ruby defines at boot' do
+      expect_offense(<<~RUBY)
+        raise IOError, 'x'
+        ^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `IOError`.
+        raise RegexpError, 'x'
+        ^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RegexpError`.
+        raise ZeroDivisionError
+        ^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `ZeroDivisionError`.
+        raise StopIteration
+        ^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `StopIteration`.
+        raise EncodingError
+        ^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `EncodingError`.
+        raise LoadError, 'x'
+        ^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `LoadError`.
+      RUBY
+    end
+
+    it 'registers an offense for a namespaced boot class' do
+      expect_offense(<<~RUBY)
+        raise Errno::ENOENT, 'x'
+        ^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `Errno::ENOENT`.
+        raise ::Encoding::CompatibilityError
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `Encoding::CompatibilityError`.
+        raise IO::TimeoutError
+        ^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `IO::TimeoutError`.
+      RUBY
+    end
+
+    it 'registers an offense for an Object::-qualified class' do
+      expect_offense(<<~RUBY)
+        raise Object::ArgumentError, 'x'
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `ArgumentError`.
+        raise ::Object::Errno::EACCES
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `Errno::EACCES`.
+        Object::Kernel.raise TypeError
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `TypeError`.
+      RUBY
+    end
+
+    it 'registers an offense for exception on a ::-qualified class' do
+      expect_offense(<<~RUBY)
+        raise(::ArgumentError.exception('x'))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `ArgumentError`.
+      RUBY
+    end
+
     it 'registers an offense inside a block passed to fetch' do
       expect_offense(<<~RUBY)
         ALL.fetch(name) { raise ArgumentError, "unknown: \#{name}" }
@@ -83,6 +129,47 @@ RSpec.describe RuboCop::Cop::Html2rss::LocalErrorClass, :config do
         ^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
       RUBY
     end
+
+    it 'registers an offense for a formatted message' do
+      expect_offense(<<~RUBY)
+        raise format('bad %s', value)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise Kernel.sprintf('bad %s', value)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+      RUBY
+    end
+
+    it 'registers an offense for string concatenation' do
+      expect_offense(<<~RUBY)
+        raise('a' + 'b')
+        ^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise prefix + 'b'
+        ^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise prefix << "b"
+        ^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise '%s' % value
+        ^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+      RUBY
+    end
+
+    it 'registers an offense for a string conversion or a method on a string' do
+      expect_offense(<<~RUBY)
+        raise value.to_s
+        ^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise value.inspect
+        ^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise parts.join(', ')
+        ^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise error.message
+        ^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise 'bad'.freeze
+        ^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise(('bad'))
+        ^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        raise `cmd`
+        ^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+      RUBY
+    end
   end
 
   context 'when a local error is raised or re-raised' do
@@ -98,6 +185,29 @@ RSpec.describe RuboCop::Cop::Html2rss::LocalErrorClass, :config do
       expect_no_offenses(<<~RUBY)
         raise Thor::Error, 'bad'
         raise Foo::ArgumentError, 'bad'
+      RUBY
+    end
+
+    it 'allows a library class that is not defined at boot' do
+      expect_no_offenses(<<~RUBY)
+        raise Timeout::Error, 'slow'
+        raise Foo::Errno::ENOENT
+        raise Foo::Object::ArgumentError
+        raise foo::ArgumentError
+      RUBY
+    end
+
+    it 'allows raising a value that is not a string expression' do
+      expect_no_offenses(<<~RUBY)
+        raise message
+        raise build_error(value)
+        raise Foo.format('x')
+        raise errors.first
+        raise(error)
+        raise((error))
+        raise prefix + suffix
+        raise Html2rss::Error.new(value.to_s)
+        raise Thread.current
       RUBY
     end
 
@@ -188,6 +298,37 @@ RSpec.describe RuboCop::Cop::Html2rss::LocalErrorClass, :config do
                           ^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `StandardError`.
           end
         end
+      RUBY
+    end
+
+    it 'registers an offense for a subclass of any boot class' do
+      expect_offense(<<~RUBY)
+        class Io < IOError; end
+                   ^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `IOError`.
+        class Fz < FrozenError; end
+                   ^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `FrozenError`.
+        class Ex < Errno::ENOENT; end
+                   ^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `Errno::ENOENT`.
+        class Ob < Object::KeyError; end
+                   ^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `KeyError`.
+      RUBY
+    end
+
+    it 'registers an offense for a constant aliasing a boot class' do
+      expect_offense(<<~RUBY)
+        Alias = ArgumentError
+                ^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `ArgumentError`.
+        Foo::Alias = ::Errno::ENOENT
+                     ^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `Errno::ENOENT`.
+      RUBY
+    end
+
+    it 'allows constants that are not a bare boot class' do
+      expect_no_offenses(<<~RUBY)
+        ERRORS = [ArgumentError, TypeError].freeze
+        Alias = Html2rss::Error
+        Other = Thor::Error
+        Count = 1
       RUBY
     end
 

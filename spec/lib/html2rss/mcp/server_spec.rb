@@ -903,8 +903,8 @@ RSpec.describe Html2rss::MCP::Server do
       expect { described_class.start(transport: :udp) }.to raise_error(Html2rss::InvalidOption, /Unknown transport/)
     end
 
-    # rubocop:disable-next RSpec/ExampleLength -- LoadError messaging contract
-    it 'raises an actionable LoadError when HTTP deps are missing' do
+    # rubocop:disable-next RSpec/ExampleLength -- missing-dependency messaging contract
+    it 'raises an actionable HttpTransportUnavailable when HTTP deps are missing', :aggregate_failures do
       allow(described_class).to receive(:require).and_wrap_original do |original, name|
         raise LoadError, 'cannot load such file -- rackup' if name == 'rackup'
 
@@ -912,7 +912,10 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       expect { described_class.start(transport: :http) }
-        .to raise_error(LoadError, /HTTP transport requires the rackup and webrick gems/)
+        .to raise_error(described_class::HttpTransportUnavailable, /requires the rackup and webrick gems/) do |error|
+          expect(error).to be_a(Html2rss::Error)
+          expect(error.cause).to be_a(LoadError)
+        end
     end
   end
 

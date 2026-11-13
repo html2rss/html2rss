@@ -509,6 +509,14 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss::MCP).to have_received(:start).with(transport: :http, port: 4010)
     end
+
+    it 'reports a missing HTTP transport dependency as a CLI error' do
+      allow(Html2rss::MCP).to receive(:start)
+        .and_raise(Html2rss::MCP::Server::HttpTransportUnavailable, 'HTTP transport requires rackup')
+
+      expect { cli.invoke(:mcp, [], { transport: 'http' }) }
+        .to raise_error(Thor::Error, 'HTTP transport requires rackup')
+    end
   end
 
   describe '#validate' do
