@@ -260,6 +260,29 @@ RSpec.describe Html2rss::AutoSource::Segmenter::Semantic do
       end
     end
 
+    context 'when a card link has no destination facts' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="card"><a href="/news/2024/a1">Story a1 title</a></div>
+            <div class="card"><a href="/news/2024/a2">Story a2 title</a></div>
+          </main></body></html>
+        HTML
+      end
+      let(:options) { { link_resolver: instance_double(Html2rss::Scoring::LinkResolver, destination_facts: nil) } }
+
+      before do
+        primary = instance_double(Html2rss::AutoSource::Segmenter::PrimaryLink)
+        allow(primary).to receive(:select) { |container| container.find(&:link?) }
+        allow(Html2rss::AutoSource::Segmenter::PrimaryLink).to receive(:new).and_return(primary)
+      end
+
+      it 'counts the card in its group instead of raising', :aggregate_failures do
+        expect { segments }.not_to raise_error
+        expect(segments.map(&:group_size)).to eq([2, 2])
+      end
+    end
+
     context 'when cards of the same shape sit in an aside' do
       let(:html) do
         <<~HTML

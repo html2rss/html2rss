@@ -40,7 +40,7 @@ module Html2rss
         private_class_method :build_segments
 
         def self.groupable?(root, link, segmenter)
-          !segmenter.index.peripheral?(root) && !segmenter.link_resolver.destination_facts(link).media_path
+          !segmenter.index.peripheral?(root) && !segmenter.link_resolver.destination_facts(link)&.media_path
         end
         private_class_method :groupable?
 

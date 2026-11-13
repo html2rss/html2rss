@@ -901,6 +901,35 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
     end
 
+    context 'when a lone prominent article meets a group larger than the item cap' do
+      subject(:urls) do
+        page = Nokogiri::HTML.parse(<<~HTML)
+          <html><body><main>
+            <section>#{Array.new(120) { plain_card.call(_1) }.join}</section>
+            <section>#{lead_card}</section>
+          </main></body></html>
+        HTML
+        described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+      end
+
+      let(:plain_card) do
+        lambda do |index|
+          %(<div class="cell"><h3><a href="/local/2026/#{index}/story/">Local story #{index} today</a></h3></div>)
+        end
+      end
+      let(:lead_card) do
+        <<~HTML
+          <article class="lead"><h3><a href="/regional/2026/0/story/">Regional lead story today</a></h3>
+          <p>Officials expect a smooth rollout of the change.</p><time datetime="2026-11-12T10:00">10:00</time></article>
+        HTML
+      end
+
+      it 'keeps the lead story first: its score beats the bounded group bonus before the cap', :aggregate_failures do
+        expect(urls.first).to eq('https://example.com/regional/2026/0/story/')
+        expect(urls.size).to be <= described_class::TOP_K
+      end
+    end
+
     context 'when the groups together exceed the item cap' do
       subject(:urls) do
         page = Nokogiri::HTML.parse(<<~HTML)

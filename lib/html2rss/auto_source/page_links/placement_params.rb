@@ -11,15 +11,21 @@ module Html2rss
       #
       # - it appears on at least {MIN_PATHS} distinct paths, so it is a site convention, not one script's
       #   argument (+/news.php?id=1+ and +/news.php?id=2+ are two articles of one path); and
-      # - at least {MIN_REPEATED_PATHS} of those paths appear under two or more values of it while every
-      #   other query pair stays equal: the same story linked from several slots (+?pos=top+, +?pos=latest+).
+      # - at least {MIN_REPEATED_PATHS} of those paths, and at least {MIN_REPEATED_SHARE} of all its paths,
+      #   appear under two or more values of it while every other query pair stays equal: the same story
+      #   linked from several slots (+?pos=top+, +?pos=latest+). Repeating is the param's dominant behaviour,
+      #   so one listing paginated (+/news?page=1+, +/news?page=2+) or translated (+/a?lang=en+, +/a?lang=de+)
+      #   among other paths that carry the param once never collapses.
       #
-      # No param name is listed; the page decides.
+      # No param name is listed; the page decides. A page without the evidence keeps the param significant,
+      # so a fetch that renders fewer slots keeps the param on item URLs.
       class PlacementParams
         # Fewest distinct paths that must carry a param before it can be a page-wide convention.
         MIN_PATHS = 3
         # Fewest of those paths that must appear under two or more of its values, all else equal.
-        MIN_REPEATED_PATHS = 1
+        MIN_REPEATED_PATHS = 2
+        # Least share of the param's paths that must be such repeated paths.
+        MIN_REPEATED_SHARE = 0.5
 
         class << self
           ##
@@ -43,7 +49,8 @@ module Html2rss
           def placement?(by_story)
             paths = by_story.keys.to_set(&:first)
             repeated = by_story.select { |_story, pairs| pairs.size > 1 }.keys.to_set(&:first)
-            paths.size >= MIN_PATHS && repeated.size >= MIN_REPEATED_PATHS
+            paths.size >= MIN_PATHS && repeated.size >= MIN_REPEATED_PATHS &&
+              repeated.size >= paths.size * MIN_REPEATED_SHARE
           end
         end
       end

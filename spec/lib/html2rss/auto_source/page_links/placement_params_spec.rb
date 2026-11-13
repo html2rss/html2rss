@@ -7,10 +7,11 @@ RSpec.describe Html2rss::AutoSource::PageLinks::PlacementParams do
         described_class.names(hrefs.map { |href| Html2rss::Url.from_relative(href, 'https://example.com') })
       end
     end
+    let(:placed) { ['/a?pos=top', '/a?pos=latest', '/b?pos=top', '/b?pos=latest', '/c?pos=top'] }
 
     it 'finds a param that places the same stories in several slots', :aggregate_failures do
-      expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=latest', '/c?pos=latest']).to eq(Set['pos'])
-      expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=latest', '/c?pos=latest']).to be_frozen
+      expect(names[*placed]).to eq(Set['pos'])
+      expect(names[*placed]).to be_frozen
     end
 
     it 'never collapses a param that sits on one path only (the id control)', :aggregate_failures do
@@ -22,57 +23,78 @@ RSpec.describe Html2rss::AutoSource::PageLinks::PlacementParams do
       expect(names['/a?id=1', '/b?id=2', '/c?id=3', '/d?id=4']).to be_empty
     end
 
-    it 'needs MIN_PATHS distinct paths carrying the param', :aggregate_failures do
-      expect(described_class::MIN_PATHS).to eq(3)
-      expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=latest']).to be_empty
-      expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=latest', '/c?pos=latest']).to eq(Set['pos'])
+    {
+      id: ['/news.php?id=1', '/news.php?id=2', '/blog.php?id=3', '/event.php?id=4'],
+      page: ['/news?page=1', '/news?page=2', '/blog?page=1', '/events?page=2'],
+      lang: ['/a?lang=en', '/a?lang=de', '/b?lang=en', '/c?lang=en']
+    }.each do |param, hrefs|
+      it "does not collapse one repeated path among paths carrying ?#{param} once" do
+        expect(names[*hrefs]).to be_empty
+      end
     end
 
-    it 'needs MIN_REPEATED_PATHS paths under two or more values', :aggregate_failures do
-      expect(described_class::MIN_REPEATED_PATHS).to eq(1)
-      expect(names['/a?pos=top', '/b?pos=latest', '/c?pos=latest', '/d?pos=top']).to be_empty
+    it 'needs MIN_PATHS distinct paths carrying the param', :aggregate_failures do
+      expect(described_class::MIN_PATHS).to eq(3)
+      expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=top', '/b?pos=latest']).to be_empty
+      expect(names[*placed]).to eq(Set['pos'])
+    end
+
+    it 'needs MIN_REPEATED_PATHS repeated paths', :aggregate_failures do
+      expect(described_class::MIN_REPEATED_PATHS).to eq(2)
+      stub_const("#{described_class}::MIN_REPEATED_PATHS", 3)
+
+      expect(names[*placed]).to be_empty
+    end
+
+    it 'needs MIN_REPEATED_SHARE of the paths repeated, the share itself included', :aggregate_failures do
+      expect(described_class::MIN_REPEATED_SHARE).to eq(0.5)
+      expect(names[*placed, '/d?pos=top', '/e?pos=top']).to be_empty
+      expect(names[*placed, '/d?pos=top']).to eq(Set['pos'])
+      expect(names[*placed, '/c?pos=latest', '/d?pos=top', '/e?pos=top', '/f?pos=top']).to eq(Set['pos'])
+    end
+
+    it 'finds the param on a small share once MIN_REPEATED_SHARE allows it' do
+      stub_const("#{described_class}::MIN_REPEATED_SHARE", 0.2)
+
+      expect(names[*placed, '/d?pos=top', '/e?pos=top']).to eq(Set['pos'])
     end
 
     it 'counts distinct paths, not stories, and accepts more than MIN_PATHS', :aggregate_failures do
       expect(names['/a?pos=top&x=1', '/a?pos=latest&x=1', '/a?pos=top&x=2', '/b?pos=top']).to be_empty
-      expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=top', '/c?pos=top', '/d?pos=top',
-                   '/e?pos=top']).to eq(Set['pos'])
+      expect(names[*placed, '/c?pos=latest', '/d?pos=top', '/d?pos=latest']).to eq(Set['pos'])
     end
 
-    it 'accepts more than MIN_REPEATED_PATHS repeated paths' do
-      expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=top', '/b?pos=latest', '/c?pos=top']).to eq(Set['pos'])
-    end
-
-    it 'counts repeated paths, not repeated stories, against MIN_REPEATED_PATHS', :aggregate_failures do
-      stub_const("#{described_class}::MIN_REPEATED_PATHS", 2)
+    it 'counts repeated paths, not repeated stories', :aggregate_failures do
       one_path = ['/a?pos=top&x=1', '/a?pos=latest&x=1', '/a?pos=top&x=2', '/a?pos=latest&x=2', '/b?pos=top',
                   '/c?pos=top']
 
       expect(names[*one_path]).to be_empty
-      expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=top', '/b?pos=latest', '/c?pos=top']).to eq(Set['pos'])
+      expect(names[*one_path, '/b?pos=latest']).to eq(Set['pos'])
     end
 
     it 'counts two values only when every other query pair is equal', :aggregate_failures do
-      expect(names['/a?pos=top&page=1', '/a?pos=latest&page=2', '/b?pos=top', '/c?pos=top']).to be_empty
-      expect(names['/a?pos=top&page=1', '/a?pos=latest&page=1', '/b?pos=top', '/c?pos=top']).to eq(Set['pos'])
+      expect(names['/a?pos=top&page=1', '/a?pos=latest&page=2', '/b?pos=top&page=1', '/b?pos=latest&page=2',
+                   '/c?pos=top']).to be_empty
+      expect(names['/a?pos=top&page=1', '/a?pos=latest&page=1', '/b?pos=top&page=1', '/b?pos=latest&page=1',
+                   '/c?pos=top']).to eq(Set['pos'])
     end
 
-    it 'reads tracking params and param order as no difference', :aggregate_failures do
-      expect(names['/a?page=1&pos=top&utm_source=x', '/a?pos=latest&page=1', '/b?pos=top', '/c?pos=top'])
-        .to eq(Set['pos'])
+    it 'reads tracking params and param order as no difference' do
+      expect(names['/a?page=1&pos=top&utm_source=x', '/a?pos=latest&page=1', '/b?pos=top&page=1',
+                   '/b?pos=latest&page=1', '/c?pos=top']).to eq(Set['pos'])
     end
 
     it 'finds each placement param on its own evidence', :aggregate_failures do
-      urls = ['/a?pos=top', '/a?pos=latest', '/b?pos=top', '/c?pos=top', '/a?src=x', '/a?src=y', '/b?src=x']
+      urls = [*placed, '/a?src=x', '/a?src=y', '/b?src=x']
 
       expect(names[*urls]).to eq(Set['pos'])
-      expect(names[*urls, '/c?src=x']).to eq(Set['pos', 'src'])
+      expect(names[*urls, '/b?src=y', '/c?src=x']).to eq(Set['pos', 'src'])
     end
 
     it 'treats a trailing slash as one path and another host as another', :aggregate_failures do
-      expect(names['/a?pos=top', '/a/?pos=latest', '/b?pos=top', '/c?pos=top']).to eq(Set['pos'])
-      expect(names['https://other.example.com/a?pos=top', '/a?pos=latest', '/b?pos=latest', '/c?pos=latest'])
-        .to be_empty
+      expect(names['/a?pos=top', '/a/?pos=latest', '/b?pos=top', '/b?pos=latest', '/c?pos=top']).to eq(Set['pos'])
+      expect(names['https://other.example.com/a?pos=top', '/a?pos=latest', '/b?pos=top', '/b?pos=latest',
+                   '/c?pos=top']).to be_empty
     end
 
     it 'finds nothing on a page without queries or links', :aggregate_failures do
