@@ -45,11 +45,13 @@ module Html2rss
         ##
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
         # @param url [String, Html2rss::Url] canonical page URL
+        # @param base_url [String, Html2rss::Url] document base URL the page's API link resolves against
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @return [void]
-        def initialize(parsed_body, url:, request_session: nil)
+        def initialize(parsed_body, url:, base_url: url, request_session: nil)
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
+          @base_url = Html2rss::Url.from_absolute(base_url)
           @request_session = request_session
           @page_scope = PageScope.from(parsed_body:, url: @url)
         end
@@ -71,7 +73,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session, :page_scope
+        attr_reader :parsed_body, :url, :base_url, :request_session, :page_scope
 
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured rescue logs
         def fetch_posts
@@ -208,6 +210,7 @@ module Html2rss
           PostsEndpoint.resolve(
             parsed_body:,
             page_url: url,
+            base_url:,
             page_scope:,
             posts_query:,
             logger: Log

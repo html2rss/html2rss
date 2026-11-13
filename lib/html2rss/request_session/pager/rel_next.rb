@@ -15,7 +15,7 @@ module Html2rss
           href = page_response.parsed_body.at_css('link[rel~="next"][href], a[rel~="next"][href]')&.[]('href')
           return nil if href.nil? || href.empty?
 
-          Html2rss::Url.from_relative(href, page_response.url)
+          Html2rss::Url.from_relative(href, page_response.base_url)
         end
       end
     end

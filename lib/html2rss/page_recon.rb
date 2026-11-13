@@ -198,7 +198,7 @@ module Html2rss
       final = response.url
       parsed = html_parsed_body
       assessment = assess
-      sst_payload, segment_stats = sst_payload_and_segments(requested)
+      sst_payload, segment_stats = sst_payload_and_segments
 
       Result.new(
         requested_url: requested.to_s,
@@ -251,13 +251,13 @@ module Html2rss
       [source.articles.size, source.admission_drops]
     end
 
-    def sst_payload_and_segments(requested)
+    def sst_payload_and_segments
       return [nil, nil] unless response.html_response?
 
       sst = sst_document
       return [nil, nil] unless sst
 
-      stats = segment_stats(sst, requested)
+      stats = segment_stats(sst, response.base_url)
       [
         { node_count: sst.node_count, degraded: sst.degraded, segment_stats: stats },
         stats
@@ -268,8 +268,8 @@ module Html2rss
       Html2rss::SST::Normalizer.call(response.body)
     end
 
-    def segment_stats(sst, page_url)
-      segments = self.class.discover_segments(sst, page_url)
+    def segment_stats(sst, base_url)
+      segments = self.class.discover_segments(sst, base_url)
       return { found: 0 } if segments.empty?
 
       {

@@ -628,4 +628,62 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(original.replica.parsed_body).not_to be(original.parsed_body)
     end
   end
+
+  describe '#base_url' do
+    subject(:base_url) do
+      described_class.new(
+        body:, headers: { 'content-type' => content_type },
+        url: Html2rss::Url.from_absolute('https://example.com/en/list/?page=2')
+      ).base_url.to_s
+    end
+
+    let(:content_type) { 'text/html' }
+    let(:body) { "<html><head>#{head}</head><body><a href=\"files/a.pdf\">A</a></body></html>" }
+    let(:page) { 'https://example.com/en/list/?page=2' }
+
+    {
+      'no base element' => ['', nil],
+      'an absolute href' => ['<base href="https://example.com/docs/">', 'https://example.com/docs/'],
+      'a root-relative href' => ['<base href="/">', 'https://example.com/'],
+      'a relative href (against the page URL)' => ['<base href="assets/">', 'https://example.com/en/list/assets/'],
+      'a protocol-relative href' => ['<base href="//cdn.example.com/x/">', 'https://cdn.example.com/x/'],
+      'an empty href' => ['<base href="">', nil],
+      'a base without href' => ['<base target="_blank">', nil],
+      'a javascript: href' => ['<base href="javascript:void(0)">', nil],
+      'a data: href' => ['<base href="data:text/html,x">', nil],
+      'an ftp: href' => ['<base href="ftp://example.com/pub/">', nil],
+      'several bases (the first with an href wins)' =>
+        ['<base target="_blank"><base href="/first/"><base href="/second/">', 'https://example.com/first/'],
+      'several bases (an unusable first one is not skipped)' =>
+        ['<base href="javascript:x"><base href="/second/">', nil]
+    }.each do |label, (markup, expected)|
+      context "with #{label}" do
+        let(:head) { markup }
+
+        it 'resolves as the browser does' do
+          expect(base_url).to eq(expected || page)
+        end
+      end
+    end
+
+    context 'when the body is not HTML' do
+      let(:content_type) { 'application/json' }
+      let(:body) { '{"head":"<base href=\"/\">"}' }
+
+      it 'is the response URL' do
+        expect(base_url).to eq('https://example.com/en/list/?page=2')
+      end
+    end
+
+    context 'when asked twice' do
+      let(:head) { '<base href="/">' }
+
+      it 'computes it once' do
+        response = described_class.new(body:, headers: { 'content-type' => 'text/html' },
+                                       url: Html2rss::Url.from_absolute('https://example.com/en/'))
+        first = response.base_url
+        expect(response.base_url).to be(first)
+      end
+    end
+  end
 end

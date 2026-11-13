@@ -40,11 +40,13 @@ module Html2rss
 
         ##
         # @param parsed_body [Nokogiri::HTML::Document]
-        # @param url [String, Html2rss::Url]
+        # @param url [String, Html2rss::Url] page URL (the origin of the follow-ups)
+        # @param base_url [String, Html2rss::Url] document base URL the page's feed links resolve against
         # @param request_session [Html2rss::RequestSession, nil]
-        def initialize(parsed_body, url:, request_session: nil)
+        def initialize(parsed_body, url:, base_url: url, request_session: nil)
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
+          @base_url = Html2rss::Url.from_absolute(base_url)
           @request_session = request_session
         end
 
@@ -88,7 +90,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session
+        attr_reader :parsed_body, :url, :base_url, :request_session
 
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- discovery + parse + structured warn
         def fetch_feed
@@ -96,6 +98,7 @@ module Html2rss
 
           response = Syndication::Discovery.best_feed_response(
             page_url: url,
+            base_url:,
             request_session:,
             parsed_body:,
             max_probes: self.class.request_slots

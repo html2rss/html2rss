@@ -99,6 +99,42 @@ RSpec.describe Html2rss::RequestSession::Pager do
       )
     end
 
+    context 'when the page declares <base href="/">' do
+      let(:initial_response) do
+        Html2rss::RequestService::Response.new(
+          body: '<html><head><base href="/"><link rel="next" href="news?page=2"></head><body>page1</body></html>',
+          url: Html2rss::Url.from_absolute('https://example.com/en/news/'),
+          headers: { 'content-type' => 'text/html' }
+        )
+      end
+
+      it 'resolves the next link against the base and keeps the page as the follow-up origin', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        pager.to_a
+        expect(Html2rss::RequestService).to have_received(:execute).with(
+          satisfy do |c|
+            c.origin_url.to_s == 'https://example.com/en/news/' && c.url.to_s == 'https://example.com/news?page=2'
+          end,
+          strategy: :default
+        )
+      end
+    end
+
+    context 'when the page declares a cross-host base' do
+      let(:initial_response) do
+        Html2rss::RequestService::Response.new(
+          body: '<html><head><base href="https://other.example/"><link rel="next" href="news?page=2"></head></html>',
+          url: Html2rss::Url.from_absolute('https://example.com/en/news/'),
+          headers: { 'content-type' => 'text/html' }
+        )
+      end
+
+      before { allow(Html2rss::RequestService).to receive(:execute).and_call_original }
+
+      it 'still refuses the follow-up under the cross-origin rule, without a request' do
+        expect { pager.to_a }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
     context 'when the rel-next link has an empty href' do
       let(:initial_response) do
         Html2rss::RequestService::Response.new(

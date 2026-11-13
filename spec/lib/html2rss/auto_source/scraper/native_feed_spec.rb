@@ -114,7 +114,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       expect(scraper.to_a).to eq([])
       expect(scraper.feed_url).to be_nil
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_response).with(
-        page_url:, request_session: session, parsed_body:, max_probes: 1
+        page_url:, base_url: page_url, request_session: session, parsed_body:, max_probes: 1
       )
     end
 

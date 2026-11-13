@@ -13,23 +13,29 @@ module Html2rss
           ##
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @param page_url [Html2rss::Url] canonical page URL
+          # @param base_url [Html2rss::Url] document base URL the page's API link resolves against
           # @param page_scope [Html2rss::AutoSource::Scraper::WordpressApi::PageScope] derived page scope
           # @param posts_query [Hash{String => String}] query params for the posts request
           # @param logger [Logger] logger used for operational warnings
           # @return [Html2rss::Url, nil] resolved posts endpoint or nil when unavailable
-          def self.resolve(parsed_body:, page_url:, page_scope:, posts_query:, logger: Html2rss::Log)
-            new(parsed_body:, page_url:, page_scope:, posts_query:, logger:).call
+          # rubocop:disable-next Metrics/ParameterLists -- page, base and scope context stay co-located
+          def self.resolve(parsed_body:, page_url:, page_scope:, posts_query:, logger: Html2rss::Log,
+                           base_url: page_url)
+            new(parsed_body:, page_url:, base_url:, page_scope:, posts_query:, logger:).call
           end
 
           ##
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @param page_url [Html2rss::Url] canonical page URL
+          # @param base_url [Html2rss::Url] document base URL the page's API link resolves against
           # @param page_scope [Html2rss::AutoSource::Scraper::WordpressApi::PageScope] derived page scope
           # @param posts_query [Hash{String => String}] query params for the posts request
           # @param logger [Logger] logger used for operational warnings
-          def initialize(parsed_body:, page_url:, page_scope:, posts_query:, logger:)
+          # rubocop:disable-next Metrics/ParameterLists -- page, base and scope context stay co-located
+          def initialize(parsed_body:, page_url:, page_scope:, posts_query:, logger:, base_url: page_url)
             @parsed_body = parsed_body
             @page_url = Html2rss::Url.from_absolute(page_url)
+            @base_url = Html2rss::Url.from_absolute(base_url)
             @page_scope = page_scope
             @posts_query = posts_query
             @logger = logger
@@ -47,13 +53,13 @@ module Html2rss
 
           private
 
-          attr_reader :parsed_body, :page_url, :page_scope, :posts_query, :logger
+          attr_reader :parsed_body, :page_url, :base_url, :page_scope, :posts_query, :logger
 
           def api_root_url
             href = parsed_body.at_css(WordpressApi::API_LINK_SELECTOR)&.[]('href').to_s.strip
             return log_missing_api_root if href.empty?
 
-            Html2rss::Url.from_relative(href, page_url)
+            Html2rss::Url.from_relative(href, base_url)
           rescue Html2rss::Url::InvalidUrlError => error
             logger.warn("#{WordpressApi}: invalid WordPress API endpoint #{href.inspect} (#{error.message})")
             nil

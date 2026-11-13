@@ -120,6 +120,7 @@ module Html2rss
       @parsed_body = response.parsed_body
       @body = response.body
       @url = response.url
+      @base_url = response.base_url
       @json_response = response.json_response?
       @captured_responses = response.captured_responses
       @opts = opts
@@ -170,7 +171,7 @@ module Html2rss
 
     private
 
-    attr_reader :url, :parsed_body, :body, :request_session, :captured_responses
+    attr_reader :url, :base_url, :parsed_body, :body, :request_session, :captured_responses
 
     # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
@@ -191,6 +192,7 @@ module Html2rss
             parsed_body,
             opts: scraper_opts,
             url:,
+            base_url:,
             request_session:,
             body:,
             document: (page_document if Scraper.heuristic_tier?(tier)),
@@ -231,6 +233,7 @@ module Html2rss
         parsed_body,
         opts: @opts.fetch(:scraper, {}),
         url:,
+        base_url:,
         request_session:,
         body:,
         captured_responses:
@@ -304,7 +307,7 @@ module Html2rss
     end
 
     def link_resolver
-      @link_resolver ||= Scoring::LinkResolver.new(url)
+      @link_resolver ||= Scoring::LinkResolver.new(base_url)
     end
 
     def corroboration

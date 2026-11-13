@@ -58,12 +58,14 @@ module Html2rss
         end
 
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
-        # @param url [String, Html2rss::Url] base page URL
+        # @param url [String, Html2rss::Url] page URL (the origin of the follow-up)
+        # @param base_url [String, Html2rss::Url] document base URL the page's references resolve against
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @return [void]
-        def initialize(parsed_body, url:, request_session: nil)
+        def initialize(parsed_body, url:, base_url: url, request_session: nil)
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
+          @base_url = Html2rss::Url.from_absolute(base_url)
           @request_session = request_session
         end
 
@@ -84,7 +86,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session
+        attr_reader :parsed_body, :url, :base_url, :request_session
 
         # @return [Hash{Symbol => Object}, nil] assembled article hash or nil
         def build_article
@@ -188,7 +190,7 @@ module Html2rss
             type = meta_data[:"#{kind}_type"]
             next if type && !type.start_with?("#{kind}/")
 
-            Html2rss::Html::ArticleRules::Enclosure.from_media(meta_data[kind], type, url)
+            Html2rss::Html::ArticleRules::Enclosure.from_media(meta_data[kind], type, base_url)
           end
           found unless found.empty?
         end
@@ -198,7 +200,7 @@ module Html2rss
         def resolve_url(raw_url)
           return if raw_url.nil? || raw_url.empty?
 
-          Html2rss::Url.from_relative(raw_url, url)
+          Html2rss::Url.from_relative(raw_url, base_url)
         rescue Html2rss::Url::InvalidUrlError
           nil
         end

@@ -361,7 +361,7 @@ RSpec.describe Html2rss::Test do
 
         expect(Html2rss::RequestSession).to have_received(:build).with(hash_including(strategy: :default))
         expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-          page_url: 'https://example.com/news', request_session: kind_of(Html2rss::RequestSession),
+          page_url: 'https://example.com/news', base_url: 'https://example.com/news', request_session: kind_of(Html2rss::RequestSession),
           parsed_body: kind_of(Nokogiri::HTML::Document), html: '<html></html>'
         )
       end
@@ -693,7 +693,7 @@ RSpec.describe Html2rss::Test do
 
         expect(result).to have_attributes(native_feed: nil, defer_reason: nil)
         expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-          page_url: channel_url, request_session: kind_of(Html2rss::RequestSession),
+          page_url: channel_url, base_url: channel_url, request_session: kind_of(Html2rss::RequestSession),
           parsed_body: kind_of(Nokogiri::HTML::Document), html: '<html></html>'
         )
       end

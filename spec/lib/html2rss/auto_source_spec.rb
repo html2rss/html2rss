@@ -1087,5 +1087,48 @@ RSpec.describe Html2rss::AutoSource do
         .to eq('different_domain' => 10, 'low_word_count' => 1)
     end
   end
+
+  describe 'document base URL' do
+    let(:url) { Html2rss::Url.from_absolute('https://example.com/en/list/') }
+    let(:body) do
+      <<~HTML
+        <html><head><base href="#{base}"></head><body>
+          <article><h2>A story that has a proper headline</h2>
+            <p>Some teaser text that gives the story a body worth reading.</p>
+            <a href="stories/one">Read more</a></article>
+          <article><h2>Another story with a proper headline</h2>
+            <p>More teaser text that gives the story a body worth reading.</p>
+            <a href="stories/two">Read more</a></article>
+        </body></html>
+      HTML
+    end
+
+    context 'when the page declares <base href="/">' do
+      let(:base) { '/' }
+
+      it 'resolves article links against the base', :aggregate_failures do
+        expect(auto_source.articles.map { _1.url.to_s })
+          .to contain_exactly('https://example.com/stories/one', 'https://example.com/stories/two')
+        expect(response.url.to_s).to eq('https://example.com/en/list/')
+      end
+    end
+
+    context 'when the base is not http(s)' do
+      let(:base) { 'javascript:void(0)' }
+
+      it 'resolves article links against the page URL' do
+        expect(auto_source.articles.map { _1.url.to_s })
+          .to contain_exactly('https://example.com/en/list/stories/one', 'https://example.com/en/list/stories/two')
+      end
+    end
+
+    context 'when the base points at another host' do
+      let(:base) { 'https://other.example/' }
+
+      it 'drops the cross-host item links like any cross-origin item (Cleanup keeps the page origin)' do
+        expect(auto_source.articles.map { _1.url.to_s }).to be_empty
+      end
+    end
+  end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers

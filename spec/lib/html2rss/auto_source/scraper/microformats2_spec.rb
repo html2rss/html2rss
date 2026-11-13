@@ -325,4 +325,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microformats2 do
       end
     end
   end
+
+  describe 'document base URL' do
+    subject(:articles) do
+      described_class.new(Nokogiri::HTML(html), url:, base_url: Html2rss::Url.from_absolute('https://example.com/'))
+                     .each.to_a
+    end
+
+    let(:html) do
+      <<~HTML
+        <html><body>
+          <div class="h-entry"><a class="u-url p-name" href="posts/one">One</a></div>
+          <div class="h-entry"><span class="p-name">Two</span></div>
+        </body></html>
+      HTML
+    end
+
+    it 'resolves entry links against the base and falls back to the page URL for an entry without one',
+       :aggregate_failures do
+      expect(articles.map { _1[:url].to_s }).to eq(['https://example.com/posts/one', 'https://example.com/blog'])
+    end
+  end
 end

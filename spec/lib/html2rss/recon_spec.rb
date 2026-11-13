@@ -23,6 +23,7 @@ RSpec.describe Html2rss::Recon do
     instance_double(
       Html2rss::RequestService::Response,
       url: Html2rss::Url.from_absolute(url),
+      base_url: Html2rss::Url.from_absolute(url),
       status: 200,
       body: html_body,
       html_response?: true,
@@ -180,6 +181,7 @@ RSpec.describe Html2rss::Recon do
         instance_double(
           Html2rss::RequestService::Response,
           url: Html2rss::Url.from_absolute(url),
+          base_url: Html2rss::Url.from_absolute(url),
           status: 404,
           body: 'Not Found',
           html_response?: false,
@@ -203,6 +205,7 @@ RSpec.describe Html2rss::Recon do
         instance_double(
           Html2rss::RequestService::Response,
           url: Html2rss::Url.from_absolute('http://example.com/news'),
+          base_url: Html2rss::Url.from_absolute('http://example.com/news'),
           status: 200,
           body: html_body,
           html_response?: true,
@@ -248,6 +251,7 @@ RSpec.describe Html2rss::Recon do
         instance_double(
           Html2rss::RequestService::Response,
           url: Html2rss::Url.from_absolute(url),
+          base_url: Html2rss::Url.from_absolute(url),
           status: 200,
           body: nil,
           html_response?: true,

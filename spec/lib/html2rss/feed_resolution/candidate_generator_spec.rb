@@ -189,4 +189,21 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
       end
     end
   end
+
+  context 'when the page declares <base href="/">' do
+    let(:entry_url) { 'https://example.com/en/list/' }
+    let(:html) do
+      <<~HTML
+        <html><head><base href="/"><link rel="alternate" type="application/rss+xml" href="feed.xml"></head>
+        <body><nav><a href="news">News</a></nav></body></html>
+      HTML
+    end
+
+    it 'resolves the feed alternate and the nav links against the base', :aggregate_failures do
+      urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
+
+      expect(urls).to include('https://example.com/feed.xml', 'https://example.com/news')
+      expect(urls).not_to include('https://example.com/en/list/news')
+    end
+  end
 end

@@ -34,11 +34,13 @@ module Html2rss
         end
 
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
-        # @param url [String, Html2rss::Url] base page URL
+        # @param url [String, Html2rss::Url] page URL (the URL of an entry without a +u-url+)
+        # @param base_url [String, Html2rss::Url] document base URL the entries' references resolve against
         # @return [void]
-        def initialize(parsed_body, url:)
+        def initialize(parsed_body, url:, base_url: url)
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
+          @base_url = Html2rss::Url.from_absolute(base_url)
         end
 
         # @return [Boolean]
@@ -60,7 +62,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url
+        attr_reader :parsed_body, :url, :base_url
 
         # @param entry [Nokogiri::XML::Element] entry DOM node
         # @return [Hash{Symbol => Object}, nil] article hash or nil
@@ -150,7 +152,7 @@ module Html2rss
         def resolve_url(raw_url)
           return if raw_url.to_s.empty?
 
-          Html2rss::Url.from_relative(raw_url, url)
+          Html2rss::Url.from_relative(raw_url, base_url)
         rescue Html2rss::Url::InvalidUrlError
           nil
         end

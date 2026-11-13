@@ -23,18 +23,20 @@ module Html2rss
       ##
       # @param doc [Nokogiri::HTML::Document] parsed page
       # @param page_url [String, Html2rss::Url] URL the page was fetched from
+      # @param base_url [String, Html2rss::Url] document base URL the link hrefs resolve against
+      #   ({Response#base_url}); the origin rules still compare with +page_url+
       # @return [FeedAdvertisement] the page's advertised feeds (possibly none)
-      def self.from_document(doc, page_url:)
+      def self.from_document(doc, page_url:, base_url: page_url)
         page = Url.from_absolute(page_url)
         feeds = Html::FeedLink.from_document(doc).each_with_object({}) do |link, acc|
-          url = feed_url(link.href, page)
+          url = feed_url(link.href, base_url, page)
           acc[url] ||= link.title if url
         end
         new(page_url: page, feeds: feeds.freeze)
       end
 
-      def self.feed_url(href, page)
-        return unless (url = Url.resolve_web(href, page))
+      def self.feed_url(href, base, page)
+        return unless (url = Url.resolve_web(href, base))
 
         Policy.same_origin?(url, page) ? url : url.with_scheme('https')
       end

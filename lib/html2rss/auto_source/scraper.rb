@@ -50,6 +50,10 @@ module Html2rss
       PAGE_SCRAPERS = (CORROBORATED_SCRAPERS | HEURISTIC_SCRAPERS).freeze
       # Scrapers that accept a shared follow-up +request_session+.
       REQUEST_SESSION_SCRAPERS = Set[NativeFeed, WordpressApi, Sitemap, MetaOembed].freeze
+      # Scrapers that keep the page URL as +url:+ (a fallback item URL, the origin of their follow-ups) and
+      # resolve the page's references against a separate +base_url:+. Every other scraper only resolves
+      # references, so {.build_instance} hands it the document base URL as +url:+.
+      BASE_URL_SCRAPERS = Set[NativeFeed, WordpressApi, MetaOembed, Microformats2].freeze
       # Scrapers that consume browser-captured XHR/fetch JSON bodies.
       CAPTURED_RESPONSE_SCRAPERS = Set[XhrArticles].freeze
 
@@ -132,6 +136,8 @@ module Html2rss
       # @param parsed_body [Nokogiri::HTML::Document]
       # @param opts [Hash] full scraper options map
       # @param url [Html2rss::Url, String]
+      # @param base_url [String, Html2rss::Url, nil] document base URL ({RequestService::Response#base_url})
+      #   that relative references resolve against; defaults to +url+
       # @param request_session [Html2rss::RequestSession, nil]
       # @param body [String, nil]
       # @param document [SST::Document, nil]
@@ -150,8 +156,8 @@ module Html2rss
       # @option opts [Hash] :sitemap scraper toggle and configuration
       # @return [Object, nil]
       # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- construction context for structured and heuristic scrapers
-      def self.build_instance(scraper, parsed_body, opts:, url:, request_session: nil, body: nil, document: nil,
-                              link_resolver: nil, captured_responses: [])
+      def self.build_instance(scraper, parsed_body, opts:, url:, base_url: url, request_session: nil, body: nil,
+                              document: nil, link_resolver: nil, captured_responses: [])
         return unless opts.dig(scraper.options_key, :enabled)
         return if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
 
@@ -164,7 +170,8 @@ module Html2rss
           link_resolver:,
           captured_responses:
         )
-        scraper.new(parsed_body, url:, **kwargs, **scraper_opts)
+        urls = BASE_URL_SCRAPERS.include?(scraper) ? { url:, base_url: } : { url: base_url }
+        scraper.new(parsed_body, **urls, **kwargs, **scraper_opts)
       end
 
       ##

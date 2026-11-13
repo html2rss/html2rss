@@ -37,6 +37,7 @@ module Html2rss
         # Probes candidates lazily and returns the first feedish URL.
         #
         # @param page_url [String, Html2rss::Url] page or origin URL
+        # @param base_url [String, Html2rss::Url] document base URL the page's head alternates resolve against
         # @param request_session [Html2rss::RequestSession] shared session for follow-ups
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML when available
         # @param html [String, nil] raw HTML when a document is unavailable
@@ -44,9 +45,10 @@ module Html2rss
         # @param max_probes [Integer, nil] max candidate GETs (nil = uncapped)
         # @return [Html2rss::Url, nil]
         # rubocop:disable-next Metrics/ParameterLists -- discovery kwargs stay co-located
-        def best_feed_url(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
-                          max_probes: nil)
-          best_feed_response(page_url:, request_session:, parsed_body:, html:, extra_paths:, max_probes:)&.url
+        def best_feed_url(page_url:, request_session:, base_url: page_url, parsed_body: nil, html: nil,
+                          extra_paths: [], max_probes: nil)
+          best_feed_response(page_url:, base_url:, request_session:, parsed_body:, html:, extra_paths:,
+                             max_probes:)&.url
         end
 
         ##
@@ -62,13 +64,15 @@ module Html2rss
         # @return [Html2rss::Url, nil]
         def native_feed_url(response:, request_session:)
           parsed_body = response.parsed_body if response.html_response?
-          best_feed_url(page_url: response.url, request_session:, parsed_body:, html: response.body)
+          best_feed_url(page_url: response.url, base_url: response.base_url, request_session:, parsed_body:,
+                        html: response.body)
         end
 
         ##
         # Like {#best_feed_url} but returns the validated syndication response for parsing.
         #
         # @param page_url [String, Html2rss::Url]
+        # @param base_url [String, Html2rss::Url] document base URL the page's head alternates resolve against
         # @param request_session [Html2rss::RequestSession]
         # @param parsed_body [Nokogiri::HTML::Document, nil]
         # @param html [String, nil]
@@ -76,11 +80,11 @@ module Html2rss
         # @param max_probes [Integer, nil] max candidate GETs (nil = uncapped)
         # @return [Html2rss::RequestService::Response, nil]
         # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- discovery kwargs stay co-located
-        def best_feed_response(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
-                               max_probes: nil)
+        def best_feed_response(page_url:, request_session:, base_url: page_url, parsed_body: nil, html: nil,
+                               extra_paths: [], max_probes: nil)
           page = Html2rss::Url.from_absolute(page_url)
           doc = document(parsed_body)
-          advertisement = RequestService::FeedAdvertisement.from_document(doc, page_url: page)
+          advertisement = RequestService::FeedAdvertisement.from_document(doc, page_url: page, base_url:)
           candidates = candidates(page, advertisement, doc:, html:, extra_paths:)
           Log.debug("Syndication::Discovery: host=#{page.host} candidate_count=#{candidates.size}")
 
@@ -102,14 +106,15 @@ module Html2rss
         # signals the audio-hinted alternates come after the guesses).
         #
         # @param page_url [String, Html2rss::Url]
+        # @param base_url [String, Html2rss::Url] document base URL the page's head alternates resolve against
         # @param parsed_body [Nokogiri::HTML::Document, nil]
         # @param html [String, nil]
         # @param extra_paths [Array<String>]
         # @return [Array<Html2rss::Url>]
-        def candidate_urls(page_url:, parsed_body: nil, html: nil, extra_paths: [])
+        def candidate_urls(page_url:, base_url: page_url, parsed_body: nil, html: nil, extra_paths: [])
           page = Html2rss::Url.from_absolute(page_url)
           doc = document(parsed_body)
-          advertisement = RequestService::FeedAdvertisement.from_document(doc, page_url: page)
+          advertisement = RequestService::FeedAdvertisement.from_document(doc, page_url: page, base_url:)
           candidates(page, advertisement, doc:, html:, extra_paths:)
         end
 

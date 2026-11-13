@@ -91,6 +91,24 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       allow(Html2rss::Log).to receive(:warn)
     end
 
+    context 'when the page declares a base URL the relative API link resolves against' do
+      subject(:articles) do
+        described_class.new(parsed_body, url:, base_url: Html2rss::Url.from_absolute('https://example.com/'),
+                                         request_session:).each.to_a
+      end
+
+      let(:parsed_body) do
+        Nokogiri::HTML('<html><head><link rel="https://api.w.org/" href="wp-json/" /></head></html>')
+      end
+
+      it 'fetches the posts under the base while the page stays the follow-up origin', :aggregate_failures do
+        articles
+        expect(request_session).to have_received(:follow_up).with(
+          hash_including(origin_url: url, url: satisfy { _1.to_s.start_with?('https://example.com/wp-json/') })
+        )
+      end
+    end
+
     context 'when the response contains non-post entries' do
       let(:posts) { [post, 'junk', 42] }
 

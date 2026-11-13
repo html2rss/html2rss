@@ -44,6 +44,10 @@ module Html2rss
 
       attr_reader :entry_url, :response, :max
 
+      # The fetched page's document base URL: relative links resolve against it, while eligibility
+      # still compares with the entry URL.
+      def base_url = response.base_url
+
       def listing_cap = max > 1 ? max - 1 : 0
 
       # First eligible Discovery candidate: an alternate on another domain (Discovery ranks
@@ -51,7 +55,8 @@ module Html2rss
       def feed_slot
         return unless parsed_html
 
-        Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).find { eligible_url?(_1) }
+        Syndication::Discovery.candidate_urls(page_url: entry_url, base_url:, parsed_body: parsed_html)
+                              .find { eligible_url?(_1) }
       end
 
       def listing_urls
@@ -86,7 +91,7 @@ module Html2rss
         sst = SST::Normalizer.call(parsed_html)
         return [] unless sst
 
-        link_resolver = Scoring::LinkResolver.new(entry_url)
+        link_resolver = Scoring::LinkResolver.new(base_url)
 
         SEGMENT_STRATEGIES.each do |strategy|
           urls = segment_urls_for(sst, strategy, link_resolver)
@@ -96,7 +101,7 @@ module Html2rss
       end
 
       def segment_urls_for(sst, strategy, link_resolver)
-        segmenter = AutoSource::Segmenter.new(sst, base_url: entry_url, strategy:, link_resolver:)
+        segmenter = AutoSource::Segmenter.new(sst, base_url:, strategy:, link_resolver:)
         segmenter.call.filter_map do |segment|
           absolute_same_origin(segment.primary_link&.attrs&.href)
         end.uniq
@@ -117,7 +122,7 @@ module Html2rss
       def absolute_same_origin(href)
         return if href.nil? || href.empty? || href.start_with?('#', 'mailto:', 'javascript:')
 
-        Html2rss::Url.from_relative(href, entry_url)
+        Html2rss::Url.from_relative(href, base_url)
       rescue Html2rss::Url::InvalidUrlError
         nil
       end

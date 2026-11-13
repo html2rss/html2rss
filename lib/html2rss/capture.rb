@@ -262,7 +262,7 @@ module Html2rss
       sst = SST::Normalizer.call(response.body)
       return [*default_selectors, SelectorCandidates.empty] unless sst
 
-      select_enhance_selectors(sst, articles)
+      select_enhance_selectors(sst, articles, response.base_url)
     end
 
     def hint_selectors
@@ -273,8 +273,8 @@ module Html2rss
       [{ items: { selector: Selectors::DEFAULT_ITEMS_SELECTOR, enhance: resolve_enhance } }, :default]
     end
 
-    def select_enhance_selectors(sst, articles)
-      evidence = collect_items_evidence(sst, articles)
+    def select_enhance_selectors(sst, articles, base_url)
+      evidence = collect_items_evidence(sst, articles, base_url)
       candidates = SelectorCandidates.call(items_evidence: evidence, min_matches: MIN_SELECTOR_MATCHES)
       top = candidates[:items].first
       return [*default_selectors, candidates] unless top
@@ -284,15 +284,15 @@ module Html2rss
       [{ items: }, strategy, candidates]
     end
 
-    def collect_items_evidence(sst, articles)
-      link_resolver = Scoring::LinkResolver.new(@url)
+    def collect_items_evidence(sst, articles, base_url)
+      link_resolver = Scoring::LinkResolver.new(base_url)
       enhance = resolve_enhance
 
       SEGMENT_STRATEGIES.flat_map do |strategy|
         segments = AutoSource::Segmenter.call(
-          sst, base_url: @url, strategy:, link_resolver:
+          sst, base_url:, strategy:, link_resolver:
         )
-        matched = match_segments_to_articles(segments, articles)
+        matched = match_segments_to_articles(segments, articles, base_url)
         next [] if matched.size < MIN_SELECTOR_MATCHES
 
         items_evidence_for(matched, strategy:, enhance:)
@@ -314,7 +314,7 @@ module Html2rss
       ].filter_map { |kind, selector| [kind, selector] if selector }
     end
 
-    def match_segments_to_articles(segments, articles)
+    def match_segments_to_articles(segments, articles, base_url)
       articles_by_url = articles.each_with_object({}) do |article, hash|
         url_str = article.url.to_s
         hash[url_str] = article unless url_str.empty?
@@ -323,13 +323,13 @@ module Html2rss
       segments.filter_map do |segment|
         next unless segment.primary_link
 
-        article = find_matching_article(segment, articles_by_url)
+        article = find_matching_article(segment, articles_by_url, base_url)
         { segment:, article: } if article
       end
     end
 
-    def find_matching_article(segment, articles_by_url)
-      resolved = Url.from_relative(segment.primary_link.attrs.href.to_s, @url)
+    def find_matching_article(segment, articles_by_url, base_url)
+      resolved = Url.from_relative(segment.primary_link.attrs.href.to_s, base_url)
       articles_by_url[resolved.to_s] || articles_by_url.values.find { |a| fuzzy_url_match?(a.url, resolved) }
     end
 

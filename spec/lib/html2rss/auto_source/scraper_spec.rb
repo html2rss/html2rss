@@ -317,8 +317,22 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       described_class.build_instance(described_class::NativeFeed, parsed_body, opts:, url:, request_session: :session)
       described_class.build_instance(described_class::Schema, parsed_body, opts:, url:, request_session: :session)
 
-      expect(described_class::NativeFeed).to have_received(:new).with(parsed_body, url:, request_session: :session)
+      expect(described_class::NativeFeed)
+        .to have_received(:new).with(parsed_body, url:, base_url: url, request_session: :session)
       expect(described_class::Schema).to have_received(:new).with(parsed_body, url:)
+    end
+
+    it 'hands resolution-only scrapers the document base as url and the others both', :aggregate_failures do
+      base_url = Html2rss::Url.from_absolute('https://example.com/')
+      allow(described_class::Schema).to receive(:new).and_return(:schema)
+      allow(described_class::Microformats2).to receive(:new).and_return(:mf2)
+      opts = { schema: { enabled: true }, microformats2: { enabled: true } }
+
+      described_class.build_instance(described_class::Schema, parsed_body, opts:, url:, base_url:)
+      described_class.build_instance(described_class::Microformats2, parsed_body, opts:, url:, base_url:)
+
+      expect(described_class::Schema).to have_received(:new).with(parsed_body, url: base_url)
+      expect(described_class::Microformats2).to have_received(:new).with(parsed_body, url:, base_url:)
     end
 
     it 'passes the raw body only to Sitemap', :aggregate_failures do

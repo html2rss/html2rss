@@ -424,8 +424,9 @@ RSpec.describe Html2rss::Capture do
         result
 
         expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-          page_url: Html2rss::Url.from_absolute(url), request_session: kind_of(Html2rss::RequestSession),
-          parsed_body: kind_of(Nokogiri::HTML::Document), html: a_string_including('Page Title')
+          page_url: Html2rss::Url.from_absolute(url), base_url: Html2rss::Url.from_absolute(url),
+          request_session: kind_of(Html2rss::RequestSession), parsed_body: kind_of(Nokogiri::HTML::Document),
+          html: a_string_including('Page Title')
         )
       end
 
@@ -1127,9 +1128,9 @@ RSpec.describe Html2rss::Capture do
       allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |_sst, strategy:, **|
         strategy == :list ? [] : [seg_a, seg_b]
       end
-      allow(Html2rss::Url).to receive(:from_relative).with('/a', url)
+      allow(Html2rss::Url).to receive(:from_relative).with('/a', Html2rss::Url.from_absolute(url))
                                                      .and_return(Html2rss::Url.from_absolute("#{url}/a"))
-      allow(Html2rss::Url).to receive(:from_relative).with('/b', url)
+      allow(Html2rss::Url).to receive(:from_relative).with('/b', Html2rss::Url.from_absolute(url))
                                                      .and_return(Html2rss::Url.from_absolute("#{url}/b"))
 
       result = described_class.new(url).build

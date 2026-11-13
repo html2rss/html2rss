@@ -327,6 +327,22 @@ RSpec.describe Html2rss::Syndication::Discovery do
       )
     end
 
+    it 'resolves a relative alternate against the page document base URL, keeping the page as origin',
+       :aggregate_failures do
+      allow(session).to receive(:follow_up).and_return(hit)
+      based = feed_response(
+        body: '<head><base href="/"><link rel="alternate" type="application/rss+xml" href="show.xml"></head>',
+        content_type: 'text/html', url: page_url.to_s
+      )
+
+      described_class.native_feed_url(response: based, request_session: session)
+
+      expect(session).to have_received(:follow_up).once.with(
+        url: Html2rss::Url.from_absolute('https://example.com/show.xml'), relation: :advertised_feed,
+        origin_url: page_url, advertisement: kind_of(Html2rss::RequestService::FeedAdvertisement)
+      )
+    end
+
     it 'reads a non-HTML page as raw alternates without parsing it' do
       body = '<link rel="alternate" type="application/rss+xml" href="/alt.xml">'
       plain = feed_response(body:, content_type: 'text/plain', url: page_url.to_s)
@@ -361,6 +377,29 @@ RSpec.describe Html2rss::Syndication::Discovery do
     let(:hit) do
       feed_response(body: '<rss version="2.0"></rss>', content_type: 'application/rss+xml',
                     url: 'https://example.com/news/atom.xml')
+    end
+
+    it 'resolves a relative alternate against the page URL when best_feed_response gets no base URL',
+       :aggregate_failures do
+      allow(session).to receive(:follow_up).and_return(hit)
+      html = '<head><link rel="alternate" type="application/rss+xml" href="show.xml"></head>'
+
+      described_class.best_feed_response(page_url:, request_session: session, parsed_body: Nokogiri::HTML(html))
+
+      expect(session).to have_received(:follow_up).once.with(
+        hash_including(url: Html2rss::Url.from_absolute('https://example.com/news/show.xml'))
+      )
+    end
+
+    it 'resolves a relative alternate against the page URL when no base URL is given', :aggregate_failures do
+      allow(session).to receive(:follow_up).and_return(hit)
+      html = '<head><link rel="alternate" type="application/rss+xml" href="show.xml"></head>'
+
+      described_class.best_feed_url(page_url:, request_session: session, parsed_body: Nokogiri::HTML(html))
+
+      expect(session).to have_received(:follow_up).once.with(
+        hash_including(url: Html2rss::Url.from_absolute('https://example.com/news/show.xml'))
+      )
     end
 
     it 'stops at the first feedish candidate without probing further', :aggregate_failures do

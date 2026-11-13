@@ -61,6 +61,19 @@ module Html2rss
       # @return [Html2rss::Url] the URL of the response
       attr_reader :url
 
+      ##
+      # The document base URL that relative references in the body resolve against (WHATWG "document base URL"):
+      # the first +<base href>+ of an HTML body resolved against {#url}, when that is http(s); otherwise {#url}
+      # (no +<base>+, an empty +href+, a +javascript:+ or +data:+ one, or a non-HTML body). The one owner of the
+      # rule: every consumer that resolves a link, image or file reference of this response reads it here.
+      # It never names a request: the channel URL, same-origin checks and follow-up fetches keep {#url}, so a
+      # cross-host +<base>+ moves item links but never a fetch past the request policy.
+      #
+      # @return [Html2rss::Url] the URL to resolve this response's relative references against
+      def base_url
+        @base_url ||= document_base_url
+      end
+
       # @return [Hash] allowlisted upstream transport telemetry
       attr_reader :transport_meta
 
@@ -115,6 +128,12 @@ module Html2rss
       end
 
       private
+
+      # @return [Html2rss::Url] the first +<base href>+ resolved against {#url} when it is http(s), else {#url}
+      def document_base_url
+        href = parsed_body.at_css('base[href]')&.[]('href') if html_response?
+        Url.resolve_web(href, url) || url
+      end
 
       def freeze_or(value, default) = value.nil? || value.empty? ? default : value.freeze
 

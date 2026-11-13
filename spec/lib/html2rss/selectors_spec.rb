@@ -179,6 +179,7 @@ RSpec.describe Html2rss::Selectors do
     context 'when the url selector is an href extractor' do
       it 'does not resolve the already absolute url again', :aggregate_failures do
         selectors[:url] = { selector: 'a', extractor: 'href' }
+        instance
         allow(Html2rss::Url).to receive(:resolve_web).and_call_original
 
         expect(instance.articles.map { _1.url.to_s }).to eq(%w[http://example.com/article1 http://example.com/article2])
@@ -933,6 +934,56 @@ RSpec.describe Html2rss::Selectors do
     it 'rejects the items key as an attribute selector' do
       expect { instance.select(:items, Nokogiri::HTML(body).at('article')) }
         .to raise_error(described_class::InvalidSelectorName, "Attribute selector 'items' is reserved for items.")
+    end
+  end
+
+  describe 'document base URL' do
+    let(:response) do
+      Html2rss::RequestService::Response.new(
+        url: Html2rss::Url.from_absolute('https://example.com/en/list/'),
+        headers: { 'content-type': 'text/html' }, body:
+      )
+    end
+    let(:selectors) do
+      {
+        items: { selector: 'article', enhance: false },
+        title: { selector: 'h1' },
+        url: { selector: 'a', extractor: 'href' },
+        enclosure: { selector: 'a.file', extractor: 'href', content_type: 'application/pdf' }
+      }
+    end
+    let(:body) do
+      <<~HTML
+        <html><head>#{base}</head><body>
+          <article><h1>one</h1><a class="file" href="files/a.pdf">PDF</a></article>
+        </body></html>
+      HTML
+    end
+
+    context 'when the page declares <base href="/">' do
+      let(:base) { '<base href="/">' }
+
+      it 'resolves the href extractor and the enclosure against it', :aggregate_failures do
+        expect(instance.articles.first.url.to_s).to eq('https://example.com/files/a.pdf')
+        expect(instance.articles.first.enclosures.map { _1.url.to_s }).to eq(['https://example.com/files/a.pdf'])
+      end
+    end
+
+    context 'when the page declares a cross-host base' do
+      let(:base) { '<base href="https://other.example/docs/">' }
+
+      it 'resolves item links like a browser does', :aggregate_failures do
+        expect(instance.articles.first.url.to_s).to eq('https://other.example/docs/files/a.pdf')
+        expect(response.url.to_s).to eq('https://example.com/en/list/')
+      end
+    end
+
+    context 'when the page declares no usable base' do
+      let(:base) { '<base href="javascript:void(0)">' }
+
+      it 'resolves against the page URL' do
+        expect(instance.articles.first.url.to_s).to eq('https://example.com/en/list/files/a.pdf')
+      end
     end
   end
 end

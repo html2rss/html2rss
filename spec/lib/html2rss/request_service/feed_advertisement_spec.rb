@@ -66,6 +66,20 @@ RSpec.describe Html2rss::RequestService::FeedAdvertisement do
     end
   end
 
+  describe '.from_document with a document base URL' do
+    subject(:advertisement) do
+      described_class.from_document(Nokogiri::HTML(html), page_url: 'https://example.com/en/news/',
+                                                          base_url: 'https://example.com/')
+    end
+
+    let(:html) { '<head><link rel="alternate" type="application/rss+xml" href="feed/"></head>' }
+
+    it 'resolves the link against the base and still compares origins with the page', :aggregate_failures do
+      expect(advertisement.feeds.keys.map(&:to_s)).to eq(['https://example.com/feed/'])
+      expect(advertisement.page_url.to_s).to eq('https://example.com/en/news/')
+    end
+  end
+
   describe 'minting' do
     subject(:advertisement) { described_class.from_document(Nokogiri::HTML(head), page_url: 'https://example.com/') }
 

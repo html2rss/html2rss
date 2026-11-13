@@ -107,6 +107,20 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
       end
     end
 
+    context 'when og:url is relative and a document base URL is given' do
+      subject(:scraper) { described_class.new(parsed_body, url:, base_url: Html2rss::Url.from_absolute('https://example.com/')) }
+
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <html><head><meta property="og:title" content="T"><meta property="og:url" content="canonical/1"></head></html>
+        HTML
+      end
+
+      it 'resolves the canonical URL against the base, not the page URL' do
+        expect(scraper.first[:url]).to eq(Html2rss::Url.from_absolute('https://example.com/canonical/1'))
+      end
+    end
+
     context 'when og:url is absent or empty' do
       subject(:scraper) { described_class.new(parsed_body, url:) }
 

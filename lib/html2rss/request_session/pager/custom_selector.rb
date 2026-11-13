@@ -21,7 +21,7 @@ module Html2rss
           href = node['href'] || node.text
           return nil if href.strip.empty?
 
-          Html2rss::Url.from_relative(href, page_response.url)
+          Html2rss::Url.from_relative(href, page_response.base_url)
         end
 
         # @param parsed_body [Nokogiri::HTML::Document]
