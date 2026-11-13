@@ -81,13 +81,18 @@ module Html2rss
     # @return [Addressable::URI]
     # @raise [Addressable::URI::InvalidURIError]
     def self.parse(text, base_scheme = nil)
-      scheme = text[SCHEME_PREFIX, 1] || base_scheme
-      return Addressable::URI.parse(text) unless SUPPORTED_SCHEMES.include?(scheme&.downcase)
+      return Addressable::URI.parse(text) unless text.include?('\\') && web_scheme?(text, base_scheme)
 
       head, separator, tail = text.partition(/[?#]/)
       Addressable::URI.parse("#{head.tr('\\', '/')}#{separator}#{tail}")
     end
     private_class_method :parse
+
+    # @return [Boolean] whether +text+, or the +base_scheme+ a scheme-less +text+ resolves against, is http(s)
+    def self.web_scheme?(text, base_scheme)
+      SUPPORTED_SCHEMES.include?((text[SCHEME_PREFIX, 1] || base_scheme)&.downcase)
+    end
+    private_class_method :web_scheme?
 
     ##
     # Creates a URL by sanitizing a raw URL string.

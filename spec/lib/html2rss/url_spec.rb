@@ -89,6 +89,10 @@ RSpec.describe Html2rss::Url do
       end
     end
 
+    it 'reads a scheme-less reference with a backslash against a base without a scheme' do
+      expect(described_class.from_relative('files\\a.pdf', 'example.net/base/').to_s).to eq('example.net/base/files%5Ca.pdf')
+    end
+
     it 'keeps the authority host when a backslash precedes an @ (no host smuggling)', :aggregate_failures do
       url = described_class.from_absolute('https://example.com\\@evil.example/')
 
