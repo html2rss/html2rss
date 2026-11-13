@@ -33,6 +33,31 @@ RSpec.describe Html2rss::AutoSource::PageLinks::PlacementParams do
       end
     end
 
+    it 'does not collapse a param whose values are unique per link (article ids)', :aggregate_failures do
+      expect(names['/a?id=1', '/a?id=2', '/b?id=3', '/b?id=4', '/c?id=5']).to be_empty
+      expect(names['/a?pos=1', '/a?pos=2', '/b?pos=3', '/b?pos=4', '/c?pos=5']).to be_empty
+    end
+
+    it 'needs a value on MIN_SHARED_VALUE_PATHS distinct paths', :aggregate_failures do
+      expect(described_class::MIN_SHARED_VALUE_PATHS).to eq(2)
+      expect(names['/a?pos=1', '/a?pos=2', '/b?pos=3', '/b?pos=4', '/c?pos=1']).to eq(Set['pos'])
+    end
+
+    it 'counts a value recurring on distinct paths, not on one path twice', :aggregate_failures do
+      expect(names['/a?pos=1&x=1', '/a?pos=1&x=2', '/a?pos=2&x=1', '/b?pos=1&x=1', '/b?pos=4&x=1', '/c?pos=5'])
+        .to eq(Set['pos'])
+      expect(names['/a?pos=1&x=1', '/a?pos=1&x=2', '/a?pos=2&x=1', '/b?pos=3&x=1', '/b?pos=4&x=1', '/c?pos=5'])
+        .to be_empty
+    end
+
+    it 'counts the paths a value recurs on against MIN_SHARED_VALUE_PATHS', :aggregate_failures do
+      stub_const("#{described_class}::MIN_SHARED_VALUE_PATHS", 3)
+      expect(names[*placed]).to eq(Set['pos'])
+
+      stub_const("#{described_class}::MIN_SHARED_VALUE_PATHS", 4)
+      expect(names[*placed]).to be_empty
+    end
+
     it 'needs MIN_PATHS distinct paths carrying the param', :aggregate_failures do
       expect(described_class::MIN_PATHS).to eq(3)
       expect(names['/a?pos=top', '/a?pos=latest', '/b?pos=top', '/b?pos=latest']).to be_empty
