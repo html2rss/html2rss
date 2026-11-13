@@ -1,0 +1,175 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://www.example.com/
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers: {}
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      date:
+      - Fri, 13 Nov 2026 10:00:00 GMT
+      content-type:
+      - text/html; charset=utf-8
+    body:
+      encoding: UTF-8
+      string: |
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <title>Example Daily - Latest news, background and video</title>
+        </head>
+        <body>
+          <header class="site-header">
+            <a class="logo" href="/">Example Daily</a>
+            <nav aria-label="Main">
+              <ul>
+                <li><a href="/news/">Latest local news</a></li>
+                <li><a href="/culture/">Culture and the arts</a></li>
+                <li><a href="/opinion/">Opinion and analysis</a></li>
+                <li><a href="https://live.example.com/">Live coverage hub</a></li>
+              </ul>
+            </nav>
+          </header>
+          <main>
+            <section class="top-stories"><h2>Top stories</h2>
+        <article class="card">
+          <header class="card-header">
+            <div class="card-overline"><span class="card-clock">07:00</span><span class="visually-hidden">Section:</span><span class="card-topic">Transit</span></div>
+            <time datetime="2026-11-10T07:00:00Z">Nov 10, 2026</time>
+            <h3 class="card-headline"><a href="/news/2026/11/tram-line-extends-to-the-eastern-districts">Tram line extends to the eastern districts</a></h3>
+          </header>
+          <p>Short summary for the transit story, written for this fixture.</p>
+        </article>
+        <article class="card">
+          <header class="card-header">
+            <div class="card-overline"><span class="card-clock">08:13</span><span class="visually-hidden">Section:</span><span class="card-topic">Culture</span></div>
+            <time datetime="2026-11-11T08:13:00Z">Nov 11, 2026</time>
+            <h3 class="card-headline"><a href="/news/2026/11/museum-reopens-its-restored-north-wing">Museum reopens its restored north wing</a></h3>
+          </header>
+          <p>Short summary for the culture story, written for this fixture.</p>
+        </article>
+        <article class="card">
+          <header class="card-header">
+            <div class="card-overline"><span class="card-clock">09:26</span><span class="visually-hidden">Section:</span><span class="card-topic">Schools</span></div>
+            <time datetime="2026-11-12T09:26:00Z">Nov 12, 2026</time>
+            <h3 class="card-headline"><a href="/news/2026/11/school-lunch-program-expands-to-every-district">School lunch program expands to every district</a></h3>
+          </header>
+          <p>Short summary for the schools story, written for this fixture.</p>
+        </article>
+        <article class="card">
+          <header class="card-header">
+            <div class="card-overline"><span class="card-clock">10:39</span><span class="visually-hidden">Section:</span><span class="card-topic">Parks</span></div>
+            <time datetime="2026-11-13T10:39:00Z">Nov 13, 2026</time>
+            <h3 class="card-headline"><a href="/news/2026/11/park-planting-day-draws-hundreds-of-volunteers">Park planting day draws hundreds of volunteers</a></h3>
+          </header>
+          <p>Short summary for the parks story, written for this fixture.</p>
+        </article>
+        <article class="card">
+          <header class="card-header">
+            <div class="card-overline"><span class="card-clock">11:52</span><span class="visually-hidden">Section:</span><span class="card-topic">Housing</span></div>
+            <time datetime="2026-11-14T11:52:00Z">Nov 14, 2026</time>
+            <h3 class="card-headline"><a href="/news/2026/11/council-approves-the-new-housing-plan">Council approves the new housing plan</a></h3>
+          </header>
+          <p>Short summary for the housing story, written for this fixture.</p>
+        </article>
+        <article class="card">
+          <header class="card-header">
+            <div class="card-overline"><span class="card-clock">12:05</span><span class="visually-hidden">Section:</span><span class="card-topic">Weather</span></div>
+            <time datetime="2026-11-15T12:05:00Z">Nov 15, 2026</time>
+            <h3 class="card-headline"><a href="/news/2026/11/first-frost-expected-across-the-valley-this-weekend">First frost expected across the valley this weekend</a></h3>
+          </header>
+          <p>Short summary for the weather story, written for this fixture.</p>
+        </article>
+
+            </section>
+            <section class="latest"><h2>Latest</h2>
+        <article class="card">
+          <span class="kicker"><time datetime="2026-11-13T12:00">12:00</time> City</span>
+          <h3 class="headline"><a href="/news/2026/11/bridge-repairs-finish-two-weeks-early">Bridge repairs finish two weeks early</a></h3>
+          <p>Brief update on bridge repairs finish two weeks early.</p>
+        </article>
+        <article class="card">
+          <h3 class="headline"><a href="/news/2026/11/library-adds-evening-hours-on-weekdays"><span class="stamp">13:07</span> Library adds evening hours on weekdays</a></h3>
+          <p>Brief update on library adds evening hours on weekdays.</p>
+        </article>
+        <article class="card">
+          <span class="kicker"><time datetime="2026-11-13T14:14">14:14</time> City</span>
+          <h3 class="headline"><a href="/news/2026/11/ferry-timetable-changes-for-the-winter">Ferry timetable changes for the winter</a></h3>
+          <p>Brief update on ferry timetable changes for the winter.</p>
+        </article>
+        <article class="card">
+          <h3 class="headline"><a href="/news/2026/11/market-hall-gets-a-new-roof"><span class="stamp">15:21</span> Market hall gets a new roof</a></h3>
+          <p>Brief update on market hall gets a new roof.</p>
+        </article>
+        <article class="card">
+          <span class="kicker"><time datetime="2026-11-13T16:28">16:28</time> City</span>
+          <h3 class="headline"><a href="/news/2026/11/cycle-lanes-painted-on-the-harbor-road">Cycle lanes painted on the harbor road</a></h3>
+          <p>Brief update on cycle lanes painted on the harbor road.</p>
+        </article>
+        <article class="card">
+          <h3 class="headline"><a href="/news/2026/11/volunteer-fire-crew-celebrates-fifty-years"><span class="stamp">17:35</span> Volunteer fire crew celebrates fifty years</a></h3>
+          <p>Brief update on volunteer fire crew celebrates fifty years.</p>
+        </article>
+
+            </section>
+            <section class="regional"><h2>Regional</h2>
+        <article class="card">
+          <h3 class="headline"><a href="https://live.example.com/2026/11/storm-watch-rolling-coverage-from-the-coast"><span class="visually-hidden">Article type: Video</span> Storm watch: rolling coverage from the coast</a></h3>
+          <p>Regional coverage from our partner desk.</p>
+        </article>
+        <article class="card">
+          <h3 class="headline"><a href="https://go.example.com/2026/11/weekend-guide-to-the-autumn-markets"><span class="visually-hidden">Article type: Video</span> Weekend guide to the autumn markets</a></h3>
+          <p>Regional coverage from our partner desk.</p>
+        </article>
+        <article class="card">
+          <h3 class="headline"><a href="https://live.example.com/2026/11/election-night-results-from-every-district"><span class="visually-hidden">Article type: Video</span> Election night results from every district</a></h3>
+          <p>Regional coverage from our partner desk.</p>
+        </article>
+        <article class="card">
+          <h3 class="headline"><a href="https://go.example.com/2026/11/where-to-find-the-best-harbor-walks"><span class="visually-hidden">Article type: Video</span> Where to find the best harbor walks</a></h3>
+          <p>Regional coverage from our partner desk.</p>
+        </article>
+
+            </section>
+            <section class="opinion"><h2>Opinion</h2>
+        <article class="card">
+          <span class="kicker"><span class="visually-hidden">Rubric:</span> Commentary</span>
+          <h3 class="headline"><a href="/opinion/2026/11/why-the-tram-extension-matters-for-commuters">Why the tram extension matters for commuters</a></h3>
+          <p>Opinion piece written for this fixture.</p>
+        </article>
+        <article class="card">
+          <span class="kicker"><span class="visually-hidden">Rubric:</span> Analysis</span>
+          <h3 class="headline"><a href="/opinion/2026/11/what-the-housing-plan-does-and-does-not-fund">What the housing plan does and does not fund</a></h3>
+          <p>Opinion piece written for this fixture.</p>
+        </article>
+        <article class="card">
+          <span class="kicker"><span class="visually-hidden">Rubric:</span> Commentary</span>
+          <h3 class="headline"><a href="/opinion/2026/11/libraries-are-the-last-free-public-rooms">Libraries are the last free public rooms</a></h3>
+          <p>Opinion piece written for this fixture.</p>
+        </article>
+        <article class="card">
+          <span class="kicker"><span class="visually-hidden">Rubric:</span> Analysis</span>
+          <h3 class="headline"><a href="/opinion/2026/11/reading-the-new-school-budget-line-by-line">Reading the new school budget line by line</a></h3>
+          <p>Opinion piece written for this fixture.</p>
+        </article>
+
+            </section>
+          </main>
+          <footer class="site-footer">
+            <ul>
+              <li><a href="/about/">About our newsroom team</a></li>
+              <li><a href="/contact/">Contact the editors desk</a></li>
+              <li><a href="/privacy/">Privacy and cookie policy</a></li>
+            </ul>
+          </footer>
+        </body>
+        </html>
+  recorded_at: Fri, 13 Nov 2026 10:00:00 GMT
+recorded_with: VCR 6.0.0

@@ -94,7 +94,7 @@ RSpec.describe Html2rss::Config do
       it 'raises an ArgumentError listing the available feeds' do
         expect { described_class.load_yaml(file) }.to raise_error(
           ArgumentError,
-          'Feed name is required under `feeds`. Available feeds: nuxt-releases, json, notitle, withparams'
+          'Feed name is required under `feeds`. Available feeds: releases_page, json, notitle, withparams'
         )
       end
     end
@@ -126,8 +126,8 @@ RSpec.describe Html2rss::Config do
                         { href: '/rss.css', media: 'all', type: 'text/css' },
                         { href: '/special.css', type: 'text/css' }],
           channel: { language: 'en', url: String },
-          selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                       url: { extractor: 'href', selector: '#src-horo-today' } }
+          selectors: { description: { selector: 'p' }, items: { selector: 'div.daily-reading' },
+                       url: { extractor: 'href', selector: '#reading-today' } }
         }
       end
 
@@ -205,8 +205,8 @@ RSpec.describe Html2rss::Config do
                       { href: '/rss.css', media: 'all', type: 'text/css' },
                       { href: '/special.css', type: 'text/css' }],
         channel: { language: 'en', url: 'http://example.com' },
-        selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                     url: { extractor: 'href', selector: '#src-horo-today' } }
+        selectors: { description: { selector: 'p' }, items: { selector: 'div.daily-reading' },
+                     url: { extractor: 'href', selector: '#reading-today' } }
       }
     end
 
@@ -894,8 +894,8 @@ RSpec.describe Html2rss::Config do
                         { href: '/rss.css', media: 'all', type: 'text/css' },
                         { href: '/special.css', type: 'text/css' }],
           channel: { language: 'en', url: 'http://example.com' },
-          selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                       url: { extractor: 'href', selector: '#src-horo-today' } }
+          selectors: { description: { selector: 'p' }, items: { selector: 'div.daily-reading' },
+                       url: { extractor: 'href', selector: '#reading-today' } }
         }
       end
 

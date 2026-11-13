@@ -1,0 +1,118 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://example.com/example/widget/releases
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers: {}
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      date:
+      - Fri, 13 Nov 2026 10:00:00 GMT
+      content-type:
+      - text/html; charset=utf-8
+    body:
+      encoding: UTF-8
+      string: |
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <title>Releases · example/widget</title>
+        </head>
+        <body>
+          <header><a href="/">Example code host</a></header>
+          <main>
+            <div class="release-timeline">
+        <div class="release clearfix">
+          <div class="float-left v-align-top">
+            <ul>
+              <li><a href="/example/widget/tree/v3.2.1"><span class="css-truncate-target">v3.2.1</span></a></li>
+            </ul>
+          </div>
+          <div class="release-main-section">
+            <div class="release-header">
+              <div class="f1 text-normal"><a href="/example/widget/releases/tag/v3.2.1">v3.2.1</a></div>
+              <p>
+                <a href="/ana1"><img class="avatar" src="https://avatars.example.com/u/ana1?s=40&amp;v=4" alt="@ana1" width="20" height="20"></a>
+                released this <relative-time datetime="2026-10-21T09:15:00Z">2026-10-21</relative-time>
+              </p>
+            </div>
+            <div class="markdown-body">
+              <h2>Changes</h2>
+              <ul><li>Fixes a crash when the cache directory is missing.</li></ul>
+            </div>
+          </div>
+        </div>
+        <div class="release clearfix">
+          <div class="float-left v-align-top">
+            <ul>
+              <li><a href="/example/widget/tree/v3.2.0"><span class="css-truncate-target">v3.2.0</span></a></li>
+            </ul>
+          </div>
+          <div class="release-main-section">
+            <div class="release-header">
+              <div class="f1 text-normal"><a href="/example/widget/releases/tag/v3.2.0">v3.2.0</a></div>
+              <p>
+                <a href="/ana1"><img class="avatar" src="https://avatars.example.com/u/ana1?s=40&amp;v=4" alt="@ana1" width="20" height="20"></a>
+                released this <relative-time datetime="2026-10-02T11:45:00Z">2026-10-02</relative-time>
+              </p>
+            </div>
+            <div class="markdown-body">
+              <h2>Changes</h2>
+              <ul><li>Adds a plugin hook for custom loaders.</li></ul>
+            </div>
+          </div>
+        </div>
+        <div class="release clearfix">
+          <div class="float-left v-align-top">
+            <ul>
+              <li><a href="/example/widget/tree/v3.1.0"><span class="css-truncate-target">v3.1.0</span></a></li>
+            </ul>
+          </div>
+          <div class="release-main-section">
+            <div class="release-header">
+              <div class="f1 text-normal"><a href="/example/widget/releases/tag/v3.1.0">v3.1.0</a></div>
+              <p>
+                <a href="/ben2"><img class="avatar" src="https://avatars.example.com/u/ben2?s=40&amp;v=4" alt="@ben2" width="20" height="20"></a>
+                released this <relative-time datetime="2026-08-28T14:30:00Z">2026-08-28</relative-time>
+              </p>
+            </div>
+            <div class="markdown-body">
+              <h2>Changes</h2>
+              <ul><li>Speeds up cold builds by caching parsed templates.</li></ul>
+            </div>
+          </div>
+        </div>
+        <div class="release clearfix">
+          <div class="float-left v-align-top">
+            <ul>
+              <li><a href="/example/widget/tree/v3.0.0"><span class="css-truncate-target">v3.0.0</span></a></li>
+            </ul>
+          </div>
+          <div class="release-main-section">
+            <div class="release-header">
+              <div class="f1 text-normal"><a href="/example/widget/releases/tag/v3.0.0">v3.0.0</a></div>
+              <p>
+                <a href="/ana1"><img class="avatar" src="https://avatars.example.com/u/ana1?s=40&amp;v=4" alt="@ana1" width="20" height="20"></a>
+                released this <relative-time datetime="2026-08-20T08:00:00Z">2026-08-20</relative-time>
+              </p>
+            </div>
+            <div class="markdown-body">
+              <h2>Changes</h2>
+              <ul><li>Drops support for the legacy config format.</li></ul>
+            </div>
+          </div>
+        </div>
+
+            </div>
+          </main>
+        </body>
+        </html>
+  recorded_at: Fri, 13 Nov 2026 10:00:00 GMT
+recorded_with: VCR 6.0.0

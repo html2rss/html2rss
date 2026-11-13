@@ -4,7 +4,7 @@ require 'nokogiri'
 
 RSpec.describe Html2rss do
   let(:config_file) { File.join(%w[spec fixtures feeds.test.yml]) }
-  let(:name) { 'nuxt-releases' }
+  let(:name) { 'releases_page' }
 
   it 'has a version number' do
     expect(Html2rss::VERSION).not_to be_nil
@@ -122,12 +122,12 @@ RSpec.describe Html2rss do
       # The configured enclosure is an avatar image URL without type or file extension: no downloadable
       # document (Article::Enclosure#document?), so it is no RSS enclosure.
       it 'builds channel metadata and a guid smoke item without an untyped RSS enclosure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        expect(xml.css('channel > title').text).to eq 'Releases · nuxt/nuxt.js · GitHub'
-        expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
+        expect(xml.css('channel > title').text).to eq 'Releases · example/widget'
+        expect(xml.css('channel > link').text).to eq 'https://example.com/example/widget/releases'
         expect(xml.css('channel > item').count).to be > 0
 
         item = xml.css('channel > item').first
-        expect(item.css('guid').text).to eq 'resdti'
+        expect(item.css('guid').text).to eq '1wfs54k'
         expect(item.css('enclosure')).to be_empty
       end
 
@@ -137,14 +137,14 @@ RSpec.describe Html2rss do
         end
 
         it 'reverses the item ordering' do
-          expect(xml.css('channel > item').last.css('title').text).to eq 'v2.10.2 (pi)'
+          expect(xml.css('channel > item').last.css('title').text).to eq 'v3.2.1 (ana)'
         end
       end
     end
 
     context 'with config having channel headers and header accepts json' do
       let(:feed) do
-        VCR.use_cassette('httpbin-headers') do
+        VCR.use_cassette('echo_headers') do
           described_class.feed(feed_config)
         end
       end
@@ -159,8 +159,8 @@ RSpec.describe Html2rss do
             Cookie: 'monster=MeWantCookie'
           },
           channel: {
-            url: 'https://httpbin.org/headers',
-            title: 'httpbin headers'
+            url: 'https://example.com/headers',
+            title: 'Echoed request headers'
           },
           selectors: {
             items: { selector: 'object > headers' },
@@ -176,7 +176,7 @@ RSpec.describe Html2rss do
 
       it 'converts response to xml which has the information', :aggregate_failures do
         expect(feed.items.size).to eq 1
-        expect(feed.items.first.categories.map(&:content)).to include('httpbin.org', 'Foobar', 'Token deadbea7',
+        expect(feed.items.first.categories.map(&:content)).to include('example.com', 'Foobar', 'Token deadbea7',
                                                                       'monster=MeWantCookie')
       end
     end
@@ -197,7 +197,7 @@ RSpec.describe Html2rss do
         it 'has the description derived from markdown' do
           expect(
             xml.css('item > description').first.text
-          ).to eq "<h1>JUDAS AND THE BLACK MESSIAH</h1>\n\n<p>MPAA rating: R</p>"
+          ).to eq "<h1>THE LIGHTHOUSE KEEPER</h1>\n\n<p>MPAA rating: R</p>"
         end
       end
     end
@@ -459,8 +459,8 @@ RSpec.describe Html2rss do
       it 'returns the channel metadata' do
         expect(feed_return).to include(
           version: 'https://jsonfeed.org/version/1.1',
-          title: 'Releases · nuxt/nuxt.js · GitHub',
-          home_page_url: 'https://github.com/nuxt/nuxt.js/releases'
+          title: 'Releases · example/widget',
+          home_page_url: 'https://example.com/example/widget/releases'
         )
       end
 
@@ -470,8 +470,8 @@ RSpec.describe Html2rss do
 
       it 'serializes the first item' do
         expect(first_item).to include(
-          title: 'v2.10.2 (pi)',
-          url: 'https://github.com/nuxt/nuxt.js/releases/tag/v2.10.2'
+          title: 'v3.2.1 (ana)',
+          url: 'https://example.com/example/widget/releases/tag/v3.2.1'
         )
       end
     end
@@ -541,16 +541,16 @@ RSpec.describe Html2rss do
   end
 
   describe '.auto_source' do
-    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source('https://www.welt.de/', limit: 10_000) } }
+    let(:feed_return) { VCR.use_cassette('news_site') { described_class.auto_source('https://www.example.com/', limit: 10_000) } }
 
-    before { stub_request(:get, %r{\Ahttps://www\.welt\.de/.+}).to_return(status: 404) }
+    before { stub_request(:get, %r{\Ahttps://www\.example\.com/.+}).to_return(status: 404) }
 
     it 'returns a RSS::Rss instance with channel and items', :aggregate_failures, :slow do
       expect(feed_return).to be_a(RSS::Rss)
-      expect(feed_return.channel.title).to eq 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos'
-      expect(feed_return.channel.link).to eq 'https://www.welt.de/'
-      # eTLD+1 keeps same-site portal hosts (go.welt.de, asbs.welt.de) with www.welt.de.
-      expect(feed_return.items.size).to eq(85)
+      expect(feed_return.channel.title).to eq 'Example Daily - Latest news, background and video'
+      expect(feed_return.channel.link).to eq 'https://www.example.com/'
+      # eTLD+1 keeps same-site portal hosts (live.example.com, go.example.com) with www.example.com.
+      expect(feed_return.items.size).to eq(20)
     end
 
     it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
@@ -580,20 +580,20 @@ RSpec.describe Html2rss do
   end
 
   describe '.auto_json_feed' do
-    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_json_feed('https://www.welt.de/', limit: 10_000) } }
+    let(:feed_return) { VCR.use_cassette('news_site') { described_class.auto_json_feed('https://www.example.com/', limit: 10_000) } }
 
-    before { stub_request(:get, %r{\Ahttps://www\.welt\.de/.+}).to_return(status: 404) }
+    before { stub_request(:get, %r{\Ahttps://www\.example\.com/.+}).to_return(status: 404) }
 
     it 'returns the channel metadata', :aggregate_failures, :slow do
       expect(feed_return).to include(
         version: 'https://jsonfeed.org/version/1.1',
-        title: 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos',
-        home_page_url: 'https://www.welt.de/'
+        title: 'Example Daily - Latest news, background and video',
+        home_page_url: 'https://www.example.com/'
       )
     end
 
     it 'returns items', :slow do
-      expect(feed_return[:items].size).to eq(85)
+      expect(feed_return[:items].size).to eq(20)
     end
 
     it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
@@ -804,7 +804,7 @@ RSpec.describe Html2rss do
     end
 
     it 'forwards a feed name from a multi-feed file' do
-      expect(described_class.validate('spec/fixtures/feeds.test.yml', 'nuxt-releases')).to be_success
+      expect(described_class.validate('spec/fixtures/feeds.test.yml', 'releases_page')).to be_success
     end
 
     it 'forwards dynamic params' do

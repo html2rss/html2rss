@@ -1,6 +1,4 @@
-# This config is for demonstration only.
-# FYI: Github provides an atom feed for releases of every project.
-# You should directly subscribe to that feed. :)
+# Synthetic demonstration config; every URL points at example.com.
 ---
 stylesheets:
   - href: '/style.xls'
@@ -12,9 +10,9 @@ stylesheets:
 headers:
   'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
 feeds:
-  nuxt-releases:
+  releases_page:
     channel:
-      url: https://github.com/nuxt/nuxt.js/releases
+      url: https://example.com/example/widget/releases
     selectors:
       items:
         selector: '.release'
@@ -61,7 +59,7 @@ feeds:
       Accept: application/json
     channel:
       title: JSON
-      url: https://api.cinemascore.com/guest/surveys
+      url: https://example.com/api/surveys
       ttl: 600
     selectors:
       items:
@@ -78,7 +76,7 @@ feeds:
       url:
         post_process:
           - name: 'template'
-            string: 'https://www.metacritic.com/search/movie/%<movie_title>s/results'
+            string: 'https://example.com/search/movie/%<movie_title>s/results'
       mpaa_rating:
         selector: 'mpaa_rating'
       distributor:
@@ -104,22 +102,22 @@ feeds:
       - href: '/special.css'
         type: 'text/css'
     channel:
-      url: https://www.horoscope.com/us/horoscopes/general/horoscope-general-daily-today.aspx?sign=10
+      url: https://example.com/daily/reading?sign=10
       language: en
     selectors:
       items:
-        selector: "div.main-horoscope"
+        selector: "div.daily-reading"
       description:
         selector: "p"
       url:
-        selector: "#src-horo-today"
+        selector: "#reading-today"
         extractor: "href"
   withparams:
     channel:
-      url: https://www.horoscope.com/us/horoscopes/general/horoscope-general-daily-today.aspx?sign=%<sign>s
+      url: https://example.com/daily/reading?sign=%<sign>s
       description: "The value of param is: %<param>s"
     selectors:
       items:
-        selector: "div.main-horoscope"
+        selector: "div.daily-reading"
       description:
         selector: "p"
