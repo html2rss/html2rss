@@ -147,14 +147,14 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     end
 
     %w[( (?) *].each do |pattern|
-      it "rejects unparsable pattern #{pattern.inspect} as ArgumentError", :aggregate_failures do
+      it "rejects unparsable pattern #{pattern.inspect} as InvalidOption", :aggregate_failures do
         expect { described_class.compiled_pattern(pattern) }.to raise_error(Html2rss::InvalidOption) do |error|
           expect(error).not_to be_a(Regexp::Parser::Error)
         end
       end
     end
 
-    it 're-raises the parser message as ArgumentError without a cause', :aggregate_failures do
+    it 're-raises the parser message as InvalidOption without a cause', :aggregate_failures do
       expect { described_class.compiled_pattern('(') }
         .to raise_error(Html2rss::InvalidOption, /\APremature end of pattern/) do |error|
           expect(error.cause).to be_nil
