@@ -5,8 +5,8 @@ module RuboCop
     module Html2rss
       # Requires errors raised or defined in +lib/+ to descend from +Html2rss::Error+.
       #
-      # Flags +raise+/+fail+ of a core exception class (bare, +::+-qualified or
-      # +.new+), +raise 'message'+ (an implicit RuntimeError), and a local class
+      # Flags +raise+/+fail+ of a core exception class (bare, +::+-qualified, or
+      # an instance built from it such as +.new+), +raise 'message'+ (an implicit RuntimeError), and a local class
       # that subclasses a core exception instead of +Html2rss::Error+. Re-raising
       # a rescued error (+raise+, +raise error+) and raising a library's own class
       # stay allowed. Only the root +Html2rss::Error < StandardError+ may subclass
@@ -46,9 +46,9 @@ module RuboCop
           return unless raise_call?(node)
 
           subject = node.first_argument
-          return 'RuntimeError' if subject&.type?(:str, :dstr)
+          return :RuntimeError if subject&.type?(:str, :dstr)
 
-          core_error_name(subject) || core_error_name(new_receiver(subject))
+          core_error_name(subject) || core_error_name(subject&.receiver)
         end
 
         def raise_call?(node)
@@ -61,14 +61,10 @@ module RuboCop
           core_error_name(node.first_argument)
         end
 
-        def new_receiver(node)
-          node.receiver if node&.send_type? && node.method?(:new)
-        end
-
         def core_error_name(node)
           return unless node&.const_type? && top_level_const?(node)
 
-          node.short_name.to_s if CORE_ERRORS.include?(node.short_name)
+          node.short_name if CORE_ERRORS.include?(node.short_name)
         end
 
         def top_level_const?(node)

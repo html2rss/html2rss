@@ -48,7 +48,7 @@ module RuboCop
 
         def logger_device?(node)
           parent = node.parent
-          parent&.send_type? && parent.method?(:new) && const_named?(parent.receiver, :Logger) &&
+          parent&.method?(:new) && const_named?(parent.receiver, :Logger) &&
             parent.first_argument.equal?(node)
         end
 

@@ -48,6 +48,13 @@ RSpec.describe RuboCop::Cop::Html2rss::NoConsoleOutput, :config do
       RUBY
     end
 
+    it 'registers an offense for a stream that is the whole program' do
+      expect_offense(<<~RUBY)
+        $stderr
+        ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stderr`).
+      RUBY
+    end
+
     it 'registers an offense for $stdout' do
       expect_offense(<<~RUBY)
         $stdout.write('x')
@@ -68,6 +75,18 @@ RSpec.describe RuboCop::Cop::Html2rss::NoConsoleOutput, :config do
       expect_offense(<<~RUBY)
         Logger.new('log', $stderr)
                           ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stderr`).
+        Logger.open($stderr)
+                    ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stderr`).
+        File.new($stdout)
+                 ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stdout`).
+        Foo::Logger.new($stderr)
+                        ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stderr`).
+        write($stderr)
+              ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stderr`).
+        new($stderr)
+            ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stderr`).
+        Logger.new { $stderr }
+                     ^^^^^^^ Log through Html2rss::Log instead of writing to the console (`$stderr`).
       RUBY
     end
   end
@@ -95,6 +114,8 @@ RSpec.describe RuboCop::Cop::Html2rss::NoConsoleOutput, :config do
           Html2rss.logger.warn(message)
         end
         IO::STDERR
+        Foo::Kernel.warn('x')
+        $PROGRAM_NAME
         p = 1
       RUBY
     end

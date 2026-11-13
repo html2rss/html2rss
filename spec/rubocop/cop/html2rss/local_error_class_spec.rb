@@ -38,6 +38,13 @@ RSpec.describe RuboCop::Cop::Html2rss::LocalErrorClass, :config do
       RUBY
     end
 
+    it 'registers an offense for an instance built with exception' do
+      expect_offense(<<~RUBY)
+        raise IndexError.exception('bad')
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `IndexError`.
+      RUBY
+    end
+
     it 'registers an offense for NotImplementedError in an abstract hook' do
       expect_offense(<<~RUBY)
         def fetch
@@ -109,6 +116,19 @@ RSpec.describe RuboCop::Cop::Html2rss::LocalErrorClass, :config do
     it 'allows raise called on another receiver' do
       expect_no_offenses(<<~RUBY)
         promise.raise ArgumentError, 'bad'
+        Thread.raise ArgumentError, 'bad'
+        Foo::Kernel.raise ArgumentError, 'bad'
+      RUBY
+    end
+
+    it 'allows other methods that take a core class' do
+      expect_no_offenses(<<~RUBY)
+        rescue_from ArgumentError, 'bad'
+        Struct.new(StandardError)
+        Foo::Class.new(StandardError)
+        Class.for(StandardError)
+        new(StandardError)
+        raise ERRORS.fetch(ArgumentError)
       RUBY
     end
 
@@ -156,6 +176,17 @@ RSpec.describe RuboCop::Cop::Html2rss::LocalErrorClass, :config do
         module Html2rss
           class Error < RuntimeError; end
                         ^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        end
+      RUBY
+    end
+
+    it 'registers an offense for an Html2rss::Error root nested in another class' do
+      expect_offense(<<~RUBY)
+        class Outer
+          module Html2rss
+            class Error < StandardError; end
+                          ^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `StandardError`.
+          end
         end
       RUBY
     end
