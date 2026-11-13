@@ -25,6 +25,15 @@ RSpec.describe Html2rss::Selectors::Extractors::Href do
     end
   end
 
+  context 'with backslashes in a relative href' do
+    let(:xml) { Nokogiri.HTML('<div><a href="files\decisions\a.pdf?x=1\2">...</a></div>') }
+    let(:options) { { selector: 'a', base_url: 'https://example.com/docs/' } }
+
+    it 'reads them as path separators before the query' do
+      expect(subject.to_s).to eq 'https://example.com/docs/files/decisions/a.pdf?x=1%5C2'
+    end
+  end
+
   context 'when no element matches the selector' do
     let(:xml) { Nokogiri.HTML('<div><a href="/posts/latest-findings">...</a></div>') }
     let(:options) { { selector: 'span', base_url: 'https://example.com' } }

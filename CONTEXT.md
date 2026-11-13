@@ -100,6 +100,10 @@ Diagnostic URL fetch for curation inspect and recon is owned by `PageRecon::Diag
 
 Shared path lexicon for native feed discovery and entry-resolution listing guesses. Owned by `Syndication::CandidateCatalog` (`FEED_PATHS`, `LISTING_PATHS`). `Syndication::Discovery` and `FeedResolution::CandidateGenerator` consume it.
 
+## URL parsing
+
+One parse entry for every raw URL or reference (`Url.from_relative`, `from_absolute`, `sanitize`, so `resolve_web` and every selector, auto-source, enclosure, and feed-parser consumer). Owned by `Html2rss::Url` (private `Url.parse`). Per the WHATWG URL standard, in http(s) URLs (the scheme itself, or the base's for a scheme-less reference) a backslash before the first `?` or `#` is a path separator: `files\a.pdf` resolves to `files/a.pdf`, `https:\\example.com\a` to `https://example.com/a`. A backslash ends the authority, so `https://example.com\@host.example/` keeps `example.com` as host. Backslashes in the query or fragment, and in non-http(s) URLs, stay percent-encoded (`%5C`). Callers never pre-clean backslashes; a `gsub` post-processor cannot, as the URL is normalized first.
+
 ## URL document identity
 
 Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`. `FeedResolution::CandidateGenerator` filters with it. Differs from `Url#==` (slash-sensitive).
