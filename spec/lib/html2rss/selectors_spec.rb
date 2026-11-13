@@ -216,6 +216,36 @@ RSpec.describe Html2rss::Selectors do
         expect(instance.articles.first.url.to_s).to eq('mailto:a@example.com')
       end
     end
+
+    context 'when the url selector uses the text extractor' do
+      let(:response) do
+        Html2rss::RequestService::Response.new(url: 'https://example.com/news/', headers: { 'content-type': 'text/html' }, body:)
+      end
+      let(:body) { %(<html><body><article><h1>t</h1><span class="u">#{text}</span></article></body></html>) }
+      let(:selectors) do
+        { items: { selector: 'article' }, title: { selector: 'h1' },
+          url: { selector: 'span.u', extractor: 'text' } }
+      end
+
+      {
+        '/rel' => 'https://example.com/rel',
+        'rel/x' => 'https://example.com/news/rel/x',
+        'https://example.com/abs' => 'https://example.com/abs',
+        'https://example.com/two (archived)' => 'https://example.com/two',
+        'Read more: https://example.com/one' => 'https://example.com/one',
+        'see /three' => nil,
+        'javascript:void(0)' => nil
+      }.each do |text_value, expected|
+        context "with #{text_value.inspect}" do
+          let(:text) { text_value }
+
+          it 'sanitizes text with words and resolves a single token', :aggregate_failures do
+            expect(instance.articles.first&.url&.to_s).to eq(expected)
+            expect(instance.admission_drops).to eq(expected ? {} : { 'missing_url' => 1 })
+          end
+        end
+      end
+    end
   end
 
   describe 'article extraction' do

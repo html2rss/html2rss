@@ -231,10 +231,11 @@ module Html2rss
       end
     end
 
-    # A +url+ selector value that is a plain string (a +static+ value or a post-processor result) resolves
-    # against the page URL like an +href+; a value that is no http(s) reference stays as given.
+    # A +url+ selector value that is a single whitespace-free string token (a +static+ value or a post-processor
+    # result) resolves against the page URL like an +href+; a value that is no http(s) reference stays as given.
+    # Text with surrounding words is left to +Article#url+'s sanitizer, which extracts the embedded URL.
     def resolve_url_value(value, base_url)
-      return value unless value.is_a?(String)
+      return value unless value.is_a?(String) && value.match?(/\A\S+\z/)
 
       Url.resolve_web(value, base_url) || value
     end
