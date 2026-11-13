@@ -218,10 +218,6 @@ RSpec.describe Html2rss::Selectors do
     end
 
     context 'when the url selector uses the text extractor' do
-      let(:response) do
-        Html2rss::RequestService::Response.new(url: 'https://example.com/news/', headers: { 'content-type': 'text/html' }, body:)
-      end
-      let(:body) { %(<html><body><article><h1>t</h1><span class="u">#{text}</span></article></body></html>) }
       let(:selectors) do
         { items: { selector: 'article' }, title: { selector: 'h1' },
           url: { selector: 'span.u', extractor: 'text' } }
@@ -236,13 +232,15 @@ RSpec.describe Html2rss::Selectors do
         'see /three' => nil,
         'javascript:void(0)' => nil
       }.each do |text_value, expected|
-        context "with #{text_value.inspect}" do
-          let(:text) { text_value }
+        it "maps #{text_value.inspect} to #{expected.inspect}", :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+          response = Html2rss::RequestService::Response.new(
+            url: 'https://example.com/news/', headers: { 'content-type': 'text/html' },
+            body: %(<html><body><article><h1>t</h1><span class="u">#{text_value}</span></article></body></html>)
+          )
+          selectors_instance = described_class.new(response, selectors:, time_zone:)
 
-          it 'sanitizes text with words and resolves a single token', :aggregate_failures do
-            expect(instance.articles.first&.url&.to_s).to eq(expected)
-            expect(instance.admission_drops).to eq(expected ? {} : { 'missing_url' => 1 })
-          end
+          expect(selectors_instance.articles.first&.url&.to_s).to eq(expected)
+          expect(selectors_instance.admission_drops).to eq(expected ? {} : { 'missing_url' => 1 })
         end
       end
     end

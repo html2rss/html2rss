@@ -88,7 +88,6 @@ module Html2rss
       # @param multiple_feeds_key [Symbol] the key under which multiple feeds are defined.
       # @return [Hash{Symbol => Object}] the configuration hash.
       # @raise [InvalidConfig] if the file doesn't exist or feed is not found.
-      # rubocop:disable-next Metrics/MethodLength
       def load_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
         raise InvalidConfig, "File '#{file}' does not exist" unless File.exist?(file)
         raise InvalidConfig, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
@@ -97,16 +96,7 @@ module Html2rss
 
         return yaml unless yaml.key?(multiple_feeds_key)
 
-        feeds = feeds_mapping(file, yaml.fetch(multiple_feeds_key), multiple_feeds_key)
-        unless feed_name
-          raise InvalidConfig,
-                "Feed name is required under `#{multiple_feeds_key}`. Available feeds: #{feeds.keys.join(', ')}"
-        end
-
-        config = feeds[feed_name.to_sym]
-        raise InvalidConfig, "Feed '#{feed_name}' not found under `#{multiple_feeds_key}` key." unless config
-        raise InvalidConfig, "File '#{file}': feed '#{feed_name}' must be a mapping" unless config.is_a?(Hash)
-
+        config = select_feed(file, feed_name, yaml.fetch(multiple_feeds_key), multiple_feeds_key)
         MultipleFeedsConfig.to_single_feed(config, yaml, multiple_feeds_key:)
       end
 
@@ -240,12 +230,22 @@ module Html2rss
       end
       private :read_yaml_mapping
 
-      def feeds_mapping(file, feeds, key)
-        return feeds if feeds.is_a?(Hash)
+      # @return [Hash{Symbol => Object}] the named feed's config from the +feeds+ mapping
+      def select_feed(file, feed_name, feeds, key)
+        unless feeds.is_a?(Hash)
+          raise InvalidConfig, "File '#{file}': `#{key}` must be a mapping of feed names to configs"
+        end
+        unless feed_name
+          raise InvalidConfig, "Feed name is required under `#{key}`. Available feeds: #{feeds.keys.join(', ')}"
+        end
 
-        raise InvalidConfig, "File '#{file}': `#{key}` must be a mapping of feed names to configs"
+        config = feeds[feed_name.to_sym]
+        raise InvalidConfig, "Feed '#{feed_name}' not found under `#{key}` key." unless config
+        raise InvalidConfig, "File '#{file}': feed '#{feed_name}' must be a mapping" unless config.is_a?(Hash)
+
+        config
       end
-      private :feeds_mapping
+      private :select_feed
 
       # Loaded config keys that cannot be symbolized (non-string, non-symbol) are a config-load failure.
       def symbolize_config(parsed)
