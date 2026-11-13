@@ -96,7 +96,7 @@ RSpec.describe Html2rss::Selectors::OptionSpec do
 
     it 'raises for a Ruby type without a JSON mapping' do
       expect { described_class.json_type_for(Symbol) }
-        .to raise_error(ArgumentError, 'unsupported OPTIONS type mapping for Symbol')
+        .to raise_error(Html2rss::InvalidOption, 'unsupported OPTIONS type mapping for Symbol')
     end
   end
 

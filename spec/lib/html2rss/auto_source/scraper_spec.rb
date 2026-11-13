@@ -532,7 +532,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   describe Html2rss::AutoSource::Scraper::NoScraperFound do
     it 'raises a clear error for unknown categories' do
       expect { described_class.new(category: :bogus) }
-        .to raise_error(ArgumentError, /Unknown category: :bogus/)
+        .to raise_error(Html2rss::InvalidOption, /Unknown category: :bogus/)
     end
   end
 end

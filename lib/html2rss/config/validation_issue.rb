@@ -27,7 +27,7 @@ module Html2rss
       # @param expected [Hash, String, Numeric, true, false, nil]
       # @param actual [Hash, String, Numeric, true, false, nil]
       def initialize(path:, code:, message:, expected: nil, actual: nil)
-        raise ArgumentError, "unknown ValidationIssue code: #{code.inspect}" unless CODES.include?(code)
+        raise InvalidOption, "unknown ValidationIssue code: #{code.inspect}" unless CODES.include?(code)
 
         super(
           path: Array(path).freeze,

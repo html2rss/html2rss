@@ -24,8 +24,9 @@ RSpec.describe Html2rss do
     end
 
     context 'with unknown name' do
-      it 'raises an ArgumentError' do
-        expect { described_class.config_from_yaml_file(config_file, 'unknown') }.to raise_error(ArgumentError)
+      it 'raises InvalidConfig' do
+        expect { described_class.config_from_yaml_file(config_file, 'unknown') }
+          .to raise_error(Html2rss::Config::InvalidConfig)
       end
     end
   end
@@ -845,7 +846,7 @@ RSpec.describe Html2rss do
     after { described_class.reset_defaults! }
 
     it 'rejects a non-Logger' do
-      expect { described_class.logger = Object.new }.to raise_error(ArgumentError, /logger must be a Logger/)
+      expect { described_class.logger = Object.new }.to raise_error(Html2rss::InvalidOption, /logger must be a Logger/)
     end
 
     it 'stores the given logger' do

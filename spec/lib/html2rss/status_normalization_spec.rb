@@ -29,9 +29,9 @@ RSpec.describe Html2rss::Status do
 
     it 'names the failing selected_strategy invariant', :aggregate_failures do
       expect { described_class.new(**base, selected_strategy: 'default', attempt_count: 1) }
-        .to raise_error(ArgumentError, 'selected_strategy must be a Symbol or nil')
+        .to raise_error(Html2rss::Status::InvalidError, 'selected_strategy must be a Symbol or nil')
       expect { described_class.new(**base, selected_strategy: :default, attempt_count: 0) }
-        .to raise_error(ArgumentError, 'attempt_count must be >= 1 when selected_strategy is set')
+        .to raise_error(Html2rss::Status::InvalidError, 'attempt_count must be >= 1 when selected_strategy is set')
     end
   end
 
@@ -67,7 +67,8 @@ RSpec.describe Html2rss::Status do
 
     it 'names the rejected entry_resolution class' do
       expect { described_class.new(**base, entry_resolution: Object.new) }
-        .to raise_error(ArgumentError, 'entry_resolution must be a Hash or FeedResolution::Diag, got Object')
+        .to raise_error(Html2rss::Status::InvalidError,
+                        'entry_resolution must be a Hash or FeedResolution::Diag, got Object')
     end
 
     it 'freezes copies of optional url strings', :aggregate_failures do

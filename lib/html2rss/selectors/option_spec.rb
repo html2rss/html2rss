@@ -83,7 +83,7 @@ module Html2rss
           when Array then ruby_type.map { |t| json_type_for(t) }
           else
             RUBY_TO_JSON_TYPE.fetch(ruby_type) do
-              raise ArgumentError, "unsupported OPTIONS type mapping for #{ruby_type}"
+              raise InvalidOption, "unsupported OPTIONS type mapping for #{ruby_type}"
             end
           end
         end

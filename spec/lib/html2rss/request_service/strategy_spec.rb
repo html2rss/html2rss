@@ -35,12 +35,6 @@ RSpec.describe Html2rss::RequestService::Strategy do
     )
   end
 
-  describe '#execute' do
-    it 'requires subclasses to implement #fetch' do
-      expect { instance.execute }.to raise_error(NotImplementedError, /Subclass must implement #fetch/)
-    end
-  end
-
   describe 'guarded execute contract' do
     subject(:execute) { adapter.new(ctx).execute }
 

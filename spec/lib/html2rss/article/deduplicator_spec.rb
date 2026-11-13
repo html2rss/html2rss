@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Article::Deduplicator do
 
   describe '#initialize' do
     it 'requires articles' do
-      expect { described_class.new(nil) }.to raise_error(ArgumentError, 'articles must be provided')
+      expect { described_class.new(nil) }.to raise_error(Html2rss::InvalidOption, 'articles must be provided')
     end
   end
 

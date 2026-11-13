@@ -20,7 +20,7 @@ RSpec.describe Html2rss::MCP::ConfigArgument do
 
     it 'rejects both config and yaml so the XOR cannot be smuggled past' do
       expect { described_class.parse(config: config_hash, yaml: 'channel: {}') }
-        .to raise_error(ArgumentError, /exactly one of config or yaml/)
+        .to raise_error(described_class::ExclusiveInputError, /exactly one of config or yaml/)
     end
 
     it 'rejects a non-Hash config with the designed error instead of a raw TypeError' do
@@ -37,7 +37,7 @@ RSpec.describe Html2rss::MCP::ConfigArgument do
 
     it 'names the config context when a key is neither String nor Symbol' do
       expect { described_class.parse(config: { 1 => 'x' }) }
-        .to raise_error(ArgumentError, 'config must use string or symbol keys (found 1)')
+        .to raise_error(Html2rss::InvalidOption, 'config must use string or symbol keys (found 1)')
     end
 
     it 'rejects a non-String yaml with the designed error instead of a raw parser error' do
@@ -46,12 +46,14 @@ RSpec.describe Html2rss::MCP::ConfigArgument do
     end
 
     it 'rejects neither config nor yaml' do
-      expect { described_class.parse }.to raise_error(ArgumentError, /exactly one of config or yaml/)
+      expect do
+        described_class.parse
+      end.to raise_error(described_class::ExclusiveInputError, /exactly one of config or yaml/)
     end
 
     it 'treats blank yaml as absent so XOR stays honest' do
       expect { described_class.parse(yaml: "  \n") }
-        .to raise_error(ArgumentError, /exactly one of config or yaml/)
+        .to raise_error(described_class::ExclusiveInputError, /exactly one of config or yaml/)
     end
 
     it 'rejects local_file so apply and validate share the Contract gate' do

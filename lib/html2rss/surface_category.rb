@@ -20,7 +20,7 @@ module Html2rss
     ##
     # @param name [Symbol, String]
     # @return [SurfaceCategory]
-    def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown surface category: #{name.inspect}" }
+    def self.[](name) = ALL.fetch(name.to_sym) { raise InvalidOption, "unknown surface category: #{name.inspect}" }
 
     ##
     # @return [Boolean]

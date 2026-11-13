@@ -65,7 +65,7 @@ module Html2rss
           return :invalid_value if predicate.nil?
 
           PREDICATE_CODES.fetch(predicate) do
-            raise ArgumentError, "unmapped Dry validation predicate: #{predicate.inspect}"
+            raise InvalidOption, "unmapped Dry validation predicate: #{predicate.inspect}"
           end
         end
 

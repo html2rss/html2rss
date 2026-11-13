@@ -886,9 +886,10 @@ RSpec.describe Html2rss::AutoSource do
 
       let(:schema_each) { proc { |&block| block.call('not an item') } }
 
-      it 'raises a TypeError naming the scraper' do
+      it 'raises a ScraperContractError naming the scraper instead of quarantining it' do
         expect { articles }
-          .to raise_error(TypeError, 'Html2rss::AutoSource::Scraper::Schema yielded String; expected Article or Hash')
+          .to raise_error(described_class::ScraperContractError,
+                          'Html2rss::AutoSource::Scraper::Schema yielded String; expected Article or Hash')
       end
     end
 

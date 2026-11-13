@@ -304,7 +304,7 @@ RSpec.describe Html2rss::Scoring::Engine do
     it 'accepts known feature ids and rejects unknown ones', :aggregate_failures do
       expect(described_class.assert_feature_id!(:content_path)).to eq(:content_path)
       expect { described_class.assert_feature_id!(:bogus) }
-        .to raise_error(ArgumentError, 'unknown feature: :bogus')
+        .to raise_error(Html2rss::InvalidOption, 'unknown feature: :bogus')
     end
   end
 end

@@ -49,10 +49,10 @@ RSpec.describe Html2rss::Config do
     context 'when the file does not exist' do
       let(:file) { 'non-existing-file' }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect do
           described_class.load_yaml(file)
-        end.to raise_error(ArgumentError,
+        end.to raise_error(Html2rss::Config::InvalidConfig,
                            "File 'non-existing-file' does not exist")
       end
     end
@@ -60,11 +60,11 @@ RSpec.describe Html2rss::Config do
     context 'when the file exists & the feed name is reserved' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect do
           described_class.load_yaml(file,
                                     described_class::MultipleFeedsConfig::CONFIG_KEY_FEEDS)
-        end.to raise_error(ArgumentError,
+        end.to raise_error(Html2rss::Config::InvalidConfig,
                            "`#{described_class::MultipleFeedsConfig::CONFIG_KEY_FEEDS}` is a reserved feed name")
       end
     end
@@ -72,7 +72,7 @@ RSpec.describe Html2rss::Config do
     context 'when the file exists & is single config' do
       let(:file) { 'spec/fixtures/single.test.yml' }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect(described_class.load_yaml(file)).to be_a(Hash)
       end
     end
@@ -80,20 +80,20 @@ RSpec.describe Html2rss::Config do
     context 'when the file exists with multiple feeds & the feed name is not found' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect do
           described_class.load_yaml(file,
                                     'non-existing-feed')
-        end.to raise_error(ArgumentError, /Feed 'non-existing-feed' not found under `feeds` key/)
+        end.to raise_error(Html2rss::Config::InvalidConfig, /Feed 'non-existing-feed' not found under `feeds` key/)
       end
     end
 
     context 'when the file exists with multiple feeds & the feed name is omitted' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
-      it 'raises an ArgumentError listing the available feeds' do
+      it 'raises InvalidConfig listing the available feeds' do
         expect { described_class.load_yaml(file) }.to raise_error(
-          ArgumentError,
+          Html2rss::Config::InvalidConfig,
           'Feed name is required under `feeds`. Available feeds: releases_page, json, notitle, withparams'
         )
       end
@@ -173,11 +173,15 @@ RSpec.describe Html2rss::Config do
     end
 
     it 'rejects non-hash documents so callers cannot pass a YAML list as a config' do
-      expect { described_class.from_yaml("- items\n") }.to raise_error(ArgumentError, /must deserialize to a Hash/)
+      expect do
+        described_class.from_yaml("- items\n")
+      end.to raise_error(Html2rss::Config::InvalidConfig, /must deserialize to a Hash/)
     end
 
     it 'rejects non-strings' do
-      expect { described_class.from_yaml({ channel: {} }) }.to raise_error(ArgumentError, /must be a String/)
+      expect do
+        described_class.from_yaml({ channel: {} })
+      end.to raise_error(Html2rss::Config::InvalidConfig, /must be a String/)
     end
 
     it 'uses safe_load so untrusted YAML cannot instantiate Ruby objects' do
@@ -436,22 +440,22 @@ RSpec.describe Html2rss::Config do
       end
     end
 
-    it 'does not swallow IssueMapper ArgumentError as a soft :parse issue' do
+    it 'does not swallow an IssueMapper InvalidOption as a soft :parse issue' do
       allow(described_class::IssueMapper).to receive(:from).and_raise(
-        ArgumentError, 'unmapped Dry validation predicate: :boom?'
+        Html2rss::InvalidOption, 'unmapped Dry validation predicate: :boom?'
       )
 
       expect { described_class.resolve_and_validate(config) }
-        .to raise_error(ArgumentError, /unmapped Dry validation predicate/)
+        .to raise_error(Html2rss::InvalidOption, /unmapped Dry validation predicate/)
     end
 
-    it 'surfaces IssueMapper ArgumentError through Html2rss.validate' do
+    it 'surfaces an IssueMapper InvalidOption through Html2rss.validate' do
       allow(described_class::IssueMapper).to receive(:from).and_raise(
-        ArgumentError, 'unmapped Dry validation predicate: :boom?'
+        Html2rss::InvalidOption, 'unmapped Dry validation predicate: :boom?'
       )
 
       expect { Html2rss.validate(config) }
-        .to raise_error(ArgumentError, /unmapped Dry validation predicate/)
+        .to raise_error(Html2rss::InvalidOption, /unmapped Dry validation predicate/)
     end
   end
 
@@ -1013,7 +1017,7 @@ RSpec.describe Html2rss::Config do
     context 'when the configuration is invalid' do
       let(:config) { { headers: { 'User-Agent': nil, 'Content-Language': 0xBADF00D } } }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect { instance }.to raise_error(described_class::InvalidConfig, /Invalid configuration:/)
       end
     end

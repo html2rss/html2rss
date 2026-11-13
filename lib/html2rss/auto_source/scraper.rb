@@ -88,7 +88,7 @@ module Html2rss
           return if CATEGORY_MESSAGES.key?(category)
 
           valid_categories = CATEGORY_MESSAGES.keys.join(', ')
-          raise ArgumentError, "Unknown category: #{category.inspect}. Valid categories are: #{valid_categories}"
+          raise InvalidOption, "Unknown category: #{category.inspect}. Valid categories are: #{valid_categories}"
         end
       end
 

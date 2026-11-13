@@ -17,7 +17,7 @@ module Html2rss
       ##
       # @param name [Symbol, String]
       # @return [FailureKind]
-      def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown failure kind: #{name.inspect}" }
+      def self.[](name) = ALL.fetch(name.to_sym) { raise InvalidOption, "unknown failure kind: #{name.inspect}" }
 
       ##
       # @return [Boolean]

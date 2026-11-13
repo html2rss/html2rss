@@ -23,7 +23,7 @@ module Html2rss
         # @param exclude [Array<Node>, nil]
         # @return [String, nil]
         def extract(node, separator: ' ', exclude: nil)
-          raise ArgumentError, 'node is required' unless node
+          raise InvalidError, 'node is required' unless node
 
           excluded = exclude&.each_with_object({}.compare_by_identity) { |n, h| h[n] = true }
           join_fragments(fragments(node, separator, excluded), separator)

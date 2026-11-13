@@ -96,7 +96,7 @@ module Html2rss
         # @param transport [Symbol] +:stdio+ or +:http+
         # @param port [Integer] port for HTTP transport
         def start(transport: :stdio, port: 8080)
-          raise ArgumentError, "Unknown transport: #{transport.inspect}" unless TRANSPORTS.include?(transport)
+          raise InvalidOption, "Unknown transport: #{transport.inspect}" unless TRANSPORTS.include?(transport)
 
           configure_daemon_logging!
           Runtime.install_response_cache!

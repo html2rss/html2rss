@@ -38,26 +38,26 @@ RSpec.describe Html2rss::FeedBuilder::Rss::Stylesheet do
     end
 
     context 'with an invalid href' do
-      it 'raises an ArgumentError' do
+      it 'raises InvalidOption' do
         expect do
           described_class.new(href: 123, type: 'text/css')
-        end.to raise_error(ArgumentError, 'stylesheet.href must be a String')
+        end.to raise_error(Html2rss::InvalidOption, 'stylesheet.href must be a String')
       end
     end
 
     context 'with an invalid type' do
-      it 'raises an ArgumentError' do
+      it 'raises InvalidOption' do
         expect do
           described_class.new(href: 'http://example.com/style.css', type: 'invalid/type')
-        end.to raise_error(ArgumentError, 'stylesheet.type invalid')
+        end.to raise_error(Html2rss::InvalidOption, 'stylesheet.type invalid')
       end
     end
 
     context 'with an invalid media' do
-      it 'raises an ArgumentError' do
+      it 'raises InvalidOption' do
         expect do
           described_class.new(href: 'http://example.com/style.css', type: 'text/css', media: 123)
-        end.to raise_error(ArgumentError, 'stylesheet.media must be a String')
+        end.to raise_error(Html2rss::InvalidOption, 'stylesheet.media must be a String')
       end
     end
   end

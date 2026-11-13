@@ -15,16 +15,20 @@ module Html2rss
   #   are re-frozen via private {#marshal_load}. For trusted cache reads only,
   #   +Marshal.load(payload, freeze: true)+ is also safe.
   class FeedResult
+    # Raised when the scrape handle is built from invalid parts.
+    class InvalidError < Html2rss::Error; end
+
     ##
     # @param channel [Html2rss::Channel] channel metadata (internal; not exposed on the public API)
     # @param articles [Array<Html2rss::Article>] extracted articles (deduplicated; not exposed)
     # @param status [Html2rss::Status] pipeline telemetry
     # @param stylesheets [Array<Hash>] optional RSS stylesheet configs
+    # @raise [InvalidError] when a part has the wrong type
     def initialize(channel:, articles:, status:, stylesheets: [])
-      raise ArgumentError, 'channel must be a Html2rss::Channel' unless channel.is_a?(Channel)
-      raise ArgumentError, 'status must be a Html2rss::Status' unless status.is_a?(Status)
-      raise ArgumentError, 'articles must be an Array' unless articles.is_a?(Array)
-      raise ArgumentError, 'articles must all be Html2rss::Article' unless articles.all?(Article)
+      raise InvalidError, 'channel must be a Html2rss::Channel' unless channel.is_a?(Channel)
+      raise InvalidError, 'status must be a Html2rss::Status' unless status.is_a?(Status)
+      raise InvalidError, 'articles must be an Array' unless articles.is_a?(Array)
+      raise InvalidError, 'articles must all be Html2rss::Article' unless articles.all?(Article)
 
       @channel = channel
       @articles = articles.dup.freeze
@@ -81,7 +85,7 @@ module Html2rss
     end
 
     def freeze_stylesheets(stylesheets)
-      raise ArgumentError, 'stylesheets must be an Array' unless stylesheets.is_a?(Array)
+      raise InvalidError, 'stylesheets must be an Array' unless stylesheets.is_a?(Array)
 
       stylesheets.map do |sheet|
         sheet.to_h.transform_keys(&:to_sym).transform_values do |value|

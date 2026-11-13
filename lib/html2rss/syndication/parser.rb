@@ -19,9 +19,11 @@ module Html2rss
         ##
         # @param response [Html2rss::RequestService::Response]
         # @return [Feed]
-        # @raise [ArgumentError] when the response is not a syndication feed
+        # @raise [RequestService::UnsupportedResponseContentType] when the response is not a syndication feed
         def parse_response(response)
-          raise ArgumentError, 'response is not a syndication feed' unless response.feed_response?
+          unless response.feed_response?
+            raise RequestService::UnsupportedResponseContentType, 'response is not a syndication feed'
+          end
 
           parse(response.body, base_url: response.url)
         end

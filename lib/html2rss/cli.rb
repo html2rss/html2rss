@@ -311,7 +311,7 @@ module Html2rss
 
       expected = Recon::Verdict[verdict_filter.downcase]
       results.select { |r| r.verdict == expected }
-    rescue ArgumentError => error
+    rescue InvalidOption => error
       raise Thor::Error, error.message
     end
 

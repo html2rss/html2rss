@@ -70,7 +70,7 @@ module Html2rss
         #
         # @param string [String]
         # @return [Regexp]
-        # @raise [ArgumentError] when +string+ is not a String, exceeds the character cap,
+        # @raise [InvalidOption] when +string+ is not a String, exceeds the character cap,
         #   contains nested quantifiers, or does not parse
         def self.compiled_pattern(string)
           compiled_patterns[string] ||= compile_regexp_string(string)
@@ -88,25 +88,25 @@ module Html2rss
         # to maintain backwards compatibility before building the Regexp.
         # Length is the character count of the authored string (the JSON Schema
         # +maxLength+ unit), then the AST is walked for nested quantifiers,
-        # then +to_re+. Parser errors are re-raised as ArgumentError so
+        # then +to_re+. Parser errors are re-raised as InvalidOption so
         # validation and execution share one path.
         #
         # @param string [String]
         # @return [Regexp]
-        # @raise [ArgumentError] when +string+ is not a String, exceeds {MAX_PATTERN_LENGTH},
+        # @raise [InvalidOption] when +string+ is not a String, exceeds {MAX_PATTERN_LENGTH},
         #   contains nested quantifiers, or does not parse
         def self.compile_regexp_string(string)
-          raise ArgumentError, 'must be a string!' unless string.is_a?(String)
-          raise ArgumentError, "pattern exceeds #{MAX_PATTERN_LENGTH} characters" if string.length > MAX_PATTERN_LENGTH
+          raise InvalidOption, 'must be a string!' unless string.is_a?(String)
+          raise InvalidOption, "pattern exceeds #{MAX_PATTERN_LENGTH} characters" if string.length > MAX_PATTERN_LENGTH
 
           source = regexp_source(string)
 
           expression = Regexp::Parser.parse(source)
-          raise ArgumentError, 'pattern contains nested quantifiers' if nested_quantifiers?(expression)
+          raise InvalidOption, 'pattern contains nested quantifiers' if nested_quantifiers?(expression)
 
           expression.to_re
         rescue Regexp::Parser::Error => error
-          raise ArgumentError, error.message, [], cause: nil
+          raise InvalidOption, error.message, [], cause: nil
         end
         private_class_method :compile_regexp_string
 

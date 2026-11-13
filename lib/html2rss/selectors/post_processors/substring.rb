@@ -70,7 +70,7 @@ module Html2rss
           return (start..) unless step_config.key?(:end)
 
           finish = step_config[:end]
-          raise ArgumentError, 'The `start` value must be unequal to the `end` value.' if start == finish
+          raise InvalidOption, 'The `start` value must be unequal to the `end` value.' if start == finish
 
           (start..finish)
         end

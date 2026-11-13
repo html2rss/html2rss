@@ -87,8 +87,8 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
       )
     end
 
-    it 'raises ArgumentError' do
-      expect { execute }.to raise_error(ArgumentError, /Local file path is required/)
+    it 'raises InvalidOption' do
+      expect { execute }.to raise_error(Html2rss::InvalidOption, /Local file path is required/)
     end
   end
 end

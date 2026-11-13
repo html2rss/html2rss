@@ -47,7 +47,7 @@ module Html2rss
         strategy_name = normalized_config.fetch(:strategy, :rel_next).to_sym
 
         klass = STRATEGIES.fetch(strategy_name) do
-          raise ArgumentError, "Unknown pagination strategy: #{strategy_name}"
+          raise InvalidOption, "Unknown pagination strategy: #{strategy_name}"
         end
 
         klass.new(session:, initial_response:, config: normalized_config)

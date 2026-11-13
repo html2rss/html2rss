@@ -114,7 +114,7 @@ Scheme-, fragment-, trailing-slash-, query-param-order-, and tracking-param-inse
 
 ## Feed resolution policy
 
-Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` Array (`ArgumentError` otherwise; derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`).
+Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` Array (`InvalidOption` otherwise; derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`).
 
 ## Feed resolution candidates
 
@@ -247,3 +247,10 @@ Supported pagination strategy names and factory classes live in `RequestSession:
 Module guide: `lib/html2rss/selectors/README.md`.
 
 Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::OptionSpec` (name, type, required). `Config::SelectorsValidator::Selector`, `Selectors::OptionSpec.for` / `expectation_for`, and `Selectors::SchemaExport` consume that contract; post-processor `Base` enforces `OPTIONS` plus optional `VALUE_TYPE` at runtime. Extractors run as `new(xml, **config)`.
+
+## Error handling
+
+`lib/` raises only `Html2rss::Error` subclasses, enforced by `Html2rss/LocalErrorClass` (core classes, bare `raise 'msg'`, and core-class subclasses; only the `Html2rss::Error < StandardError` root is exempt). One class per owner and meaning: `InvalidOption` for a caller-supplied value outside its accepted set (option setters, closed-set `self.[]` lookups, builder options); `<Owner>::InvalidError` for a value object built from wrong parts (`SST`, `AutoSource::Segment`, `Status`, `FeedResult`, `MCP::Outcome`, `Article::Enclosure`); `Config::InvalidConfig` for a config that cannot be loaded or fails validation. Abstract hooks are not stubbed: a subclass missing one fails with `NoMethodError`.
+Console writes are forbidden by `Html2rss/NoConsoleOutput`; library code logs through `Html2rss::Log`. The CLI (`lib/html2rss/cli.rb`, `lib/html2rss/cli/**`) owns user-facing stdout/stderr and is excluded; a standard stream passed to `Logger.new` is the log sink, not a write.
+`rescue ArgumentError` / `TypeError` in `lib/` names stdlib raises only (`DateTime.parse`, `Time.parse`/`httpdate`, `Encoding.find`, Brotli/Zlib inflate, TZInfo).
+`AutoSource::OPERATIONAL_ERRORS` keeps `ArgumentError`: publisher bytes still raise stdlib `ArgumentError` inside scrapers (e.g. `WordpressApi` runs `CGI.unescapeHTML(...).gsub` on REST HTML; a `&#xD800;` entity unescapes to an invalid UTF-8 string and `gsub` raises `invalid byte sequence in UTF-8`), and that is an operational page failure to quarantine, not a bug. Lib-raised errors reach the quarantine as `Html2rss::Error`. `AutoSource::ScraperContractError` (a scraper yielding neither `Article` nor `Hash`) is an `Html2rss::Error` but is re-raised, because it is a scraper bug.

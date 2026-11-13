@@ -13,9 +13,9 @@ module Html2rss
     class Deduplicator
       ##
       # @param articles [Array<Html2rss::Article>]
-      # @raise [ArgumentError] if articles are not provided
+      # @raise [InvalidOption] if articles are not provided
       def initialize(articles)
-        raise ArgumentError, 'articles must be provided' unless articles
+        raise InvalidOption, 'articles must be provided' unless articles
 
         @articles = articles
       end

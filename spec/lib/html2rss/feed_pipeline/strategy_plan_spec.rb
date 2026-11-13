@@ -19,8 +19,10 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
       expect(described_class.resolve('botasaurus')).to eq(described_class::Concrete.new(strategy: :botasaurus))
     end
 
-    it 'raises ArgumentError for an unknown plan' do
-      expect { described_class.resolve(:unknown) }.to raise_error(ArgumentError, 'unknown strategy plan: :unknown')
+    it 'raises InvalidOption for an unknown plan' do
+      expect do
+        described_class.resolve(:unknown)
+      end.to raise_error(Html2rss::InvalidOption, 'unknown strategy plan: :unknown')
     end
   end
 

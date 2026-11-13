@@ -13,7 +13,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'cannot be built with an unknown name' do
       expect { described_class[:retry_invalid] }
-        .to raise_error(ArgumentError, /unknown next_step/)
+        .to raise_error(Html2rss::InvalidOption, /unknown next_step/)
     end
 
     it 'owns guidance copy on each named instance' do
@@ -396,12 +396,12 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'rejects a next_step that is not a NextStep' do
       expect { described_class.new(ok: true, next_step: :done, guidance: 'g', payload: {}) }
-        .to raise_error(ArgumentError, 'next_step must be a NextStep')
+        .to raise_error(described_class::InvalidError, 'next_step must be a NextStep')
     end
 
     it 'rejects a payload that is not a Hash' do
       expect { described_class.new(ok: true, next_step: done, guidance: 'g', payload: []) }
-        .to raise_error(ArgumentError, 'payload must be a Hash')
+        .to raise_error(described_class::InvalidError, 'payload must be a Hash')
     end
 
     it 'coerces ok to a boolean and freezes a copy of the payload', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- envelope invariants
@@ -436,8 +436,8 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.next_step.name).to eq(:inspect)
     end
 
-    it 'maps XOR ArgumentError to validate' do
-      error = ArgumentError.new('Provide exactly one of config or yaml')
+    it 'maps ExclusiveInputError to validate' do
+      error = Html2rss::MCP::ConfigArgument::ExclusiveInputError.new('Provide exactly one of config or yaml')
       outcome = described_class.from_error(error)
 
       expect(outcome.next_step.name).to eq(:validate)
@@ -450,8 +450,8 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.next_step.name).to eq(:validate)
     end
 
-    it 'maps ArgumentError without the XOR message to inspect' do
-      outcome = described_class.from_error(ArgumentError.new('something else'))
+    it 'maps another InvalidOption to inspect' do
+      outcome = described_class.from_error(Html2rss::InvalidOption.new('Provide exactly one of config or yaml'))
 
       expect(outcome.next_step.name).to eq(:inspect)
     end

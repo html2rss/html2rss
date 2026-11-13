@@ -647,7 +647,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'requires an article tag' do
       expect { described_class.new(nil, base_url: 'https://example.com') }
-        .to raise_error(ArgumentError, 'article_tag is required')
+        .to raise_error(Html2rss::InvalidOption, 'article_tag is required')
     end
 
     it 'resolves urls against the base url and selected anchor it was given' do

@@ -35,13 +35,13 @@ RSpec.describe Html2rss::Config::RequestControls do
     it 'raises when top-level keys are not symbols' do
       expect do
         described_class.from_config('strategy' => :botasaurus)
-      end.to raise_error(ArgumentError, /config must use symbol keys/)
+      end.to raise_error(Html2rss::InvalidOption, /config must use symbol keys/)
     end
 
     it 'raises when request keys are not symbols' do
       expect do
         described_class.from_config(request: { 'max_requests' => 4 })
-      end.to raise_error(ArgumentError, /config\[:request\] must use symbol keys/)
+      end.to raise_error(Html2rss::InvalidOption, /config\[:request\] must use symbol keys/)
     end
   end
 
@@ -191,7 +191,7 @@ RSpec.describe Html2rss::Config::RequestControls do
       controls = described_class.new(max_requests: 4, explicit_keys: [:max_requests])
       config = { request: 'invalid' }
 
-      expect { controls.apply_to(config) }.to raise_error(ArgumentError, 'request config must be a hash')
+      expect { controls.apply_to(config) }.to raise_error(Html2rss::InvalidOption, 'request config must be a hash')
     end
   end
 

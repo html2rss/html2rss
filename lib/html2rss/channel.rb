@@ -207,7 +207,7 @@ module Html2rss
 
     def normalize_last_build_date(value)
       return value if value.is_a?(Time)
-      raise ArgumentError, 'last_build_date must be a Time or HTTP-date String' unless value.is_a?(String)
+      raise InvalidOption, 'last_build_date must be a Time or HTTP-date String' unless value.is_a?(String)
 
       Time.httpdate(value)
     end

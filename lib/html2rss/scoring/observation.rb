@@ -40,7 +40,7 @@ module Html2rss
         when :lenient
           (high_confidence_junk_path && weak_signals?) || chrome_title_junk?
         else
-          raise ArgumentError, "unknown hard_junk mode: #{mode.inspect}"
+          raise InvalidOption, "unknown hard_junk mode: #{mode.inspect}"
         end
       end
 

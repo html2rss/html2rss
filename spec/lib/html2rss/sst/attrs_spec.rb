@@ -12,7 +12,7 @@ RSpec.describe Html2rss::SST::Attrs do
     end
 
     it 'rejects Hash class_names' do
-      expect { described_class.build(class_names: { a: 1 }) }.to raise_error(ArgumentError)
+      expect { described_class.build(class_names: { a: 1 }) }.to raise_error(Html2rss::SST::InvalidError)
     end
 
     it 'exposes typed readers, class_attr, and raw', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -41,7 +41,7 @@ RSpec.describe Html2rss::SST::Attrs do
     end
 
     it 'rejects non-Hash raw' do
-      expect { described_class.build(raw: []) }.to raise_error(ArgumentError)
+      expect { described_class.build(raw: []) }.to raise_error(Html2rss::SST::InvalidError)
     end
 
     it 'maps every blank scalar field to nil', :aggregate_failures do

@@ -28,20 +28,20 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
   end
 
   context 'with nil time_zone' do
-    it 'raises ArgumentError' do
+    it 'raises MissingOption' do
       ctx = Html2rss::Selectors::StepEnv.new(time_zone: nil)
 
       expect { described_class.new('2019-07-01 12:00', ctx).call }
-        .to raise_error(ArgumentError, 'time_zone cannot be nil or empty')
+        .to raise_error(Html2rss::Selectors::PostProcessors::MissingOption, 'time_zone cannot be nil or empty')
     end
   end
 
   context 'with empty time_zone' do
-    it 'raises ArgumentError' do
+    it 'raises MissingOption' do
       ctx = Html2rss::Selectors::StepEnv.new(time_zone: '')
 
       expect { described_class.new('2019-07-01 12:00', ctx).call }
-        .to raise_error(ArgumentError, 'time_zone cannot be nil or empty')
+        .to raise_error(Html2rss::Selectors::PostProcessors::MissingOption, 'time_zone cannot be nil or empty')
     end
   end
 

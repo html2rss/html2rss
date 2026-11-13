@@ -900,7 +900,7 @@ RSpec.describe Html2rss::MCP::Server do
     end
 
     it 'rejects unknown transports' do
-      expect { described_class.start(transport: :udp) }.to raise_error(ArgumentError, /Unknown transport/)
+      expect { described_class.start(transport: :udp) }.to raise_error(Html2rss::InvalidOption, /Unknown transport/)
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- LoadError messaging contract

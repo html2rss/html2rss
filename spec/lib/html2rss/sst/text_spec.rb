@@ -33,7 +33,7 @@ RSpec.describe Html2rss::SST::Text do
     stay = Html2rss::SST::Node.build(name: :span, own_text: 'Stay')
     headed = Html2rss::SST::Node.build(name: :div, own_text: 'Head ', tails: [''], children: [shown])
 
-    expect { extract.call(nil) }.to raise_error(ArgumentError, 'node is required')
+    expect { extract.call(nil) }.to raise_error(Html2rss::SST::InvalidError, 'node is required')
     expect(extract.call(leaf)).to eq('hello world')
     expect(extract.call(blank)).to be_nil
     expect(extract.call(blocks)).to eq("One\nTwo")

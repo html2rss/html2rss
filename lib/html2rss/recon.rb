@@ -21,7 +21,7 @@ module Html2rss
       ##
       # @param name [Symbol, String]
       # @return [Verdict]
-      def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown verdict: #{name.inspect}" }
+      def self.[](name) = ALL.fetch(name.to_sym) { raise InvalidOption, "unknown verdict: #{name.inspect}" }
 
       ##
       # @return [Boolean]

@@ -65,7 +65,7 @@ module Html2rss
           case class_names
           when nil then AttrDefaults::EMPTY_CLASS_NAMES
           when Array then class_names.map { |token| token.to_s.freeze }.freeze
-          else raise ArgumentError, "class_names must be an Array, got #{class_names.class}"
+          else raise InvalidError, "class_names must be an Array, got #{class_names.class}"
           end
         end
 
@@ -73,7 +73,7 @@ module Html2rss
           case raw
           when nil then AttrDefaults::EMPTY_RAW
           when Hash then raw.transform_values { |v| v.to_s.freeze }.freeze
-          else raise ArgumentError, "raw must be a Hash, got #{raw.class}"
+          else raise InvalidError, "raw must be a Hash, got #{raw.class}"
           end
         end
       end

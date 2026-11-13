@@ -57,14 +57,14 @@ RSpec.describe Html2rss::HashUtil do
 
     it 'raises on unsupported key types' do
       expect { described_class.deep_symbolize_keys({ /bad/ => 'invalid' }) }
-        .to raise_error(ArgumentError, 'hash must use string or symbol keys (found /bad/)')
+        .to raise_error(Html2rss::InvalidOption, 'hash must use string or symbol keys (found /bad/)')
     end
 
     it 'reports the caller context for a nested invalid key' do
       input = { 'outer' => { /bad/ => 'invalid' } }
 
       expect { described_class.deep_symbolize_keys(input, context: 'config') }
-        .to raise_error(ArgumentError, 'config must use string or symbol keys (found /bad/)')
+        .to raise_error(Html2rss::InvalidOption, 'config must use string or symbol keys (found /bad/)')
     end
   end
 
@@ -98,12 +98,12 @@ RSpec.describe Html2rss::HashUtil do
       hash = { ok: 1, 'bad' => 2, also: 3 }
 
       expect { described_class.assert_symbol_keys!(hash) }
-        .to raise_error(ArgumentError, 'hash must use symbol keys (found "bad")')
+        .to raise_error(Html2rss::InvalidOption, 'hash must use symbol keys (found "bad")')
     end
 
     it 'rejects nested string keys' do
       expect { described_class.assert_symbol_keys!({ outer: { 'bad' => 1 } }) }
-        .to raise_error(ArgumentError, 'hash must use symbol keys (found "bad")')
+        .to raise_error(Html2rss::InvalidOption, 'hash must use symbol keys (found "bad")')
     end
 
     it 'does not walk nested hashes when deep is false' do
@@ -128,12 +128,12 @@ RSpec.describe Html2rss::HashUtil do
       hash = { 'ok' => 1, bad: 2, 'also' => 3 }
 
       expect { described_class.assert_string_keys!(hash) }
-        .to raise_error(ArgumentError, 'hash must use string keys (found :bad)')
+        .to raise_error(Html2rss::InvalidOption, 'hash must use string keys (found :bad)')
     end
 
     it 'rejects nested symbol keys' do
       expect { described_class.assert_string_keys!({ 'outer' => { bad: 1 } }) }
-        .to raise_error(ArgumentError, 'hash must use string keys (found :bad)')
+        .to raise_error(Html2rss::InvalidOption, 'hash must use string keys (found :bad)')
     end
 
     it 'does not walk nested hashes when deep is false' do
