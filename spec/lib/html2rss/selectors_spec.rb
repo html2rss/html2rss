@@ -242,7 +242,8 @@ RSpec.describe Html2rss::Selectors do
 
     context 'when the enclosure selector picks an image and no image selector is configured' do
       let(:selectors) do
-        { items: { selector: 'article', enhance: false }, title: { selector: 'h1' }, url: { extractor: 'static', static: 'https://example.com/post' },
+        { items: { selector: 'article', enhance: false }, title: { selector: 'h1' },
+          url: { extractor: 'static', static: 'https://example.com/post' },
           enclosure: { selector: 'img', extractor: 'attribute', attribute: 'src' } }
       end
       let(:body) { '<html><body><article><h1>Harbor</h1><img src="/media/harbor.jpg"></article></body></html>' }
@@ -614,6 +615,7 @@ RSpec.describe Html2rss::Selectors do
       let(:selectors) do
         {
           items: { selector: 'article', enhance: false },
+          url: { extractor: 'static', static: 'https://example.com/post' },
           enclosure: { selector: 'a', extractor: 'href', content_type: 'audio/mpeg' }
         }
       end
@@ -640,8 +642,7 @@ RSpec.describe Html2rss::Selectors do
       it 'keeps a non-web href out of the article and its description', :aggregate_failures do
         page = Html2rss::RequestService::Response.new(url: response.url, headers: response.headers,
                                                       body: body.sub('/a.mp3', 'javascript:alert(1)//a.mp3'))
-        linked = selectors.merge(url: { extractor: 'static', static: 'https://example.com/post' })
-        article = described_class.new(page, selectors: linked, time_zone: 'UTC').articles.first
+        article = described_class.new(page, selectors:, time_zone: 'UTC').articles.first
 
         expect(article.enclosures).to eq([])
         expect(Html2rss::FeedBuilder::ItemPresentation.description_for(article).to_s).not_to include('javascript:')

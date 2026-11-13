@@ -321,7 +321,8 @@ RSpec.describe Html2rss do
             next_link = next_page <= 20 ? %(<link rel="next" href="/news?page=#{next_page}">) : ''
 
             Html2rss::RequestService::Response.new(
-              body: "<html><head>#{next_link}</head><body><article><a href=\"/n/page#{page_number}\"><h1>page#{page_number}</h1></a></article></body></html>",
+              body: "<html><head>#{next_link}</head><body><article><a href=\"/p#{page_number}\">" \
+                    "<h1>page#{page_number}</h1></a></article></body></html>",
               url: ctx.url,
               headers: { 'content-type' => 'text/html' }
             )
