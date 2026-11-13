@@ -54,17 +54,18 @@ RSpec.describe Html2rss::Selectors do
     context 'when the items selector is an explicit a' do
       let(:selectors) { { items: { selector: 'a', enhance: false } } }
 
-      it 'still admits junk-scheme anchors', :aggregate_failures do
-        urls = instance.articles.filter_map { |article| article.url&.to_s }
+      it 'still admits mailto and fragment anchors, but drops the one with no resolvable url' do
+        urls = instance.articles.map { |article| article.url.to_s }
 
-        expect(instance.articles.size).to eq(4)
-        expect(urls).to include('http://example.com/posts/real', 'mailto:ed@example.com')
+        expect(urls).to eq(['http://example.com/posts/real', 'http://example.com/', 'mailto:ed@example.com'])
       end
     end
   end
 
   describe '#articles' do
     subject(:titles) { instance.articles.map(&:title) }
+
+    before { selectors[:url] = { selector: 'a', extractor: 'href' } }
 
     it 'returns the articles' do
       expect(titles).to eq(%w[article1 article2])
@@ -88,11 +89,43 @@ RSpec.describe Html2rss::Selectors do
   end
 
   describe '#each' do
-    it 'returns an Enumerator if no block is given' do
+    context 'when an item has no resolvable link' do
+      let(:selectors) { { items: { selector: 'article', enhance: true } } }
+      let(:body) do
+        <<~HTML
+          <html><body>
+            <article id="story-7"><h1>Id Only Article</h1><p>Teaser text</p></article>
+            <article id="story-8"><h1>Linked Article</h1><a href="/linked#frag">More</a></article>
+          </body></html>
+        HTML
+      end
+
+      it 'skips the link-less item and keeps the linked one', :aggregate_failures do
+        expect(instance.articles.map(&:title)).to eq(['Linked Article'])
+        expect(instance.articles.map { _1.url.to_s }).to eq(['http://example.com/linked'])
+      end
+
+      it 'derives the linked item guid from its url and id' do
+        expect(instance.articles.first.guid).to eq(Zlib.crc32('http://example.com/linked#!/story-8').to_s(36))
+      end
+    end
+
+    it 'returns an Enumerator over the articles if no block is given', :aggregate_failures do
+      selectors[:url] = { selector: 'a', extractor: 'href' }
+
       expect(instance.each).to be_a(Enumerator)
+      expect(instance.each.map(&:title)).to eq(%w[article1 article2])
+    end
+
+    it 'tags each article with the Selectors scraper' do
+      selectors[:url] = { selector: 'a', extractor: 'href' }
+
+      expect(instance.each.map(&:scraper)).to all(eq(described_class))
     end
 
     it 'yields the articles to given block' do
+      selectors[:url] = { selector: 'a', extractor: 'href' }
+
       expect { |b| instance.each(&b) }.to yield_successive_args(
         Html2rss::Article,
         Html2rss::Article
@@ -107,6 +140,7 @@ RSpec.describe Html2rss::Selectors do
         {
           items: { selector: 'html' },
           title: { extractor: 'static', static: 'Test string' },
+          url: { extractor: 'static', static: 'https://example.com/post' },
           description: { extractor: 'html', selector: 'body' }
         }
       end
@@ -176,6 +210,7 @@ RSpec.describe Html2rss::Selectors do
         {
           items: { selector: 'article', enhance: false },
           title: { selector: 'h1' },
+          url: { extractor: 'static', static: 'https://example.com/post' },
           enclosure: {
             selector: 'audio',
             extractor: 'attribute',
@@ -207,7 +242,7 @@ RSpec.describe Html2rss::Selectors do
 
     context 'when the enclosure selector picks an image and no image selector is configured' do
       let(:selectors) do
-        { items: { selector: 'article', enhance: false }, title: { selector: 'h1' },
+        { items: { selector: 'article', enhance: false }, title: { selector: 'h1' }, url: { extractor: 'static', static: 'https://example.com/post' },
           enclosure: { selector: 'img', extractor: 'attribute', attribute: 'src' } }
       end
       let(:body) { '<html><body><article><h1>Harbor</h1><img src="/media/harbor.jpg"></article></body></html>' }
@@ -251,6 +286,7 @@ RSpec.describe Html2rss::Selectors do
     [true, false].each do |enhance|
       it "keeps a selected title verbatim apart from whitespace with enhance: #{enhance}" do
         selectors[:items][:enhance] = enhance
+        selectors[:url] = { selector: 'a', extractor: 'href' }
 
         expect(instance.articles.map(&:title)).to eq(['10:00 Budget vote'])
       end
@@ -321,19 +357,6 @@ RSpec.describe Html2rss::Selectors do
         _baseline, enhanced, = instance.each_enhance_pair.first
 
         expect(enhanced.compact).to eq(enhanced)
-      end
-    end
-
-    context 'when the link-less item carries an id' do
-      let(:selectors) { { items: { selector: 'article', enhance: true } } }
-      let(:body) do
-        '<html><body><article id="story-7"><h1>Id Only Article</h1><p>Teaser text</p></article></body></html>'
-      end
-
-      it 'keeps the item with its id and gives it no fragment url', :aggregate_failures do
-        article = instance.articles.first
-        expect(instance.articles.size).to eq(1)
-        expect([article.title, article.id, article.url]).to eq(['Id Only Article', 'story-7', nil])
       end
     end
 
@@ -617,7 +640,8 @@ RSpec.describe Html2rss::Selectors do
       it 'keeps a non-web href out of the article and its description', :aggregate_failures do
         page = Html2rss::RequestService::Response.new(url: response.url, headers: response.headers,
                                                       body: body.sub('/a.mp3', 'javascript:alert(1)//a.mp3'))
-        article = described_class.new(page, selectors:, time_zone: 'UTC').articles.first
+        linked = selectors.merge(url: { extractor: 'static', static: 'https://example.com/post' })
+        article = described_class.new(page, selectors: linked, time_zone: 'UTC').articles.first
 
         expect(article.enclosures).to eq([])
         expect(Html2rss::FeedBuilder::ItemPresentation.description_for(article).to_s).not_to include('javascript:')
@@ -710,10 +734,10 @@ RSpec.describe Html2rss::Selectors do
 
     it 'leaves unselected fields empty when enhance is off', :aggregate_failures do
       selectors[:items][:enhance] = false
+      selectors[:url] = { selector: 'a', extractor: 'href' }
       article = instance.articles.first
 
       expect(article.title).to eq('Big Title')
-      expect(article.url.to_s).to be_empty
       expect(article.description).to be_nil
     end
   end
@@ -735,7 +759,10 @@ RSpec.describe Html2rss::Selectors do
         body: '{"items":[{"title":"A"},{"title":"B"}]}'
       )
     end
-    let(:selectors) { { items: { selector: 'object array object', enhance: false }, title: { selector: 'title' } } }
+    let(:selectors) do
+      { items: { selector: 'object array object', enhance: false }, title: { selector: 'title' },
+        url: { extractor: 'static', static: 'https://example.com/post' } }
+    end
 
     it 'extracts articles from the XML view of the document' do
       expect(instance.articles.map(&:title)).to eq(%w[A B])

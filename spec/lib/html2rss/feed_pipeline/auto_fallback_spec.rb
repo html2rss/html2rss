@@ -165,7 +165,7 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
     let(:pipeline) { Html2rss::FeedPipeline.new(config) }
     let(:empty_response) { build_response.call(body: '<html><body><div>empty</div></body></html>') }
     let(:item_response) do
-      build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+      build_response.call(body: '<html><body><article><a href="/n/bota"><h1>bota</h1></a></article></body></html>')
     end
     let(:strategy_results) { {} }
 

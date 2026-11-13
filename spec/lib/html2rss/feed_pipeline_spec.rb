@@ -41,7 +41,7 @@ RSpec.describe Html2rss::FeedPipeline do
       let(:config) { base_config.merge(strategy: :default) }
       let(:pipeline) { described_class.new(config) }
       let(:response) do
-        build_response.call(body: '<html><body><article><h1>default</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><a href="/n/default"><h1>default</h1></a></article></body></html>')
       end
 
       before do
@@ -75,6 +75,33 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
+    context 'when a selector item has no resolvable link' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) { base_config.merge(strategy: :default) }
+      let(:result) { described_class.new(config).to_result }
+      let(:response) do
+        build_response.call(
+          body: '<html><body><article><h1>no link</h1></article>' \
+                '<article><a href="/n/linked"><h1>linked</h1></a></article></body></html>'
+        )
+      end
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, **|
+          ctx.budget.consume!
+          response
+        end
+      end
+
+      it 'leaves it out of the RSS feed', :aggregate_failures do
+        expect(result.to_rss.items.map(&:title)).to eq(['linked'])
+        expect(result.to_rss.items.map(&:link)).to eq(['https://example.com/n/linked'])
+      end
+
+      it 'leaves it out of the JSON Feed' do
+        expect(result.to_json_feed[:items].map { _1[:title] }).to eq(['linked'])
+      end
+    end
+
     context 'when the config interpolates params' do
       let(:config) do
         base_config.merge(
@@ -88,7 +115,7 @@ RSpec.describe Html2rss::FeedPipeline do
       before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, **|
           ctx.budget.consume!
-          build_response.call(body: '<html><body><article><h1>scoped</h1></article></body></html>', url: ctx.url.to_s)
+          build_response.call(body: '<html><body><article><a href="/n/scoped"><h1>scoped</h1></a></article></body></html>', url: ctx.url.to_s)
         end
       end
 
@@ -193,7 +220,7 @@ RSpec.describe Html2rss::FeedPipeline do
         build_response.call(body: '<html><body><div>empty</div></body></html>')
       end
       let(:item_response) do
-        build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><a href="/n/bota"><h1>bota</h1></a></article></body></html>')
       end
       let(:strategy_results) do
         {
@@ -432,7 +459,7 @@ RSpec.describe Html2rss::FeedPipeline do
         let(:strategy_results) do
           {
             default: build_response.call(
-              body: '<html><body><article><h1>seznam</h1></article></body></html>',
+              body: '<html><body><article><a href="/n/seznam"><h1>seznam</h1></a></article></body></html>',
               headers: { 'content-type' => 'application/octet-stream' }
             ),
             botasaurus: item_response
@@ -516,8 +543,8 @@ RSpec.describe Html2rss::FeedPipeline do
 
     context 'with selector pagination strategies' do
       it 'paginates using url_template strategy and content-stops on empty page', :aggregate_failures do
-        p1 = build_response.call(body: '<html><body><article><h1>Item 1</h1></article></body></html>', url: 'https://example.com/news')
-        p2 = build_response.call(body: '<html><body><article><h1>Item 2</h1></article></body></html>', url: 'https://example.com/news?page=2')
+        p1 = build_response.call(body: '<html><body><article><a href="/n/Item 1"><h1>Item 1</h1></a></article></body></html>', url: 'https://example.com/news')
+        p2 = build_response.call(body: '<html><body><article><a href="/n/Item 2"><h1>Item 2</h1></a></article></body></html>', url: 'https://example.com/news?page=2')
         p3 = build_response.call(body: '<html><body><div>No items</div></body></html>', url: 'https://example.com/news?page=3')
         responses = { 'https://example.com/news' => p1, 'https://example.com/news?page=2' => p2, 'https://example.com/news?page=3' => p3 }
 
@@ -588,7 +615,7 @@ RSpec.describe Html2rss::FeedPipeline do
         build_response.call(body: '<html><body><div>empty</div></body></html>')
       end
       let(:item_response) do
-        build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><a href="/n/bota"><h1>bota</h1></a></article></body></html>')
       end
 
       before do

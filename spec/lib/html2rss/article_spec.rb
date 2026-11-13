@@ -277,7 +277,37 @@ RSpec.describe Html2rss::Article do
     end
   end
 
+  describe '#linked?' do
+    it 'is true with a url' do
+      expect(described_class.new(url: 'http://example.com')).to be_linked
+    end
+
+    it 'is false without a url' do
+      expect(described_class.new(title: 'Sample Title', id: 'foobar')).not_to be_linked
+    end
+
+    it 'is false with a blank url' do
+      expect(described_class.new(url: ' ')).not_to be_linked
+    end
+  end
+
   describe '#valid?' do
+    {
+      'url, id and title' => [{ url: 'http://example.com', id: 'a', title: 'T' }, true],
+      'url, id and description' => [{ url: 'http://example.com', id: 'a', description: 'D' }, true],
+      'url, id, title and description' => [{ url: 'http://example.com', id: 'a', title: 'T', description: 'D' }, true],
+      'no url' => [{ id: 'a', title: 'T', description: 'D' }, false],
+      'no id' => [{ url: 'http://example.com', title: 'T', description: 'D' }, false],
+      'a blank id' => [{ url: 'http://example.com', id: ' ', title: 'T' }, false],
+      'no title and no description' => [{ url: 'http://example.com', id: 'a' }, false],
+      'a blank title and a blank description' => [{ url: 'http://example.com', id: 'a', title: ' ', description: ' ' },
+                                                  false]
+    }.each do |name, (attrs, expected)|
+      it "is #{expected} with #{name}" do
+        expect(described_class.new(**attrs).valid?).to be(expected)
+      end
+    end
+
     context 'when url, title, and id are present' do
       let(:options) { { url: 'http://example.com', title: 'Sample Title', id: 'foobar' } }
 

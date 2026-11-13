@@ -43,7 +43,7 @@ RSpec.describe Html2rss do
     end
     let(:response) do
       Html2rss::RequestService::Response.new(
-        body: '<html><body><article><h1>item</h1></article></body></html>',
+        body: '<html><body><article><a href="/n/item"><h1>item</h1></a></article></body></html>',
         url: Html2rss::Url.from_absolute('https://example.com/news'),
         headers: { 'content-type' => 'text/html' },
         status: 200
@@ -165,6 +165,7 @@ RSpec.describe Html2rss do
           selectors: {
             items: { selector: 'object > headers' },
             title: { selector: 'host' },
+            url: { extractor: 'static', static: 'https://httpbin.org/headers' },
             something: { selector: 'x-something' },
             authorization: { selector: 'authorization' },
             cookie: { selector: 'cookie' },
@@ -223,14 +224,14 @@ RSpec.describe Html2rss do
           when 'https://example.com/news'
             Html2rss::RequestService::Response.new(
               body: <<~HTML,
-                <html><head><link rel="next" href="/news?page=2"></head><body><article><h1>page1</h1></article></body></html>
+                <html><head><link rel="next" href="/news?page=2"></head><body><article><a href="/n/page1"><h1>page1</h1></a></article></body></html>
               HTML
               url: ctx.url,
               headers: { 'content-type' => 'text/html' }
             )
           when 'https://example.com/news?page=2'
             Html2rss::RequestService::Response.new(
-              body: '<html><body><article><h1>page2</h1></article></body></html>',
+              body: '<html><body><article><a href="/n/page2"><h1>page2</h1></a></article></body></html>',
               url: ctx.url,
               headers: { 'content-type' => 'text/html' }
             )
@@ -320,7 +321,7 @@ RSpec.describe Html2rss do
             next_link = next_page <= 20 ? %(<link rel="next" href="/news?page=#{next_page}">) : ''
 
             Html2rss::RequestService::Response.new(
-              body: "<html><head>#{next_link}</head><body><article><h1>page#{page_number}</h1></article></body></html>",
+              body: "<html><head>#{next_link}</head><body><article><a href=\"/n/page#{page_number}\"><h1>page#{page_number}</h1></a></article></body></html>",
               url: ctx.url,
               headers: { 'content-type' => 'text/html' }
             )
@@ -388,7 +389,7 @@ RSpec.describe Html2rss do
           body = if strategy == :default
                    '<html><body><div>empty</div></body></html>'
                  else
-                   '<html><body><article><h1>bota</h1></article></body></html>'
+                   '<html><body><article><a href="/n/bota"><h1>bota</h1></a></article></body></html>'
                  end
           Html2rss::RequestService::Response.new(
             body:,

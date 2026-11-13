@@ -13,6 +13,11 @@ selectors:
     enhance: false
   title:
     selector: "title"
+  url:
+    selector: "> id"
+    post_process:
+      - name: "template"
+        string: "https://example.com/posts/%<self>s"
   description:
     selector: "content"
   author:

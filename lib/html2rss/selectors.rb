@@ -70,7 +70,8 @@ module Html2rss
     end
 
     ##
-    # Iterates over each scraped article.
+    # Iterates over each scraped article. An item without a URL is skipped, as in auto-source
+    # ({Html2rss::Article#linked?}).
     #
     # @yield [article] Gives each article as an Html2rss::Article.
     # @return [Enumerator] An enumerator if no block is given.
@@ -84,7 +85,8 @@ module Html2rss
 
         enhance_article_hash(article_hash, item) if enhance
 
-        yield Html2rss::Article.new(**article_hash, scraper: self.class)
+        article = Html2rss::Article.new(**article_hash, scraper: self.class)
+        yield article if article.linked?
       end
     end
 
