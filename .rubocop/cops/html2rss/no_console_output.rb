@@ -5,7 +5,8 @@ module RuboCop
     module Html2rss
       # Forbids console writes from library code; log through +Html2rss::Log+.
       #
-      # Flags +warn+, +puts+, +print+, +printf+, +putc+, +p+ and +pp+ called without a receiver or on
+      # Flags +warn+, +puts+, +print+, +printf+, +putc+, +p+, +pp+ and +abort+ (writes its message to
+      # +$stderr+) called without a receiver or on
       # +self+ or +Kernel+; +Warning.warn+; +display+ on any receiver (+Object#display+ writes to
       # +$stdout+); and any reference to +$stdout+, +$stderr+, +$>+, +$DEFAULT_OUTPUT+, +STDOUT+ or
       # +STDERR+ (bare, +::+- or +Object::+-qualified) except as the device handed to +Logger.new+
@@ -14,7 +15,7 @@ module RuboCop
       class NoConsoleOutput < Base
         MSG = 'Log through Html2rss::Log instead of writing to the console (`%<name>s`).'
 
-        WRITE_METHODS = %i[warn puts print printf putc p pp].to_set.freeze
+        WRITE_METHODS = %i[warn puts print printf putc p pp abort].to_set.freeze
         STREAM_GLOBALS = %i[$stdout $stderr $> $DEFAULT_OUTPUT].to_set.freeze
         STREAM_CONSTANTS = %i[STDOUT STDERR].to_set.freeze
 

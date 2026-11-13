@@ -54,6 +54,19 @@ RSpec.describe RuboCop::Cop::Html2rss::NoConsoleOutput, :config do
       RUBY
     end
 
+    it 'registers an offense for abort, with or without a message' do
+      expect_offense(<<~RUBY)
+        abort 'bad'
+        ^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`abort`).
+        Kernel.abort
+        ^^^^^^^^^^^^ Log through Html2rss::Log instead of writing to the console (`abort`).
+      RUBY
+    end
+
+    it 'allows abort on another receiver' do
+      expect_no_offenses('state.abort!; worker.abort')
+    end
+
     it 'registers an offense for display on any receiver' do
       expect_offense(<<~RUBY)
         'x'.display

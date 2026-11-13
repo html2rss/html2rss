@@ -15,7 +15,11 @@ module RuboCop
       # - +raise+/+fail+ of a string-producing expression (an implicit +RuntimeError+): a string literal,
       #   +format+/+sprintf+, +to_s+/+inspect+/+join+/+message+, a method called on a string, or +++/+<<+/+%+ with a
       #   string operand;
+      # - +raise+/+fail+ of a local variable assigned a string expression in the enclosing method (or file
+      #   scope); any assignment of a string to that name counts;
       # - a class or +Class.new+ subclassing a core class, and a constant aliasing one (+Alias = IOError+).
+      #
+      # +raise+/+fail+ also count when called on +self+ or +Kernel+.
       #
       # Re-raising (+raise+, +raise error+), raising a value returned by a method, and raising a library's
       # own class (+Thor::Error+, +Timeout::Error+: not defined at boot) stay allowed. Only the root
@@ -86,13 +90,24 @@ module RuboCop
           return unless raise_call?(node)
 
           subject = node.first_argument
-          return 'RuntimeError' if string_expression?(subject)
+          return 'RuntimeError' if string_expression?(subject) || string_local?(node, subject)
 
           core_error_name(subject) || core_error_name(subject&.receiver)
         end
 
         def raise_call?(node)
-          RAISE_METHODS.include?(node.method_name) && (node.receiver.nil? || const_named?(node.receiver, 'Kernel'))
+          receiver = node.receiver
+          RAISE_METHODS.include?(node.method_name) &&
+            (receiver.nil? || receiver.self_type? || const_named?(receiver, 'Kernel'))
+        end
+
+        def string_local?(node, subject)
+          return false unless subject&.lvar_type?
+
+          scope = node.each_ancestor(:def, :defs).first || processed_source.ast
+          scope.each_descendant(:lvasgn).any? do |assignment|
+            assignment.name == subject.children.first && string_expression?(assignment.expression)
+          end
         end
 
         def string_expression?(node)

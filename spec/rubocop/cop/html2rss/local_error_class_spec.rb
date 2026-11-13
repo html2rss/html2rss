@@ -352,5 +352,89 @@ RSpec.describe RuboCop::Cop::Html2rss::LocalErrorClass, :config do
       RUBY
     end
   end
+
+  context 'when raise is called on self or a local string variable is raised' do
+    it 'registers an offense for self.raise and self.fail of a core class' do
+      expect_offense(<<~RUBY)
+        self.raise ArgumentError, 'bad'
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `ArgumentError`.
+        self.fail TypeError
+        ^^^^^^^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `TypeError`.
+      RUBY
+    end
+
+    it 'registers an offense for raising a local assigned a string expression' do
+      expect_offense(<<~RUBY)
+        def run(value)
+          message = "bad \#{value}"
+          raise message
+          ^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        end
+      RUBY
+    end
+
+    it 'registers an offense when the raise is nested below the assignment in the same method' do
+      expect_offense(<<~RUBY)
+        def run(value)
+          message = format('bad %s', value)
+          if value
+            raise message
+            ^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+          end
+        end
+      RUBY
+    end
+
+    it 'registers an offense inside a singleton method and at file scope' do
+      expect_offense(<<~RUBY)
+        def self.run
+          message = 'bad'
+          raise message
+          ^^^^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+        end
+
+        text = 'bad'
+        raise text
+        ^^^^^^^^^^ Raise or subclass an Html2rss::Error subclass defined next to its owner, not `RuntimeError`.
+      RUBY
+    end
+
+    it 'allows raising a local never assigned a string, or a string assigned in another method' do
+      expect_no_offenses(<<~RUBY)
+        def run(error)
+          wrapped = InvalidError.new('bad')
+          raise wrapped
+        end
+
+        def other
+          message = 'bad'
+          log(message)
+        end
+
+        def third(message)
+          raise message
+        end
+
+        def self.fourth(message)
+          raise message
+        end
+
+        def fifth(message)
+          other = 'bad'
+          log(other)
+          raise message
+        end
+
+        def sixth(message = 'bad')
+          raise message
+        end
+
+        thread.raise ArgumentError
+
+        message = 'bad'
+        raise :message
+      RUBY
+    end
+  end
 end
 # rubocop:enable RSpec/ExampleLength
