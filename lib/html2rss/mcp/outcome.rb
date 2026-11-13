@@ -219,7 +219,13 @@ module Html2rss
           warnings = test_result.quality_report&.warnings
           return base if warnings.nil? || warnings.empty?
 
-          "#{base} Review payload.quality_report warnings: #{warnings.join(', ')}."
+          "#{base} Review payload.quality_report warnings: #{warnings.join(', ')}.#{items_without_url_hint(warnings)}"
+        end
+
+        def items_without_url_hint(warnings)
+          return '' unless warnings.include?(:items_without_url)
+
+          ' Items were dropped for having no URL: fix the selectors.url selector (it must match a link on each item).'
         end
 
         def capture_payload(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists

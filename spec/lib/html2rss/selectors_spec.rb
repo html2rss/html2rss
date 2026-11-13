@@ -108,6 +108,79 @@ RSpec.describe Html2rss::Selectors do
       it 'derives the linked item guid from its url and id' do
         expect(instance.articles.first.guid).to eq(Zlib.crc32('http://example.com/linked#!/story-8').to_s(36))
       end
+
+      it 'tallies the dropped item as missing_url' do
+        instance.articles
+
+        expect(instance.admission_drops).to eq('missing_url' => 1)
+      end
+
+      it 'yields every item as an enhance pair by default' do
+        expect(instance.each_enhance_pair.count).to eq(2)
+      end
+
+      it 'leaves the unlinked item out of the enhance pairs when linked_only', :aggregate_failures do
+        pairs = instance.each_enhance_pair(linked_only: true).to_a
+
+        expect(pairs.size).to eq(1)
+        expect(pairs.first.last['id']).to eq('story-8')
+      end
+    end
+
+    context 'when every item is linked' do
+      it 'reports no admission drops', :aggregate_failures do
+        selectors[:url] = { selector: 'a', extractor: 'href' }
+        instance.articles
+
+        expect(instance.admission_drops).to eq({})
+      end
+    end
+
+    context 'when the url selector matches nothing' do
+      let(:selectors) { { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a.missing' } } }
+
+      it 'drops each item and tallies them', :aggregate_failures do
+        expect(instance.articles).to be_empty
+        expect(instance.admission_drops).to eq('missing_url' => 2)
+      end
+
+      it 'restarts the tally on a second iteration' do
+        instance.each.to_a
+        instance.each.to_a
+
+        expect(instance.admission_drops).to eq('missing_url' => 2)
+      end
+    end
+
+    context 'when the url is a relative static value' do
+      let(:selectors) do
+        { items: { selector: 'article' }, title: { selector: 'h1' }, url: { extractor: 'static', static: '/rel' } }
+      end
+
+      it 'resolves it against the page url like an href', :aggregate_failures do
+        expect(instance.articles.map { _1.url.to_s }).to eq(%w[http://example.com/rel http://example.com/rel])
+        expect(instance.admission_drops).to eq({})
+      end
+    end
+
+    context 'when the url is an absolute static value' do
+      let(:selectors) do
+        { items: { selector: 'article' }, url: { extractor: 'static', static: 'https://other.example/a' } }
+      end
+
+      it 'keeps it' do
+        expect(instance.articles.first.url.to_s).to eq('https://other.example/a')
+      end
+    end
+
+    context 'when the url is a static value that is no web reference' do
+      let(:selectors) do
+        { items: { selector: 'article' }, url: { extractor: 'static', static: 'mailto:a@example.com' } }
+      end
+
+      it 'passes it on unresolved' do
+        expect(instance.articles.first.url.to_s).to eq('mailto:a@example.com')
+      end
     end
 
     it 'returns an Enumerator over the articles if no block is given', :aggregate_failures do

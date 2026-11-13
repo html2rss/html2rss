@@ -83,6 +83,8 @@ RSpec.describe Html2rss::Test do
         ]
       end
 
+      let(:outcome_admission_drops) { {} }
+
       before do
         outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
           response: Html2rss::RequestService::Response.new(
@@ -95,7 +97,7 @@ RSpec.describe Html2rss::Test do
           selected_strategy: :default,
           attempt_count: 0,
           strategy_attempts: [],
-          admission_drops: {},
+          admission_drops: outcome_admission_drops,
           scrape_target: nil,
           entry_resolution: nil, feed_channel: nil
         )
@@ -189,6 +191,24 @@ RSpec.describe Html2rss::Test do
         expect(result.error_message).to include('Extracted 2 items (minimum required: 5)')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:min_items])
         expect(result.rss).to be_nil
+      end
+
+      context 'when selector items were dropped for having no URL' do # rubocop:disable RSpec/NestedGroups
+        let(:outcome_admission_drops) { { 'missing_url' => 3 } }
+
+        it 'warns items_without_url and counts the drops', :aggregate_failures do
+          result = described_class.call(valid_config)
+
+          expect(result.quality_report.warnings).to include(:items_without_url)
+          expect(result.quality_report.metrics[:items_without_url]).to eq(3)
+        end
+      end
+
+      it 'does not warn items_without_url when nothing was dropped', :aggregate_failures do
+        result = described_class.call(valid_config)
+
+        expect(result.quality_report.warnings).not_to include(:items_without_url)
+        expect(result.quality_report.metrics).not_to have_key(:items_without_url)
       end
 
       it 'keeps the fetched page body when the item count is below min_items' do
@@ -547,7 +567,7 @@ RSpec.describe Html2rss::Test do
     let(:response) do
       Html2rss::RequestService::Response.new(url: 'https://example.com/news', headers: {}, body: '<html></html>')
     end
-    let(:pipeline_outcome) { instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:) }
+    let(:pipeline_outcome) { instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:, admission_drops: {}) }
     let(:status) { instance_double(Html2rss::Status, scrape_url: 'https://example.com/news', entry_url: '') }
     let(:feed_result) { instance_double(Html2rss::FeedResult, status:) }
     let(:slice) do

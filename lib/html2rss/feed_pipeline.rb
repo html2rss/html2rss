@@ -134,29 +134,36 @@ module Html2rss
     end
 
     def collect_articles(config:, response:, request_session:)
-      selector = selector_articles(config:, response:, request_session:)
-      auto, admission_drops, feed_channel = auto_source_articles(config:, response:, request_session:)
-      [selector + auto, admission_drops, feed_channel]
+      selector, selector_drops = selector_articles(config:, response:, request_session:)
+      auto, auto_drops, feed_channel = auto_source_articles(config:, response:, request_session:)
+      [selector + auto, selector_drops.merge(auto_drops) { |_reason, left, right| left + right }, feed_channel]
     end
 
-    # rubocop:disable-next Metrics/MethodLength
+    # @return [Array(Array<Html2rss::Article>, Hash{String => Integer})] articles and unlinked-item drop tallies
     def selector_articles(config:, response:, request_session:)
-      return [] unless (selectors = config.selectors)
-      return [] if response.feed_response?
+      return [[], {}] unless (selectors = config.selectors)
+      return [[], {}] if response.feed_response?
 
       page_responses = request_session.page_responses(
         response,
         pagination_config: selectors.dig(:items, :pagination)
       )
+      engines = page_responses.lazy.map { |page| Selectors.new(page, selectors:, time_zone: config.time_zone) }
+      collect_selector_pages(engines)
+    end
 
+    # Stops at the first empty page after articles were found; drop tallies sum over the pages read.
+    def collect_selector_pages(engines)
       articles = []
-      page_responses.each do |page_response|
-        page_articles = Selectors.new(page_response, selectors:, time_zone: config.time_zone).articles
+      drops = Hash.new(0)
+      engines.each do |engine|
+        page_articles = engine.articles
         break if page_articles.empty? && articles.any?
 
         articles.concat(page_articles)
+        engine.admission_drops.each { |reason, count| drops[reason] += count }
       end
-      articles
+      [articles, drops]
     end
 
     # @return [Array(Array<Html2rss::Article>, Hash{String => Integer}, Html2rss::Syndication::ChannelFacts)]

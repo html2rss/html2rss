@@ -38,7 +38,7 @@ module Html2rss
         }
         warnings = []
 
-        selector_engine.each_enhance_pair do |baseline, enhanced, item|
+        selector_engine.each_enhance_pair(linked_only: true) do |baseline, enhanced, item|
           item_keys = keys_added(baseline, enhanced)
           merge_keys_added!(gains, item_keys)
           append_item_warnings!(warnings, item:, enhanced:, item_keys:)

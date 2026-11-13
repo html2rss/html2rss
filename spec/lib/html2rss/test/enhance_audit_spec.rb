@@ -24,6 +24,12 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
         expect(described_class.probe(response:, selectors: { title: { selector: 'h2' } }, time_zone:)).to be_nil
       end
 
+      it 'audits linked items only' do
+        slice
+
+        expect(engine).to have_received(:each_enhance_pair).with(linked_only: true)
+      end
+
       it 'builds the selector engine from the response, selectors and time zone' do
         slice
 

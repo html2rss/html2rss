@@ -570,6 +570,19 @@ RSpec.describe Html2rss::FeedPipeline do
       # rubocop:enable RSpec/ExampleLength
     end
 
+    it 'tallies selector items dropped for having no URL as admission drops', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      config = Html2rss::Config.from_hash(
+        { channel: { url: 'https://example.com/news' }, strategy: :default,
+          selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a.missing' } } }
+      )
+      response = build_response.call(body: '<article><h1>A</h1></article><article><h1>B</h1></article>')
+      session = instance_double(Html2rss::RequestSession, page_responses: [response])
+      extraction = described_class.new({}).extract(config:, response:, request_session: session)
+
+      expect(extraction.articles).to be_empty
+      expect(extraction.admission_drops).to eq('missing_url' => 2)
+    end
+
     it 'extracts the AutoSource admission drops and feed channel facts with the articles' do # rubocop:disable RSpec/ExampleLength
       facts = Html2rss::Syndication::ChannelFacts.new(author: 'Feed Author')
       source = instance_double(Html2rss::AutoSource, articles: [], admission_drops: { 'sponsored' => 1 },

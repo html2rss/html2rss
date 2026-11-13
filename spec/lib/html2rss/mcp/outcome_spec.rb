@@ -294,6 +294,18 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.payload[:quality_report]).to include(warnings: %w[thin_titles dup_urls])
     end
 
+    it 'points a min_items failure at the url selector when items lack a URL' do # rubocop:disable RSpec/ExampleLength
+      report = Html2rss::Test::QualityReport.new(warnings: [:items_without_url], metrics: {}, native_feed: nil,
+                                                 defer_reason: nil)
+      outcome = described_class.test(test_result(error_message: 'Extracted 0 items (minimum required: 1)',
+                                                 quality_report: report))
+
+      expect(outcome.guidance).to eq(
+        'Extracted 0 items (minimum required: 1) Review payload.quality_report warnings: items_without_url. ' \
+        'Items were dropped for having no URL: fix the selectors.url selector (it must match a link on each item).'
+      )
+    end
+
     it 'uses the test error message as guidance on failure' do
       outcome = described_class.test(test_result(error_message: 'Feed is empty'))
 

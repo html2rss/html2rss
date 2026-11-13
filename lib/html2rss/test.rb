@@ -262,6 +262,7 @@ module Html2rss
       native_feed = probe_native_feed_url(channel_url, config, pipeline_outcome.response)&.to_s if probe_native_feed
       report = QualityReport.from_audit(audit, native_feed:)
       report = append_url_mismatch_warning(report, channel_url, feed_result)
+      report = append_items_without_url_warning(report, pipeline_outcome)
       merge_enhance_audit(report, config, pipeline_outcome)
     end
 
@@ -320,6 +321,21 @@ module Html2rss
       }
     end
     private_class_method :enhance_gains_to_h
+
+    # Selector items dropped for having no URL ({Selectors#admission_drops}) leave nothing for the audit to
+    # see, so the warning names the +url+ selector as the place to look.
+    def self.append_items_without_url_warning(report, pipeline_outcome)
+      dropped = pipeline_outcome.admission_drops.fetch(Selectors::MISSING_URL_REASON, 0)
+      return report unless dropped.positive?
+
+      QualityReport.new(
+        warnings: (report.warnings + [:items_without_url]).uniq.freeze,
+        metrics: report.metrics.merge(items_without_url: dropped),
+        native_feed: report.native_feed,
+        defer_reason: report.defer_reason
+      )
+    end
+    private_class_method :append_items_without_url_warning
 
     def self.append_url_mismatch_warning(report, channel_url, feed_result)
       return report unless url_mismatch?(channel_url, feed_result)
