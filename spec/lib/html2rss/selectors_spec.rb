@@ -392,6 +392,8 @@ RSpec.describe Html2rss::Selectors do
   end
 
   describe '#each_enhance_pair' do
+    before { selectors[:items][:enhance] = true }
+
     context 'when an item has no resolvable link' do
       let(:selectors) { { items: { selector: 'article', enhance: true } } }
       let(:body) do
@@ -424,8 +426,6 @@ RSpec.describe Html2rss::Selectors do
         expect(instance.each_enhance_pair(linked_only: true).count).to eq(1)
       end
     end
-
-    before { selectors[:items][:enhance] = true }
 
     it 'enhances empty baselines with semantic extraction', :aggregate_failures do
       baseline, enhanced, = instance.each_enhance_pair.first

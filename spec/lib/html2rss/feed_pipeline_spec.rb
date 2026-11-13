@@ -583,6 +583,7 @@ RSpec.describe Html2rss::FeedPipeline do
       expect(extraction.admission_drops).to eq('missing_url' => 2)
     end
 
+    # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength -- inline configs and HTML fixtures
     describe '#selector_articles' do
       let(:selector_config) do
         Html2rss::Config.from_hash(
@@ -642,6 +643,8 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(extraction.admission_drops).to eq('missing_url' => 3, 'sponsored' => 1)
       end
     end
+
+    # rubocop:enable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength
 
     it 'extracts the AutoSource admission drops and feed channel facts with the articles' do # rubocop:disable RSpec/ExampleLength
       facts = Html2rss::Syndication::ChannelFacts.new(author: 'Feed Author')
