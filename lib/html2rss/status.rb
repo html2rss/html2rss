@@ -14,7 +14,7 @@ module Html2rss
   # Tallies and counters are validated and frozen at construction (including Marshal load).
   class Status
     # Raised when telemetry fields fail validation at construction.
-    class InvalidError < Html2rss::Error; end
+    class InvalidError < Html2rss::ContractError; end
 
     # Keys kept in {#to_h} even when zero or empty.
     ALWAYS_REPORTED = %i[version dedup_dropped].freeze

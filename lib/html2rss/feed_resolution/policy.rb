@@ -15,7 +15,7 @@ module Html2rss
         # @param surface_category [Html2rss::SurfaceCategory, Symbol]
         # @return [Boolean]
         def resolve?(config:, articles:, surface_category:)
-          raise InvalidOption, 'articles must be an Array' unless articles.is_a?(Array)
+          raise InvalidError, 'articles must be an Array' unless articles.is_a?(Array)
           return false unless eligible_config?(config)
 
           category = SurfaceCategory[surface_category]

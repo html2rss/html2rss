@@ -23,7 +23,7 @@ module Html2rss
     DEFAULT_LIMIT = 25
 
     # Raised when a scraper yields an item that is neither an Article nor a Hash (a scraper bug).
-    class ScraperContractError < Html2rss::Error; end
+    class ScraperContractError < Html2rss::ContractError; end
 
     # Operational scraper failures quarantined within a tier; programmer errors propagate.
     # +ArgumentError+ stays for stdlib raises on publisher bytes (e.g. +invalid byte sequence+ after

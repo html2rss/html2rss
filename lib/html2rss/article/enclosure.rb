@@ -12,7 +12,7 @@ module Html2rss
     # publisher-declared size and duration strings into those facts.
     class Enclosure
       # Raised when an enclosure has no absolute http(s) URL or declares an unknown kind.
-      class InvalidError < Html2rss::Error; end
+      class InvalidError < Html2rss::ContractError; end
 
       # A byte size: a number with an optional unit (+12345+, +850 KB+, +12.3 MB+, +1.5GiB+). The whitespace
       # runs are possessive, so a long run of spaces never backtracks.

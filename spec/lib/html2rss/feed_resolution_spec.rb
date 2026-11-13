@@ -82,13 +82,13 @@ RSpec.describe Html2rss::FeedResolution do
         articles: nil,
         surface_category: :listing
       )
-    end.to raise_error(Html2rss::InvalidOption, 'articles must be an Array')
+    end.to raise_error(Html2rss::FeedResolution::InvalidError, 'articles must be an Array')
   end
 
   it 'rejects a truthy non-array on the runner' do
     expect do
       described_class::Runner.new(entry_url:, response:, session:, config:, articles: 'no')
-    end.to raise_error(Html2rss::InvalidOption, 'articles must be an Array')
+    end.to raise_error(Html2rss::FeedResolution::InvalidError, 'articles must be an Array')
   end
 
   it 'rejects a runner entry URL that is not absolute' do

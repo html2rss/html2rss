@@ -127,7 +127,7 @@ RSpec.describe Html2rss::RequestService::Context do
       subject(:instance) { described_class.new(url:, policy: nil, budget:) }
 
       it 'raises an argument error' do
-        expect { instance }.to raise_error(Html2rss::InvalidOption, 'policy must not be nil')
+        expect { instance }.to raise_error(Html2rss::RequestService::Context::InvalidError, 'policy must not be nil')
       end
     end
 
@@ -135,7 +135,7 @@ RSpec.describe Html2rss::RequestService::Context do
       subject(:instance) { described_class.new(url:) }
 
       it 'raises an argument error' do
-        expect { instance }.to raise_error(Html2rss::InvalidOption, 'budget is required')
+        expect { instance }.to raise_error(Html2rss::RequestService::Context::InvalidError, 'budget is required')
       end
     end
 
@@ -143,7 +143,7 @@ RSpec.describe Html2rss::RequestService::Context do
       subject(:instance) { described_class.new(url:, budget: nil) }
 
       it 'raises an argument error' do
-        expect { instance }.to raise_error(Html2rss::InvalidOption, 'budget must not be nil')
+        expect { instance }.to raise_error(Html2rss::RequestService::Context::InvalidError, 'budget must not be nil')
       end
     end
   end

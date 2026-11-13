@@ -16,7 +16,7 @@ module Html2rss
   #   +Marshal.load(payload, freeze: true)+ is also safe.
   class FeedResult
     # Raised when the scrape handle is built from invalid parts.
-    class InvalidError < Html2rss::Error; end
+    class InvalidError < Html2rss::ContractError; end
 
     ##
     # @param channel [Html2rss::Channel] channel metadata (internal; not exposed on the public API)

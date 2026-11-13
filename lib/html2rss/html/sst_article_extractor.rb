@@ -31,7 +31,7 @@ module Html2rss
       # @param time_zone [String] channel time zone for naive leftover dates
       def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC')
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
-        raise InvalidOption, 'segment is required' unless segment.is_a?(AutoSource::Segment)
+        raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
         @segment = segment
         @root = segment.root_node

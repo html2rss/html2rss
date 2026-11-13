@@ -27,7 +27,7 @@ module Html2rss
       # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
       # @param time_zone [String] channel time zone for naive leftover dates
       def initialize(article_tag, base_url:, selected_anchor: nil, time_zone: 'UTC')
-        raise InvalidOption, 'article_tag is required' unless article_tag
+        raise InvalidError, 'article_tag is required' unless article_tag
 
         @article_tag = article_tag
         @base_url = base_url

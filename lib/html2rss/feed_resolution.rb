@@ -8,6 +8,9 @@ module Html2rss
   #
   # {include:file:lib/html2rss/feed_resolution/README.md}
   module FeedResolution
+    # Raised when the tournament or its policy is handed articles that are not an Array.
+    class InvalidError < Html2rss::ContractError; end
+
     # Default entry-resolution options merged into AutoSource::DEFAULT_CONFIG.
     DEFAULT_CONFIG = {
       enabled: true,
@@ -210,7 +213,7 @@ module Html2rss
       # @param surface_category [Symbol, nil]
       # rubocop:disable-next Metrics/ParameterLists -- tournament context stays co-located
       def initialize(entry_url:, response:, session:, config:, articles:, surface_category: nil)
-        raise InvalidOption, 'articles must be an Array' unless articles.is_a?(Array)
+        raise InvalidError, 'articles must be an Array' unless articles.is_a?(Array)
 
         @entry_url = Url.from_absolute(entry_url)
         @response = response

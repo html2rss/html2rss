@@ -8,7 +8,7 @@ module Html2rss
     # One candidate content block discovered by {Segmenter}.
     class Segment
       # Raised when a segment (or the Segmenter producing segments) gets invalid input.
-      class InvalidError < Html2rss::Error; end
+      class InvalidError < Html2rss::ContractError; end
 
       # Allowed Segmenter strategies.
       STRATEGIES = Set[:semantic, :list, :cluster].freeze

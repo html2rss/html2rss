@@ -9,7 +9,7 @@ module Html2rss
     # {Playbook}.
     class Outcome # rubocop:disable Metrics/ClassLength -- next-step policy + factories stay co-located
       # Raised when an outcome is built with a wrong-typed next step or payload.
-      class InvalidError < Html2rss::Error; end
+      class InvalidError < Html2rss::ContractError; end
 
       NextStep = Data.define(:name, :guidance)
 
