@@ -10,7 +10,9 @@ module RuboCop
       # +StandardError+, +Exception+, or no class at all (bare +rescue+, +rescue => e+, the +rescue+
       # modifier), unless an earlier clause of the same +begin+/+def+/block catches +ContractError+
       # (or anything broader) and ends in a bare +raise+ or +raise <variable>+. A clause whose own
-      # body re-raises is never flagged (it swallows nothing).
+      # body re-raises is never flagged (it swallows nothing). A re-raising clause that can leave early
+      # (+return+ anywhere in its body; +next+/+break+ not enclosed by a block or loop inside the body)
+      # swallows conditionally and does not count as a guard.
       #
       # Unqualified +Error+ is read as +Html2rss::Error+ wherever it appears (conservative: flagged
       # even outside +module Html2rss+); +Zlib::Error+, +RSS::Error+ and other qualified names are
@@ -58,13 +60,26 @@ module RuboCop
           node.const_type? && node.short_name == name
         end
 
-        # The clause ends in a bare +raise+ or +raise <its own variable>+.
+        # The clause ends in a bare +raise+ or +raise <its own variable>+ and never leaves early.
         def reraises?(resbody)
           last = resbody.body
+          return false if leaves_early?(resbody)
+
           last = last.children.last if last&.begin_type?
           return false unless last&.send_type? && last.method?(:raise) && last.receiver.nil?
 
           last.arguments.empty? || own_variable?(resbody, last)
+        end
+
+        def leaves_early?(resbody)
+          resbody.each_descendant(:return, :next, :break).any? do |jump|
+            jump.return_type? || !nested_scope?(jump, resbody)
+          end
+        end
+
+        def nested_scope?(jump, resbody)
+          jump.each_ancestor.take_while { |ancestor| !ancestor.equal?(resbody) }
+              .any? { |ancestor| ancestor.any_block_type? || ancestor.loop_keyword? }
         end
 
         def own_variable?(resbody, raise_node)

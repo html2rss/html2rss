@@ -370,6 +370,73 @@ RSpec.describe RuboCop::Cop::Html2rss::ContractErrorReraise, :config do
       RUBY
     end
   end
+
+  context 'when the ContractError clause can leave early' do
+    it 'registers an offense for a conditional return before the raise' do
+      expect_offense(<<~RUBY)
+        def run
+          work
+        rescue Html2rss::ContractError => error
+          return nil if error.message.empty?
+          raise
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+      RUBY
+    end
+
+    it 'registers an offense for next or break before the raise' do
+      expect_offense(<<~RUBY)
+        items.each do |item|
+          work(item)
+        rescue Html2rss::ContractError
+          next if skip?
+          raise
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+        loop do
+          work
+        rescue Html2rss::ContractError
+          break if done?
+          raise
+        rescue StandardError
+        ^^^^^^ #{message}
+          nil
+        end
+      RUBY
+    end
+
+    it 'registers an offense for a return nested in a plain block of the clause' do
+      expect_offense(<<~RUBY)
+        def run
+          work
+        rescue Html2rss::ContractError => error
+          handlers.each { |handler| return handler if handler.match?(error) }
+          raise
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+      RUBY
+    end
+
+    it 'allows next and break that only leave a block or loop inside the clause' do
+      expect_no_offenses(<<~RUBY)
+        begin
+          work
+        rescue Html2rss::ContractError => error
+          details.each { |detail| next if detail.nil? }
+          while pending? do break end
+          raise error
+        rescue Html2rss::Error
+          nil
+        end
+      RUBY
+    end
+  end
 end
 
 # rubocop:enable RSpec/ExampleLength
