@@ -62,18 +62,8 @@ module Html2rss
       def extract_url
         @extract_url ||= begin
           href = selected_anchor&.[]('href').to_s
-
-          if href.empty?
-            generated_id_url
-          else
-            Url.from_relative(href.split('#').first.strip, base_url)
-          end
+          Url.from_relative(href.split('#').first, base_url) unless href.empty?
         end
-      end
-
-      def generated_id_url
-        id = generate_id
-        Url.from_relative("##{id}", base_url) if id
       end
 
       def extract_headline

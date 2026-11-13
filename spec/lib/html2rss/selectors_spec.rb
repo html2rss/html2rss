@@ -311,10 +311,10 @@ RSpec.describe Html2rss::Selectors do
         HTML
       end
 
-      it 'enhances a link-less item with its first text and a generated id url', :aggregate_failures do
+      it 'enhances a link-less item with its first text and no url', :aggregate_failures do
         _baseline, enhanced, = instance.each_enhance_pair.first
         expect(enhanced[:title]).to eq('No Link Article')
-        expect(enhanced[:url].to_s).to eq('http://example.com/#no-link-article')
+        expect(enhanced).not_to have_key(:url)
       end
 
       it 'omits fields the extractor could not fill instead of storing nil' do
@@ -324,14 +324,27 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
+    context 'when the link-less item carries an id' do
+      let(:selectors) { { items: { selector: 'article', enhance: true } } }
+      let(:body) do
+        '<html><body><article id="story-7"><h1>Id Only Article</h1><p>Teaser text</p></article></body></html>'
+      end
+
+      it 'keeps the item with its id and gives it no fragment url', :aggregate_failures do
+        article = instance.articles.first
+        expect(instance.articles.size).to eq(1)
+        expect([article.title, article.id, article.url]).to eq(['Id Only Article', 'story-7', nil])
+      end
+    end
+
     context 'when the item is an anchor with an empty href' do
       let(:selectors) { { items: { selector: 'a.card', enhance: true }, title: { selector: 'h3' } } }
       let(:body) { '<html><body><a class="card" href=""><h3>Empty Href Title</h3></a></body></html>' }
 
-      it 'fills the url that the baseline left nil' do
+      it 'leaves the url nil instead of generating a fragment url' do
         _baseline, enhanced, = instance.each_enhance_pair.first
 
-        expect(enhanced[:url]).not_to be_nil
+        expect(enhanced[:url]).to be_nil
       end
     end
 

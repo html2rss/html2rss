@@ -120,7 +120,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     let(:article_tag) { Nokogiri::HTML.fragment(html) }
     let(:details) do
       { title: 'FCK PTN',
-        url: be_a(Html2rss::Url),
+        url: nil,
         image: be_a(Html2rss::Url),
         description: 'Sample description',
         id: 'fck-ptn',
@@ -193,10 +193,10 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       end
       let(:article_tag) { Nokogiri::HTML.fragment(html) }
 
-      it 'extracts the fallback title, url and id', :aggregate_failures do
+      it 'extracts the fallback title and id without a url', :aggregate_failures do
         expect(article_hash[:title]).to eq('Fallback Article Title')
         expect(article_hash[:id]).to eq('fallback-article-title')
-        expect(article_hash[:url].to_s).to eq('https://example.com/#fallback-article-title')
+        expect(article_hash[:url]).to be_nil
       end
     end
 
@@ -213,17 +213,17 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       it 'falls back to text node content for title/id extraction', :aggregate_failures do
         expect(article_hash[:title]).to eq('Some plain text description.')
         expect(article_hash[:id]).to eq('some-plain-text-description')
-        expect(article_hash[:url].to_s).to eq('https://example.com/#some-plain-text-description')
+        expect(article_hash[:url]).to be_nil
       end
     end
 
     context 'when article_tag is a text node' do
       let(:article_tag) { Nokogiri::HTML.fragment('hello').children.first }
 
-      it 'falls back to generating a content hash ID', :aggregate_failures do
+      it 'falls back to generating a content hash ID without a url', :aggregate_failures do
         expect(article_hash[:title]).to be_nil
         expect(article_hash[:id]).to eq('f01gna')
-        expect(article_hash[:url].to_s).to eq('https://example.com/#f01gna')
+        expect(article_hash[:url]).to be_nil
       end
     end
   end
@@ -238,7 +238,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'uses no anchor and UTC by default', :aggregate_failures do
       extracted = described_class.call(article_tag, base_url: 'https://example.com')
-      expect(extracted[:url].to_s).to eq('https://example.com/#feb-24')
+      expect(extracted[:url]).to be_nil
       expect(extracted[:title]).to eq('Feb 24')
       expect(extracted[:published_at].to_s).to eq('2024-02-24T12:00:00+00:00')
       expect(extracted[:description]).to eq('Body text')
@@ -387,17 +387,17 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
   end
 
-  shared_examples 'generated id url resolution' do
-    let(:story_tag) { Nokogiri::HTML.fragment('<article><h2>Plain Story</h2></article>').at_css('article') }
-
-    it 'links to the generated id' do
+  shared_examples 'link-less card has no url' do
+    it 'returns no url for a card with a generated id but no anchor' do
+      story_tag = Nokogiri::HTML.fragment('<article id="plain"><h2>Plain Story</h2></article>').at_css('article')
       extracted = described_class.call(story_tag, base_url: 'https://example.com')
-      expect(extracted[:url].to_s).to eq('https://example.com/#plain-story')
+      expect(extracted.values_at(:id, :url)).to eq(['plain', nil])
     end
 
-    it 'returns no url when no id can be generated' do
-      empty_tag = Nokogiri::HTML.fragment('<article><img src="x.jpg"></article>').at_css('article')
-      expect(described_class.call(empty_tag, base_url: 'https://example.com')[:url]).to be_nil
+    it 'returns no url for an anchor with an empty href' do
+      tag = Nokogiri::HTML.fragment('<article><a href=""><h2>Story</h2></a></article>').at_css('article')
+      extracted = described_class.call(tag, base_url: 'https://example.com', selected_anchor: tag.at_css('a'))
+      expect(extracted[:url]).to be_nil
     end
   end
 
@@ -658,7 +658,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'builds with the optional arguments defaulted', :aggregate_failures do
       extracted = described_class.new(article_tag, base_url: 'https://example.com').call
-      expect(extracted[:url].to_s).to eq('https://example.com/#body-text')
+      expect(extracted[:url]).to be_nil
       expect(extracted[:title]).to eq('Body text')
     end
 
@@ -687,7 +687,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
   describe '#extract_url' do
     it_behaves_like 'anchor href resolution'
     it_behaves_like 'anchor href fragment'
-    it_behaves_like 'generated id url resolution'
+    it_behaves_like 'link-less card has no url'
   end
 
   describe '#generate_id' do

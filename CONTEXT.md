@@ -206,6 +206,8 @@ Which hashes of a JSON state entry hold its article fields. Owned by `JsonState:
 
 Visible leftover after excluding heading/anchor/kicker/`time` is split once on block newlines. Keep/drop (CTA, date-shaped, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`; its type chips and clock shape come from `Article::Title` (§ Article title). Title echo compares against the headline. Dates stay on `ArticleRules::Date` (datetime attrs + date-shaped leftover lines, channel `time_zone`; invalid identifiers fall back to UTC so extract does not raise). Categories stay on `ArticleRules::Category` (class tokens, not layout `label`/`section` substrings) and reject Description keepers except type chips, which are leftover chrome rather than taxonomy. Both `Html::ArticleExtractor` and `Html::SstArticleExtractor` call those modules.
 
+Enhance never invents a URL: an item's `url` comes from its own anchor `href` (fragment stripped) or an explicit selector. A card without a link, or with an empty `href`, gets no `url` (no `page#id` fragment); the extractor still returns its `id`, and the item is kept by the ordinary rules (the guid then derives from the id, not a URL).
+
 ## Leftover parent-card walk
 
 When a heading-only item or wrapping `<a>` lacks leftover description and date, extractors climb via `Navigator.parent_until_condition` / `SST::Index#parent_until`. Walk policy (`miss?` / `thin_wrapper?` / `crowded?` from heading count + distinct main hrefs) is owned by `Html2rss::Html::CardWalk`. Adapters still traverse. Capture's items-selector lift is a second job: it shares only `Navigator.usable_card_parent?` stop tags and aborts with `contains_other_root?` (listing-root set).
