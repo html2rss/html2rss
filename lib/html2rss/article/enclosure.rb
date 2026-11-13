@@ -11,8 +11,12 @@ module Html2rss
     # the media-kind predicates feed builders choose by, and the parsers that turn
     # publisher-declared size and duration strings into those facts.
     class Enclosure
-      # A byte size: a number with an optional unit (+12345+, +850 KB+, +12.3 MB+, +1.5GiB+).
-      SIZE = /\A\s*(\d+(?:\.\d+)?)\s*([kmgt]i?b|b|bytes?)?\s*\z/i
+      # Raised when an enclosure has no absolute http(s) URL or declares an unknown kind.
+      class InvalidError < Html2rss::Error; end
+
+      # A byte size: a number with an optional unit (+12345+, +850 KB+, +12.3 MB+, +1.5GiB+). The whitespace
+      # runs are possessive, so a long run of spaces never backtracks.
+      SIZE = /\A\s*+(\d+(?:\.\d+)?)\s*+([kmgt]i?b|b|bytes?)?\s*+\z/i
       # Bytes per size unit; SI prefixes count in thousands, binary (+KiB+) in 1024s.
       SIZE_UNITS = {
         'b' => 1, 'byte' => 1, 'bytes' => 1,
@@ -107,10 +111,11 @@ module Html2rss
       # @param bytes_length [Integer, nil] enclosure length in bytes; nil when unknown
       # @param duration [Integer, nil] playback length in seconds, kept only for an audio or video file ({#media?});
       #   nil (or not positive) when unknown
+      # @raise [InvalidError] when the URL is not an absolute http(s) URL or the kind is unknown
       # @param kind [Symbol, nil] +:audio+, +:video+ or +:image+ when its source proves the file's kind
       #   ({KIND_TYPES}); nil when unknown
       def initialize(url:, type: nil, bytes_length: nil, duration: nil, kind: nil)
-        raise ArgumentError, 'An Enclosure requires an absolute http(s) URL' unless url&.web?
+        raise InvalidError, 'An Enclosure requires an absolute http(s) URL' unless url&.web?
 
         @url = url
         @bytes_length = bytes_length || 0
@@ -179,11 +184,11 @@ module Html2rss
 
       # @param kind [Symbol, nil]
       # @return [String, nil] the type a file of that kind takes when its URL names none ({KIND_TYPES})
-      # @raise [ArgumentError] for a kind other than +:audio+, +:video+ or +:image+
+      # @raise [InvalidError] for a kind other than +:audio+, +:video+ or +:image+
       def kind_type(kind)
         return unless kind
 
-        KIND_TYPES.fetch(kind) { raise ArgumentError, "Unknown enclosure kind: #{kind.inspect}" }
+        KIND_TYPES.fetch(kind) { raise InvalidError, "Unknown enclosure kind: #{kind.inspect}" }
       end
 
       # The declared type, else the type guessed from the URL; a file of a known kind whose URL names no type

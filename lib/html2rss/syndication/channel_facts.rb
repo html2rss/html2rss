@@ -30,7 +30,7 @@ module Html2rss
         'false' => false, 'no' => false, 'clean' => false
       }.freeze
       # A +managingEditor+ written as an email address followed by the name in parentheses.
-      NAMED_EMAIL = /\A\s*\S+@\S+\s+\((.+)\)\s*\z/
+      NAMED_EMAIL = /\A\s*[^\s@]+@\S+\s+\((.+)\)\s*\z/
 
       class << self
         ##

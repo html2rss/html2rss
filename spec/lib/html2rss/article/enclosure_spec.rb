@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'benchmark'
+
 require 'spec_helper'
 
 RSpec.describe Html2rss::Article::Enclosure do
@@ -71,6 +73,12 @@ RSpec.describe Html2rss::Article::Enclosure do
       it "parses #{value.inspect} to #{expected.inspect}" do
         expect(described_class.parse_size(value)).to eq(expected)
       end
+    end
+
+    it 'rejects a long whitespace run without backtracking', :aggregate_failures do
+      elapsed = Benchmark.realtime { expect(described_class.parse_size("9#{' ' * 50_000}x")).to be_nil }
+      expect(elapsed).to be < 0.5
+      expect(described_class.parse_size("  12 \t MB #{' ' * 50_000}")).to eq(12_000_000)
     end
   end
 
@@ -257,10 +265,10 @@ RSpec.describe Html2rss::Article::Enclosure do
     end
 
     it 'rejects a missing, relative or non-http(s) URL', :aggregate_failures do
-      expect { described_class.new(url: nil) }.to raise_error(ArgumentError, /absolute http\(s\) URL/)
+      expect { described_class.new(url: nil) }.to raise_error(described_class::InvalidError, /absolute http\(s\) URL/)
       ['a.mp3', 'javascript:alert(1)//a.mp3', 'data:audio/mpeg;base64,AAAA', 'ftp://example.com/a.mp3'].each do |ref|
         expect { described_class.new(url: Html2rss::Url.from_relative(ref, '')) }
-          .to raise_error(ArgumentError, /absolute http\(s\) URL/)
+          .to raise_error(described_class::InvalidError, /absolute http\(s\) URL/)
       end
     end
 
@@ -339,14 +347,17 @@ RSpec.describe Html2rss::Article::Enclosure do
     end
 
     it 'rejects an unknown kind', :aggregate_failures do
-      expect { described_class.new(url:, kind: :page) }.to raise_error(ArgumentError, /Unknown enclosure kind: :page/)
-      expect { described_class.new(url:, kind: 'audio') }.to raise_error(ArgumentError, /kind/)
+      expect { described_class.new(url:, kind: :page) }
+        .to raise_error(described_class::InvalidError, /Unknown enclosure kind: :page/)
+      expect { described_class.new(url:, kind: 'audio') }.to raise_error(described_class::InvalidError, /kind/)
     end
 
     context 'when URL is nil' do
       let(:url) { nil }
 
-      it { expect { subject }.to raise_error(ArgumentError, 'An Enclosure requires an absolute http(s) URL') }
+      it do
+        expect { subject }.to raise_error(described_class::InvalidError, /requires an absolute http\(s\) URL/)
+      end
     end
 
     context 'when URL is relative' do
