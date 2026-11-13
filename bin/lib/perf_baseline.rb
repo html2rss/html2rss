@@ -3,8 +3,8 @@
 require 'optparse'
 require 'time'
 
-# Single owner of the perf budget rule shared by bin/heuristic-perf-baseline and
-# bin/selectors-perf-baseline.
+# Single owner of the perf budget rule shared by bin/heuristic-perf-baseline,
+# bin/selectors-perf-baseline and bin/feed-perf-baseline.
 #
 # Rule: allocations (median of RUNS) are the hard gate, budgeted at ALLOC_TOLERANCE times the
 # recorded baseline. Wall time (min of RUNS, the least noisy statistic) is advisory, budgeted at

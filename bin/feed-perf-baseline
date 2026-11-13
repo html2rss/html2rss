@@ -1,0 +1,74 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Captures wall time + allocation baseline for the feed-building path: native-feed parsing, RSS and
+# JSON Feed rendering, and the item description (Html2rss::Html::Rendering::DescriptionBuilder).
+# Budget rule: bin/lib/perf_baseline.rb.
+# Usage: mise exec -- bin/feed-perf-baseline [--write PATH] [--check PATH]
+
+require 'bundler/setup'
+require 'nokogiri'
+require_relative '../lib/html2rss'
+require_relative 'lib/perf_baseline'
+
+BASE_URL = 'https://example.com/news/'
+NEWS_FIXTURE = 'spec/fixtures/news_front_page.html'
+PODCAST_FIXTURE = 'spec/fixtures/auto_source/corpus/t4_podcast_feed_enclosures/podcast.xml'
+
+def response_for(body, content_type)
+  Html2rss::RequestService::Response.new(
+    body:,
+    headers: { 'content-type' => content_type },
+    url: Html2rss::Url.from_absolute(BASE_URL)
+  )
+end
+
+def news_case(root)
+  body = File.read(File.join(root, NEWS_FIXTURE))
+  response = response_for(body, 'text/html')
+  response.instance_variable_set(:@parsed_body, Nokogiri::HTML(body))
+  [response, Html2rss::AutoSource.new(response).articles, nil]
+end
+
+def podcast_case(root)
+  response = response_for(File.binread(File.join(root, PODCAST_FIXTURE)), 'application/xml')
+  feed = Html2rss::Syndication::Parser.parse_response(response)
+  articles = feed.articles.map { Html2rss::Article.new(**_1, scraper: Html2rss::AutoSource::Scraper::NativeFeed) }
+  [response, articles, feed.channel]
+end
+
+def feed_result(response, articles, channel_facts)
+  Html2rss::FeedResult.new(
+    channel: Html2rss::Channel.from_response(response, feed: channel_facts),
+    articles:,
+    status: Html2rss::Status.build(articles:)
+  )
+end
+
+# RSS and JSON Feed rendering; each runs DescriptionBuilder once per item.
+def render(result)
+  rss_items = result.to_rss.items.size
+  json_items = result.to_json_feed[:items].size
+  "rss_items=#{rss_items}, json_items=#{json_items}"
+end
+
+root = File.expand_path('..', __dir__)
+news = news_case(root)
+podcast = podcast_case(root)
+news_result = feed_result(*news)
+podcast_result = feed_result(*podcast)
+podcast_body = podcast.first.body
+
+PerfBaseline.run(
+  title: 'Feed building performance baseline',
+  subject: 'Cases: news_feed_render, podcast_feed_render, native_feed_parse',
+  summary: 'Item counts per case',
+  root:
+) do
+  parsed = Html2rss::Syndication::Parser.parse(podcast_body, base_url: BASE_URL).articles.size
+  {
+    'news_feed_render' => render(news_result),
+    'podcast_feed_render' => render(podcast_result),
+    'native_feed_parse' => "items=#{parsed}"
+  }
+end
