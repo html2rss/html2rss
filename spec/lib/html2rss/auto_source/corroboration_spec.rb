@@ -26,6 +26,7 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
 
   before do
     allow(page_links).to receive(:placement) { |url| placements.fetch(url.path, :absent) }
+    allow(page_links).to receive(:identity, &:article_identity)
   end
 
   describe '#verdict' do
@@ -328,6 +329,15 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
       cards = media.map { build_article[_1.url.path, scraper: Html2rss::AutoSource::Scraper::SemanticHtml] }
 
       expect(corroboration.media_page?(media + cards + stories)).to be(true)
+    end
+
+    it 'counts items the page keys as one article once, whatever their placement param', :aggregate_failures do
+      allow(page_links).to receive(:identity, &:path)
+      placed = media.map { build_article["#{_1.url.path}?pos=latest", scraper: Html2rss::AutoSource::Scraper::SemanticHtml] }
+      placed.each { placements[_1.url.path] = :content }
+
+      expect(corroboration.media_page?(media + placed + stories)).to be(true)
+      expect(page_links).to have_received(:identity).at_least(:once)
     end
 
     it 'leaves out media items the page does not show in its content' do

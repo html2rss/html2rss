@@ -32,6 +32,10 @@ module Html2rss
     NO_PARAMS = [].freeze
     private_constant :NO_PARAMS
 
+    # The default set of extra query param names to ignore: none.
+    NO_NAMES = Set.new.freeze
+    private_constant :NO_NAMES
+
     # Raised when a string cannot be parsed or resolved to a valid URL.
     class InvalidUrlError < Html2rss::Error
       # @return [Symbol]
@@ -295,13 +299,15 @@ module Html2rss
     # params keep their order.
     #
     # @return [Url] this URL when it carries no tracking param; otherwise a new URL
-    def without_tracking_params
-      return self if query_params.none? { tracking_param?(_1) }
+    def without_tracking_params = without_query_params { tracking_param?(_1) }
 
-      uri = @uri.dup
-      uri.query = query_params.reject { tracking_param?(_1) }.join('&')
-      self.class.from_absolute(uri)
-    end
+    ##
+    # Returns a copy of the URL with the query params named in +names+ removed; the remaining
+    # params keep their order.
+    #
+    # @param names [Set<String>] query param names to drop
+    # @return [Url] this URL when it carries none of them; otherwise a new URL
+    def without_params(names) = without_query_params { names.include?(param_name(_1)) }
 
     ##
     # Returns a copy of the URL with the provided scheme.
@@ -411,14 +417,33 @@ module Html2rss
     end
 
     ##
-    # "Same article" key: host, port, slash-stripped path, and the sorted query params minus
-    # {TRACKING_PARAM}. Scheme, fragment, trailing slash, tracking params, and param order are
+    # "Same article" key: {#article_location} and the sorted query params minus {TRACKING_PARAM}
+    # and +ignoring+. Scheme, fragment, trailing slash, tracking params, and param order are
     # ignored, so +http://example.com/a+ and +https://example.com/a/?utm_source=x#top+ share it;
-    # every other query param stays significant. Keys page placement, self-link rejection, and
-    # feed-item dedupe, unlike {#same_document?}, which stays scheme- and query-exact.
+    # every other query param stays significant unless the caller names it in +ignoring+ (the page's
+    # placement params, {AutoSource::PageLinks#identity}). Keys page placement, self-link rejection,
+    # and feed-item dedupe, unlike {#same_document?}, which stays scheme- and query-exact.
     #
+    # @param ignoring [Set<String>] extra query param names that never make a new article
     # @return [Array] equal for URLs naming the same article
-    def article_identity = [host, port, path.chomp('/'), article_params]
+    def article_identity(ignoring: NO_NAMES) = [*article_location, article_params(ignoring:)]
+
+    ##
+    # The part of {#article_identity} before the query: host, port, and slash-stripped path.
+    #
+    # @return [Array] equal for URLs on one page path
+    def article_location = [host, port, path.chomp('/')]
+
+    ##
+    # The sorted non-tracking query pairs, less +ignoring+ names: the query part of {#article_identity}.
+    #
+    # @param ignoring [Set<String>] extra query param names to leave out
+    # @return [Array<String>] raw +key=value+ pairs; the shared empty list without a query
+    def article_params(ignoring: NO_NAMES)
+      return NO_PARAMS unless query
+
+      query_params.reject { tracking_param?(_1) || ignoring.include?(param_name(_1)) }.sort
+    end
 
     protected
 
@@ -435,10 +460,18 @@ module Html2rss
     # @return [Array<String>] raw +key=value+ query pairs, in source order
     def query_params = query ? query.split('&') : NO_PARAMS
 
-    # @return [Array<String>] sorted non-tracking query pairs; the shared empty list without a query
-    def article_params = query ? query_params.reject { tracking_param?(_1) }.sort : NO_PARAMS
+    def tracking_param?(pair) = TRACKING_PARAM.match?(param_name(pair))
 
-    def tracking_param?(pair) = TRACKING_PARAM.match?(pair.partition('=').first)
+    def param_name(pair) = pair.partition('=').first
+
+    # A copy without the query pairs the block selects; self when it selects none.
+    def without_query_params(&)
+      return self if query_params.none?(&)
+
+      uri = @uri.dup
+      uri.query = query_params.reject(&).join('&')
+      self.class.from_absolute(uri)
+    end
 
     def ip_address_host?
       !IPAddr.new(host).nil?

@@ -9,8 +9,10 @@ module Html2rss
       # some anchor to it stays unclaimed: a promo slot never hides the editorial card linking the story.
       class AnchorClaims
         # @param link_resolver [Scoring::LinkResolver]
-        def initialize(link_resolver)
+        # @param identity [#call] maps a destination URL to its article identity
+        def initialize(link_resolver, identity)
           @link_resolver = link_resolver
+          @identity = identity
           @anchors = []
           @headline = []
           @claimed = []
@@ -36,7 +38,10 @@ module Html2rss
 
         # @param anchor [SST::Node]
         # @return [Array, nil] article identity of the anchor's destination
-        def key_of(anchor) = @link_resolver.destination_facts(anchor)&.url&.article_identity
+        def key_of(anchor)
+          url = @link_resolver.destination_facts(anchor)&.url
+          @identity.call(url) if url
+        end
 
         # @param range [Range] anchor indexes
         # @return [Array<Array>] distinct destinations in +range+

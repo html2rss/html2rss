@@ -68,7 +68,7 @@ module Html2rss
       # @return [Boolean]
       def media_page?(articles)
         cards = articles.select { Scraper::PAGE_SCRAPERS.include?(_1.scraper) && shown?(_1) }
-                        .uniq { _1.url.article_identity }
+                        .uniq { page_links.identity(_1.url) }
         cards.count(&:media?) * 2 > cards.size
       end
 
@@ -88,7 +88,7 @@ module Html2rss
 
       ##
       # The page's own form of a checked item's URL, when it differs only by scheme, tracking
-      # params, trailing slash, or fragment from a rendered content anchor.
+      # or placement params, trailing slash, or fragment from a rendered content anchor.
       #
       # @param article [Html2rss::Article]
       # @return [Html2rss::Url, nil] nil when the item is exempt, not a content anchor, or already canonical

@@ -360,6 +360,14 @@ news_only_podcast_alternate.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+placement_param_double_links.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 plain_listing.html:
   junk: 0
   real: 6

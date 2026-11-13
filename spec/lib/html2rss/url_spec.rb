@@ -397,6 +397,72 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#article_identity with ignoring' do
+    let(:from) { ->(raw) { described_class.from_absolute(raw) } }
+    let(:ignoring) { Set['pos'] }
+
+    it 'leaves out the named params and keeps the others significant', :aggregate_failures do
+      top = from['https://example.com/a?pos=top&id=1']
+
+      expect(top.article_identity(ignoring:)).to eq(from['https://example.com/a?id=1&pos=latest'].article_identity(ignoring:))
+      expect(top.article_identity(ignoring:)).not_to eq(from['https://example.com/a?id=2&pos=top'].article_identity(ignoring:))
+      expect(top.article_identity(ignoring:)).to eq(from['https://example.com/a?utm_term=t&id=1'].article_identity)
+    end
+
+    it 'is the location and the sorted params', :aggregate_failures do
+      expect(from['https://example.com/a/?b=2&utm_term=t&a=1#top'].article_identity)
+        .to eq(['example.com', nil, '/a', %w[a=1 b=2]])
+      expect(from['https://example.com/a'].article_identity).to eq(['example.com', nil, '/a', []])
+    end
+
+    it 'keeps the named params significant without ignoring' do
+      expect(from['https://example.com/a?pos=top'].article_identity)
+        .not_to eq(from['https://example.com/a?pos=latest'].article_identity)
+    end
+  end
+
+  describe '#article_location' do
+    it 'is host, port, and slash-stripped path, whatever the query', :aggregate_failures do
+      expect(described_class.from_absolute('https://example.com/a/?id=1#top').article_location)
+        .to eq(['example.com', nil, '/a'])
+      expect(described_class.from_absolute('https://example.com:8443/a').article_location)
+        .to eq(['example.com', 8443, '/a'])
+    end
+  end
+
+  describe '#article_params' do
+    it 'is the sorted non-tracking pairs less the ignored names', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?b=2&utm_term=t&pos=top&a=1')
+
+      expect(url.article_params).to eq(%w[a=1 b=2 pos=top])
+      expect(url.article_params(ignoring: Set['pos'])).to eq(%w[a=1 b=2])
+    end
+
+    it 'is one shared empty list without a query', :aggregate_failures do
+      plain = described_class.from_absolute('https://example.com/a')
+
+      expect(plain.article_params).to be_empty
+      expect(plain.article_params).to equal(described_class.from_absolute('https://example.com/b').article_params)
+    end
+  end
+
+  describe '#without_params' do
+    it 'removes the named params and keeps the others in order', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?pos=top&id=7&utm_source=x&slot=2#top')
+
+      expect(url.without_params(Set['pos', 'slot']).to_s).to eq('https://example.com/a?id=7&utm_source=x#top')
+      expect(described_class.from_absolute('https://example.com/a?pos=top').without_params(Set['pos']).to_s)
+        .to eq('https://example.com/a')
+    end
+
+    it 'returns the same URL when it carries none of them', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?id=2')
+
+      expect(url.without_params(Set['pos'])).to equal(url)
+      expect(url.without_params(Set.new)).to equal(url)
+    end
+  end
+
   describe '#without_tracking_params' do
     it 'removes tracking params and keeps the others in order', :aggregate_failures do
       url = described_class.from_absolute('https://example.com/a?utm_source=x&id=7&fbclid=1&b=2#top')

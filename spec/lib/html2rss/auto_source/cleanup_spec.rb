@@ -235,6 +235,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
       before do
         allow(page_links).to receive(:sponsored?) { sponsored_paths.include?(_1.path) }
+        allow(page_links).to receive(:identity, &:article_identity)
+        allow(page_links).to receive(:without_placement, &:itself)
       end
 
       it 'drops sponsored items of every source, the native feed included, under the sponsored tally',
@@ -288,6 +290,57 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(result.articles.map { [_1.url.to_s, _1.scraper] })
           .to eq([['https://example.com/story', structured]])
         expect(result.drop_tallies).to eq('duplicate_url' => 1)
+      end
+    end
+
+    # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- real page links + article factory
+    context 'when the page places stories with a placement param' do
+      subject(:result) { described_class.call(articles, url:, page_links: -> { page_links }) }
+
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+      let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com/news/') }
+      let(:hrefs) do
+        stories = %w[a b c]
+        stories.map { "/news/#{_1}?pos=top" } + stories.map { "/news/#{_1}?pos=latest" } +
+          %w[/news/read.php?id=1 /news/read.php?id=2]
+      end
+      let(:page_links) do
+        cards = hrefs.map { |href| %(<article><a href="#{href}">Story</a></article>) }
+        html = "<html><body><main>#{cards.join}</main></body></html>"
+        Html2rss::AutoSource::PageLinks.build(Html2rss::SST::Normalizer.call(html), link_resolver: resolver)
+      end
+      let(:article_at) do
+        lambda do |path, title = 'A Reasonably Long Story Title'|
+          Html2rss::Article.new(id: path, title:, url: "https://example.com#{path}")
+        end
+      end
+      let(:articles) do
+        [article_at['/news/a?pos=top'], article_at['/news/b?pos=latest'], article_at['/news/a?pos=latest'],
+         article_at['/news/read.php?id=1'], article_at['/news/read.php?id=2']]
+      end
+
+      it 'merges the copies into one item with the placement param dropped, id params kept', :aggregate_failures do
+        expect(result.articles.map { _1.url.to_s })
+          .to eq(%w[https://example.com/news/a https://example.com/news/b https://example.com/news/read.php?id=1
+                    https://example.com/news/read.php?id=2])
+        expect(result.drop_tallies).to eq('duplicate_url' => 1)
+      end
+
+      it 'drops a read-more copy of a story linked under another value', :aggregate_failures do
+        read_more = article_at['/news/b?pos=top', 'Read more']
+
+        expect(described_class.call([*articles, read_more], url:, page_links: -> { page_links }).drop_tallies)
+          .to eq('duplicate_url' => 2)
+      end
+
+      it 'rejects the page itself under any placement value', :aggregate_failures do
+        self_link = described_class.call([article_at['/news/?pos=top'], *articles], url:, page_links: -> { page_links })
+
+        expect(self_link.drop_tallies).to eq('duplicate_url' => 1, 'self_link' => 1)
+      end
+
+      it 'keeps every param significant without page links' do
+        expect(described_class.call(articles, url:).articles.size).to eq(5)
       end
     end
 
