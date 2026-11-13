@@ -62,6 +62,8 @@ RSpec.describe Html2rss::AutoSource::PageLinks::PlacementParams do
 
     it 'counts distinct paths, not stories, and accepts more than MIN_PATHS', :aggregate_failures do
       expect(names['/a?pos=top&x=1', '/a?pos=latest&x=1', '/a?pos=top&x=2', '/b?pos=top']).to be_empty
+      expect(names['/a?pos=top&x=1', '/a?pos=latest&x=1', '/b?pos=top&x=1', '/b?pos=latest&x=1', '/a?pos=top&x=2'])
+        .to be_empty
       expect(names[*placed, '/c?pos=latest', '/d?pos=top', '/d?pos=latest']).to eq(Set['pos'])
     end
 
