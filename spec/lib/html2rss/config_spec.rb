@@ -92,6 +92,46 @@ RSpec.describe Html2rss::Config do
       end
     end
 
+    context 'when the file holds keys that cannot be symbolized' do
+      {
+        'a top-level integer key' => "1: 2\n",
+        'a nested integer key' => "channel:\n  url: https://example.com\n  1: 2\n"
+      }.each do |label, body|
+        it "raises InvalidConfig and reports a failed validation for #{label}", :aggregate_failures do
+          path = write_yaml.call('intkey.yml', body)
+
+          expect { described_class.load_yaml(path) }.to raise_error(Html2rss::Config::InvalidConfig, /config/)
+          expect(described_class.resolve_and_validate(path).last).not_to be_success
+        end
+      end
+    end
+
+    context 'when feeds is not a mapping' do
+      {
+        'a list' => "feeds:\n  - a\n",
+        'a scalar' => "feeds: x\n"
+      }.each do |label, body|
+        it "raises InvalidConfig naming the file for #{label}, with or without a feed name", :aggregate_failures do
+          path = write_yaml.call('feeds.yml', body)
+          message = /File '#{Regexp.escape(path)}': `feeds` must be a mapping/
+
+          expect { described_class.load_yaml(path) }.to raise_error(Html2rss::Config::InvalidConfig, message)
+          expect { described_class.load_yaml(path, 'a') }.to raise_error(Html2rss::Config::InvalidConfig, message)
+          expect(described_class.resolve_and_validate(path, feed_name: 'a').last).not_to be_success
+        end
+      end
+    end
+
+    context 'when a feed entry is not a mapping' do
+      it 'raises InvalidConfig naming the file and feed', :aggregate_failures do
+        path = write_yaml.call('feeds.yml', "feeds:\n  a:\n    - 1\n")
+
+        expect { described_class.load_yaml(path, 'a') }
+          .to raise_error(Html2rss::Config::InvalidConfig, "File '#{path}': feed 'a' must be a mapping")
+        expect(described_class.resolve_and_validate(path, feed_name: 'a').last).not_to be_success
+      end
+    end
+
     context 'when the file is not valid YAML' do
       it 'raises InvalidConfig' do
         path = write_yaml.call('bad.yml', "a: [\n")

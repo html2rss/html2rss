@@ -70,6 +70,36 @@ RSpec.describe Html2rss::CLI do
     end
   end
 
+  describe 'config files that cannot be loaded' do
+    let(:tmp_dir) { Dir.mktmpdir }
+
+    after { FileUtils.remove_entry(tmp_dir) }
+
+    {
+      'an integer key' => "1: 2\n",
+      'a nested integer key' => "channel:\n  url: https://example.com\n  1: 2\n",
+      'feeds as a list' => "feeds:\n  - a\n",
+      'feeds as a scalar' => "feeds: x\n"
+    }.each do |label, body|
+      context "with #{label}" do
+        let(:path) { File.join(tmp_dir, 'bad.yml').tap { File.write(_1, body) } }
+
+        it 'fails validate, apply, and test with a clean Thor::Error', :aggregate_failures do
+          expect { cli.validate(path) }.to raise_error(Thor::Error)
+          expect { cli.apply(path) }.to raise_error(Thor::Error)
+          expect { cli.test(path) }.to raise_error(Thor::Error)
+        end
+      end
+    end
+
+    it 'fails a named feed that is not a mapping with a clean Thor::Error', :aggregate_failures do
+      path = File.join(tmp_dir, 'feeds.yml').tap { File.write(_1, "feeds:\n  a:\n    - 1\n") }
+
+      expect { cli.validate(path, 'a') }.to raise_error(Thor::Error, /feed 'a' must be a mapping/)
+      expect { cli.apply(path, 'a') }.to raise_error(Thor::Error, /feed 'a' must be a mapping/)
+    end
+  end
+
   describe '#inspect' do
     let(:inspect_data) do
       {

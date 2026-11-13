@@ -97,14 +97,15 @@ module Html2rss
 
         return yaml unless yaml.key?(multiple_feeds_key)
 
+        feeds = feeds_mapping(file, yaml.fetch(multiple_feeds_key), multiple_feeds_key)
         unless feed_name
-          available_feeds = yaml.fetch(multiple_feeds_key).keys.join(', ')
           raise InvalidConfig,
-                "Feed name is required under `#{multiple_feeds_key}`. Available feeds: #{available_feeds}"
+                "Feed name is required under `#{multiple_feeds_key}`. Available feeds: #{feeds.keys.join(', ')}"
         end
 
-        config = yaml.dig(multiple_feeds_key, feed_name.to_sym)
+        config = feeds[feed_name.to_sym]
         raise InvalidConfig, "Feed '#{feed_name}' not found under `#{multiple_feeds_key}` key." unless config
+        raise InvalidConfig, "File '#{file}': feed '#{feed_name}' must be a mapping" unless config.is_a?(Hash)
 
         MultipleFeedsConfig.to_single_feed(config, yaml, multiple_feeds_key:)
       end
@@ -230,14 +231,21 @@ module Html2rss
       private :resolve_raw_hash
 
       def read_yaml_mapping(file)
-        yaml = YAML.safe_load_file(file, symbolize_names: true)
-        return yaml if yaml.is_a?(Hash)
+        yaml = YAML.safe_load_file(file)
+        return symbolize_config(yaml) if yaml.is_a?(Hash)
 
         raise InvalidConfig, "File '#{file}' must contain a YAML mapping (a Hash)"
       rescue Psych::Exception => error
         raise InvalidConfig, "File '#{file}' could not be parsed: #{error.message}"
       end
       private :read_yaml_mapping
+
+      def feeds_mapping(file, feeds, key)
+        return feeds if feeds.is_a?(Hash)
+
+        raise InvalidConfig, "File '#{file}': `#{key}` must be a mapping of feed names to configs"
+      end
+      private :feeds_mapping
 
       # Loaded config keys that cannot be symbolized (non-string, non-symbol) are a config-load failure.
       def symbolize_config(parsed)
