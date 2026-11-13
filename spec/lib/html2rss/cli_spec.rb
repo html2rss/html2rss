@@ -36,7 +36,7 @@ RSpec.describe Html2rss::CLI do
 
     it 'handles local file input via --input' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
-      expect { cli.invoke(:apply, ['example.yml'], { input: 'spec/fixtures/page_1.html' }) }
+      expect { cli.invoke(:apply, ['example.yml'], { input: 'spec/fixtures/news_front_page.html' }) }
         .to output("#{rss_xml}\n").to_stdout
     end
 
@@ -288,7 +288,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'captures from local file via --input' do
-      expect { cli.invoke(:capture, [nil], { input: 'spec/fixtures/page_1.html' }) }
+      expect { cli.invoke(:capture, [nil], { input: 'spec/fixtures/news_front_page.html' }) }
         .to output(/channel:/).to_stdout
     end
 

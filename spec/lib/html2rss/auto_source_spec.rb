@@ -1035,7 +1035,7 @@ RSpec.describe Html2rss::AutoSource do
   end
 
   describe 'URL identity cost (non-wall-clock regression guard)' do
-    let(:body) { File.read('spec/fixtures/page_1.html') }
+    let(:body) { File.read('spec/fixtures/news_front_page.html') }
 
     let(:counts) { Hash.new(0) }
 
@@ -1057,16 +1057,16 @@ RSpec.describe Html2rss::AutoSource do
     it 'normalizes each URL once and reuses one Cleanup result', :aggregate_failures do
       expect(auto_source.articles.size).to eq(25)
       expect(counts[:cleanup]).to eq(1)
-      expect(counts[:normalize]).to be <= 260 # master: 358
+      expect(counts[:normalize]).to be <= 160 # measured: 139
     end
 
     it 'keeps drop tallies stable', :aggregate_failures do
       auto_source.articles
 
-      # One segment per whole-card link frees top-K slots for the fixture's absolute-host
-      # footer links, which Cleanup drops as different_domain.
+      # The fixture's sister-site rail links to example.net (different_domain); one compact
+      # story carries a two-word title (low_word_count).
       expect(auto_source.admission_drops)
-        .to eq('invalid' => 1, 'different_domain' => 35, 'low_word_count' => 1)
+        .to eq('different_domain' => 10, 'low_word_count' => 1)
     end
   end
 end
