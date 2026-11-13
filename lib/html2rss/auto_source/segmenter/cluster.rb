@@ -56,12 +56,17 @@ module Html2rss
         end
         private_class_method :collect_groups
 
+        ##
+        # The class shape of a node: its folded class tokens, sorted ("" without classes). Shared with
+        # {Semantic}, whose card groups are sibling-like by tag and class shape.
+        #
+        # @param class_names [Array<String>]
+        # @return [String]
         def self.normalize_class(class_names)
           return '' if class_names.empty?
 
           class_names.map { ::Html2rss::Html::Probe.fold(_1) }.sort.join(' ')
         end
-        private_class_method :normalize_class
 
         def self.structure_signature(node)
           kids = node.children

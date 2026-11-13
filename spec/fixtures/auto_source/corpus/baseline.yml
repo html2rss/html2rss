@@ -248,6 +248,14 @@ kicker_heading_teaser.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+leafdiv_item_with_info_block.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 media_audio_cards.html:
   junk: 0
   real: 6
@@ -352,10 +360,26 @@ native_feed_news_before_cross_origin_podcast.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+nested_card_grid_ranking.html:
+  junk: 0
+  real: 25
+  expected: 37
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 news_only_podcast_alternate.html:
   junk: 0
   real: 3
   expected: 3
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+placement_param_double_links.html:
+  junk: 0
+  real: 8
+  expected: 8
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0

@@ -90,6 +90,10 @@ module Html2rss
           'kreditkarten', 'kreditkarte', 'kredit', 'echtgeld', 'vpn', 'kaufberater',
           'leasing'
         ].freeze
+        # Audio and video destinations: players, podcast episodes and recorded briefings, not text articles.
+        media = Set[
+          'video', 'videos', 'vidéo', 'vidéos', 'vídeo', 'vídeos', 'podcast', 'podcasts', 'audio', 'audios'
+        ].freeze
         utility = (taxonomy | chrome | SOFT_UTILITY).freeze
         {
           content:,
@@ -102,6 +106,7 @@ module Html2rss
           office:,
           people_index: (profile | office).freeze,
           vanity:,
+          media:,
           deep_post_context: Set['press', 'newsroom', 'presse', 'pressemitteilungen', 'prensa'].freeze
         }.freeze
       end
@@ -149,6 +154,11 @@ module Html2rss
       # @return [Boolean] true when the route points at conversion or account chrome
       def vanity_path?
         @vanity_path ||= SEGMENT_SETS[:vanity].intersect?(@lexicon)
+      end
+
+      # @return [Boolean] true when a path segment names an audio or video destination
+      def media_path?
+        @media_path ||= SEGMENT_SETS[:media].intersect?(@lexicon)
       end
 
       # @return [Boolean] true when the route points at taxonomy/listing chrome

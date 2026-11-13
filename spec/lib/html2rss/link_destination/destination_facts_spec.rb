@@ -32,6 +32,20 @@ RSpec.describe Html2rss::LinkDestination::DestinationFacts do
       expect(facts.high_confidence_utility_destination).to be(false)
     end
 
+    it 'keeps an article permalink out of media routes' do
+      expect(facts.media_path).to be(false)
+    end
+
+    %w[video videos podcast podcasts audio audios vidéo vídeos].each do |segment|
+      context "with a /#{segment}/ route" do
+        let(:url) { Html2rss::Url.from_absolute("https://example.com/#{segment}/morning-briefing-for-friday") }
+
+        it 'flags the media path' do
+          expect(facts.media_path).to be(true)
+        end
+      end
+    end
+
     context 'with a commerce route under a utility segment' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/dating/singles-in-berlin-heute') }
 

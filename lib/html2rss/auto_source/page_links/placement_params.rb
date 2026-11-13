@@ -1,0 +1,72 @@
+# frozen_string_literal: true
+
+module Html2rss
+  class AutoSource
+    class PageLinks
+      ##
+      # The query params a page uses to place links, not to name articles: owner of the evidence rule.
+      # {PageLinks} computes the set once per page and keys every consumer on it ({PageLinks#identity}).
+      #
+      # A param is placement-only on a page when the page's content links show all three:
+      #
+      # - it appears on at least {MIN_PATHS} distinct paths, so it is a site convention, not one script's
+      #   argument (+/news.php?id=1+ and +/news.php?id=2+ are two articles of one path); and
+      # - at least {MIN_REPEATED_PATHS} of those paths, and at least {MIN_REPEATED_SHARE} of all its paths,
+      #   appear under two or more values of it while every other query pair stays equal: the same story
+      #   linked from several slots (+?pos=top+, +?pos=latest+). One listing paginated (+/news?page=1+,
+      #   +/news?page=2+) or translated (+/a?lang=en+, +/a?lang=de+) among other paths that carry the
+      #   param once is a single repeat, not a convention, and never collapses. The share stays low because a
+      #   front page links most stories once and few twice (a real front page repeats on about one path in eight);
+      #   and
+      # - at least one of its values recurs on {MIN_SHARED_VALUE_PATHS} distinct paths: a slot label
+      #   (+top+, +latest+) names a place many stories share, while an article id is unique per link.
+      #
+      # No param name is listed; the page decides. A page without the evidence keeps the param significant,
+      # so a fetch that renders fewer slots keeps the param on item URLs.
+      class PlacementParams
+        # Fewest distinct paths that must carry a param before it can be a page-wide convention.
+        MIN_PATHS = 3
+        # Fewest of those paths that must appear under two or more of its values, all else equal.
+        MIN_REPEATED_PATHS = 2
+        # Least share of the param's paths that must be such repeated paths.
+        MIN_REPEATED_SHARE = Rational(1, 20)
+        # Fewest distinct paths that must carry one same value, so the values name places, not articles.
+        MIN_SHARED_VALUE_PATHS = 2
+
+        class << self
+          ##
+          # @param urls [Array<Html2rss::Url>] the page's content link URLs
+          # @return [Set<String>] names of the placement-only params; empty when the page shows none
+          def names(urls)
+            by_param = Hash.new { |params, name| params[name] = Hash.new { |stories, key| stories[key] = Set.new } }
+            urls.each { record(by_param, _1) }
+            by_param.select { |_name, by_story| placement?(by_story) }.keys.to_set.freeze
+          end
+
+          private
+
+          # Files each +key=value+ pair of +url+ under its name, then under its path and other pairs (a story).
+          def record(by_param, url)
+            params = url.article_params
+            params.each { by_param[_1.partition('=').first][[url.article_location, params - [_1]]] << _1 }
+          end
+
+          # @param by_story [Hash{Array => Set<String>}] +key=value+ pairs seen per path and other-pairs combination
+          def placement?(by_story)
+            paths = by_story.keys.to_set(&:first)
+            repeated = by_story.select { |_story, pairs| pairs.size > 1 }.keys.to_set(&:first)
+            paths.size >= MIN_PATHS && repeated.size >= MIN_REPEATED_PATHS &&
+              repeated.size >= paths.size * MIN_REPEATED_SHARE && slot_values?(by_story)
+          end
+
+          # Whether some +key=value+ pair recurs on enough distinct paths to be a slot label.
+          def slot_values?(by_story)
+            paths_by_pair = Hash.new { |pairs, pair| pairs[pair] = Set.new }
+            by_story.each { |(location, _others), pairs| pairs.each { paths_by_pair[_1] << location } }
+            paths_by_pair.values.any? { _1.size >= MIN_SHARED_VALUE_PATHS }
+          end
+        end
+      end
+    end
+  end
+end

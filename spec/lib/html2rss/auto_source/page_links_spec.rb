@@ -172,6 +172,124 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
     end
   end
 
+  describe 'placement params' do
+    let(:identity_of) { ->(path) { page_links.identity(url_at[path]) } }
+    let(:html) do
+      slot = lambda do |name, stories|
+        cards = stories.map do |story|
+          %(<article><h2><a href="/news/#{story}?pos=#{name}">Story #{story}</a></h2></article>)
+        end
+        "<section>#{cards.join}</section>"
+      end
+      <<~HTML
+        <html><body><main>
+          #{slot['top', %w[a b c]]}
+          #{slot['latest', %w[a b c d]]}
+          <article><h2><a href="/news/read.php?id=1">Archive one</a></h2></article>
+          <article><h2><a href="/news/read.php?id=2">Archive two</a></h2></article>
+          <article><h2><a href="/news/paid?pos=top" rel="nofollow sponsored">Paid</a></h2></article>
+          <article><h2><a href="/news/paid?pos=latest" rel="nofollow sponsored">Paid again</a></h2></article>
+          <article><h2><a href="/news/promo?pos=top" rel="nofollow sponsored">Promo</a></h2></article>
+          <article><h2><a href="/news/promo?pos=latest">Editorial promo</a></h2></article>
+        </main></body></html>
+      HTML
+    end
+
+    it 'keys a story by one identity across the values of a placement param', :aggregate_failures do
+      expect(identity_of['/news/a?pos=top']).to eq(identity_of['/news/a?pos=unseen'])
+      expect(identity_of['/news/a?pos=top']).to eq(identity_of['/news/a/?utm_term=x#c'])
+      expect(identity_of['/news/a']).not_to eq(identity_of['/news/b'])
+    end
+
+    it 'keeps a param of one path significant (the id control)', :aggregate_failures do
+      expect(identity_of['/news/read.php?id=1']).not_to eq(identity_of['/news/read.php?id=2'])
+      expect(page_links.placement(url_at['/news/read.php?id=1'])).to eq(:content)
+      expect(page_links.placement(url_at['/news/read.php?id=3'])).to eq(:absent)
+    end
+
+    it 'places a story under a value the page never renders', :aggregate_failures do
+      expect(page_links.placement(url_at['/news/d?pos=top'])).to eq(:content)
+      expect(page_links.placement(url_at['/news/d'])).to eq(:content)
+      expect(page_links.placement(url_at['/news/e?pos=top'])).to eq(:absent)
+    end
+
+    it 'orders a story once, by its first content anchor', :aggregate_failures do
+      expect(%w[a b c d].map { page_links.content_position(url_at["/news/#{_1}?pos=latest"]) }).to eq([0, 1, 2, 3])
+      expect(page_links.content_position(url_at['/news/read.php?id=2'])).to eq(5)
+    end
+
+    it 'drops placement params from the item URL, keeps the other params', :aggregate_failures do
+      expect(page_links.without_placement(url_at['/news/a?pos=feed&utm_term=t']).to_s)
+        .to eq('https://example.com/news/a?utm_term=t')
+      expect(page_links.canonical_url(url_at['/news/a?pos=feed']).to_s).to eq('https://example.com/news/a')
+      expect(page_links.canonical_url(url_at['/news/read.php?id=2']).to_s)
+        .to eq('https://example.com/news/read.php?id=2')
+    end
+
+    it 'marks a sponsored story across the values of the param, unless an editorial card links it',
+       :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/paid?pos=other'])).to be(true)
+      expect(page_links.sponsored?(url_at['/news/promo?pos=top'])).to be(false)
+      expect(page_links.sponsored?(url_at['/news/a?pos=top'])).to be(false)
+    end
+
+    shared_examples 'a page without placement evidence' do
+      it 'keeps every param significant', :aggregate_failures do
+        expect(identity_of['/news/a?pos=top']).not_to eq(identity_of['/news/a?pos=latest'])
+        expect(page_links.without_placement(url_at['/news/a?pos=top']).to_s).to eq('https://example.com/news/a?pos=top')
+      end
+    end
+
+    context 'when the page shows no evidence' do
+      let(:html) do
+        '<html><body><main><article><a href="/news/a?pos=top">A</a></article>' \
+          '<article><a href="/news/a?pos=latest">A</a></article></main></body></html>'
+      end
+
+      it_behaves_like 'a page without placement evidence'
+    end
+
+    context 'when only chrome and peripheral links show the evidence' do
+      let(:html) do
+        links = %w[top latest].product(%w[a b c]).map { |slot, story| %(<a href="/news/#{story}?pos=#{slot}">S</a>) }
+        "<html><body><header><nav>#{links.first(3).join}</nav></header>" \
+          "<main><article><a href=\"/news/a\">A</a></article><aside>#{links.last(3).join}</aside></main></body></html>"
+      end
+
+      it_behaves_like 'a page without placement evidence'
+    end
+
+    context 'without a document' do
+      let(:document) { nil }
+      let(:link_resolver) { nil }
+
+      it 'keys by the plain article identity', :aggregate_failures do
+        url = url_at['/news/a?pos=top&utm_term=t']
+
+        expect(page_links.identity(url)).to eq(url.article_identity)
+        expect(page_links.without_placement(url)).to equal(url)
+      end
+    end
+
+    context 'with a URL that has no query' do
+      let(:document) { instance_double(Html2rss::SST::Document, index: nil, degraded: false) }
+
+      it 'does not walk the page', :aggregate_failures do
+        url = url_at['/news/a']
+
+        expect(page_links.identity(url)).to eq(url.article_identity)
+        expect(page_links.without_placement(url)).to equal(url)
+        expect(document).not_to have_received(:index)
+      end
+
+      it 'walks the page for a URL with a query' do
+        page_links.identity(url_at['/news/a?pos=top'])
+
+        expect(document).to have_received(:index)
+      end
+    end
+  end
+
   describe '#sparse?' do
     it 'is false with more than SPARSE_MAX_CONTENT_LINKS content URLs' do
       expect(page_links).not_to be_sparse

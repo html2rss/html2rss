@@ -15,6 +15,13 @@ RSpec.describe Html2rss::AutoSource::Segment do
       expect(segment).to have_attributes(root_node: node, primary_link: node, strategy: :list, position: 3)
     end
 
+    it 'defaults group_size to 1 and carries a given one', :aggregate_failures do
+      expect(described_class.build(root_node: node, strategy: :semantic, position: 0).group_size).to eq(1)
+      segment = described_class.build(root_node: node, strategy: :semantic, position: 0, group_size: 4)
+
+      expect(segment.group_size).to eq(4)
+    end
+
     it 'defaults primary_link to nil' do
       expect(described_class.build(root_node: node, strategy: :semantic, position: 0).primary_link).to be_nil
     end
@@ -51,6 +58,13 @@ RSpec.describe Html2rss::AutoSource::Segment do
         .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'unknown strategy: :bogus')
       expect { described_class.build(root_node: node, strategy: nil, position: 0) }
         .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'unknown strategy: nil')
+    end
+
+    it 'rejects a group_size that is no positive Integer', :aggregate_failures do
+      [0, -1, 1.5, nil].each do |group_size|
+        expect { described_class.build(root_node: node, strategy: :list, position: 0, group_size:) }
+          .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'group_size must be a positive Integer')
+      end
     end
 
     it 'rejects a non-Integer position', :aggregate_failures do

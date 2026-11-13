@@ -1,6 +1,20 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::LinkDestination::PathClassifier do
+  describe '#media_path?' do
+    %w[video videos vidéo vidéos vídeo vídeos podcast podcasts audio audios].each do |segment|
+      it "marks a /#{segment}/ route", :aggregate_failures do
+        expect(classifier_for(segment, 'morning-briefing-for-friday').media_path?).to be(true)
+        expect(classifier_for('news', segment, '2026', 'morning-briefing-for-friday').media_path?).to be(true)
+      end
+    end
+
+    it 'leaves article routes and look-alike words alone', :aggregate_failures do
+      expect(classifier_for('news', '2026', 'morning-briefing-for-friday').media_path?).to be(false)
+      expect(classifier_for('news', 'videogame-reviews').media_path?).to be(false)
+    end
+  end
+
   describe 'commerce / affiliate utility segments' do
     %w[
       dating jobs job career careers deals deal shopping shop trading broker
