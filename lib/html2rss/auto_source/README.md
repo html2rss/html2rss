@@ -35,6 +35,8 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
 
 Semantic leaf containers: a container holding a same-name container is a wrapper, not a card, except a `div` with exactly one heading, that heading linked, no heading inside its inner divs, and at least half of its links to the heading's destination: a card whose inner divs are info blocks (time, topic chips), so a deep grid of cards inside cards yields one item per inner card (`Segmenter::Semantic::NonLeaf`).
 
+Each `:semantic` segment carries `Segment#group_size`, the count of segments of main content sharing its structural path: the tag and folded class tokens of the card and of each ancestor (`Segmenter::Semantic`, the one owner). A list split over repeated rows or columns is one group; the same class under another container is another; a card in a peripheral landmark such as `aside`, or one linking an audio or video destination (`DestinationFacts#media_path`: a `video`, `podcast` or `audio` path segment), stays 1 and counts for no group. `SemanticHtml` ranks by score plus a bounded bonus for the group (`GROUP_BONUS_PER_DOUBLING` per doubling of the size, capped at `GROUP_BONUS_CAP`), before the `TOP_K` cap, so the main list outranks a rail or topical module of somewhat more prominent markup, while a large group of low-scoring entries (menus) never outranks real stories. Smaller groups stay, behind it.
+
 Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (cards grouped by parent; `main` is a filter), `:cluster` (class/structure grids for anchorless cards). Scoring ranks and demotes; `LinkDestination::NoisePolicy` owns content-anchor eligibility. Cleanup owns feed-item admission.
 
 ## Nokogiri vs SST boundaries

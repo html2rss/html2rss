@@ -18,11 +18,46 @@ module Html2rss
           # it, and none when a container already selected that link from inside.
           claimed = picks.filter_map { |_, link, inside| link if inside }.to_set.compare_by_identity
 
-          picks.each_with_index.filter_map do |(container, link, inside), position|
+          roots = picks.each_with_index.filter_map do |(container, link, inside), position|
             root = inside ? container : (link if claimed.add?(link))
-            Segment.build(root_node: root, primary_link: link, strategy: :semantic, position:) if root
+            [root, link, position] if root
+          end
+          build_segments(roots, segmenter)
+        end
+
+        # Each segment carries the size of its repeated-card group: the cards of main content that share
+        # its structural path (see {card_path}). A card in a peripheral landmark (aside) or one linking an
+        # audio or video destination (video, podcast) joins no group, and counts for none.
+        def self.build_segments(roots, segmenter)
+          index = segmenter.index
+          paths = roots.map { |root, link, _| groupable?(root, link, segmenter) && card_path(root, index) }
+          sizes = paths.tally
+          roots.zip(paths).map do |(root, link, position), path|
+            Segment.build(root_node: root, primary_link: link, strategy: :semantic, position:,
+                          group_size: path ? sizes.fetch(path) : 1)
           end
         end
+        private_class_method :build_segments
+
+        def self.groupable?(root, link, segmenter)
+          !segmenter.index.peripheral?(root) && !segmenter.link_resolver.destination_facts(link).media_path
+        end
+        private_class_method :groupable?
+
+        # A card's structural path: the tag and folded class tokens of the card and of each ancestor.
+        # Cards of one list share it, also when the list is split over repeated rows or columns; a
+        # sidebar rail or a topical module sits under other markup and does not, however prominent
+        # each of its items is.
+        def self.card_path(root, index)
+          path = []
+          node = root
+          while node
+            path << [node.name, Cluster.normalize_class(node.attrs.class_names)]
+            node = index.parent_of(node)
+          end
+          path
+        end
+        private_class_method :card_path
 
         # @return [Array<Array(SST::Node, SST::Node, Boolean)>] container, its primary link, link inside it
         def self.linked_containers(segmenter)

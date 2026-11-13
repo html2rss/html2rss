@@ -220,6 +220,10 @@ Enhance never invents a URL: an item's `url` comes from its own anchor `href` (f
 
 When a heading-only item or wrapping `<a>` lacks leftover description and date, extractors climb via `Navigator.parent_until_condition` / `SST::Index#parent_until`. Walk policy (`miss?` / `thin_wrapper?` / `crowded?` from heading count + distinct main hrefs) is owned by `Html2rss::Html::CardWalk`. Adapters still traverse. Capture's items-selector lift is a second job: it shares only `Navigator.usable_card_parent?` stop tags and aborts with `contains_other_root?` (listing-root set).
 
+## Semantic card-group ranking
+
+`Segmenter::Semantic` owns `Segment#group_size` (cards of main content sharing a structural path; media and peripheral cards stay 1); `Scraper::SemanticHtml.group_bonus` turns it into a bounded score bonus ranked before the `TOP_K` cap. See `lib/html2rss/auto_source/README.md`.
+
 ## DOM candidate clustering
 
 Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:cluster` strategy). Cluster sets each card's primary link via `PrimaryLink`. Group ranking weights live in `Scoring::ClusterScorer`. Sitemap discovery remains `AutoSource::Scraper::Sitemap` (XML, not heuristic HTML).

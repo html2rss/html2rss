@@ -1,0 +1,49 @@
+---
+case: 'A deep grid of cards inside cards is the main list: every inner card holds
+  its own heading link plus an info block (time, topic chip) and a thin description.
+  A smaller service rail and a regional module with more prominent article markup
+  sit before it. Every main-grid story must be an item and rank ahead of the rail
+  and module items, which fit only after the grid under the item cap.'
+expected:
+- https://example.com/local/2026/11/harbor-ferry-returns/
+- https://example.com/local/2026/11/library-weekend-hours/
+- https://example.com/local/2026/11/river-cleanup-record/
+- https://example.com/local/2026/11/school-budget-plan/
+- https://example.com/local/2026/11/night-market-opens/
+- https://example.com/local/2026/11/east-side-bike-lanes/
+- https://example.com/local/2026/11/transit-plan-adopted/
+- https://example.com/local/2026/11/stadium-roof-repairs/
+- https://example.com/local/2026/11/clinic-opens-early/
+- https://example.com/local/2026/11/bridge-inspection-done/
+- https://example.com/local/2026/11/orchard-harvest-festival/
+- https://example.com/local/2026/11/recycling-pickup-change/
+- https://example.com/local/2026/11/museum-night-hours/
+- https://example.com/local/2026/11/water-main-upgrade/
+- https://example.com/local/2026/11/youth-chess-champions/
+- https://example.com/local/2026/11/community-garden-grows/
+- https://example.com/local/2026/11/ferry-terminal-reopens/
+- https://example.com/local/2026/11/winter-shelter-ready/
+- https://example.com/local/2026/11/senior-center-lunch/
+- https://example.com/local/2026/11/lighthouse-tours-return/
+- https://example.com/local/2026/11/post-office-new-hours/
+- https://example.com/local/2026/11/skate-park-expansion/
+- https://example.com/local/2026/11/bakery-festival-queue/
+- https://example.com/local/2026/11/tram-line-test-run/
+- https://example.com/local/2026/11/canal-boat-season/
+- https://example.com/regional/2026/11/coast-tide-tables/
+- https://example.com/regional/2026/11/valley-bus-extension/
+- https://example.com/regional/2026/11/hills-trail-reopens/
+- https://example.com/regional/2026/11/plains-wheat-yield/
+- https://example.com/regional/2026/11/islands-ferry-fares/
+- https://example.com/regional/2026/11/delta-flood-gates/
+- https://example.com/regional/2026/11/ridge-wind-farm/
+- https://example.com/service/2026/11/rail-weather-outlook/
+- https://example.com/service/2026/11/rail-parking-rules/
+- https://example.com/service/2026/11/rail-farmers-market/
+- https://example.com/service/2026/11/rail-pool-schedule/
+- https://example.com/service/2026/11/rail-leaf-collection/
+titles:
+  https://example.com/local/2026/11/harbor-ferry-returns/: Harbor ferry route returns
+    after a long repair season
+  https://example.com/local/2026/11/canal-boat-season/: Canal boat season ends with
+    record ticket sales

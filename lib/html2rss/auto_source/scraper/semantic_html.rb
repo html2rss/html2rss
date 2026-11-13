@@ -10,6 +10,10 @@ module Html2rss
 
         # Maximum articles materialized after ranking.
         TOP_K = Scoring::Engine::TOP_K
+        # Score bonus per doubling of the repeated-card group size.
+        GROUP_BONUS_PER_DOUBLING = 3.0
+        # Ceiling of the repeated-card group score bonus.
+        GROUP_BONUS_CAP = 15.0
 
         ##
         # @return [Symbol] config key used to enable or configure this scraper
@@ -19,6 +23,17 @@ module Html2rss
         # @param _opts [Hash] unused options
         # @return [Integer]
         def self.request_slots(_opts = {}) = 0
+
+        ##
+        # A bounded score bonus for the size of the repeated-card group a segment belongs to: the main
+        # list is the largest group, so it outranks a rail or topical module of similar score, while a
+        # large group of low-scoring cards (menu entries) never outranks real stories.
+        #
+        # @param group_size [Integer]
+        # @return [Float]
+        def self.group_bonus(group_size)
+          [GROUP_BONUS_CAP, GROUP_BONUS_PER_DOUBLING * Math.log2(group_size)].min
+        end
 
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
         # @return [Boolean] true when at least one semantic container has an eligible anchor
@@ -75,7 +90,15 @@ module Html2rss
             strategy: :semantic,
             link_resolver:
           )
-          Scoring::Engine.new(link_resolver:).rank_top(segments, limit: TOP_K)
+          ranked = Scoring::Engine.new(link_resolver:).rank_top(segments, limit: segments.size)
+          group_ranked(ranked).first(TOP_K)
+        end
+
+        # Score plus group bonus, document order on ties; the bonus lets the main list lead.
+        def group_ranked(ranked)
+          ranked.sort_by.with_index do |entry, rank|
+            [-(entry.final_score + self.class.group_bonus(entry.segment.group_size)), rank]
+          end
         end
 
         def link_resolver
