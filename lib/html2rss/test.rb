@@ -329,7 +329,7 @@ module Html2rss
       return report unless dropped.positive?
 
       QualityReport.new(
-        warnings: (report.warnings + [:items_without_url]).uniq.freeze,
+        warnings: (report.warnings + [:items_without_url]).freeze,
         metrics: report.metrics.merge(items_without_url: dropped),
         native_feed: report.native_feed,
         defer_reason: report.defer_reason

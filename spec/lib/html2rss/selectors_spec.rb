@@ -114,25 +114,46 @@ RSpec.describe Html2rss::Selectors do
 
         expect(instance.admission_drops).to eq('missing_url' => 1)
       end
-
-      it 'yields every item as an enhance pair by default' do
-        expect(instance.each_enhance_pair.count).to eq(2)
-      end
-
-      it 'leaves the unlinked item out of the enhance pairs when linked_only', :aggregate_failures do
-        pairs = instance.each_enhance_pair(linked_only: true).to_a
-
-        expect(pairs.size).to eq(1)
-        expect(pairs.first.last['id']).to eq('story-8')
-      end
     end
 
+    it 'returns an Enumerator over the articles if no block is given', :aggregate_failures do
+      selectors[:url] = { selector: 'a', extractor: 'href' }
+
+      expect(instance.each).to be_a(Enumerator)
+      expect(instance.each.map(&:title)).to eq(%w[article1 article2])
+    end
+
+    it 'counts the dropped items of the last iteration only' do
+      selectors[:url] = { selector: 'a.missing' }
+      2.times { instance.each.to_a }
+
+      expect(instance.admission_drops).to eq('missing_url' => 2)
+    end
+
+    it 'tags each article with the Selectors scraper' do
+      selectors[:url] = { selector: 'a', extractor: 'href' }
+
+      expect(instance.each.map(&:scraper)).to all(eq(described_class))
+    end
+
+    it 'yields the articles to given block' do
+      selectors[:url] = { selector: 'a', extractor: 'href' }
+
+      expect { |b| instance.each(&b) }.to yield_successive_args(
+        Html2rss::Article,
+        Html2rss::Article
+      )
+    end
+  end
+
+  describe '#admission_drops' do
     context 'when every item is linked' do
       it 'reports no admission drops', :aggregate_failures do
         selectors[:url] = { selector: 'a', extractor: 'href' }
         instance.articles
 
         expect(instance.admission_drops).to eq({})
+        expect(instance.admission_drops).to be_frozen
       end
     end
 
@@ -142,6 +163,7 @@ RSpec.describe Html2rss::Selectors do
       it 'drops each item and tallies them', :aggregate_failures do
         expect(instance.articles).to be_empty
         expect(instance.admission_drops).to eq('missing_url' => 2)
+        expect(instance.admission_drops).to be_frozen
       end
 
       it 'restarts the tally on a second iteration' do
@@ -149,6 +171,18 @@ RSpec.describe Html2rss::Selectors do
         instance.each.to_a
 
         expect(instance.admission_drops).to eq('missing_url' => 2)
+      end
+    end
+  end
+
+  describe '#resolve_url_value' do
+    context 'when the url selector is an href extractor' do
+      it 'does not resolve the already absolute url again', :aggregate_failures do
+        selectors[:url] = { selector: 'a', extractor: 'href' }
+        allow(Html2rss::Url).to receive(:resolve_web).and_call_original
+
+        expect(instance.articles.map { _1.url.to_s }).to eq(%w[http://example.com/article1 http://example.com/article2])
+        expect(Html2rss::Url).not_to have_received(:resolve_web)
       end
     end
 
@@ -181,28 +215,6 @@ RSpec.describe Html2rss::Selectors do
       it 'passes it on unresolved' do
         expect(instance.articles.first.url.to_s).to eq('mailto:a@example.com')
       end
-    end
-
-    it 'returns an Enumerator over the articles if no block is given', :aggregate_failures do
-      selectors[:url] = { selector: 'a', extractor: 'href' }
-
-      expect(instance.each).to be_a(Enumerator)
-      expect(instance.each.map(&:title)).to eq(%w[article1 article2])
-    end
-
-    it 'tags each article with the Selectors scraper' do
-      selectors[:url] = { selector: 'a', extractor: 'href' }
-
-      expect(instance.each.map(&:scraper)).to all(eq(described_class))
-    end
-
-    it 'yields the articles to given block' do
-      selectors[:url] = { selector: 'a', extractor: 'href' }
-
-      expect { |b| instance.each(&b) }.to yield_successive_args(
-        Html2rss::Article,
-        Html2rss::Article
-      )
     end
   end
 
@@ -380,6 +392,39 @@ RSpec.describe Html2rss::Selectors do
   end
 
   describe '#each_enhance_pair' do
+    context 'when an item has no resolvable link' do
+      let(:selectors) { { items: { selector: 'article', enhance: true } } }
+      let(:body) do
+        <<~HTML
+          <html><body>
+            <article id="story-7"><h1>Id Only Article</h1><p>Teaser text</p></article>
+            <article id="story-8"><h1>Linked Article</h1><a href="/linked#frag">More</a></article>
+          </body></html>
+        HTML
+      end
+
+      it 'leaves the yielded baseline without the enhanced keys' do
+        baseline, enhanced, = instance.each_enhance_pair.first
+
+        expect(enhanced.keys - baseline.keys).not_to be_empty
+      end
+
+      it 'yields every item as an enhance pair by default' do
+        expect(instance.each_enhance_pair.count).to eq(2)
+      end
+
+      it 'leaves the unlinked item out of the enhance pairs when linked_only', :aggregate_failures do
+        pairs = instance.each_enhance_pair(linked_only: true).to_a
+
+        expect(pairs.size).to eq(1)
+        expect(pairs.first.last['id']).to eq('story-8')
+      end
+
+      it 'keeps the linked_only choice on the returned enumerator' do
+        expect(instance.each_enhance_pair(linked_only: true).count).to eq(1)
+      end
+    end
+
     before { selectors[:items][:enhance] = true }
 
     it 'enhances empty baselines with semantic extraction', :aggregate_failures do

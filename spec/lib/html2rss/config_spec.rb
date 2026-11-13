@@ -94,8 +94,11 @@ RSpec.describe Html2rss::Config do
 
     context 'when the file is not valid YAML' do
       it 'raises InvalidConfig' do
-        expect { described_class.load_yaml(write_yaml.call('bad.yml', "a: [\n")) }
-          .to raise_error(Html2rss::Config::InvalidConfig, /could not be parsed/)
+        path = write_yaml.call('bad.yml', "a: [\n")
+
+        expect { described_class.load_yaml(path) }
+          .to raise_error(Html2rss::Config::InvalidConfig,
+                          /File '#{Regexp.escape(path)}' could not be parsed: .*did not find expected node/m)
       end
     end
 
@@ -221,7 +224,7 @@ RSpec.describe Html2rss::Config do
 
     it 'reports a YAML syntax error as InvalidConfig' do
       expect { described_class.from_yaml("a: [\n") }
-        .to raise_error(Html2rss::Config::InvalidConfig, /YAML could not be parsed/)
+        .to raise_error(Html2rss::Config::InvalidConfig, /YAML could not be parsed: .*did not find expected node/m)
     end
 
     it 'reports a non-string key as InvalidConfig' do

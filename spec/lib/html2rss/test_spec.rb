@@ -690,6 +690,44 @@ RSpec.describe Html2rss::Test do
         expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
       end
     end
+
+    describe '.append_items_without_url_warning' do
+      let(:native) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
+      let(:pipeline_outcome) do
+        instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:, admission_drops: { 'missing_url' => 2 })
+      end
+
+      before { allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(native) }
+
+      it 'adds the warning and count to the report and keeps the rest of it', :aggregate_failures do
+        result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:)
+
+        expect(result).to have_attributes(
+          warnings: %i[native_feed_present items_without_url w_one duplicate_urls],
+          native_feed: 'https://example.com/feed.xml', defer_reason: :native_feed
+        )
+        expect(result.warnings).to be_frozen
+        expect(result.metrics).to include(items_without_url: 2)
+      end
+
+      context 'when enhance is off' do
+        let(:enhance) { false }
+
+        it 'returns a frozen warnings list' do
+          result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:)
+
+          expect(result.warnings).to be_frozen
+        end
+      end
+
+      it 'ignores other drop reasons', :aggregate_failures do
+        allow(pipeline_outcome).to receive(:admission_drops).and_return('sponsored' => 4)
+        result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:)
+
+        expect(result.warnings).not_to include(:items_without_url)
+        expect(result.metrics).not_to have_key(:items_without_url)
+      end
+    end
   end
 end
 

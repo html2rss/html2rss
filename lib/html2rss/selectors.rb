@@ -89,7 +89,7 @@ module Html2rss
     # @yield [article] Gives each article as an Html2rss::Article.
     # @return [Enumerator] An enumerator if no block is given.
     def each(&)
-      return enum_for(:each) unless block_given?
+      return enum_for unless block_given?
 
       enhance = enhance?
       @unlinked_count = 0
@@ -207,7 +207,7 @@ module Html2rss
       end
     end
 
-    def build_article(article_hash) = Html2rss::Article.new(**article_hash, scraper: self.class)
+    def build_article(article_hash) = Article.new(**article_hash, scraper: self.class)
 
     def extract_article(item)
       scope = item_env_for(item, @url)

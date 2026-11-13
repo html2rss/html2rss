@@ -583,6 +583,66 @@ RSpec.describe Html2rss::FeedPipeline do
       expect(extraction.admission_drops).to eq('missing_url' => 2)
     end
 
+    describe '#selector_articles' do
+      let(:selector_config) do
+        Html2rss::Config.from_hash(
+          { channel: { url: 'https://example.com/news', time_zone: 'Europe/Berlin' }, strategy: :default,
+            selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a' } } }
+        )
+      end
+      let(:html) { '<article><h1>A</h1><a href="/a">a</a></article>' }
+      let(:session) { instance_double(Html2rss::RequestSession) }
+
+      it 'extracts nothing for a feed response', :aggregate_failures do
+        response = build_response.call(body: '<rss version="2.0"><channel></channel></rss>',
+                                       headers: { 'content-type' => 'application/rss+xml' })
+        extraction = described_class.new({}).extract(config: selector_config, response:, request_session: session)
+
+        expect(extraction.articles).to eq([])
+        expect(extraction.admission_drops).to eq({})
+      end
+
+      it 'extracts nothing without selectors', :aggregate_failures do
+        config = Html2rss::Config.from_hash({ channel: { url: 'https://example.com/news' }, auto_source: {} })
+        allow(Html2rss::AutoSource).to receive(:new).and_return(
+          instance_double(Html2rss::AutoSource, articles: [], admission_drops: {}, feed_channel: nil)
+        )
+        extraction = described_class.new({}).extract(config:, response: build_response.call(body: html),
+                                                     request_session: session)
+
+        expect(extraction.articles).to eq([])
+      end
+
+      it 'builds the selectors with the configured time zone' do
+        response = build_response.call(body: html)
+        allow(session).to receive(:page_responses).and_return([response])
+        allow(Html2rss::Selectors).to receive(:new).and_call_original
+        described_class.new({}).extract(config: selector_config, response:, request_session: session)
+
+        expect(Html2rss::Selectors).to have_received(:new).with(response, selectors: selector_config.selectors,
+                                                                          time_zone: 'Europe/Berlin')
+      end
+    end
+
+    describe '#collect_articles' do
+      it 'sums selector and auto-source drops of the same reason', :aggregate_failures do
+        config = Html2rss::Config.from_hash(
+          { channel: { url: 'https://example.com/news' }, strategy: :default,
+            selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a.missing' } },
+            auto_source: {} }
+        )
+        response = build_response.call(body: '<article><h1>A</h1></article>')
+        allow(Html2rss::AutoSource).to receive(:new).and_return(
+          instance_double(Html2rss::AutoSource, articles: [], admission_drops: { 'missing_url' => 2, 'sponsored' => 1 },
+                                                feed_channel: nil)
+        )
+        session = instance_double(Html2rss::RequestSession, page_responses: [response])
+        extraction = described_class.new({}).extract(config:, response:, request_session: session)
+
+        expect(extraction.admission_drops).to eq('missing_url' => 3, 'sponsored' => 1)
+      end
+    end
+
     it 'extracts the AutoSource admission drops and feed channel facts with the articles' do # rubocop:disable RSpec/ExampleLength
       facts = Html2rss::Syndication::ChannelFacts.new(author: 'Feed Author')
       source = instance_double(Html2rss::AutoSource, articles: [], admission_drops: { 'sponsored' => 1 },
