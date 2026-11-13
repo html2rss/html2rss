@@ -111,9 +111,9 @@ module Html2rss
       # @param bytes_length [Integer, nil] enclosure length in bytes; nil when unknown
       # @param duration [Integer, nil] playback length in seconds, kept only for an audio or video file ({#media?});
       #   nil (or not positive) when unknown
-      # @raise [InvalidError] when the URL is not an absolute http(s) URL or the kind is unknown
       # @param kind [Symbol, nil] +:audio+, +:video+ or +:image+ when its source proves the file's kind
       #   ({KIND_TYPES}); nil when unknown
+      # @raise [InvalidError] when the URL is not an absolute http(s) URL or the kind is unknown
       def initialize(url:, type: nil, bytes_length: nil, duration: nil, kind: nil)
         raise InvalidError, 'An Enclosure requires an absolute http(s) URL' unless url&.web?
 
