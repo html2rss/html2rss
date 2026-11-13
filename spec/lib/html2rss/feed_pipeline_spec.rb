@@ -583,6 +583,21 @@ RSpec.describe Html2rss::FeedPipeline do
       expect(extraction.admission_drops).to eq('missing_url' => 2)
     end
 
+    it 'keeps paginating past an empty first page', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      config = Html2rss::Config.from_hash(
+        { channel: { url: 'https://example.com/news' }, strategy: :default,
+          selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a' } } }
+      )
+      page1 = build_response.call(body: '<div>No items</div>')
+      page2 = build_response.call(body: '<article><h1>A</h1><a href="/a">a</a></article>',
+                                  url: 'https://example.com/news?page=2')
+      session = instance_double(Html2rss::RequestSession, page_responses: [page1, page2])
+      extraction = described_class.new({}).extract(config:, response: page1, request_session: session)
+
+      expect(extraction.articles.size).to eq(1)
+      expect(extraction.admission_drops).to eq({})
+    end
+
     it 'tallies the unlinked items of a page that ends pagination', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       config = Html2rss::Config.from_hash(
         { channel: { url: 'https://example.com/news' }, strategy: :default,
