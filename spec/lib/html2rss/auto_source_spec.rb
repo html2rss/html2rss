@@ -820,6 +820,13 @@ RSpec.describe Html2rss::AutoSource do
                                                             )
         )
       end
+      let(:quarantine_log) do
+        {
+          event_name: 'auto_source.quarantined', host: url.host, error_class: 'ArgumentError',
+          message: 'Html2rss::AutoSource: Html2rss::AutoSource::Scraper::Schema quarantined ArgumentError: ' \
+                   'bad structured payload'
+        }.to_json
+      end
 
       before do
         allow(Html2rss::Log).to receive(:warn)
@@ -835,7 +842,7 @@ RSpec.describe Html2rss::AutoSource do
       it 'quarantines ArgumentError and continues the tier', :aggregate_failures do
         expect(articles.size).to eq(1)
         expect(articles.first.scraper).to eq(Html2rss::AutoSource::Scraper::SemanticHtml)
-        expect(Html2rss::Log).to have_received(:warn).with(/quarantined ArgumentError/)
+        expect(Html2rss::Log).to have_received(:warn).with(quarantine_log)
       end
     end
 

@@ -4,6 +4,10 @@ RSpec.describe Html2rss::AutoSource::Segment do
   let(:node) { document_for('<html><body><a href="/one">One headline</a></body></html>').index.each_node.first }
   let(:subclassed_node) { Class.new(node.class).allocate }
 
+  it 'returns a known strategy unchanged for the Segmenter to keep' do
+    expect(described_class::STRATEGIES.map { described_class.strategy!(_1) }).to eq(described_class::STRATEGIES.to_a)
+  end
+
   describe '.build' do
     it 'builds a segment carrying every field' do
       segment = described_class.build(root_node: node, primary_link: node, strategy: :list, position: 3)

@@ -154,8 +154,11 @@ RSpec.describe Html2rss::Defaults do
       expect { config.min_ttl = -10 }.to raise_error(Html2rss::InvalidOption, /must be a positive integer/)
     end
 
-    it 'raises InvalidOption for invalid types' do
-      expect { config.min_ttl = 'abc' }.to raise_error(Html2rss::InvalidOption, /must be a positive integer/)
+    it 'raises InvalidOption naming the rejected value', :aggregate_failures do
+      expect { config.min_ttl = 'abc' }
+        .to raise_error(Html2rss::InvalidOption, 'min_ttl must be a positive integer, got "abc"')
+      expect { config.min_ttl = [] }
+        .to raise_error(Html2rss::InvalidOption, 'min_ttl must be a positive integer, got []')
     end
   end
 
