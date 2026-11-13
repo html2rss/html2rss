@@ -31,7 +31,7 @@ module RuboCop
           node.resbody_branches.each do |resbody|
             reraises = reraises?(resbody)
             guarded ||= reraises && catches?(resbody, GUARDS)
-            add_offense(resbody.loc.keyword) if !guarded && !reraises && catches?(resbody, BROAD)
+            add_offense(resbody.loc.keyword) if !guarded && catches?(resbody, BROAD)
           end
         end
 
@@ -70,7 +70,7 @@ module RuboCop
         def own_variable?(resbody, raise_node)
           variable = resbody.exception_variable
           argument = raise_node.first_argument
-          raise_node.arguments.one? && variable&.lvasgn_type? && argument.lvar_type? &&
+          raise_node.arguments.one? && variable && argument.lvar_type? &&
             argument.children.first == variable.children.first
         end
       end

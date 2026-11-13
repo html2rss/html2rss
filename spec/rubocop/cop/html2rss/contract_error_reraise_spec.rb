@@ -155,6 +155,83 @@ RSpec.describe RuboCop::Cop::Html2rss::ContractErrorReraise, :config do
       RUBY
     end
 
+    it 'registers an offense for an empty clause body' do
+      expect_offense(<<~RUBY)
+        begin
+          work
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+        end
+      RUBY
+    end
+
+    it 'registers an offense when an earlier re-raising clause names only narrow classes' do
+      expect_offense(<<~RUBY)
+        begin
+          work
+        rescue KeyError
+          raise
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+      RUBY
+    end
+
+    it 'registers an offense when the re-raised value is not the rescued variable' do
+      expect_offense(<<~RUBY)
+        begin
+          work
+        rescue Html2rss::ContractError => error
+          other = error.cause
+          raise other
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+        begin
+          work
+        rescue Html2rss::ContractError
+          raise error
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+        begin
+          work
+        rescue Html2rss::ContractError => error
+          raise error, 'wrapped'
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+        begin
+          work
+        rescue Html2rss::ContractError => error
+          raise :error
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+        begin
+          work
+        rescue Html2rss::ContractError
+          other.raise
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+        begin
+          work
+        rescue Html2rss::ContractError
+          raise Html2rss::Error
+        rescue Html2rss::Error
+        ^^^^^^ #{message}
+          nil
+        end
+      RUBY
+    end
+
     it 'registers an offense when a guard in a different begin does not cover the clause' do
       expect_offense(<<~RUBY)
         begin
@@ -274,6 +351,8 @@ RSpec.describe RuboCop::Cop::Html2rss::ContractErrorReraise, :config do
         rescue Html2rss::ContractError
           nil
         rescue Zlib::Error, RSS::Error, Foo::StandardError, Other::Html2rss::Error
+          nil
+        rescue self::Error, namespace::StandardError, build(1)::Error
           nil
         rescue *OPERATIONAL_ERRORS
           nil
