@@ -484,22 +484,22 @@ RSpec.describe Html2rss::Config do
       end
     end
 
-    it 'does not swallow an IssueMapper InvalidOption as a soft :parse issue' do
+    it 'does not swallow an IssueMapper InvalidError as a soft :parse issue' do
       allow(described_class::IssueMapper).to receive(:from).and_raise(
-        Html2rss::InvalidOption, 'unmapped Dry validation predicate: :boom?'
+        Html2rss::Config::IssueMapper::InvalidError, 'unmapped Dry validation predicate: :boom?'
       )
 
       expect { described_class.resolve_and_validate(config) }
-        .to raise_error(Html2rss::InvalidOption, /unmapped Dry validation predicate/)
+        .to raise_error(Html2rss::ContractError, /unmapped Dry validation predicate/)
     end
 
-    it 'surfaces an IssueMapper InvalidOption through Html2rss.validate' do
+    it 'surfaces an IssueMapper InvalidError through Html2rss.validate' do
       allow(described_class::IssueMapper).to receive(:from).and_raise(
-        Html2rss::InvalidOption, 'unmapped Dry validation predicate: :boom?'
+        Html2rss::Config::IssueMapper::InvalidError, 'unmapped Dry validation predicate: :boom?'
       )
 
       expect { Html2rss.validate(config) }
-        .to raise_error(Html2rss::InvalidOption, /unmapped Dry validation predicate/)
+        .to raise_error(Html2rss::ContractError, /unmapped Dry validation predicate/)
     end
   end
 

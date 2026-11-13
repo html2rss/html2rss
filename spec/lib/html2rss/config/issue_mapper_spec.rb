@@ -160,7 +160,7 @@ RSpec.describe Html2rss::Config::IssueMapper do
       dry = instance_double(Dry::Validation::Result, success?: false, errors: [message])
 
       expect { described_class.from(dry, values: {}) }
-        .to raise_error(Html2rss::InvalidOption, /unmapped Dry validation predicate: :never_heard_of\?/)
+        .to raise_error(Html2rss::Config::IssueMapper::InvalidError, /unmapped Dry validation predicate: :never_heard_of\?/)
     end
   end
 

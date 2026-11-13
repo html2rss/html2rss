@@ -11,6 +11,9 @@ module Html2rss
     # introspection SoT (+for+ / +expectation_for+); {SchemaExport} maps Ruby
     # types to JSON Schema only.
     class OptionSpec
+      # Raised when an extractor/post-processor +OPTIONS+ declares a type with no JSON Schema mapping.
+      class InvalidError < Html2rss::ContractError; end
+
       # Maps Ruby option types to JSON Schema +type+ strings.
       RUBY_TO_JSON_TYPE = {
         String => 'string',
@@ -83,7 +86,7 @@ module Html2rss
           when Array then ruby_type.map { |t| json_type_for(t) }
           else
             RUBY_TO_JSON_TYPE.fetch(ruby_type) do
-              raise InvalidOption, "unsupported OPTIONS type mapping for #{ruby_type}"
+              raise InvalidError, "unsupported OPTIONS type mapping for #{ruby_type}"
             end
           end
         end

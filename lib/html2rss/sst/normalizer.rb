@@ -62,9 +62,9 @@ module Html2rss
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
         #   HTML string or already-parsed node (String is parsed once here)
         # @return [Document, nil] +nil+ when no SST nodes survive normalization
-        # @raise [InvalidOption] when input is nil or unsupported
+        # @raise [InvalidError] when input is nil or unsupported
         def call(input)
-          raise InvalidOption, 'input is required' if input.nil?
+          raise InvalidError, 'input is required' if input.nil?
 
           new(coerce(input)).call
         end
@@ -78,7 +78,7 @@ module Html2rss
           when String then Nokogiri::HTML(input)
           when Nokogiri::XML::Node then input
           else
-            raise InvalidOption, "expected String or Nokogiri::XML::Node, got #{input.class}"
+            raise InvalidError, "expected String or Nokogiri::XML::Node, got #{input.class}"
           end
         end
       end
