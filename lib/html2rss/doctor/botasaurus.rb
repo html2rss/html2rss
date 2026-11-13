@@ -68,12 +68,12 @@ module Html2rss
       # @param base_url [String]
       # @return [Hash{Symbol => Object}]
       def self.health_check(base_url)
-        endpoint = "#{Url.for_channel(base_url).to_s.chomp('/')}/health"
-        response = health_session.get(endpoint)
+        response = health_session.get("#{Url.for_channel(base_url).to_s.chomp('/')}/health")
         raise response.error if response.is_a?(HTTPX::ErrorResponse)
 
         body = JSON.parse(response.body.to_s)
-        { ok: response.status == 200, status: response.status, version: body['version'] }
+        status = response.status
+        { ok: status == 200, status:, version: body['version'] }
       rescue Html2rss::ContractError
         raise
       rescue StandardError => error

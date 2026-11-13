@@ -54,7 +54,7 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
     end
 
     it 'propagates contract errors from the health request' do
-      allow(Html2rss::Url).to receive(:for_channel).and_raise(Html2rss::Url::InvalidError)
+      allow(Html2rss::Url).to receive(:for_channel).and_raise(Html2rss::RequestService::Context::InvalidError)
 
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
         expect { described_class.call }.to raise_error(Html2rss::ContractError)
