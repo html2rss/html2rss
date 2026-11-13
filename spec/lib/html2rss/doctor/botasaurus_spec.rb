@@ -103,5 +103,16 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
         expect(result.checks.last.detail[:error]).to include('scrape timeout')
       end
     end
+
+    it 'propagates contract errors from the sample scrape' do # rubocop:disable RSpec/ExampleLength -- stubs for health and scrape
+      stub_request(:get, 'http://127.0.0.1:4010/health')
+        .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
+      allow(Html2rss::PageRecon::Diagnostics).to receive(:call)
+        .and_raise(Html2rss::RequestService::Context::InvalidError)
+
+      ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
+        expect { described_class.call(sample_url: 'https://example.com') }.to raise_error(Html2rss::ContractError)
+      end
+    end
   end
 end

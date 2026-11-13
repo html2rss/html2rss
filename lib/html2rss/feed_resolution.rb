@@ -123,7 +123,7 @@ module Html2rss
       rescue RequestService::RequestBudgetExceeded
         log_budget_exhausted
         nil
-      rescue *NON_FALLBACK_ERRORS
+      rescue *NON_FALLBACK_ERRORS, Html2rss::ContractError
         raise
       rescue Html2rss::Error => error
         log_retry_failed(error)

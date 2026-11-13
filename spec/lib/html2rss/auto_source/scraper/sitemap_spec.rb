@@ -201,6 +201,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
                               'error_class' => 'Html2rss::Error',
                               'message' => "#{described_class}: failed to fetch sitemap (Html2rss::Error: boom)" }])
     end
+
+    it 'propagates contract errors raised by the fetch' do
+      session = instance_double(Html2rss::RequestSession)
+      allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::Context::InvalidError)
+      scraper = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session)
+
+      expect { scraper.to_a }.to raise_error(Html2rss::ContractError)
+    end
   end
 
   describe '#target_sitemap_url' do

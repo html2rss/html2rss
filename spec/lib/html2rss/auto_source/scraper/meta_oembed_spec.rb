@@ -392,6 +392,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
       end
     end
 
+    context 'when the oEmbed fetch raises a contract error' do
+      subject(:scraper) { described_class.new(parsed_body, url:, request_session:) }
+
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <html><head><link rel="alternate" type="application/json+oembed" href="https://example.com/oembed.json"></head></html>
+        HTML
+      end
+
+      before { allow(request_session).to receive(:follow_up).and_raise(Html2rss::RequestService::Context::InvalidError) }
+
+      it 'propagates instead of logging a fetch failure' do
+        expect { scraper.to_a }.to raise_error(Html2rss::ContractError)
+      end
+    end
+
     context 'when page has OpenGraph meta tags' do
       subject(:scraper) { described_class.new(parsed_body, url:) }
 

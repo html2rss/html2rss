@@ -253,6 +253,14 @@ RSpec.describe Html2rss::FeedResolution do
       expect { apply_outcome }.to raise_error(Html2rss::RequestService::InvalidUrl)
     end
 
+    it 're-raises contract errors from the retry' do
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(retry_session).to receive(:fetch_initial_response)
+        .and_raise(Html2rss::RequestService::Context::InvalidError)
+
+      expect { apply_outcome }.to raise_error(Html2rss::ContractError)
+    end
+
     it 'returns nil when the retry raises a generic error', :aggregate_failures do
       log = StringIO.new
       Html2rss.logger = Logger.new(log)

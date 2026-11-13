@@ -136,7 +136,7 @@ module Html2rss
 
           response = request_session.follow_up(url: target_url, relation: :auto_source, origin_url: url)
           response&.body
-        rescue Html2rss::RequestService::RequestBudgetExceeded
+        rescue Html2rss::RequestService::RequestBudgetExceeded, Html2rss::ContractError
           raise
         rescue Html2rss::Error => error
           Log.warn({

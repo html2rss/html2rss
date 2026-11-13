@@ -29,6 +29,8 @@ module Html2rss
           origin_url:
         )
         score_response(response)
+      rescue Html2rss::ContractError
+        raise
       rescue Html2rss::Error
         nil
       end

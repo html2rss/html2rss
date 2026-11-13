@@ -423,6 +423,20 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       end
     end
 
+    context 'when default raises a contract error' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:strategy_results) do
+        {
+          default: Html2rss::RequestService::Context::InvalidError.new('bad context'),
+          botasaurus: item_response
+        }
+      end
+
+      it 'propagates instead of falling back', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::ContractError)
+        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
+      end
+    end
+
     context 'when the session cannot be opened' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       before { allow(pipeline).to receive(:request_session_for).and_raise(RuntimeError, 'no session') }
 

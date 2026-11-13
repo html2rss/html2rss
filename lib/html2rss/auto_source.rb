@@ -25,7 +25,8 @@ module Html2rss
     # Raised when a scraper yields an item that is neither an Article nor a Hash (a scraper bug).
     class ScraperContractError < Html2rss::ContractError; end
 
-    # Operational scraper failures quarantined within a tier; programmer errors propagate.
+    # Operational scraper failures quarantined within a tier; programmer errors (including any
+    # {Html2rss::ContractError}) propagate.
     # +ArgumentError+ stays for stdlib raises on publisher bytes (e.g. +invalid byte sequence+ after
     # +CGI.unescapeHTML+ of a surrogate entity); lib raises are {Html2rss::Error} (CONTEXT.md § Error handling).
     OPERATIONAL_ERRORS = [
@@ -327,7 +328,7 @@ module Html2rss
 
     def run_scraper(instance)
       instance.map { |item| article_from_scraper_item(item, instance) }
-    rescue ScraperContractError
+    rescue ContractError
       raise
     rescue *OPERATIONAL_ERRORS => error
       Log.warn({

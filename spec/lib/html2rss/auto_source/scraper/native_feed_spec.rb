@@ -138,6 +138,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       )
     end
 
+    it 'propagates contract errors raised by discovery' do
+      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response).and_raise(Html2rss::RequestService::Context::InvalidError)
+
+      expect { scraper.to_a }.to raise_error(Html2rss::ContractError)
+    end
+
     it 'does not run discovery without a request session', :aggregate_failures do
       allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response)
 

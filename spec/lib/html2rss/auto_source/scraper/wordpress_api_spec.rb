@@ -200,6 +200,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         expect(Html2rss::Log).to have_received(:warn).with(a_string_including(*fragments))
       end
     end
+
+    context 'when the posts request raises a contract error' do
+      before { allow(request_session).to receive(:follow_up).and_raise(Html2rss::RequestService::Context::InvalidError) }
+
+      it 'propagates instead of logging a fetch failure' do
+        expect { articles }.to raise_error(Html2rss::ContractError)
+      end
+    end
   end
 
   describe '#each' do

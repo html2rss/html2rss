@@ -374,6 +374,12 @@ RSpec.describe Html2rss::Test do
         expect(result.quality_report.native_feed).to be_nil
       end
 
+      it 'propagates a discovery contract error' do
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_raise(Html2rss::RequestService::Context::InvalidError)
+
+        expect { described_class.call(valid_config) }.to raise_error(Html2rss::ContractError)
+      end
+
       it 'reports the exact result when execution fails', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(10.0, 12.34567)
         allow(Html2rss::FeedPipeline).to receive(:new).and_raise(Html2rss::Error, 'network failure')
@@ -452,6 +458,18 @@ RSpec.describe Html2rss::Test do
         expect(result.error_message).to include('network failure')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:execution])
         expect(result.response_body).to be_nil
+      end
+    end
+
+    context 'when live extraction raises a contract error' do
+      before do
+        pipeline = instance_double(Html2rss::FeedPipeline)
+        allow(pipeline).to receive(:to_outcome_and_result).and_raise(Html2rss::RequestService::Context::InvalidError)
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
+      end
+
+      it 'propagates instead of returning a failed Test::Result' do
+        expect { described_class.call(valid_config) }.to raise_error(Html2rss::ContractError)
       end
     end
 

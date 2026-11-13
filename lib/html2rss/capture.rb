@@ -176,6 +176,8 @@ module Html2rss
 
     def probe_native_feed(response)
       Syndication::Discovery.native_feed_url(response:, request_session: discovery_session)&.to_s
+    rescue Html2rss::ContractError
+      raise
     rescue Html2rss::Error
       nil
     end
@@ -454,6 +456,8 @@ module Html2rss
 
     def channel_title_from(response)
       Channel.from_response(response).title
+    rescue Html2rss::ContractError
+      raise
     rescue Html2rss::Error
       nil
     end

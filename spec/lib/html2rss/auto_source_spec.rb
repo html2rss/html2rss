@@ -900,6 +900,16 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when a scraper raises a non-scraper contract error' do
+      include_context 'with a lone Schema scraper'
+
+      let(:schema_each) { proc { raise Html2rss::Status::InvalidError } }
+
+      it 'propagates instead of quarantining the scraper' do
+        expect { articles }.to raise_error(Html2rss::Status::InvalidError)
+      end
+    end
+
     context 'when the listing is wrapping a.card links (synthetic news shape)' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/daily-briefing') }
       let(:body) do

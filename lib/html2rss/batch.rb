@@ -125,6 +125,8 @@ module Html2rss
           url: url.to_s, ok: true, items_count: wire[:items].size,
           items: wire[:items], channel_title: wire[:channel_title]
         }
+      rescue Html2rss::ContractError
+        raise
       rescue Html2rss::Error => error
         { url: url.to_s, ok: false, error: error.message }
       end

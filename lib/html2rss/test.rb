@@ -174,6 +174,8 @@ module Html2rss
       config = build_test_config(raw_config, strategy, params)
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, compare_enhance:, sample_limit:)
+    rescue Html2rss::ContractError
+      raise
     rescue Html2rss::Error => error
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       execution_failure_result(error, raw_config, duration)
@@ -371,10 +373,10 @@ module Html2rss
 
       resources = FeedPipeline::RuntimePolicy.resources_for(config)
       strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(config.strategy)
-      session = RequestSession.build(
-        config:, strategy:, budget: resources.budget, policy: resources.policy
-      )
+      session = RequestSession.build(config:, strategy:, budget: resources.budget, policy: resources.policy)
       Syndication::Discovery.native_feed_url(response:, request_session: session)
+    rescue Html2rss::ContractError
+      raise
     rescue Html2rss::Error
       nil
     end

@@ -94,6 +94,8 @@ module Html2rss
           status: wire[:status],
           articles_count: wire[:articles_count]
         }
+      rescue Html2rss::ContractError
+        raise
       rescue Html2rss::Error => error
         { ok: false, error: "#{error.class}: #{error.message}" }
       end
