@@ -10,6 +10,12 @@ Architecture and seam ownership map: `CONTEXT.md`.
 - Document every public method with YARD tags (`@param`, `@return`).
 - No metaprogramming or reflection in `lib/`, enforced by `Html2rss/NoMetaprogramming`. Never disable it inline; use the closed-set enum pattern (`ALL`, `private_class_method :new`, `self.[]`) and Data-block pattern (`X = Data.define(...)` then `class X ... end`).
 
+## Error handling
+
+- Raise only `Html2rss::Error` subclasses defined next to their owner (e.g. `Url::InvalidUrlError`, `Article::Enclosure::InvalidError`); never bare `ArgumentError`, `TypeError`, `RuntimeError` or `StandardError`.
+- Never write to stderr (`warn`, `$stderr`, `puts` in `lib/`); log through `Html2rss::Log`.
+- Rescue named classes only.
+
 ## Testing Contracts
 
 - Do not define methods inside `*_spec.rb` files; use helpers or shared examples when needed.
