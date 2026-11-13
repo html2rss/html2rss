@@ -129,15 +129,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
     end
 
-    context 'with a yc/coursera/zillow-like listing mix' do
+    context 'with a mixed startup, course and property listing' do
       let(:base_url) { 'https://example.com' }
       let(:parsed_body) do
         Nokogiri::HTML.parse(<<~HTML)
           <html><body>
             <section>
-              <article><h2><a href="/posts/yc-startup-funding-2026">YC startup funding trends</a></h2><p>Longer description paragraph with material context.</p></article>
-              <article><h2><a href="/stories/coursera-ai-certificates">Coursera AI certificates update</a></h2><time datetime="2026-03-01"></time></article>
-              <article><h2><a href="/news/zillow-market-outlook">Zillow market outlook</a></h2><p>Weekly housing-market report and metrics.</p></article>
+              <article><h2><a href="/posts/lumen-startup-funding-2026">Lumen startup funding trends</a></h2><p>Longer description paragraph with material context.</p></article>
+              <article><h2><a href="/stories/orbit-ai-certificates">Orbit AI certificates update</a></h2><time datetime="2026-03-01"></time></article>
+              <article><h2><a href="/news/maple-market-outlook">Maple market outlook</a></h2><p>Weekly housing-market report and metrics.</p></article>
               <article><h2><a href="/topics/real-estate">Real Estate</a></h2></article>
               <article><h2><a href="/newsletter/signup">Subscribe</a></h2></article>
               <article><h2><a href="/comments/feed">Comments feed</a></h2></article>
@@ -147,9 +147,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
       let(:expected_story_urls) do
         %w[
-          https://example.com/stories/coursera-ai-certificates
-          https://example.com/posts/yc-startup-funding-2026
-          https://example.com/news/zillow-market-outlook
+          https://example.com/stories/orbit-ai-certificates
+          https://example.com/posts/lumen-startup-funding-2026
+          https://example.com/news/maple-market-outlook
         ]
       end
       let(:suppressed_noise_urls) do
@@ -160,9 +160,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         ]
       end
 
-      it_behaves_like 'top-5 prefers post-like entries', 'YC/Coursera/Zillow'
+      it_behaves_like 'top-5 prefers post-like entries', 'mixed listing'
 
-      it 'keeps expected top ordering/composition for YC/Coursera/Zillow', :aggregate_failures do
+      it 'keeps expected top ordering/composition for mixed listing', :aggregate_failures do
         expect(urls.first(3)).to eq(expected_story_urls)
         expect(urls.first(3).uniq).to eq(expected_story_urls)
       end
@@ -171,7 +171,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'non-regression baseline (product newsroom)' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://www.example.org')
+      scraper = described_class.new(parsed_body, url: 'https://www.example.net')
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -200,15 +200,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     let(:expected_top_urls) do
       [
-        'https://www.example.org/news/model-platform-update',
-        'https://www.example.org/news/research-system-card',
-        'https://www.example.org/news/enterprise-rollout'
+        'https://www.example.net/news/model-platform-update',
+        'https://www.example.net/news/research-system-card',
+        'https://www.example.net/news/enterprise-rollout'
       ]
     end
 
     it 'keeps known-good story links ahead of chrome', :aggregate_failures do
       expect(urls.uniq.first(3)).to eq(expected_top_urls)
-      expect(urls).not_to include('https://www.example.org/subscribe')
+      expect(urls).not_to include('https://www.example.net/subscribe')
     end
   end
 
