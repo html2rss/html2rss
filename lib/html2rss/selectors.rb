@@ -211,7 +211,6 @@ module Html2rss
         article_tag,
         base_url: @url,
         selected_anchor:,
-        fallback_anchorless: true,
         time_zone: @time_zone
       )
       return article_hash unless extracted
@@ -398,12 +397,11 @@ module Html2rss
       Extractors.element(item, config[:selector])
     end
 
-    # @return [Hash, nil] enclosure details, or nil when the selector yields nothing.
+    # @return [Hash, nil] enclosure details, or nil when the selector yields nothing or no http(s) URL
+    #   ({Url.resolve_web})
     def enclosure(scope:, config:)
       selected = select_regular(:enclosure, scope:, config:)
-      return if selected.nil? || selected.to_s.strip.empty?
-
-      url = Url.from_relative(selected, scope.base_url)
+      return unless (url = Url.resolve_web(selected, scope.base_url))
 
       { url:, type: config[:content_type] }
     end

@@ -2,8 +2,8 @@
 
 module Html2rss
   module Html
-    # Namespace for HTML rendering logic, used to generate rich content such as
-    # images, audio, video, or embedded documents for feed descriptions.
+    # Namespace for HTML rendering logic: the feed item description and its one media element
+    # (an image, audio or video player).
     #
     # @see Html2rss::Html::Rendering::DescriptionBuilder
     #
@@ -12,13 +12,6 @@ module Html2rss
     #     url: "https://example.com/image.jpg",
     #     title: "Example"
     #   ).to_html
-    #
-    # @example
-    #   Html2rss::Html::Rendering::MediaRenderer.for(
-    #     enclosure: nil,
-    #     image: "https://example.com/image.jpg",
-    #     title: "Example"
-    #   )
     module Rendering
     end
   end

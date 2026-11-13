@@ -138,6 +138,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       it { is_expected.to be_truthy }
     end
 
+    context 'with a standalone PodcastEpisode' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type": "PodcastEpisode", "name": "E"}</script>')
+      end
+
+      it { is_expected.to be(true) }
+    end
+
     context 'with uppercase JSON-LD MIME type' do
       let(:parsed_body) do
         Nokogiri::HTML("<script type=\"APPLICATION/LD+JSON\">#{news_article_schema_object.to_json}</script>")
@@ -315,6 +323,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       end
     end
 
+    context 'with standalone media objects in @graph and in an array' do
+      let(:object) do
+        [
+          { '@graph': [{ '@type': 'PodcastSeries', name: 'Show' }, { '@type': 'PodcastEpisode', name: 'Episode' }] },
+          [{ '@type': 'https://schema.org/VideoObject', name: 'Video' }, { '@type': 'Clip', name: 'Clip' }],
+          { '@type': 'AudioObject', name: 'Audio' }
+        ]
+      end
+
+      it 'returns every media object' do
+        expect(array.map { _1[:name] }).to eq(%w[Episode Video Clip Audio])
+      end
+    end
+
+    context 'with a media object nested in an article' do
+      let(:object) do
+        { '@type': 'NewsArticle', headline: 'Story', associatedMedia: { '@type': 'VideoObject', name: 'Video' } }
+      end
+
+      it 'returns the article only' do
+        expect(array).to contain_exactly(hash_including(headline: 'Story'))
+      end
+    end
+
     context 'with a deeply nested object' do
       let(:object) do
         {
@@ -422,6 +454,28 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
           expect(event['event_name']).to eq('schema.parse_failed')
           expect(event['message']).to include("#{described_class}: failed to parse JSON")
         end
+      end
+    end
+
+    context 'with standalone media objects in @graph' do
+      let(:parsed_body) do
+        script_tag.call({ '@graph': [
+          { '@type': 'PodcastEpisode', name: 'Episode one', url: 'https://example.com/e/1',
+            associatedMedia: { '@type': 'MediaObject', contentUrl: 'https://example.com/e1.mp3' } },
+          { '@type': 'VideoObject', name: 'Player only', url: 'https://example.com/v/1',
+            embedUrl: 'https://example.com/embed/1' }
+        ] }.to_json)
+      end
+
+      it 'yields each as a media item' do
+        expect(new.map { _1.values_at(:title, :media) }).to eq([['Episode one', true], ['Player only', true]])
+      end
+
+      it 'takes the file from associatedMedia and none from a player', :aggregate_failures do
+        episode, video = new.to_a
+        expect(episode[:enclosures].map { _1[:url].to_s }).to eq(['https://example.com/e1.mp3'])
+        expect(video).to include(enclosures: nil)
+        expect(video[:url].to_s).to eq('https://example.com/v/1')
       end
     end
 

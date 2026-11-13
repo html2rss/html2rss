@@ -271,10 +271,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ItemList do
       expect(call.map { _1[:media] }).to eq([nil, nil, true])
     end
 
-    it 'ignores standalone Event and VideoObject objects', :aggregate_failures do
+    it 'ignores a standalone Event and admits standalone media objects', :aggregate_failures do
       schema = Html2rss::AutoSource::Scraper::Schema
       expect(schema.supported_schema_object?({ '@type': 'Event' })).to be(false)
-      expect(schema.supported_schema_object?({ '@type': 'VideoObject' })).to be(false)
+      expect(%w[VideoObject AudioObject PodcastEpisode Clip].map { schema.supported_schema_object?({ '@type': _1 }) })
+        .to all(be(true))
     end
   end
 end

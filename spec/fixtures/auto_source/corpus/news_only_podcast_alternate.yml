@@ -1,0 +1,7 @@
+---
+case: A news page (no podcast signal) whose only head alternate is a podcast feed on the hosting platform (another origin, audio episodes), with no same-origin feed. The audio-hinted alternate ranks after the same-origin path guesses; the single native-feed probe goes to a guess that is no feed, so the three news cards ship and the page is no media feed, rather than the episodes.
+responses: news_only_podcast_alternate
+expected:
+- https://example.com/news/2026/11/river-bridge
+- https://example.com/news/2026/11/winter-market
+- https://example.com/news/2026/11/school-roof

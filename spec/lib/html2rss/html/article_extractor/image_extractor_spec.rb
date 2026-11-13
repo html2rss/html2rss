@@ -88,6 +88,31 @@ RSpec.describe Html2rss::Html::ArticleExtractor::ImageExtractor do
       end
     end
 
+    context 'when the card has only video posters' do
+      let(:html) do
+        <<~HTML
+          <article>
+            <video poster="data:image/png;base64,AAAA"></video>
+            <video poster=" "></video>
+            <video poster="/posters/clip.jpg"><source src="/clip.mp4"></video>
+            <video poster="/posters/later.jpg"></video>
+          </article>
+        HTML
+      end
+
+      it 'returns the first usable poster frame' do
+        expect(url).to eq('https://example.com/posters/clip.jpg')
+      end
+    end
+
+    context 'when the card has an image and a video poster' do
+      let(:html) { '<article><video poster="/posters/clip.jpg"></video><img src="photo.jpg"></article>' }
+
+      it 'prefers the image' do
+        expect(url).to eq('https://example.com/photo.jpg')
+      end
+    end
+
     context 'when image source is not present' do
       let(:html) { '<article></article>' }
 

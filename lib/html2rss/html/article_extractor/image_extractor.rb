@@ -12,7 +12,8 @@ module Html2rss
         def self.call(article_tag, base_url:)
           img_src = from_source(article_tag) ||
                     from_img(article_tag) ||
-                    from_style(article_tag)
+                    from_style(article_tag) ||
+                    from_poster(article_tag)
 
           Url.from_relative(img_src, base_url) if img_src
         end
@@ -42,6 +43,13 @@ module Html2rss
         def self.from_style(article_tag)
           styles = article_tag.css('[style*="url"]').map { |tag| tag['style'] }
           ArticleRules::Image.best_from_styles(styles)
+        end
+
+        # @param article_tag [Nokogiri::XML::Element] article container node
+        # @return [String, nil] first usable video poster frame: the last resort, when the card has no other image
+        def self.from_poster(article_tag)
+          posters = article_tag.css('video[poster]').map { |video| video['poster'] }
+          posters.find { |src| ArticleRules::Image.remote_src?(src) }
         end
       end
     end

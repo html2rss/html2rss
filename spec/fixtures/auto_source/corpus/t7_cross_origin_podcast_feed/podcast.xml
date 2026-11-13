@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Tide Talk</title>
+    <link>https://example.com/news/</link>
+    <description>Synthetic podcast feed served from the hosting platform's feed host</description>
+    <item>
+      <title>Tide Talk 12: the new sea wall</title>
+      <link>https://example.com/news/episodes/12-new-sea-wall</link>
+      <guid isPermaLink="false">tide-talk-12</guid>
+      <pubDate>Thu, 05 Nov 2026 08:00:00 GMT</pubDate>
+      <description>Engineers explain how the new sea wall holds back the winter storms.</description>
+      <itunes:duration>38:10</itunes:duration>
+      <enclosure url="https://media.example.net/tide-talk/12.mp3" type="audio/mpeg" length="36640000"/>
+    </item>
+    <item>
+      <title>Tide Talk 11: the oyster beds come back</title>
+      <link>https://example.com/news/episodes/11-oyster-beds</link>
+      <guid isPermaLink="false">tide-talk-11</guid>
+      <pubDate>Thu, 29 Oct 2026 08:00:00 GMT</pubDate>
+      <description>Divers count the oysters returning to the estuary after ten years.</description>
+      <itunes:duration>41:00</itunes:duration>
+      <enclosure url="https://media.example.net/tide-talk/11.mp3" type="audio/mpeg" length="39360000"/>
+    </item>
+    <item>
+      <title>Tide Talk 10: the lifeboat crew at night</title>
+      <link>https://example.com/news/episodes/10-lifeboat-crew</link>
+      <guid isPermaLink="false">tide-talk-10</guid>
+      <pubDate>Thu, 22 Oct 2026 08:00:00 GMT</pubDate>
+      <description>A night shift with the volunteer lifeboat crew and their pager.</description>
+      <itunes:duration>2580</itunes:duration>
+      <enclosure url="https://media.example.net/tide-talk/10.m4a" type="audio/mp4" length="41280000"/>
+    </item>
+  </channel>
+</rss>

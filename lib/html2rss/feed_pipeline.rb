@@ -10,10 +10,18 @@ module Html2rss
     # selected_strategy: set on :auto success; nil otherwise.
     # attempt_count: auto attempts attempted; 0 outside :auto.
     # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
+    # feed_channel: channel facts of the native feed followed ({Syndication::ChannelFacts}); nil without one.
     PipelineOutcome = Data.define(
       :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
-      :admission_drops, :scrape_target, :entry_resolution
+      :admission_drops, :scrape_target, :entry_resolution, :feed_channel
     )
+
+    # What one response yields after extraction and dedup ({#extract}); its fields are the
+    # {PipelineOutcome} fields of the same names.
+    # articles: unique articles. dedup_dropped: articles removed by deduplication.
+    # admission_drops: Cleanup drop tallies. feed_channel: the followed native feed's channel facts
+    # ({Syndication::ChannelFacts}); nil without one.
+    Extraction = Data.define(:articles, :dedup_dropped, :admission_drops, :feed_channel)
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
@@ -71,11 +79,11 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @param response [Html2rss::RequestService::Response]
     # @param request_session [Html2rss::RequestSession]
-    # @return [Array(Array<Html2rss::Article>, Integer, Hash)] unique articles, dedup drops, admission drops
-    def deduplicated_articles(config:, response:, request_session:)
-      collected, admission_drops = collect_articles(config:, response:, request_session:)
+    # @return [Extraction] unique articles with their dedup and admission drops and feed channel facts
+    def extract(config:, response:, request_session:)
+      collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
       unique = Article::Deduplicator.new(collected).call
-      [unique, collected.size - unique.size, admission_drops]
+      Extraction.new(articles: unique, dedup_dropped: collected.size - unique.size, admission_drops:, feed_channel:)
     end
 
     private
@@ -95,13 +103,12 @@ module Html2rss
     def run_pipeline_for_strategy(config, strategy:, resources:)
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
-      articles, dedup_dropped, admission_drops = deduplicated_articles(config:, response:, request_session:)
-      raise_empty_auto_source!(strategy:, response:) if config.auto_source && articles.empty?
+      extraction = extract(config:, response:, request_session:)
+      raise_empty_auto_source!(strategy:, response:) if config.auto_source && extraction.articles.empty?
 
       PipelineOutcome.new(
-        response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
-        strategy_attempts: [], admission_drops:,
-        scrape_target: ScrapeTarget.from_config(config), entry_resolution: nil
+        response:, selected_strategy: nil, attempt_count: 0, strategy_attempts: [],
+        scrape_target: ScrapeTarget.from_config(config), entry_resolution: nil, **extraction.to_h
       )
     end
 
@@ -128,8 +135,8 @@ module Html2rss
 
     def collect_articles(config:, response:, request_session:)
       selector = selector_articles(config:, response:, request_session:)
-      auto, admission_drops = auto_source_articles(config:, response:, request_session:)
-      [selector + auto, admission_drops]
+      auto, admission_drops, feed_channel = auto_source_articles(config:, response:, request_session:)
+      [selector + auto, admission_drops, feed_channel]
     end
 
     # rubocop:disable-next Metrics/MethodLength
@@ -152,24 +159,23 @@ module Html2rss
       articles
     end
 
-    # @return [Array(Array<Html2rss::Article>, Hash{String => Integer})]
+    # @return [Array(Array<Html2rss::Article>, Hash{String => Integer}, Html2rss::Syndication::ChannelFacts)]
     def auto_source_articles(config:, response:, request_session:)
-      return [[], {}] unless (auto_source = config.auto_source)
+      return [[], {}, nil] unless (auto_source = config.auto_source)
       return syndication_articles(response) if response.feed_response?
 
       source = AutoSource.new(response, auto_source, request_session:)
-      [source.articles, source.admission_drops]
+      [source.articles, source.admission_drops, source.feed_channel]
     end
 
     def syndication_articles(response)
-      articles = Syndication::Parser.parse_response(response).map do |hash|
-        Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed)
-      end
-      [articles, {}]
+      feed = Syndication::Parser.parse_response(response)
+      articles = feed.articles.map { |hash| Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed) }
+      [articles, {}, feed.channel]
     end
 
     def feed_result_for(config, outcome) # rubocop:disable Metrics/MethodLength
-      channel = Channel.from_response(outcome.response, overrides: config.channel)
+      channel = Channel.from_response(outcome.response, overrides: config.channel, feed: outcome.feed_channel)
       status = Status.build(
         articles: outcome.articles,
         dedup_dropped: outcome.dedup_dropped,

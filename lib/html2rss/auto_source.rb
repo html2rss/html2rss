@@ -155,6 +155,13 @@ module Html2rss
       @admission_drops || {}
     end
 
+    ##
+    # What the native feed this page advertises states about its channel ({Scraper::NativeFeed#channel}):
+    # nil until {#articles} runs, or when no feed was read.
+    #
+    # @return [Html2rss::Syndication::ChannelFacts, nil]
+    def feed_channel = @native_feed&.channel
+
     private
 
     attr_reader :url, :parsed_body, :body, :request_session, :captured_responses
@@ -189,6 +196,7 @@ module Html2rss
 
           matched = true
           articles.concat(run_scraper(instance))
+          @native_feed = instance if instance.is_a?(Scraper::NativeFeed)
         end
       end
 
@@ -276,7 +284,8 @@ module Html2rss
     def cleanup_result(articles)
       return @cleanup_memo.last if @cleanup_memo&.first == articles.size
 
-      Cleanup.call(articles.dup, url:, corroboration:, page_links: -> { page_links }, **cleanup_options)
+      Cleanup.call(articles.dup, url:, corroboration:, page_links: -> { page_links },
+                                 feed_url: @native_feed&.feed_url, **cleanup_options)
              .tap { @cleanup_memo = [articles.size, _1] }
     end
 

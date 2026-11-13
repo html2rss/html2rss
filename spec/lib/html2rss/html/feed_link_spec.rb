@@ -31,9 +31,9 @@ RSpec.describe Html2rss::Html::FeedLink do
 
     let(:expected) do
       [
-        described_class.new(href: 'https://example.com/feed.xml', mime_type: 'application/rss+xml'),
-        described_class.new(href: '/atom.xml', mime_type: 'application/atom+xml'),
-        described_class.new(href: '/feed.rdf', mime_type: 'application/rdf+xml')
+        described_class.new(href: 'https://example.com/feed.xml', mime_type: 'application/rss+xml', title: 'RSS'),
+        described_class.new(href: '/atom.xml', mime_type: 'application/atom+xml', title: 'Atom'),
+        described_class.new(href: '/feed.rdf', mime_type: 'application/rdf+xml', title: 'RDF')
       ]
     end
 
@@ -47,9 +47,9 @@ RSpec.describe Html2rss::Html::FeedLink do
           <!DOCTYPE html>
           <html>
           <head>
-            <link rel="alternate" type="APPLICATION/RSS+XML" href="https://example.com/feed.xml">
-            <link rel="alternate" type="Application/Atom+xml" href="/atom.xml">
-            <link rel="alternate" type="Application/RDF+XML" href="/feed.rdf">
+            <link rel="alternate" type="APPLICATION/RSS+XML" href="https://example.com/feed.xml" title=" RSS ">
+            <link rel="alternate" type="Application/Atom+xml" href="/atom.xml" title="Atom">
+            <link rel="alternate" type="Application/RDF+XML" href="/feed.rdf" title="RDF">
           </head>
           </html>
         HTML
@@ -57,6 +57,14 @@ RSpec.describe Html2rss::Html::FeedLink do
 
       it 'normalizes feed MIME types case-insensitively' do
         expect(feed_links).to eq(expected)
+      end
+    end
+
+    context 'without a title attribute' do
+      let(:html) { '<html><head><link rel="alternate" type="application/rss+xml" href="/feed.xml"></head></html>' }
+
+      it 'carries an empty title' do
+        expect(feed_links.map(&:title)).to eq([''])
       end
     end
   end

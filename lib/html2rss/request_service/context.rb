@@ -15,6 +15,7 @@ module Html2rss
       # @option request_options [String, Html2rss::Url, nil] :origin_url originating URL for same-origin checks
       # @option request_options [Policy] :policy runtime request policy
       # @option request_options [Budget] :budget shared request budget for the feed build
+      # @option request_options [FeedAdvertisement, nil] :advertisement page proof for an +:advertised_feed+ follow-up
       # @raise [ArgumentError] if policy or budget is explicitly nil
       def initialize(url:, headers: {}, request: {}, **request_options)
         @url = Html2rss::Url.from_absolute(url)
@@ -44,23 +45,19 @@ module Html2rss
       # @return [Budget] the shared request budget
       attr_reader :budget
 
+      # @return [FeedAdvertisement, nil] the page's advertised feeds, for an +:advertised_feed+ follow-up
+      attr_reader :advertisement
+
       ##
       # Builds a follow-up request context sharing headers, budget, and policy.
       #
       # @param url [String, Html2rss::Url] the follow-up URL
       # @param relation [Symbol] why the follow-up is being made
       # @param origin_url [String, Html2rss::Url] effective origin for same-origin checks
+      # @param advertisement [FeedAdvertisement, nil] page proof for an +:advertised_feed+ follow-up
       # @return [Context] derived request context
-      def follow_up(url:, relation:, origin_url: self.origin_url)
-        self.class.new(
-          url:,
-          headers:,
-          request:,
-          relation:,
-          origin_url:,
-          policy:,
-          budget:
-        )
+      def follow_up(url:, relation:, origin_url: self.origin_url, advertisement: nil)
+        self.class.new(url:, headers:, request:, relation:, origin_url:, policy:, budget:, advertisement:)
       end
 
       private
@@ -71,6 +68,7 @@ module Html2rss
         raise ArgumentError, 'policy must not be nil' if @policy.nil?
 
         @origin_url = normalized_origin_url(request_options[:origin_url])
+        @advertisement = request_options[:advertisement]
         @budget = request_options.fetch(:budget) { raise ArgumentError, 'budget is required' }
         raise ArgumentError, 'budget must not be nil' if @budget.nil?
       end

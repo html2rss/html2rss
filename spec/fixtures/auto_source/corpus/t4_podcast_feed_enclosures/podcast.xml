@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:media="http://search.yahoo.com/mrss/" xmlns:x="urn:example:extension">
+  <channel>
+    <title>Example Harbor Hour</title>
+    <link>https://example.com/news/</link>
+    <description>Synthetic saved podcast feed</description>
+    <managingEditor>editor@example.com (Example Editor)</managingEditor>
+    <itunes:author>Example Harbor Hour Team</itunes:author>
+    <itunes:category text="News"><itunes:category text="Daily News"/></itunes:category>
+    <itunes:category text="Society &amp; Culture"/>
+    <itunes:explicit>false</itunes:explicit>
+    <x:item>An extension element named item, not a feed item</x:item>
+    <item>
+      <title>Harbor Hour 41: the winter ferry timetable</title>
+      <link>https://example.com/news/episodes/41-winter-ferry-timetable</link>
+      <guid isPermaLink="false">harbor-hour-41</guid>
+      <pubDate>Mon, 02 Nov 2026 08:00:00 GMT</pubDate>
+      <description>The ferry office explains the winter timetable.</description>
+      <itunes:duration>45:00</itunes:duration>
+      <itunes:image href="https://example.com/news/art/41.jpg"/>
+      <enclosure url="https://example.com/news/audio/harbor-hour-41.mp3" type="audio/mpeg" length="43200000"/>
+    </item>
+    <item>
+      <title>Harbor Hour 40: reading week at the library</title>
+      <link>https://example.com/news/episodes/40-library-reading-week</link>
+      <guid isPermaLink="false">harbor-hour-40</guid>
+      <pubDate>Mon, 26 Oct 2026 08:00:00 GMT</pubDate>
+      <description>Librarians on the young readers who came.</description>
+      <media:content url="https://example.com/news/audio/harbor-hour-40.mp3" type="audio/mpeg" fileSize="38400000" duration="2400"/>
+      <media:thumbnail url="https://example.com/news/art/40.jpg"/>
+    </item>
+    <item>
+      <title>Harbor Hour 39: the river path flood repairs</title>
+      <link>https://example.com/news/episodes/39-river-path-repairs</link>
+      <guid isPermaLink="false">harbor-hour-39</guid>
+      <pubDate>Mon, 19 Oct 2026 08:00:00 GMT</pubDate>
+      <description>Engineers walk the repaired river path.</description>
+      <itunes:duration>1:02:03</itunes:duration>
+      <media:group>
+        <media:content url="https://example.com/news/audio/harbor-hour-39.m4a" type="audio/mp4" fileSize="59000000"/>
+        <media:content url="https://example.com/news/audio/harbor-hour-39.mp3" type="audio/mpeg" fileSize="60000000"/>
+      </media:group>
+    </item>
+    <item>
+      <title>Harbor Hour 38: night market vendors speak</title>
+      <link>https://example.com/news/episodes/38-night-market-vendors</link>
+      <guid isPermaLink="false">harbor-hour-38</guid>
+      <pubDate>Mon, 12 Oct 2026 08:00:00 GMT</pubDate>
+      <description>Twelve new vendors on their first month.</description>
+      <itunes:duration>2280</itunes:duration>
+      <enclosure url="https://example.com/news/audio/harbor-hour-38.mp3" type="audio/mpeg" length="36480000"/>
+    </item>
+    <item>
+      <title>Harbor Hour 37: the lighthouse keeper's last shift</title>
+      <link>https://example.com/news/episodes/37-lighthouse-keeper</link>
+      <guid isPermaLink="false">harbor-hour-37</guid>
+      <pubDate>Mon, 05 Oct 2026 08:00:00 GMT</pubDate>
+      <description>The last keeper locks the lighthouse door.</description>
+      <media:content url="https://example.com/news/audio/files/harbor-hour-37" medium="audio" fileSize="33600000" duration="2100"/>
+    </item>
+  </channel>
+</rss>

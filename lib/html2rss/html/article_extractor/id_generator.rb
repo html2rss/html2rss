@@ -14,16 +14,15 @@ module Html2rss
           # @param heading [Nokogiri::XML::Node, nil] heading node
           # @param url [Html2rss::Url, nil] absolute article URL
           # @param selected_anchor [Nokogiri::XML::Node, nil] anchor element
-          # @param fallback_anchorless [Boolean] whether to use fallback hashing
           # @return [String, nil] the generated ID, if any
-          def call(article_tag, heading:, url:, selected_anchor:, fallback_anchorless:)
+          def call(article_tag, heading:, url:, selected_anchor:)
             id_from_dom = parse_id_from_dom(article_tag, url, selected_anchor)
             return id_from_dom if id_from_dom
 
-            heading_text = resolve_heading_text(article_tag, heading, fallback_anchorless)
+            heading_text = resolve_heading_text(article_tag, heading)
             if heading_text && !heading_text.strip.empty?
               generate_slug(heading_text)
-            elsif fallback_anchorless
+            else
               generate_content_hash(article_tag)
             end
           end
@@ -36,18 +35,16 @@ module Html2rss
             candidates.compact.reject(&:empty?).first
           end
 
-          def resolve_heading_text(article_tag, heading, fallback_anchorless)
+          def resolve_heading_text(article_tag, heading)
             text = heading ? Navigator::TextExtractor.call(heading) : nil
             if text.nil? || text.strip.empty?
-              fallback_text_node_content(article_tag, fallback_anchorless)
+              fallback_text_node_content(article_tag)
             else
               text
             end
           end
 
-          def fallback_text_node_content(article_tag, fallback_anchorless)
-            return unless fallback_anchorless
-
+          def fallback_text_node_content(article_tag)
             article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }&.text&.strip
           end
 

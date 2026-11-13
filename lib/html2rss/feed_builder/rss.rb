@@ -6,7 +6,20 @@ module Html2rss
   module FeedBuilder
     ##
     # Builds an RSS Feed by providing channel, articles and stylesheets.
-    class Rss
+    #
+    # A media feed ({ItemPresentation.media_feed?}) also gets the podcast tags clients play from:
+    # channel +itunes:image+, +itunes:author+, +itunes:category+ (nesting its subcategories) and
+    # +itunes:explicit+ (+true+ or +false+), item +itunes:duration+ (+HH:MM:SS+) and +itunes:image+, each
+    # only when known; categories and the explicit flag only when the followed native feed states them.
+    #
+    # +managingEditor+ carries the channel author only when it is an RSS 2.0 email address
+    # (+editor@example.com+ or +editor@example.com (Name)+); a plain name is no managing editor.
+    class Rss # rubocop:disable Metrics/ClassLength -- channel, item and podcast projections stay co-located
+      # First duration in seconds that +itunes:duration+ cannot spell as +HH:MM:SS+ (100 hours).
+      MAX_CLOCK_DURATION = 100 * 3600
+      # An RSS 2.0 person: an email address, optionally followed by the name in parentheses.
+      EMAIL_PERSON = /\A[^\s@()]+@[^\s@()]+(?: \(.+\))?\z/
+
       class << self
         # @param article [Html2rss::Article] source article
         # @param item_maker [RSS::Maker::RSS20::ItemsBase::ItemBase] RSS item builder
@@ -66,6 +79,7 @@ module Html2rss
         @articles = articles
         @stylesheets = stylesheets
         @generator = generator
+        @media_feed = ItemPresentation.media_feed?(articles)
       end
 
       # @return [RSS::Rss] RSS 2.0 document instance
@@ -80,7 +94,7 @@ module Html2rss
 
       private
 
-      attr_reader :channel, :articles, :generator
+      attr_reader :channel, :articles, :generator, :media_feed
 
       def blank_string?(value)
         !value.is_a?(String) || value.strip.empty?
@@ -98,13 +112,25 @@ module Html2rss
         channel_maker.description = channel.description
         channel_maker.ttl = channel.ttl
 
-        channel_maker.managingEditor = channel.author if channel.author
-        channel_maker.author = channel.author if channel.author
+        channel_maker.managingEditor = channel.author if EMAIL_PERSON.match?(channel.author)
         channel_maker.link = channel.url.to_s
         channel_maker.generator = generator
         channel_maker.updated = channel.last_build_date
 
         make_image(maker.image) if channel.image
+        make_podcast_channel(channel_maker) if media_feed
+      end
+
+      def make_podcast_channel(channel_maker)
+        channel_maker.itunes_image = channel.image
+        channel_maker.itunes_author = channel.author
+        channel_maker.itunes_explicit = channel.explicit&.to_s
+        channel.categories.each { add_itunes_category(channel_maker, *_1) }
+      end
+
+      def add_itunes_category(channel_maker, name, *subcategories)
+        category = channel_maker.new_itunes_category(name)
+        subcategories.each { category.new_category.text = _1 }
       end
 
       def make_image(image_maker)
@@ -114,8 +140,25 @@ module Html2rss
 
       def make_items(maker)
         articles.each do |article|
-          maker.items.new_item { |item_maker| self.class.add_item(article, item_maker) }
+          maker.items.new_item do |item_maker|
+            self.class.add_item(article, item_maker)
+            make_podcast_item(article, item_maker) if media_feed
+          end
         end
+      end
+
+      def make_podcast_item(article, item_maker)
+        duration = ItemPresentation.rss_enclosure_for(article)&.duration
+        item_maker.itunes_duration = format_duration(duration) if duration
+        item_maker.itunes_image = article.image
+      end
+
+      # +HH:MM:SS+; plain seconds from 100 hours on, which +HH+ cannot spell.
+      def format_duration(seconds)
+        return seconds.to_s if seconds >= MAX_CLOCK_DURATION
+
+        format('%<hours>02d:%<minutes>02d:%<seconds>02d',
+               hours: seconds / 3600, minutes: seconds % 3600 / 60, seconds: seconds % 60)
       end
     end
   end

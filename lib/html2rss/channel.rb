@@ -3,7 +3,9 @@
 require 'time'
 
 module Html2rss
-  Channel = Data.define(:title, :url, :description, :language, :ttl, :last_build_date, :image, :author)
+  Channel = Data.define(
+    :title, :url, :description, :language, :ttl, :last_build_date, :image, :author, :categories, :explicit
+  )
 
   ##
   # Materialized channel metadata for feed builders and {FeedResult}.
@@ -11,6 +13,10 @@ module Html2rss
   # Extract once via {Channel.from_response}; builders consume this value object and
   # do not own channel extraction. Safe to Marshal (no Response / Nokogiri retained).
   # Strings and image URL are normalized and frozen at construction (including Marshal load).
+  #
+  # The author is the config +channel.author+, else the followed native feed's author
+  # ({Syndication::ChannelFacts}), else the page's +<meta name="author">+. Categories and the explicit
+  # flag come only from that feed, when it states them.
   #
   # @!attribute [r] title
   #   @return [String]
@@ -28,6 +34,10 @@ module Html2rss
   #   @return [Html2rss::Url, nil]
   # @!attribute [r] author
   #   @return [String, nil]
+  # @!attribute [r] categories
+  #   @return [Array<Array<String>>] each category followed by its subcategories (empty when unstated)
+  # @!attribute [r] explicit
+  #   @return [Boolean, nil] whether the content is declared explicit; nil when unstated
   class Channel # rubocop:disable Metrics/ClassLength -- Channel value object owns extract + freeze + Marshal
     class << self
       ##
@@ -35,8 +45,9 @@ module Html2rss
       #
       # @param response [Html2rss::RequestService::Response]
       # @param overrides [Hash{Symbol => Object}] optional overrides for channel attributes
+      # @param feed [Html2rss::Syndication::ChannelFacts, nil] what the followed native feed states
       # @return [Html2rss::Channel]
-      def from_response(response, overrides: {})
+      def from_response(response, overrides: {}, feed: nil) # rubocop:disable Metrics/MethodLength -- one line per member
         new(
           title: title_for(response, overrides),
           url: url_for(response),
@@ -45,7 +56,9 @@ module Html2rss
           ttl: ttl_for(response, overrides),
           last_build_date: last_build_date_for(response),
           image: image_for(response, overrides),
-          author: author_for(response, overrides)
+          author: overrides[:author] || feed&.author || meta_author(response),
+          categories: feed&.categories || [],
+          explicit: feed&.explicit
         )
       end
 
@@ -117,8 +130,7 @@ module Html2rss
         parsed_body(response)['lang'] || parsed_body(response).at_css('[lang]')&.[]('lang')
       end
 
-      def author_for(response, overrides)
-        return overrides[:author] if overrides[:author]
+      def meta_author(response)
         return unless html_response?(response)
 
         parsed_body(response).at_css('meta[name="author"]')&.[]('content')
@@ -156,8 +168,11 @@ module Html2rss
     # @param last_build_date [Time, String]
     # @param image [Html2rss::Url, String, nil]
     # @param author [String, nil]
-    # rubocop:disable-next Metrics/ParameterLists -- Data.define members are the channel contract
-    def initialize(title:, url:, description:, language:, ttl:, last_build_date:, image:, author:)
+    # @param categories [Array<Array<String>>] each category followed by its subcategories
+    # @param explicit [Boolean, nil]
+    # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- Data.define members are the channel contract
+    def initialize(title:, url:, description:, language:, ttl:, last_build_date:, image:, author:,
+                   categories: [], explicit: nil)
       super(
         title: freeze_string(title),
         url: url.is_a?(Url) ? url : Url.from_absolute(url),
@@ -166,16 +181,19 @@ module Html2rss
         ttl: Integer(ttl),
         last_build_date: normalize_last_build_date(last_build_date),
         image: normalize_image(image),
-        author: author && freeze_string(author)
+        author: author && freeze_string(author),
+        categories: categories.map { |path| path.map { freeze_string(_1) }.freeze }.freeze,
+        explicit:
       )
     end
 
     private
 
-    def marshal_dump = [title, url, description, language, ttl, last_build_date, image, author]
+    def marshal_dump = [title, url, description, language, ttl, last_build_date, image, author, categories, explicit]
 
-    def marshal_load((title, url, description, language, ttl, last_build_date, image, author))
-      initialize(title:, url:, description:, language:, ttl:, last_build_date:, image:, author:)
+    def marshal_load((title, url, description, language, ttl, last_build_date, image, author, categories, explicit))
+      initialize(title:, url:, description:, language:, ttl:, last_build_date:, image:, author:, categories:,
+                 explicit:)
     end
 
     def freeze_string(value) = value.to_s.dup.freeze

@@ -1,0 +1,28 @@
+---
+case: Broadcaster-style podcast episode list whose cards carry no player, only a direct link to the episode file (a download anchor, a listen link with an uppercase extension and a query, a link inside noscript, a video file link, and a whole-card link whose noscript nests the episode link inside it); each card ships that file as its RSS enclosure, typed from the file extension, a card whose player and download link name the same file ships it once, and the livestream link in the site navigation attaches to no card.
+expected:
+- https://example.com/podcasts/harbor-hour/lighthouse-keepers-last-night
+- https://example.com/podcasts/harbor-hour/fish-market-before-dawn
+- https://example.com/podcasts/harbor-hour/rowing-club-centenary
+- https://example.com/podcasts/harbor-hour/ferry-captains-video-diary
+- https://example.com/podcasts/harbor-hour/storm-surge-night-shift
+- https://example.com/podcasts/harbor-hour/tugboat-race-commentary
+enclosures:
+  https://example.com/podcasts/harbor-hour/lighthouse-keepers-last-night:
+    url: https://example.com/audio/harbor-hour/lighthouse-keepers-last-night.mp3
+    type: audio/mpeg
+  https://example.com/podcasts/harbor-hour/fish-market-before-dawn:
+    url: https://example.com/audio/harbor-hour/fish-market-before-dawn.M4A?source=list
+    type: audio/mp4
+  https://example.com/podcasts/harbor-hour/rowing-club-centenary:
+    url: https://example.com/audio/harbor-hour/rowing-club-centenary.mp3
+    type: audio/mpeg
+  https://example.com/podcasts/harbor-hour/ferry-captains-video-diary:
+    url: https://example.com/video/harbor-hour/ferry-captains-video-diary.mp4
+    type: video/mp4
+  https://example.com/podcasts/harbor-hour/storm-surge-night-shift:
+    url: https://example.com/audio/harbor-hour/storm-surge-night-shift.mp3
+    type: audio/mpeg
+  https://example.com/podcasts/harbor-hour/tugboat-race-commentary:
+    url: https://example.com/audio/harbor-hour/tugboat-race-commentary.mp3
+    type: audio/mpeg

@@ -38,6 +38,33 @@ RSpec.describe SavedResponses do
     expect(Html2rss::RequestService).not_to have_received(:execute)
   end
 
+  it 'refuses a saved response on another host as the policy does', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tmp manifest setup
+    Dir.mktmpdir do |other|
+      File.write(File.join(other, RevisionComparison::MANIFEST), "feed.xml\thttps://feeds.example.net/show.xml\n")
+      saved = described_class.new(other)
+
+      expect { saved.follow_up(url: 'https://feeds.example.net/show.xml', relation: :auto_source, origin_url: page_url) }
+        .to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+    end
+  end
+
+  it 'serves a saved feed on another host that the page advertises' do # rubocop:disable RSpec/ExampleLength -- tmp manifest + proof setup
+    advertisement = Html2rss::RequestService::FeedAdvertisement.from_document(
+      Nokogiri::HTML('<head><link rel="alternate" type="application/rss+xml" href="https://feeds.example.net/show.xml"></head>'),
+      page_url:
+    )
+    Dir.mktmpdir do |other|
+      FileUtils.cp(File.join(dir, 'feed.xml'), other)
+      File.write(File.join(other, RevisionComparison::MANIFEST), "feed.xml\thttps://feeds.example.net/show.xml\n")
+
+      response = described_class.new(other).follow_up(
+        url: 'https://feeds.example.net/show.xml', relation: :advertised_feed, origin_url: page_url, advertisement:
+      )
+
+      expect(response).to have_attributes(status: 200, feed_response?: true)
+    end
+  end
+
   it 'skips the native feed tier when its url is not saved' do
     Dir.mktmpdir do |empty|
       File.write(File.join(empty, RevisionComparison::MANIFEST), "feed.xml\thttps://example.com/elsewhere.xml\n")

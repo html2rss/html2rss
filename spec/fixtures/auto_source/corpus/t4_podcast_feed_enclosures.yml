@@ -1,0 +1,20 @@
+---
+case: A podcast page with a native RSS feed (saved response) of five episodes declaring their audio as an RSS enclosure, a media:content, media:content in a media:group, and an extensionless media:content declaring medium="audio" and a fileSize (a file, not a player page); the channel also holds a foreign-namespace x:item extension element that is no feed item; three page cards repeat feed episodes with an audio preview player and merge into the feed items. Each episode must ship the feed's full episode file as its RSS enclosure, never the page preview. The feed also states its channel author, categories and explicit flag, and the page names its hosting platform as meta author (the channel fields are pinned by spec/lib/html2rss/feed_pipeline_spec.rb, not by this corpus).
+responses: t4_podcast_feed_enclosures
+expected:
+- https://example.com/news/episodes/41-winter-ferry-timetable
+- https://example.com/news/episodes/40-library-reading-week
+- https://example.com/news/episodes/39-river-path-repairs
+- https://example.com/news/episodes/38-night-market-vendors
+- https://example.com/news/episodes/37-lighthouse-keeper
+enclosures:
+  https://example.com/news/episodes/41-winter-ferry-timetable:
+    url: https://example.com/news/audio/harbor-hour-41.mp3
+  https://example.com/news/episodes/40-library-reading-week:
+    url: https://example.com/news/audio/harbor-hour-40.mp3
+  https://example.com/news/episodes/39-river-path-repairs:
+    url: https://example.com/news/audio/harbor-hour-39.m4a
+  https://example.com/news/episodes/38-night-market-vendors:
+    url: https://example.com/news/audio/harbor-hour-38.mp3
+  https://example.com/news/episodes/37-lighthouse-keeper:
+    url: https://example.com/news/audio/files/harbor-hour-37

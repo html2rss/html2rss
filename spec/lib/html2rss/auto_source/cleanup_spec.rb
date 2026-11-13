@@ -137,6 +137,27 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with a native feed episode and a page card carrying another file' do
+      let(:feed_item) do
+        Html2rss::Article.new(id: 'feed-1', title: 'Episode one of the show', url: 'https://example.com/story',
+                              enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/feed/1.mp3'),
+                                             type: 'audio/mpeg', bytes_length: 12_345, duration: 2700 }],
+                              scraper: Html2rss::AutoSource::Scraper::NativeFeed)
+      end
+      let(:articles) do
+        [feed_item,
+         Html2rss::Article.new(id: 'card-1', title: 'Episode one of the show', url: 'https://example.com/story/',
+                               enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/page/1.mp3') }],
+                               scraper: Html2rss::AutoSource::Scraper::SemanticHtml)]
+      end
+
+      it 'keeps the feed enclosure' do
+        feed_file = have_attributes(url: Html2rss::Url.from_absolute('https://example.com/feed/1.mp3'),
+                                    duration: 2700)
+        expect(result.articles).to contain_exactly(have_attributes(enclosures: contain_exactly(feed_file)))
+      end
+    end
+
     context 'with a read-more copy of an article that also has a real title' do
       let(:read_more_first) do
         instance_double(Html2rss::Article, valid?: true, url: articles.first.url,
@@ -343,6 +364,51 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     context 'when keep_different_domain is false' do
       it 'removes articles from different domains' do
         expect(cleaned).not_to include(articles[3])
+      end
+    end
+
+    context 'with a followed native feed on another domain' do
+      subject(:result) { described_class.call(articles, url:, feed_url:) }
+
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/show') }
+      let(:feed_url) { Html2rss::Url.from_absolute('https://feeds.example.net/show.xml') }
+      let(:articles) do
+        { 'https://podhost.example.net/show/ep2' => Html2rss::AutoSource::Scraper::NativeFeed,
+          'https://example.com/show/ep1' => Html2rss::AutoSource::Scraper::NativeFeed,
+          'https://podhost.example.net/show/ep3' => Html2rss::AutoSource::Scraper::SemanticHtml,
+          'https://cdn.audiohost.test/show/ep4' => Html2rss::AutoSource::Scraper::NativeFeed }.map do |link, scraper|
+          Html2rss::Article.new(id: link, title: "Episode at #{link}", url: link, scraper:)
+        end
+      end
+
+      it "keeps the feed's items linking to the page's or the feed's domain only", :aggregate_failures do
+        expect(result.articles.map { _1.url.to_s }).to eq(%w[https://podhost.example.net/show/ep2
+                                                             https://example.com/show/ep1])
+        expect(result.drop_tallies).to eq('different_domain' => 2)
+      end
+    end
+
+    context 'with followed-feed items that are files on a third domain' do
+      subject(:result) do
+        described_class.call(articles, url: Html2rss::Url.from_absolute('https://example.com/show'),
+                                       feed_url: Html2rss::Url.from_absolute('https://feeds.example.net/show.xml'))
+      end
+
+      let(:articles) do
+        native = Html2rss::AutoSource::Scraper::NativeFeed
+        [['own', 'ep5.mp3', native, nil, 'audio/mpeg'],
+         ['card', 'ep8.mp3', Html2rss::AutoSource::Scraper::SemanticHtml, nil, 'audio/mpeg'],
+         ['linked', 'ep5.mp3', native, 'https://cdn.audiohost.test/show/ep6', 'audio/mpeg'],
+         ['doc', 'ep7.pdf', native, nil, 'application/pdf']].map do |id, file, scraper, link, type|
+          file_url = Html2rss::Url.from_absolute("https://cdn.audiohost.test/show/#{file}")
+          Html2rss::Article.new(id:, title: "Episode #{id} of the show", url: link || file_url, scraper:,
+                                enclosures: [{ url: file_url, type: }])
+        end
+      end
+
+      it 'keeps only the followed feed item that is its own audio file', :aggregate_failures do
+        expect(result.articles.map(&:id)).to eq(%w[own])
+        expect(result.drop_tallies).to eq('different_domain' => 3)
       end
     end
 

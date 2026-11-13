@@ -1,0 +1,28 @@
+---
+case: Audio story cards with HTML <audio> players (own src, or <source> children with and without a type); each item ships its audio file as the RSS enclosure, typed as audio from the file extension when the page declares no type, the audio file wins over a transcript PDF placed before it, and a player file with no type and no file extension is still audio (audio/mpeg, the player proves the kind).
+expected:
+- https://example.com/news/audio/harbor-dawn-chorus
+- https://example.com/news/audio/library-reading-hour
+- https://example.com/news/audio/river-cleanup-voices
+- https://example.com/news/audio/school-band-rehearsal
+- https://example.com/news/audio/night-market-sounds
+- https://example.com/news/audio/ferry-horn-archive
+enclosures:
+  https://example.com/news/audio/harbor-dawn-chorus:
+    url: https://example.com/media/audio/harbor-dawn-chorus.mp3
+    type: audio/mpeg
+  https://example.com/news/audio/library-reading-hour:
+    url: https://example.com/media/audio/library-reading-hour.m4a
+    type: audio/mp4
+  https://example.com/news/audio/river-cleanup-voices:
+    url: https://example.com/media/audio/river-cleanup-voices.ogg
+    type: audio/ogg
+  https://example.com/news/audio/school-band-rehearsal:
+    url: https://example.com/media/audio/school-band-rehearsal.opus
+    type: audio/ogg; codecs=opus
+  https://example.com/news/audio/night-market-sounds:
+    url: https://example.com/media/audio/night-market-sounds.wav
+    type: audio/wav
+  https://example.com/news/audio/ferry-horn-archive:
+    url: https://example.com/media/audio/stream/ferry-horn-archive
+    type: audio/mpeg

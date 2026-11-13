@@ -1,0 +1,40 @@
+---
+case: "A video archive whose JSON-LD is a bare array of standalone Schema VideoObjects (no ItemList); each video is an item whose enclosure is its contentUrl, with contentSize in bytes and the ISO 8601 duration in seconds."
+expected:
+- https://example.com/videos/2026/11/harbor-crane-lift-at-dawn
+- https://example.com/videos/2026/11/river-ferry-night-crossing
+- https://example.com/videos/2026/11/market-hall-roof-repairs
+- https://example.com/videos/2026/11/school-choir-winter-concert
+- https://example.com/videos/2026/11/museum-lantern-festival-opening
+- https://example.com/videos/2026/11/bridge-cable-inspection-walk
+enclosures:
+  https://example.com/videos/2026/11/harbor-crane-lift-at-dawn:
+    url: https://example.com/media/videos/video-1.mp4
+    type: video/mp4
+    length: 11500000
+    duration: 75
+  https://example.com/videos/2026/11/river-ferry-night-crossing:
+    url: https://example.com/media/videos/video-2.mp4
+    type: video/mp4
+    length: 12500000
+    duration: 135
+  https://example.com/videos/2026/11/market-hall-roof-repairs:
+    url: https://example.com/media/videos/video-3.mp4
+    type: video/mp4
+    length: 13500000
+    duration: 195
+  https://example.com/videos/2026/11/school-choir-winter-concert:
+    url: https://example.com/media/videos/video-4.mp4
+    type: video/mp4
+    length: 14500000
+    duration: 255
+  https://example.com/videos/2026/11/museum-lantern-festival-opening:
+    url: https://example.com/media/videos/video-5.mp4
+    type: video/mp4
+    length: 15500000
+    duration: 315
+  https://example.com/videos/2026/11/bridge-cable-inspection-walk:
+    url: https://example.com/media/videos/video-6.mp4
+    type: video/mp4
+    length: 16500000
+    duration: 375

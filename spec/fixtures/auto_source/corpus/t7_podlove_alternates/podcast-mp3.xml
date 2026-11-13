@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Example Signals (MP3 Audio)</title>
+    <link>https://example.com/news/</link>
+    <description>Synthetic per-format podcast feed</description>
+    <item>
+      <title>ES031 The dish that listens to pulsars</title>
+      <link>https://example.com/news/es031-pulsar-dish</link>
+      <guid isPermaLink="false">es031</guid>
+      <pubDate>Thu, 05 Nov 2026 08:00:00 GMT</pubDate>
+      <description>A visit to the radio dish that times pulsars every night.</description>
+      <itunes:duration>1:12:40</itunes:duration>
+      <enclosure url="https://example.com/news/podlove/file/31/s/feed/c/mp3/es031.mp3" type="audio/mpeg" length="69760000"/>
+    </item>
+    <item>
+      <title>ES030 Fast radio bursts</title>
+      <link>https://example.com/news/es030-fast-radio-bursts</link>
+      <guid isPermaLink="false">es030</guid>
+      <pubDate>Thu, 22 Oct 2026 08:00:00 GMT</pubDate>
+      <description>What we know about the millisecond flashes from far galaxies.</description>
+      <itunes:duration>58:05</itunes:duration>
+      <enclosure url="https://example.com/news/podlove/file/30/s/feed/c/mp3/es030.mp3" type="audio/mpeg" length="55760000"/>
+    </item>
+  </channel>
+</rss>

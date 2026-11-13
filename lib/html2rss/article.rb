@@ -28,7 +28,8 @@ module Html2rss
     #   +compose_title+
     # @param description [String, nil] raw extracted description/content (not feed-rendered HTML)
     # @param url [String, Html2rss::Url, nil] canonical article URL
-    # @param image [String, Html2rss::Url, nil] image URL for description / JSON Feed +image+
+    # @param image [String, Html2rss::Url, nil] image URL for description / JSON Feed +image+; without one, the
+    #   first image file among +enclosures+ ({Enclosure#image?}) is the item image
     # @param author [String, nil] author name
     # @param guid [String, Array, nil] explicit GUID override
     # @param published_at [String, Time, DateTime, nil] publication timestamp
@@ -41,6 +42,7 @@ module Html2rss
     def initialize(id: nil, title: nil, kicker: nil, description: nil, url: nil, image: nil, author: nil, guid: nil,
                    published_at: nil, enclosures: nil, categories: nil, scraper: nil, media: nil, compose_title: false)
       title = compose_title ? Title.compose(title, kicker:) : Title.collapse(title)
+      image = first_image(enclosures) unless present?(image)
       @to_h = { id:, title:, description:, url:, image:, author:, guid:, published_at:,
                 enclosures:, categories:, scraper:, media: }.compact.transform_values { freeze_option(_1) }.freeze
 
@@ -88,11 +90,14 @@ module Html2rss
       @url = http_url(@to_h[:url]) || Url.sanitize(@to_h[:url])
     end
 
+    # The item image a feed reader and the description's +img+ load: an http(s) URL ({Url#web?}), never an
+    # +ftp:+ or +mailto:+ one.
+    #
     # @return [Url, nil]
     def image
       return @image unless @image == NOT_SET
 
-      @image = Url.sanitize(@to_h[:image])
+      @image = Url.sanitize(@to_h[:image]).then { _1 if _1&.web? }
     end
 
     # @return [String, nil]
@@ -114,12 +119,16 @@ module Html2rss
       dedup_from_url || dedup_from_id || dedup_from_guid || hash
     end
 
+    # The item's downloadable files ({Enclosure#file?}): a watch or player page, stream playlist or Flash player
+    # is never an enclosure, so neither feed format ships one.
+    #
     # @return [Array<Html2rss::Article::Enclosure>] normalized enclosure objects
     def enclosures
       return @enclosures unless @enclosures == NOT_SET
 
       @enclosures = Array(@to_h[:enclosures])
                     .map { |enclosure| Enclosure.new(**enclosure) }
+                    .select(&:file?)
                     .freeze
     end
 
@@ -157,6 +166,15 @@ module Html2rss
 
     private
 
+    # The item image of an article that declares none: its first image file, which stays an enclosure.
+    def first_image(enclosures)
+      Array(enclosures).each do |enclosure|
+        file = Enclosure.new(**enclosure)
+        return file.url if file.image?
+      end
+      nil
+    end
+
     def present?(value)
       case value
       when String, Array then !value.empty?
@@ -166,7 +184,7 @@ module Html2rss
 
     # A {Url} is always normalized; http(s) ones need no re-parse. Others go through +Url.sanitize+.
     def http_url(value)
-      value if value.is_a?(Url) && Url::SUPPORTED_SCHEMES.include?(value.scheme)
+      value if value.is_a?(Url) && value.web?
     end
 
     ##

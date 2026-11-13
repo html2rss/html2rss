@@ -1,0 +1,21 @@
+---
+case: "A news listing of Schema NewsArticles where two carry a nested associatedMedia VideoObject (one alone, one in a list after an image); those articles get the video file as enclosure with duration and size, an article without media gets none."
+expected:
+- https://example.com/news/2026/11/council-approves-new-harbor-budget
+- https://example.com/news/2026/11/library-extends-weekend-opening-hours
+- https://example.com/news/2026/11/city-plants-trees-along-river-path
+- https://example.com/news/2026/11/school-opens-new-science-wing
+- https://example.com/news/2026/11/market-traders-vote-on-new-rules
+- https://example.com/news/2026/11/museum-restores-historic-ship-model
+enclosures:
+  https://example.com/news/2026/11/council-approves-new-harbor-budget: ~
+  https://example.com/news/2026/11/library-extends-weekend-opening-hours:
+    url: https://example.com/media/news/report-2.mp4
+    type: video/mp4
+    length: 52428800
+    duration: 180
+  https://example.com/news/2026/11/school-opens-new-science-wing:
+    url: https://example.com/media/news/report-4.webm
+    type: video/webm
+    length: 0
+    duration: 90

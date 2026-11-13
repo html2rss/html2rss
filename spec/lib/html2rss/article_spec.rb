@@ -12,6 +12,70 @@ RSpec.describe Html2rss::Article do
       expect(instance.description).to eq(options[:description])
     end
 
+    it 'stores no unset input, so a copy with none adds nothing on merge' do
+      article = described_class.new(id: 'x', url: 'https://example.com/a')
+
+      expect(article.merge(described_class.new(url: 'https://example.com/a'))).to be(article)
+    end
+
+    context 'with enclosures and no declared image' do
+      let(:file) { ->(name, type = nil) { { url: Html2rss::Url.from_absolute("https://example.com/#{name}"), type: } } }
+
+      it 'is the first image enclosure when none is declared, which stays an enclosure', :aggregate_failures do
+        article = described_class.new(enclosures: [file.call('a.mp3'), file.call('p/1', 'image/png'),
+                                                   file.call('b.jpg')])
+
+        expect(article.image.to_s).to eq('https://example.com/p/1')
+        expect(article.enclosures.size).to eq(3)
+      end
+
+      it 'keeps a declared image, replaces a blank one and has none without an image file', :aggregate_failures do
+        expect(described_class.new(image: 'https://example.com/d.jpg', enclosures: [file.call('b.jpg')]).image.to_s)
+          .to eq('https://example.com/d.jpg')
+        expect(described_class.new(image: '', enclosures: [file.call('b.jpg')]).image.to_s).to eq('https://example.com/b.jpg')
+        expect(described_class.new(enclosures: [file.call('a.mp3'), file.call('n.pdf')]).image).to be_nil
+      end
+
+      it 'has no image that is no http(s) URL', :aggregate_failures do
+        expect(described_class.new(image: 'ftp://example.com/d.jpg').image).to be_nil
+        expect(described_class.new(image: 'mailto:a@example.com').image).to be_nil
+      end
+
+      it 'memoizes the image' do
+        article = described_class.new(image: ' https://example.com/d.jpg ')
+
+        expect(article.image).to equal(article.image)
+      end
+
+      it 'keeps only downloadable files, never a watch page, stream playlist or Flash player' do
+        article = described_class.new(enclosures: %w[watch/42 a.mp3 live/index.m3u8 player.swf b.jpg n.pdf].map(&file))
+
+        expect(article.enclosures.map { _1.url.to_s })
+          .to eq(%w[https://example.com/a.mp3 https://example.com/b.jpg https://example.com/n.pdf])
+      end
+
+      it 'builds the enclosures once, frozen, and none without any', :aggregate_failures do
+        article = described_class.new(enclosures: [file.call('a.mp3')])
+
+        expect(article.enclosures).to be(article.enclosures).and be_frozen
+        expect(described_class.new.enclosures).to eq([])
+      end
+
+      it 'takes a file whose kind alone marks it an image' do
+        photo = { url: Html2rss::Url.from_absolute('https://example.com/photo/42'), kind: :image }
+
+        expect(described_class.new(enclosures: [file.call('a.mp3'), photo, file.call('b.jpg')]).image.to_s)
+          .to eq('https://example.com/photo/42')
+      end
+
+      it 'survives a merge with a page copy carrying another image' do
+        feed_item = described_class.new(url: 'https://example.com/a', enclosures: [file.call('feed.jpg')])
+        page_copy = described_class.new(url: 'https://example.com/a', image: 'https://example.com/card-large.jpg')
+
+        expect(feed_item.merge(page_copy).image.to_s).to eq('https://example.com/feed.jpg')
+      end
+    end
+
     it 'accepts every key in PROVIDED_KEYS' do
       attrs = described_class::PROVIDED_KEYS.to_h { |key| [key, key == :enclosures ? [] : 'x'] }
       expect { described_class.new(**attrs) }.not_to raise_error

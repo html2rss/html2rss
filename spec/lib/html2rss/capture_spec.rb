@@ -136,7 +136,7 @@ RSpec.describe Html2rss::Capture do
     it 'falls back to a path-suffix match when the article host differs' do
       html = page.call((1..3).map { card.call(_1) }.join)
 
-      expect(derive.call(html, articles_for.call(3, host: 'https://other.example.org'))).to eq(['article', :list])
+      expect(derive.call(html, articles_for.call(3, host: 'https://other.example.net'))).to eq(['article', :list])
     end
 
     it 'needs two matched segments', :aggregate_failures do
@@ -315,19 +315,19 @@ RSpec.describe Html2rss::Capture do
         'zzz' => %w[news]
       }.each do |keyword, topics|
         it "maps #{keyword.inspect} to #{topics.join('+')}" do
-          result = described_class.new('https://example.org/x', title: keyword).build
+          result = described_class.new('https://example.net/x', title: keyword).build
           expect(result.inferred_topics).to eq(topics)
         end
       end
 
       it 'matches case-insensitively against the url as well as the title', :aggregate_failures do
-        result = described_class.new('https://example.org/SOLAR', title: 'zzz').build
+        result = described_class.new('https://example.net/SOLAR', title: 'zzz').build
         expect(result.inferred_topics).to eq(%w[energy])
         expect(result.config.dig(:directory, :topics)).to eq(%w[energy])
       end
 
       it 'prefers explicit topics over inference' do
-        result = described_class.new('https://example.org/solar', topics: %w[jobs]).build
+        result = described_class.new('https://example.net/solar', topics: %w[jobs]).build
         expect(result.inferred_topics).to eq(%w[jobs])
       end
     end
@@ -343,7 +343,7 @@ RSpec.describe Html2rss::Capture do
       expect(result.native_feed).to eq(feed.to_s)
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
         hash_including(
-          page_url: url,
+          page_url: response.url,
           request_session: kind_of(Html2rss::RequestSession)
         )
       )
@@ -424,7 +424,7 @@ RSpec.describe Html2rss::Capture do
         result
 
         expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-          page_url: url, request_session: kind_of(Html2rss::RequestSession),
+          page_url: Html2rss::Url.from_absolute(url), request_session: kind_of(Html2rss::RequestSession),
           parsed_body: kind_of(Nokogiri::HTML::Document), html: a_string_including('Page Title')
         )
       end
@@ -489,6 +489,17 @@ RSpec.describe Html2rss::Capture do
 
         expect(result.native_feed).to be_nil
         expect(result.native_feed?).to be(false)
+      end
+    end
+
+    context 'when native feed discovery finds none' do
+      before do
+        stub_outcome(html_response('<html></html>'), articles: [])
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+      end
+
+      it 'has no native feed' do
+        expect(described_class.new(url).build.native_feed).to be_nil
       end
     end
 

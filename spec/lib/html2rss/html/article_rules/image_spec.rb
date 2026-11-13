@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Html::ArticleRules::Image do
+  describe '.remote_src?' do
+    it 'accepts a URL and rejects blank or inline data sources', :aggregate_failures do
+      expect(described_class.remote_src?('/posters/clip.jpg')).to be(true)
+      expect(described_class.remote_src?('data:image/png;base64,AAAA')).to be(false)
+      expect(described_class.remote_src?(" \t")).to be(false)
+      expect(described_class.remote_src?(' /posters/clip.jpg')).to be(true)
+      expect(described_class.remote_src?(nil)).to be(false)
+    end
+  end
+
   describe '.largest_from_srcsets' do
     it 'picks the largest width candidate and skips data URLs' do
       srcsets = [

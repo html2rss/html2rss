@@ -95,6 +95,9 @@ module Html2rss
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
         # @param keep_different_domain [Boolean] when true, keep items whose URLs are on a
         #   different domain than +url+ (source-controlled off-domain links; default false)
+        # @param feed_url [Html2rss::Url, nil] the native feed the page advertises and that was read
+        #   ({Scraper::NativeFeed#feed_url}); that feed's own items may also link to its domain, or be their
+        #   own audio/video file on any domain
         # @param keep_sponsored [Boolean] when true, keep items the page marks as sponsored
         #   (default false)
         # @param corroboration [Corroboration, nil] page check for structured-tier items, run
@@ -104,7 +107,8 @@ module Html2rss
         # @return [Result] cleaned articles and frozen drop tallies
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
         def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
-                 keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil)
+                 keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil,
+                 feed_url: nil)
           Log.debug "Cleanup: start with #{articles.size} articles"
           tallies = Hash.new(0)
 
@@ -117,7 +121,7 @@ module Html2rss
           reject_sponsored!(articles, page_links, tallies) unless keep_sponsored
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies)
-          reject_different_domain!(articles, url, tallies) unless keep_different_domain
+          reject_different_domain!(articles, url, feed_url, tallies) unless keep_different_domain
           reject_excluded_destinations!(articles, tallies)
           reject_low_quality_titles!(articles, tallies)
 
@@ -278,11 +282,24 @@ module Html2rss
           end
         end
 
-        def reject_different_domain!(articles, base_url, tallies)
-          base_domain = base_url.domain
+        # Items link to the page's domain. A followed native feed's own items may also link to the feed's
+        # domain (a podcast platform's episode pages) or be their own audio/video file, which hosted podcasts
+        # serve from a third-party CDN; every other item keeps the rule.
+        def reject_different_domain!(articles, base_url, feed_url, tallies)
+          page_domain = base_url.domain
           tally_reject!(articles, tallies, 'different_domain') do |article|
-            article.url&.domain != base_domain
+            article.url.domain != page_domain && !followed_feed_exempt?(article, feed_url)
           end
+        end
+
+        # A followed feed's item is exempt when it links to the feed's domain, or when its URL is its own
+        # audio/video file on any domain, whether the feed linked that file or the item is a link-less episode
+        # that took the file as its URL ({Syndication::Parser#article}).
+        def followed_feed_exempt?(article, feed_url)
+          return false unless feed_url && article.scraper == Scraper::NativeFeed
+
+          article.url.domain == feed_url.domain ||
+            article.enclosures.any? { |enclosure| enclosure.media? && enclosure.url == article.url }
         end
 
         # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).

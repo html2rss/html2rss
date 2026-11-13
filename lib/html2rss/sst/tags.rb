@@ -28,7 +28,8 @@ module Html2rss
 
       # header/footer/nav: chrome at page level, their parent's scope inside sectioning content.
       PAGE_CHROME = PAGE_CHROME_NAMES.to_set(&:to_s).freeze
-      ALWAYS_CHROME = IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze - PAGE_CHROME - Set['nav']
+      # +noscript+ too: the SST keeps one only for its file links (enclosures), never as content anchors.
+      ALWAYS_CHROME = ((IGNORED_CONTAINER_NAMES.to_set(&:to_s) - PAGE_CHROME - Set['nav']) | Set['noscript']).freeze
       UTILITY_LANDMARK = UTILITY_LANDMARK_NAMES.to_set(&:to_s).freeze
       SECTIONING = SECTIONING_NAMES.to_set(&:to_s).freeze
       # ARIA roles whose subtree is chrome anywhere (+search+ is not: it may wrap the result list).
@@ -59,7 +60,7 @@ module Html2rss
 
       ##
       # The single chrome-scope rule, folded down the tree by both the SST normalizer
-      # and the Nokogiri ancestor walk. +:chrome+ sticks: dialog and the ARIA navigation,
+      # and the Nokogiri ancestor walk. +:chrome+ sticks: dialog, noscript and the ARIA navigation,
       # menu and dialog roles are chrome; header/footer/nav and the banner/contentinfo roles
       # are chrome only at +:page+ level; a pager (a nav labelled or classed as pagination or
       # linking rel=next/prev, or a list labelled or whole-token classed as pagination whose

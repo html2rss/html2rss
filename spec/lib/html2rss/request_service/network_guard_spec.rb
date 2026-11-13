@@ -36,7 +36,7 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
 
     context 'when the resolver is Resolv-shaped' do
       before do
-        allow(resolver).to receive(:each_address).with('example.com').and_yield('93.184.216.34')
+        allow(resolver).to receive(:each_address).with('example.com').and_yield('192.0.2.10')
       end
 
       it 'classifies addresses via each_address' do
@@ -48,7 +48,7 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
       let(:resolver) do
         Class.new do
           def self.getaddrinfo(*)
-            [[nil, nil, nil, '93.184.216.34']]
+            [[nil, nil, nil, '192.0.2.10']]
           end
         end
       end
@@ -85,7 +85,7 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
     end
 
     it 'does not treat look-alike hosts as local' do
-      allow(resolver).to receive(:each_address).and_yield('93.184.216.34')
+      allow(resolver).to receive(:each_address).and_yield('192.0.2.10')
 
       expect { guard.enforce_public_network!(Html2rss::Url.from_absolute('http://notlocalhost.example/')) }
         .not_to raise_error
@@ -99,13 +99,13 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
     end
 
     it 'denies when any resolved address is blocked' do
-      allow(resolver).to receive(:each_address).with('example.com').and_yield('93.184.216.34').and_yield('10.0.0.1')
+      allow(resolver).to receive(:each_address).with('example.com').and_yield('192.0.2.10').and_yield('10.0.0.1')
 
       expect { guard.enforce_public_network!(url) }.to raise_error(denied, /example.com/)
     end
 
     it 'ignores unparsable resolver addresses but keeps valid ones' do
-      allow(resolver).to receive(:each_address).with('example.com').and_yield('garbage').and_yield('93.184.216.34')
+      allow(resolver).to receive(:each_address).with('example.com').and_yield('garbage').and_yield('192.0.2.10')
 
       expect { guard.enforce_public_network!(url) }.not_to raise_error
     end

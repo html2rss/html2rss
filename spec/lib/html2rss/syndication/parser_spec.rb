@@ -27,7 +27,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </rss>
       XML
 
-      articles = described_class.parse(body)
+      articles = described_class.parse(body).articles
 
       expect(articles.size).to eq(1)
       expect(articles.first).to include(
@@ -38,6 +38,50 @@ RSpec.describe Html2rss::Syndication::Parser do
         categories: ['News']
       )
       expect(articles.first[:url].to_s).to eq('https://example.com/posts/1')
+    end
+
+    it 'gives an item with several image sizes one image in its description', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+          <channel><title>Channel</title><link>https://example.com/</link><description>Desc</description>
+            <item>
+              <title>Harbor</title><link>https://example.com/posts/1</link><description>Hello</description>
+              <media:group>
+                <media:content url="https://example.com/i/s.jpg" medium="image"/>
+                <media:content url="https://example.com/i/m.jpg" medium="image"/>
+                <media:content url="https://example.com/i/l.jpg" medium="image"/>
+              </media:group>
+            </item>
+          </channel>
+        </rss>
+      XML
+
+      article = Html2rss::Article.new(**described_class.parse(body).articles.first)
+      description = Nokogiri::HTML.fragment(Html2rss::FeedBuilder::ItemPresentation.description_for(article))
+
+      expect(article.enclosures.size).to eq(3)
+      expect(description.css('img').map { _1['src'] }).to eq(['https://example.com/i/s.jpg'])
+    end
+
+    it 'adds no image to a description that already embeds it' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+          <channel><title>Channel</title><link>https://example.com/</link><description>Desc</description>
+            <item>
+              <title>Harbor</title><link>https://example.com/posts/1</link>
+              <description><![CDATA[<p><img src="https://example.com/i/hero.jpg"> Hello</p>]]></description>
+              <media:content url="https://example.com/i/hero.jpg" medium="image"/>
+            </item>
+          </channel>
+        </rss>
+      XML
+
+      article = Html2rss::Article.new(**described_class.parse(body).articles.first)
+      description = Html2rss::FeedBuilder::ItemPresentation.description_for(article)
+
+      expect(Nokogiri::HTML.fragment(description).css('img').size).to eq(1)
     end
 
     it 'parses Atom entries into article hashes', :aggregate_failures do
@@ -57,7 +101,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      articles = described_class.parse(body)
+      articles = described_class.parse(body).articles
 
       expect(articles.size).to eq(1)
       expect(articles.first).to include(
@@ -84,25 +128,25 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      expect(described_class.parse(body).first).not_to have_key(:author)
+      expect(described_class.parse(body).articles.first).not_to have_key(:author)
     end
 
     it 'returns an empty array for unparseable bodies' do
-      expect(described_class.parse('not xml at all <<<')).to eq([])
+      expect(described_class.parse('not xml at all <<<').articles).to eq([])
     end
 
     it 'returns an empty array for a missing body' do
-      expect(described_class.parse(nil)).to eq([])
+      expect(described_class.parse(nil).articles).to eq([])
     end
 
     it 'returns an empty array for a document that is neither RSS nor Atom' do
-      expect(described_class.parse('<html><body><p>Hello</p></body></html>')).to eq([])
+      expect(described_class.parse('<html><body><p>Hello</p></body></html>').articles).to eq([])
     end
 
     it 'logs a structured warning when the body cannot be parsed' do
       allow(Html2rss::Log).to receive(:warn)
 
-      described_class.parse('not xml at all <<<')
+      described_class.parse('not xml at all <<<').articles
 
       expect(Html2rss::Log).to have_received(:warn).with(
         satisfy do |payload|
@@ -114,16 +158,17 @@ RSpec.describe Html2rss::Syndication::Parser do
       )
     end
 
-    it 'skips RSS 1.0 (RDF) items without a usable link' do
+    it 'takes an http(s) rdf:about as the URL of an RSS 1.0 (RDF) item without a usable link' do
       body = <<~XML
         <?xml version="1.0"?>
         <rdf:RDF xmlns="http://purl.org/rss/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
           <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link><description>d</description></channel>
           <item rdf:about="https://example.com/a"><title>A</title><link></link></item>
+          <item rdf:about="urn:example:b"><title>B</title><link></link></item>
         </rdf:RDF>
       XML
 
-      expect(described_class.parse(body)).to eq([])
+      expect(described_class.parse(body).articles.map { _1[:url].to_s }).to eq(%w[https://example.com/a])
     end
 
     it 'falls back to the link as id for RSS 1.0 (RDF) items without rdf:about' do
@@ -135,13 +180,67 @@ RSpec.describe Html2rss::Syndication::Parser do
         </rdf:RDF>
       XML
 
-      expect(described_class.parse(body).first[:id]).to eq('https://example.com/a')
+      expect(described_class.parse(body).articles.first[:id]).to eq('https://example.com/a')
+    end
+
+    it 'resolves a relative RSS 1.0 (RDF) item link against the feed URL' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rdf:RDF xmlns="http://purl.org/rss/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+          <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link><description>d</description></channel>
+          <item><title>A</title><link>/posts/a</link></item>
+        </rdf:RDF>
+      XML
+
+      expect(described_class.parse(body, base_url: 'https://example.com/feed.rdf').articles.first[:url].to_s)
+        .to eq('https://example.com/posts/a')
+    end
+
+    it 'carries RSS 1.0 (RDF) item media files' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/"
+                 xmlns:media="http://search.yahoo.com/mrss/">
+          <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link>
+            <description>d</description></channel>
+          <item rdf:about="https://example.com/r/1"><title>Talk</title><link>https://example.com/r/1</link>
+            <media:content url="https://example.com/r/1.mp3" type="audio/mpeg"/></item>
+        </rdf:RDF>
+      XML
+
+      expect(described_class.parse(body).articles.first[:enclosures])
+        .to eq([{ url: Html2rss::Url.from_absolute('https://example.com/r/1.mp3'), type: 'audio/mpeg' }])
+    end
+
+    it 'carries RSS 2.0 item media beside a channel extension element named item' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:x="urn:example:x" xmlns:media="http://search.yahoo.com/mrss/"><channel>
+          <title>C</title><link>https://example.com/</link><description>d</description><x:item>meta</x:item>
+          <item><title>A</title><link>https://example.com/a</link>
+            <media:content url="https://example.com/stream/1" medium="audio" fileSize="1000" duration="60"/></item>
+        </channel></rss>
+      XML
+
+      expect(described_class.parse(body).articles.first[:enclosures])
+        .to eq([{ url: Html2rss::Url.from_absolute('https://example.com/stream/1'), kind: :audio,
+                  bytes_length: 1000, duration: 60 }])
+    end
+
+    it 'hands the feed URL to the item media reader for its log' do
+      allow(Html2rss::Syndication::ItemMedia).to receive(:for_items).and_call_original
+      body = '<rss version="2.0"><channel><title>C</title><item><link>https://example.com/a</link></item></channel></rss>'
+
+      described_class.parse(body, base_url: 'https://example.com/feed.xml').articles
+
+      expect(Html2rss::Syndication::ItemMedia).to have_received(:for_items)
+        .with(body, count: 1, url: 'https://example.com/feed.xml')
     end
 
     it 'parses RSS 1.0 (RDF) items with Dublin Core fields', :aggregate_failures do
       body = File.read('spec/fixtures/syndication/rss1_dc_date.xml')
 
-      articles = described_class.parse(body, base_url: 'https://example.com/')
+      articles = described_class.parse(body, base_url: 'https://example.com/').articles
 
       expect(articles.map { |article| article[:title] }).to eq(['First RDF post', 'Second RDF post'])
       expect(articles.first).to include(
@@ -161,7 +260,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </channel></rss>
       XML
 
-      articles = described_class.parse(body, base_url: 'https://example.com/blog/')
+      articles = described_class.parse(body, base_url: 'https://example.com/blog/').articles
 
       expect(articles.map { |article| article[:url].to_s }).to eq(
         ['https://example.com/blog/posts/1.html', 'https://example.com/root/2.html']
@@ -179,7 +278,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </channel></rss>
       XML
 
-      articles = described_class.parse(body)
+      articles = described_class.parse(body).articles
 
       expect(articles.map { |article| article[:title] }).to eq(['Kept'])
     end
@@ -193,7 +292,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </channel></rss>
       XML
 
-      ids = described_class.parse(body).map { |article| article[:id] }
+      ids = described_class.parse(body).articles.map { |article| article[:id] }
 
       expect(ids).to eq(%w[https://example.com/a https://example.com/b])
     end
@@ -206,7 +305,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </channel></rss>
       XML
 
-      article = described_class.parse(body).first
+      article = described_class.parse(body).articles.first
 
       expect(article.keys).to contain_exactly(:id, :url, :categories)
       expect(article).to include(id: 'https://example.com/bare', categories: [])
@@ -226,7 +325,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </channel></rss>
       XML
 
-      article = described_class.parse(body).first
+      article = described_class.parse(body).articles.first
 
       expect(article).to include(title: 'Padded title', author: 'Ada', id: 'g-1')
       expect(article).not_to have_key(:description)
@@ -240,7 +339,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </channel></rss>
       XML
 
-      expect(described_class.parse(body).first[:published_at]).to eq(Time.utc(2024, 1, 1, 12))
+      expect(described_class.parse(body).articles.first[:published_at]).to eq(Time.utc(2024, 1, 1, 12))
     end
 
     it 'keeps only non-blank RSS category names', :aggregate_failures do
@@ -254,10 +353,10 @@ RSpec.describe Html2rss::Syndication::Parser do
         </channel></rss>
       XML
 
-      expect(described_class.parse(body).first[:categories]).to eq(%w[News Tech])
+      expect(described_class.parse(body).articles.first[:categories]).to eq(%w[News Tech])
     end
 
-    it 'prefers the Atom alternate link over self links', :aggregate_failures do
+    it 'takes the Atom alternate link and skips an entry with only a self link', :aggregate_failures do
       body = <<~XML
         <?xml version="1.0"?>
         <feed xmlns="http://www.w3.org/2005/Atom">
@@ -276,9 +375,9 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      urls = described_class.parse(body).map { |article| article[:url].to_s }
+      urls = described_class.parse(body).articles.map { |article| article[:url].to_s }
 
-      expect(urls).to eq(%w[https://example.com/e/alt https://example.com/self/only.atom])
+      expect(urls).to eq(%w[https://example.com/e/alt])
     end
 
     it 'resolves relative Atom links against base_url and drops them without one', :aggregate_failures do
@@ -290,8 +389,8 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      with_base = described_class.parse(body, base_url: 'https://example.com/blog/')
-      without_base = described_class.parse(body)
+      with_base = described_class.parse(body, base_url: 'https://example.com/blog/').articles
+      without_base = described_class.parse(body).articles
 
       expect(with_base.first[:url].to_s).to eq('https://example.com/blog/entries/3')
       expect(without_base).to eq([])
@@ -311,7 +410,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      expect(described_class.parse(body).first[:url].to_s).to eq('https://example.com/plain')
+      expect(described_class.parse(body).articles.first[:url].to_s).to eq('https://example.com/plain')
     end
 
     it 'treats a blank Atom href as no link', :aggregate_failures do
@@ -323,7 +422,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      expect(described_class.parse(body, base_url: 'https://example.com/')).to eq([])
+      expect(described_class.parse(body, base_url: 'https://example.com/').articles).to eq([])
     end
 
     it 'treats blank Atom id, title, and summary as absent', :aggregate_failures do
@@ -335,7 +434,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      article = described_class.parse(body).first
+      article = described_class.parse(body).articles.first
 
       expect(article[:id]).to eq('https://example.com/blank')
       expect(article.keys).to contain_exactly(:id, :url, :categories)
@@ -355,21 +454,107 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      authors = described_class.parse(body).map { |article| article[:author] }
+      authors = described_class.parse(body).articles.map { |article| article[:author] }
 
       expect(authors).to eq(['Ada', nil, nil])
     end
 
-    it 'drops Atom entries that carry no link', :aggregate_failures do
+    it 'drops Atom entries that carry no link, no http(s) id and no media file', :aggregate_failures do
       body = <<~XML
         <?xml version="1.0"?>
         <feed xmlns="http://www.w3.org/2005/Atom">
           <title>Feed</title>
           <entry><id>urn:example:nolink</id><title>No link</title></entry>
+          <entry><id>tag:example.com,2026:2</id><title>Image only</title>
+            <link rel="enclosure" type="image/jpeg" href="https://example.com/img/2.jpg"/></entry>
+          <entry><id>https://example.com/entries/3</id><title>Id link</title></entry>
         </feed>
       XML
 
-      expect(described_class.parse(body)).to eq([])
+      expect(described_class.parse(body).articles.map { _1[:url].to_s }).to eq(%w[https://example.com/entries/3])
+    end
+
+    it 'gives a link-less RSS item its http(s) guid, else its first audio or video file', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0"><channel><title>Show</title>
+          <item><title>Guid</title><guid isPermaLink="false"> https://podhost.example.net/show/ep5 </guid>
+            <enclosure url="https://media.example.net/5.mp3" type="audio/mpeg"/></item>
+          <item><title>File</title><guid isPermaLink="false">show-ep4</guid>
+            <enclosure url="https://media.example.net/4.jpg" type="image/jpeg"/>
+            <enclosure url="media/4.mp4" type="video/mp4"/></item>
+          <item><title>Ftp guid</title><guid>ftp://example.net/3</guid></item>
+          <item><title>Relative guid</title><guid>ep2</guid></item>
+        </channel></rss>
+      XML
+
+      articles = described_class.parse(body, base_url: 'https://feeds.example.net/show.xml').articles
+
+      expect(articles.map { _1[:url].to_s }).to eq(%w[https://podhost.example.net/show/ep5
+                                                      https://feeds.example.net/media/4.mp4])
+      expect(articles.map { _1[:id] }).to eq(%w[https://podhost.example.net/show/ep5 show-ep4])
+    end
+
+    it 'takes no link, file or image that is no http(s) URL, so it never makes the item URL', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>Show</title>
+          <item><title>Script link</title><link>javascript:alert(1)</link><guid isPermaLink="false">e1</guid>
+            <enclosure url="javascript:alert(1)//a.mp3" type="audio/mpeg"/>
+            <media:content url="data:audio/mpeg;base64,AAAA" medium="audio"/>
+            <media:content url="ftp://example.com/a.mp3" medium="audio"/>
+            <enclosure url="https://media.example.net/1.mp3" type="audio/mpeg"/></item>
+          <item><title>Ftp file</title><guid isPermaLink="false">e2</guid>
+            <enclosure url="ftp://example.com/2.mp3" type="audio/mpeg"/></item>
+        </channel></rss>
+      XML
+
+      articles = described_class.parse(body, base_url: 'https://feeds.example.net/show.xml').articles
+
+      expect(articles.map { _1[:url].to_s }).to eq(%w[https://media.example.net/1.mp3])
+      expect(articles.first[:enclosures].map { _1[:url].to_s }).to eq(%w[https://media.example.net/1.mp3])
+    end
+
+    it 'takes an Atom enclosure link as the URL only of an entry without another link', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>Feed</title>
+          <entry><id>urn:example:episode</id><title>Episode</title>
+            <link rel="enclosure" type="audio/mpeg" length="12345" href="https://example.com/media/episode.mp3"/>
+            <link rel="alternate" href="https://example.com/episodes/1"/></entry>
+          <entry><id>urn:example:file</id><title>File only</title>
+            <link rel="enclosure" type="audio/mpeg" href="https://example.com/media/file.mp3"/></entry>
+        </feed>
+      XML
+
+      articles = described_class.parse(body).articles
+
+      expect(articles.map { |article| article[:url].to_s }).to eq(%w[https://example.com/episodes/1
+                                                                     https://example.com/media/file.mp3])
+      expect(articles.first[:enclosures]).to eq([{ url: Html2rss::Url.from_absolute('https://example.com/media/episode.mp3'),
+                                                   type: 'audio/mpeg', bytes_length: 12_345 }])
+    end
+
+    it 'carries RSS item enclosures and image, resolved against base_url', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+          <channel><title>Podcast</title>
+            <item><title>Episode 1</title><link>https://example.com/episodes/1</link>
+              <itunes:duration>45:00</itunes:duration><itunes:image href="art/1.jpg"/>
+              <enclosure url="media/1.mp3" type="audio/mpeg" length="12345"/></item>
+            <item><title>Post</title><link>https://example.com/posts/2</link></item>
+          </channel>
+        </rss>
+      XML
+
+      first, second = described_class.parse(body, base_url: 'https://example.com/feed.xml').articles
+
+      expect(first).to include(image: Html2rss::Url.from_absolute('https://example.com/art/1.jpg'),
+                               enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/media/1.mp3'),
+                                              type: 'audio/mpeg', bytes_length: 12_345, duration: 2700 }])
+      expect(second.keys).not_to include(:image, :enclosures)
     end
 
     it 'falls back to updated when Atom published is missing, and prefers published otherwise', :aggregate_failures do
@@ -383,7 +568,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      published = described_class.parse(body).map { |article| article[:published_at] }
+      published = described_class.parse(body).articles.map { |article| article[:published_at] }
 
       expect(published).to eq([Time.utc(2024, 2, 1), Time.utc(2024, 3, 1)])
     end
@@ -399,7 +584,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      descriptions = described_class.parse(body).map { |article| article[:description] }
+      descriptions = described_class.parse(body).articles.map { |article| article[:description] }
 
       expect(descriptions).to eq(['Full body', 'Only summary'])
     end
@@ -413,7 +598,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      article = described_class.parse(body).first
+      article = described_class.parse(body).articles.first
 
       expect(article).not_to have_key(:title)
       expect(article[:id]).to eq('https://example.com/untitled')
@@ -430,10 +615,10 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      authors = described_class.parse(body).map { |article| article[:author] }
+      authors = described_class.parse(body).articles.map { |article| article[:author] }
 
       expect(authors).to eq(['ada@example.com', nil])
-      expect(described_class.parse(body).last).not_to have_key(:author)
+      expect(described_class.parse(body).articles.last).not_to have_key(:author)
     end
 
     it 'keeps only non-blank Atom category terms' do
@@ -446,7 +631,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      expect(described_class.parse(body).first[:categories]).to eq(['Release'])
+      expect(described_class.parse(body).articles.first[:categories]).to eq(['Release'])
     end
 
     it 'reads Atom text from content, not serialized XML', :aggregate_failures do
@@ -463,10 +648,80 @@ RSpec.describe Html2rss::Syndication::Parser do
         </feed>
       XML
 
-      article = described_class.parse(body).first
+      article = described_class.parse(body).articles.first
 
       expect(article[:description]).to eq('<div xmlns="http://www.w3.org/1999/xhtml">Inner</div>')
       expect(article[:description]).not_to include('<content')
+    end
+
+    it 'reads the channel facts an RSS 2.0 podcast feed states', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+          <channel>
+            <title>Show</title>
+            <link>https://example.com/</link>
+            <description>Desc</description>
+            <managingEditor>editor@example.com (Editor Name)</managingEditor>
+            <itunes:author> Show Host </itunes:author>
+            <itunes:explicit>yes</itunes:explicit>
+            <itunes:category text="Society &amp; Culture"><itunes:category text="Documentary"/></itunes:category>
+            <itunes:category text="News"/>
+            <item><title>Episode</title><link>https://example.com/1</link></item>
+          </channel>
+        </rss>
+      XML
+
+      channel = described_class.parse(body).channel
+
+      expect(channel.author).to eq('Show Host')
+      expect(channel.categories).to eq([['Society & Culture', 'Documentary'], ['News']])
+      expect(channel.explicit).to be(true)
+    end
+
+    it 'falls back to the managingEditor name and leaves unstated facts unknown', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0">
+          <channel>
+            <title>Blog</title>
+            <link>https://example.com/</link>
+            <description>Desc</description>
+            <managingEditor>editor@example.com (Editor Name)</managingEditor>
+          </channel>
+        </rss>
+      XML
+
+      expect(described_class.parse(body).channel).to eq(
+        Html2rss::Syndication::ChannelFacts.new(author: 'Editor Name', categories: [], explicit: nil)
+      )
+    end
+
+    it 'reads the Atom feed author as the channel author' do
+      body = <<~XML
+        <?xml version="1.0" encoding="utf-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>Atom</title>
+          <id>urn:example:feed</id>
+          <updated>2024-01-01T00:00:00Z</updated>
+          <author><name>Atom Author</name><email>atom@example.com</email></author>
+        </feed>
+      XML
+
+      expect(described_class.parse(body).channel.author).to eq('Atom Author')
+    end
+
+    it 'states no channel facts for an RSS 1.0 feed or a document that fails to parse', :aggregate_failures do
+      rdf = <<~XML
+        <?xml version="1.0"?>
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/">
+          <channel rdf:about="https://example.com/"><title>RDF</title><link>https://example.com/</link>
+            <description>Desc</description></channel>
+        </rdf:RDF>
+      XML
+
+      expect(described_class.parse(rdf).channel).to be_nil
+      expect(described_class.parse('not xml at all <<<')).to eq(Html2rss::Syndication::Feed::NONE)
     end
   end
 
@@ -491,7 +746,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         url: Html2rss::Url.from_absolute('https://example.com/feed.xml')
       )
 
-      expect(described_class.parse_response(response).first[:title]).to eq('Item')
+      expect(described_class.parse_response(response).articles.first[:title]).to eq('Item')
     end
 
     it 'raises when the response is not a feed' do
@@ -501,7 +756,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         url: Html2rss::Url.from_absolute('https://example.com/')
       )
 
-      expect { described_class.parse_response(response) }.to raise_error(ArgumentError, /syndication feed/)
+      expect { described_class.parse_response(response).articles }.to raise_error(ArgumentError, /syndication feed/)
     end
 
     it 'resolves relative item links against the response URL' do
@@ -516,7 +771,7 @@ RSpec.describe Html2rss::Syndication::Parser do
         url: Html2rss::Url.from_absolute('https://example.com/blog/feed.xml')
       )
 
-      expect(described_class.parse_response(response).first[:url].to_s).to eq('https://example.com/blog/posts/1.html')
+      expect(described_class.parse_response(response).articles.first[:url].to_s).to eq('https://example.com/blog/posts/1.html')
     end
   end
 end

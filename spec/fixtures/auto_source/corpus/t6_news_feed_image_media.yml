@@ -1,0 +1,18 @@
+---
+case: A news page with a native RSS feed (saved response) whose items carry only image media:content (one typed, one an untyped resize URL with medium="image"), plus a video watch page served as untyped media:content medium="video" and an untyped player URL without medium. Each image file becomes the item image; no watch or player page ships as an RSS enclosure.
+responses: t6_news_feed_image_media
+expected:
+- https://example.com/news/2026/11/harbor-crane-arrives
+- https://example.com/news/2026/11/school-choir-wins-regional-prize
+- https://example.com/news/2026/11/night-ferry-winter-storm
+- https://example.com/news/2026/11/market-hall-reopens
+images:
+  https://example.com/news/2026/11/harbor-crane-arrives: https://example.com/news/img/crane-1001.jpg
+  https://example.com/news/2026/11/school-choir-wins-regional-prize: https://example.com/news/img/resize/choir-1002
+  https://example.com/news/2026/11/night-ferry-winter-storm: https://example.com/news/img/ferry-1003.jpg
+  https://example.com/news/2026/11/market-hall-reopens: ~
+enclosures:
+  https://example.com/news/2026/11/harbor-crane-arrives: ~
+  https://example.com/news/2026/11/school-choir-wins-regional-prize: ~
+  https://example.com/news/2026/11/night-ferry-winter-storm: ~
+  https://example.com/news/2026/11/market-hall-reopens: ~

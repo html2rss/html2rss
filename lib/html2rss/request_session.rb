@@ -65,9 +65,13 @@ module Html2rss
     # @param url [String, Html2rss::Url] follow-up request url
     # @param relation [Symbol] why the follow-up is being made
     # @param origin_url [String, Html2rss::Url] effective origin for same-origin checks
+    # @param advertisement [RequestService::FeedAdvertisement, nil] the origin page's advertised feeds;
+    #   with relation +:advertised_feed+, {RequestService::Policy} lets a listed feed leave the origin
     # @return [RequestService::Response] follow-up response
-    def follow_up(url:, relation:, origin_url:)
-      execute(context.follow_up(url:, relation:, origin_url:)).tap { |response| remember!(response.url) }
+    def follow_up(url:, relation:, origin_url:, advertisement: nil)
+      execute(context.follow_up(url:, relation:, origin_url:, advertisement:)).tap do |response|
+        remember!(response.url)
+      end
     end
 
     ##

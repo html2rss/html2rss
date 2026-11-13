@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example Signals</title>
+    <link>https://example.com/news/</link>
+    <description>Synthetic site feed: blog posts without audio</description>
+    <item>
+      <title>We moved our recording studio downtown</title>
+      <link>https://example.com/news/2026/11/studio-move</link>
+      <guid isPermaLink="false">blog-studio-move</guid>
+      <pubDate>Mon, 09 Nov 2026 08:00:00 GMT</pubDate>
+      <description>The studio is now next to the old observatory building.</description>
+    </item>
+    <item>
+      <title>Listener survey results are in</title>
+      <link>https://example.com/news/2026/10/listener-survey</link>
+      <guid isPermaLink="false">blog-listener-survey</guid>
+      <pubDate>Mon, 19 Oct 2026 08:00:00 GMT</pubDate>
+      <description>Thank you to the four hundred listeners who answered our survey.</description>
+    </item>
+  </channel>
+</rss>

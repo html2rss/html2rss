@@ -2,11 +2,12 @@
 
 module Html2rss
   module Html
-    FeedLink = Data.define(:href, :mime_type)
+    FeedLink = Data.define(:href, :mime_type, :title)
 
     # A native RSS/Atom/RDF hint from a document head +link[rel=alternate]+.
     #
     # Does not guess +/feed+ or +/rss.xml+ paths — that stays in configs +probe_rss+.
+    # +title+ is the link's stripped +title+ attribute (empty when absent).
     class FeedLink
       class << self
         ##
@@ -23,7 +24,7 @@ module Html2rss
         def from_node(node)
           href = node['href'].strip # the head selector guarantees an href attribute
           mime_type = feed_mime_type(node['type'])
-          new(href:, mime_type:) unless href.empty? || mime_type.nil?
+          new(href:, mime_type:, title: node['title'].to_s.strip) unless href.empty? || mime_type.nil?
         end
 
         def feed_mime_type(type)

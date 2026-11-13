@@ -16,6 +16,31 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.root.find { |n| n.name == :script }).to be_nil
     end
 
+    it 'keeps a noscript only as the file links inside it, as chrome with invisible text', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      doc = described_class.call('<html><body><article><h2>Episode</h2><noscript><p>Listen <a href="/a.mp3">Get</a>' \
+                                 '<a href="/page">Page</a><img src="/i.jpg"></p></noscript></article></body></html>')
+      noscript = doc.root.find { |n| n.name == :noscript }
+
+      expect(noscript.children.map { [_1.name, _1.attrs.href] }).to eq([[:a, '/a.mp3']])
+      expect(doc.index.ignored_chrome?(noscript.children.first)).to be(true)
+      expect(Html2rss::SST::Text.extract(doc.index.parent_of(noscript))).to eq('Episode')
+    end
+
+    it 'strips other hidden containers even when they hold file links' do
+      doc = described_class.call('<html><body><p>x</p><template><a href="/t.mp3">T</a></template>' \
+                                 '<svg><a href="/s.mp3">S</a></svg></body></html>')
+
+      expect(doc.root.find_all { |n| n.name != :html && n.name != :body && n.name != :p }).to be_empty
+    end
+
+    it 'strips a noscript without file links', :aggregate_failures do
+      doc = described_class.call('<html><body><p>x</p><noscript><a href="/page">Page</a><img src="/i.jpg">' \
+                                 '</noscript></body></html>')
+
+      expect(doc.root.find { |n| n.name == :noscript }).to be_nil
+      expect(doc.node_count).to eq(3)
+    end
+
     it 'builds typed Attrs on nodes', :aggregate_failures do
       doc = described_class.call(simple_html)
       article = doc.root.find { |n| n.name == :article }

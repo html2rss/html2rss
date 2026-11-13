@@ -60,7 +60,9 @@ module Html2rss
         return if skip_preflight?
 
         ctx.budget.consume! if consume_budget
-        ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
+        ctx.policy.validate_request!(
+          url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation, advertisement: ctx.advertisement
+        )
       end
 
       ##

@@ -175,14 +175,7 @@ module Html2rss
     end
 
     def probe_native_feed(response)
-      return nil unless response && @url
-
-      Syndication::Discovery.best_feed_url(
-        page_url: @url,
-        request_session: discovery_session,
-        parsed_body: (response.parsed_body if response.html_response?),
-        html: response.body
-      )&.to_s
+      Syndication::Discovery.native_feed_url(response:, request_session: discovery_session)&.to_s
     rescue Html2rss::Error
       nil
     end

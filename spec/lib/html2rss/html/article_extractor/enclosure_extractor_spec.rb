@@ -4,15 +4,16 @@ require 'nokogiri'
 
 RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
   describe '.call' do
-    subject(:enclosures) { described_class.call(article_tag, base_url) }
+    subject(:enclosures) do
+      described_class.call(article_tag, base_url).map do |attributes|
+        enclosure = Html2rss::Article::Enclosure.new(**attributes)
+        [enclosure.url.to_s, enclosure.type]
+      end
+    end
 
     let(:base_url) { 'http://example.com' }
     let(:article_tag_from) { ->(html) { Nokogiri::HTML(html).at('article') } }
-    let(:expected_enclosure) do
-      lambda do |path, type|
-        { url: Html2rss::Url.from_absolute("http://example.com#{path}"), type: }
-      end
-    end
+    let(:expected_enclosure) { ->(path, type) { ["http://example.com#{path}", type] } }
 
     context 'when article_tag contains video and audio sources' do
       let(:article_tag) do
@@ -79,21 +80,33 @@ RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
       end
     end
 
-    context 'when article_tag contains iframe sources' do
+    context 'when article_tag contains embed player frames' do
       let(:article_tag) do
         article_tag_from.call(<<~HTML)
           <article>
             <iframe src="/embeds/video.html"></iframe>
-            <iframe src="/widgets/chart.html"></iframe>
+            <iframe src="/embeds/clip.mp4"></iframe>
           </article>
         HTML
       end
 
-      it 'extracts iframe enclosures with correct URLs and types' do
-        expect(enclosures).to contain_exactly(
-          expected_enclosure.call('/embeds/video.html', 'text/html'),
-          expected_enclosure.call('/widgets/chart.html', 'text/html')
-        )
+      it 'never turns an iframe into an enclosure' do
+        expect(enclosures).to be_empty
+      end
+    end
+
+    context 'when article_tag contains a video player with its own src' do
+      let(:article_tag) do
+        article_tag_from.call(<<~HTML)
+          <article>
+            <video src="/videos/clip.mp4" poster="/posters/clip.jpg"></video>
+            <picture><source src="/images/hero.webp" type="image/webp"></picture>
+          </article>
+        HTML
+      end
+
+      it 'extracts the video file and no picture source' do
+        expect(enclosures).to eq([expected_enclosure.call('/videos/clip.mp4', 'video/mp4')])
       end
     end
 
@@ -108,12 +121,83 @@ RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
         HTML
       end
 
-      it 'extracts archive enclosures with correct URLs and types' do
+      it 'extracts archive enclosures typed from their extension' do
         expect(enclosures).to contain_exactly(
           expected_enclosure.call('/downloads/data.zip', 'application/zip'),
-          expected_enclosure.call('/archives/backup.tar.gz', 'application/zip'),
-          expected_enclosure.call('/files/package.tgz', 'application/zip')
+          expected_enclosure.call('/archives/backup.tar.gz', 'application/gzip'),
+          expected_enclosure.call('/files/package.tgz', 'application/gzip')
         )
+      end
+    end
+
+    context 'when file links differ in case or carry a query' do
+      let(:article_tag) do
+        article_tag_from.call(<<~HTML)
+          <article>
+            <a href="/documents/REPORT.PDF">Report</a>
+            <a href="/downloads/data.zip?token=1">Data</a>
+            <a href="/news/story?file=a.pdf">Story</a>
+          </article>
+        HTML
+      end
+
+      it 'matches the URL path in any case and ignores the query' do
+        expect(enclosures).to eq([expected_enclosure.call('/documents/REPORT.PDF', 'application/pdf'),
+                                  expected_enclosure.call('/downloads/data.zip?token=1', 'application/zip')])
+      end
+    end
+
+    context 'when players name an untyped file without a media extension' do
+      let(:article_tag) do
+        article_tag_from.call(<<~HTML)
+          <article>
+            <video src="/stream/clip"></video>
+            <audio><source src="/stream/episode"></audio>
+            <audio src="/play.php?id=7"></audio>
+            <video src="/live/index.m3u8"></video>
+          </article>
+        HTML
+      end
+
+      it 'types each file from its player, but keeps a stream playlist', :aggregate_failures do
+        expect(enclosures).to eq([expected_enclosure.call('/stream/clip', 'video/mp4'),
+                                  expected_enclosure.call('/stream/episode', 'audio/mpeg'),
+                                  expected_enclosure.call('/play.php?id=7', 'audio/mpeg'),
+                                  expected_enclosure.call('/live/index.m3u8', 'application/vnd.apple.mpegurl')])
+      end
+    end
+
+    context 'when a player repeats its file in a typed source' do
+      let(:article_tag) do
+        article_tag_from.call(<<~HTML)
+          <article>
+            <video src="/stream/clip"><source src="/stream/clip" type="video/webm"></video>
+            <video src="/v.mp4"><source src="/v.mp4"></video>
+          </article>
+        HTML
+      end
+
+      it 'keeps one enclosure per URL, the typed one' do
+        expect(enclosures).to eq([expected_enclosure.call('/stream/clip', 'video/webm'),
+                                  expected_enclosure.call('/v.mp4', 'video/mp4')])
+      end
+    end
+
+    context 'when players and links name non-web URLs' do
+      let(:article_tag) do
+        article_tag_from.call(<<~HTML)
+          <article>
+            <video src="blob:https://example.com/x"></video>
+            <audio src="javascript:void(0)"></audio>
+            <video><source src="data:video/mp4;base64,AAAA"></video>
+            <a href="mailto:a@example.com?subject=a.pdf">Mail</a>
+            <a href="ftp://example.com/a.zip">FTP</a>
+          </article>
+        HTML
+      end
+
+      it 'turns none of them into an enclosure' do
+        expect(enclosures).to be_empty
       end
     end
 
@@ -162,6 +246,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
             </video>
             <a href="/documents/guide.pdf">Guide</a>
             <iframe src="/widgets/map.html"></iframe>
+            <a href="/news/story">Story</a>
             <a href="/downloads/source.zip">Source Code</a>
           </article>
         HTML
@@ -172,13 +257,29 @@ RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
           expected_enclosure.call('/images/hero.jpg', 'image/jpeg'),
           expected_enclosure.call('/videos/demo.mp4', 'video/mp4'),
           expected_enclosure.call('/documents/guide.pdf', 'application/pdf'),
-          expected_enclosure.call('/widgets/map.html', 'text/html'),
           expected_enclosure.call('/downloads/source.zip', 'application/zip')
         ]
       end
 
-      it 'extracts all types of enclosures' do
-        expect(enclosures).to match_array(expected_enclosures)
+      it 'extracts images, media and file links in document order' do
+        expect(enclosures).to eq(expected_enclosures)
+      end
+    end
+
+    context 'when article_tag links its episode files, in noscript too, beside a player' do
+      let(:article_tag) do
+        article_tag_from.call(<<~HTML)
+          <article>
+            <a href="/audio/ep.MP3?src=list" download>Download</a>
+            <noscript><p><a href="/video/ep.mp4">Watch offline</a></p></noscript>
+            <audio src="/audio/ep.MP3?src=list" type="audio/mpeg"></audio>
+          </article>
+        HTML
+      end
+
+      it 'ships each file once, typed by its extension or declared type, in document order' do
+        expect(enclosures).to eq([expected_enclosure.call('/audio/ep.MP3?src=list', 'audio/mpeg'),
+                                  expected_enclosure.call('/video/ep.mp4', 'video/mp4')])
       end
     end
   end

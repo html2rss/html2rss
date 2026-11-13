@@ -9,6 +9,11 @@ module Html2rss
     #
     # Public façade for request limits, same-origin/follow-up rules, and
     # network reachability. DNS/host/IP enforcement lives on {NetworkGuard}.
+    #
+    # Follow-ups stay on the origin (scheme, host, port) unless the relation is
+    # +:advertised_feed+ and the URL is listed in the page's {FeedAdvertisement}; redirects
+    # of such a request may change host over +https+. Budget, scheme, public-network
+    # and response-size guards apply to every request and hop either way.
     class Policy
       # Hard ceiling for configured max_requests during a feed build.
       MAX_REQUESTS_CEILING = 10
@@ -99,16 +104,29 @@ module Html2rss
       end
 
       ##
+      # Whether two URLs share an origin (scheme, host, and port).
+      #
+      # @param url [Html2rss::Url]
+      # @param other [Html2rss::Url]
+      # @return [Boolean]
+      def self.same_origin?(url, other)
+        [url.scheme, url.host, url.port] == [other.scheme, other.host, other.port]
+      end
+
+      ##
       # Validates whether a request target is permitted for the given context.
       #
       # @param url [Html2rss::Url] destination URL
       # @param origin_url [Html2rss::Url] initial URL of the feed build
       # @param relation [Symbol] logical reason for the request
+      # @param advertisement [FeedAdvertisement, nil] the page's advertised feeds (+:advertised_feed+ only)
       # @return [void]
       # @raise [CrossOriginFollowUpDenied] if a follow-up leaves the origin host
       # @raise [PrivateNetworkDenied] if the target resolves to a private address
-      def validate_request!(url:, origin_url:, relation:)
-        enforce_same_origin!(url, origin_url, relation)
+      def validate_request!(url:, origin_url:, relation:, advertisement: nil)
+        enforce_same_origin!(url, origin_url, relation) do
+          advertised_feed?(origin_url, relation, advertisement) && advertisement.advertises?(url)
+        end
         network_guard.enforce_public_network!(url)
       end
 
@@ -119,14 +137,20 @@ module Html2rss
       # @param to_url [Html2rss::Url] redirect destination
       # @param origin_url [Html2rss::Url] initial URL of the feed build
       # @param relation [Symbol] logical reason for the request
+      # @param advertisement [FeedAdvertisement, nil] the page's advertised feeds (+:advertised_feed+ only)
       # @return [void]
       # @raise [UnsupportedUrlScheme] if the redirect downgrades from HTTPS to HTTP
-      def validate_redirect!(from_url:, to_url:, origin_url:, relation:)
+      # @raise [CrossOriginFollowUpDenied] if a follow-up hop leaves the origin host
+      # @raise [PrivateNetworkDenied] if the hop resolves to a private address
+      def validate_redirect!(from_url:, to_url:, origin_url:, relation:, advertisement: nil)
         if from_url.scheme == 'https' && to_url.scheme == 'http'
           raise UnsupportedUrlScheme, "Redirect downgraded from #{from_url} to #{to_url}"
         end
 
-        validate_request!(url: to_url, origin_url:, relation:)
+        enforce_same_origin!(to_url, origin_url, relation) do
+          advertised_feed?(origin_url, relation, advertisement) && to_url.scheme == 'https'
+        end
+        network_guard.enforce_public_network!(to_url)
       end
 
       ##
@@ -144,23 +168,27 @@ module Html2rss
 
       attr_reader :network_guard
 
+      # Yields only for a cross-origin follow-up: a truthy block admits it.
       def enforce_same_origin!(url, origin_url, relation)
         return if relation == :initial || allow_cross_origin_followups?
 
         enforce_follow_up_scheme!(url, origin_url)
-        return if comparable_origin(url) == comparable_origin(origin_url)
+        return if self.class.same_origin?(url, origin_url) || yield
 
         raise CrossOriginFollowUpDenied, "Cross-origin follow-up denied for #{url}"
+      end
+
+      # The proof must come from the page this follow-up originates from; an unfrozen one was not built by
+      # {FeedAdvertisement.from_document}.
+      def advertised_feed?(origin_url, relation, advertisement)
+        relation == :advertised_feed && advertisement.instance_of?(FeedAdvertisement) && advertisement.frozen? &&
+          self.class.same_origin?(advertisement.page_url, origin_url)
       end
 
       def enforce_follow_up_scheme!(url, origin_url)
         return unless origin_url.scheme == 'https' && url.scheme == 'http'
 
         raise UnsupportedUrlScheme, "Follow-up downgraded from https to http for #{url}"
-      end
-
-      def comparable_origin(url)
-        [url.scheme, url.host, url.port]
       end
     end
 

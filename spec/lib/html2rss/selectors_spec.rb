@@ -204,6 +204,43 @@ RSpec.describe Html2rss::Selectors do
         expect(article.enclosures.first.type).to eq('audio/mpeg')
       end
     end
+
+    context 'when the enclosure selector picks an image and no image selector is configured' do
+      let(:selectors) do
+        { items: { selector: 'article', enhance: false }, title: { selector: 'h1' },
+          enclosure: { selector: 'img', extractor: 'attribute', attribute: 'src' } }
+      end
+      let(:body) { '<html><body><article><h1>Harbor</h1><img src="/media/harbor.jpg"></article></body></html>' }
+
+      it 'makes that image the item image, shown in the description, never the RSS enclosure', :aggregate_failures do
+        article = instance.articles.first
+        description = Html2rss::FeedBuilder::ItemPresentation.description_for(article)
+
+        expect(article.image.to_s).to eq('http://example.com/media/harbor.jpg')
+        expect(description).to start_with('<img src="http://example.com/media/harbor.jpg"')
+        expect(Html2rss::FeedBuilder::ItemPresentation.rss_enclosure_for(article)).to be_nil
+      end
+    end
+
+    context 'when an enhanced card yields several enclosures' do
+      let(:selectors) { { items: { selector: 'article', enhance: true }, title: { selector: 'h1' } } }
+      let(:body) do
+        <<~HTML
+          <html><body><article>
+            <h1>Episode with notes</h1><a href="/episodes/1">Read</a>
+            <img src="/media/cover.jpg"><audio src="/media/episode.mp3"></audio><a href="/media/notes.pdf">Notes</a>
+          </article></body></html>
+        HTML
+      end
+
+      it 'renders only the audio player in the description', :aggregate_failures do
+        article = instance.articles.first
+        description = Nokogiri::HTML.fragment(Html2rss::FeedBuilder::ItemPresentation.description_for(article))
+
+        expect(article.enclosures.size).to eq(3)
+        expect(description.css('img, audio, video, iframe').map(&:name)).to eq(['audio'])
+      end
+    end
   end
 
   describe 'configured titles' do
@@ -274,7 +311,7 @@ RSpec.describe Html2rss::Selectors do
         HTML
       end
 
-      it 'enhances the article_hash anchorlessly', :aggregate_failures do
+      it 'enhances a link-less item with its first text and a generated id url', :aggregate_failures do
         _baseline, enhanced, = instance.each_enhance_pair.first
         expect(enhanced[:title]).to eq('No Link Article')
         expect(enhanced[:url].to_s).to eq('http://example.com/#no-link-article')
@@ -554,6 +591,23 @@ RSpec.describe Html2rss::Selectors do
         selectors[:enclosure] = { extractor: 'static', static: ' ' }
 
         expect(value).to be_nil
+      end
+
+      it 'returns nil when the enclosure value is no http(s) URL', :aggregate_failures do
+        ['javascript:alert(1)//a.mp3', 'data:audio/mpeg;base64,AAAA', 'ftp://example.com/a.mp3'].each do |static|
+          selectors[:enclosure] = { extractor: 'static', static:, content_type: 'audio/mpeg' }
+
+          expect(described_class.new(response, selectors:, time_zone: 'UTC').select(:enclosure, item)).to be_nil
+        end
+      end
+
+      it 'keeps a non-web href out of the article and its description', :aggregate_failures do
+        page = Html2rss::RequestService::Response.new(url: response.url, headers: response.headers,
+                                                      body: body.sub('/a.mp3', 'javascript:alert(1)//a.mp3'))
+        article = described_class.new(page, selectors:, time_zone: 'UTC').articles.first
+
+        expect(article.enclosures).to eq([])
+        expect(Html2rss::FeedBuilder::ItemPresentation.description_for(article).to_s).not_to include('javascript:')
       end
     end
   end

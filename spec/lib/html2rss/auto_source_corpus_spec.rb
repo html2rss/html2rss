@@ -37,6 +37,15 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    %w[enclosure_misses image_misses].each do |key|
+      it "has no more #{key} than the recorded baseline", :aggregate_failures do
+        rows.each do |row|
+          recorded = baseline.dig(row.page, key)
+          expect(row.to_h[key.to_sym]).to be <= recorded, "#{row.page}: #{key} #{row.to_h[key.to_sym]} > #{recorded}"
+        end
+      end
+    end
+
     it 'builds no SST on pages whose baseline built none', :aggregate_failures do
       rows.each do |row|
         next if baseline.dig(row.page, 'sst_built')

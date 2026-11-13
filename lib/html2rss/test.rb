@@ -253,12 +253,13 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @param feed_result [Html2rss::FeedResult]
     # @param pipeline_outcome [Html2rss::FeedPipeline::PipelineOutcome]
-    # @param probe_native_feed [Boolean] when false, skip syndication discovery (apply ship gate)
+    # @param probe_native_feed [Boolean] when false, skip syndication discovery (apply ship gate);
+    #   when true, discovery reads the page in +pipeline_outcome.response+ (no extra page fetch)
     # @return [QualityReport]
     def self.quality_report_for(items, channel_url:, config:, feed_result:, pipeline_outcome:, # rubocop:disable Metrics/ParameterLists
                                 probe_native_feed: true)
       audit = AutoSource::Cleanup.audit_feed_items(items)
-      native_feed = probe_native_feed ? probe_native_feed_url(channel_url, config)&.to_s : nil
+      native_feed = probe_native_feed_url(channel_url, config, pipeline_outcome.response)&.to_s if probe_native_feed
       report = QualityReport.from_audit(audit, native_feed:)
       report = append_url_mismatch_warning(report, channel_url, feed_result)
       merge_enhance_audit(report, config, pipeline_outcome)
@@ -347,7 +348,9 @@ module Html2rss
     end
     private_class_method :url_mismatch?
 
-    def self.probe_native_feed_url(channel_url, config)
+    # The page the pipeline fetched (where any redirect landed) is the page probed, as in Recon and Capture: no
+    # extra page fetch.
+    def self.probe_native_feed_url(channel_url, config, response)
       return nil if channel_url.to_s.empty?
 
       resources = FeedPipeline::RuntimePolicy.resources_for(config)
@@ -355,7 +358,7 @@ module Html2rss
       session = RequestSession.build(
         config:, strategy:, budget: resources.budget, policy: resources.policy
       )
-      Syndication::Discovery.best_feed_url(page_url: channel_url, request_session: session)
+      Syndication::Discovery.native_feed_url(response:, request_session: session)
     rescue Html2rss::Error
       nil
     end

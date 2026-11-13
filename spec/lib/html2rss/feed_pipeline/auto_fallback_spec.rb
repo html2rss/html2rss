@@ -119,6 +119,19 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       expect(state.entry_resolution).to be(diag)
     end
 
+    it 'succeeds with the extraction, the attempts and the entry resolution diagnostic', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      diag = instance_double(Html2rss::FeedResolution::Diag)
+      allow(Html2rss::FeedResolution::Diag).to receive(:from_result).and_return(diag)
+      extraction = Html2rss::FeedPipeline::Extraction.new(articles: [], dedup_dropped: 2, admission_drops: {},
+                                                          feed_channel: nil)
+      state.remember_entry_resolution(:resolution)
+      state.record_items(strategy: :default, items_count: 0)
+      state.succeed!(response: :response, extraction:, selected_strategy: :default, attempt_count: 1, scrape_target: :t)
+
+      expect(state.result).to have_attributes(entry_resolution: diag, dedup_dropped: 2, scrape_target: :t,
+                                              strategy_attempts: state.attempts, response: :response)
+    end
+
     it 'omits elapsed time and transport metadata when they are absent', :aggregate_failures do
       state.record_items(strategy: :default, items_count: 2, transport_meta: {}, elapsed_ms: nil)
 
@@ -287,6 +300,17 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
         expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
         expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.selected'))
+      end
+
+      it 'keeps the followed native feed channel facts and scrape target of the positive hop', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        facts = Html2rss::Syndication::ChannelFacts.new(author: 'Feed Author')
+        allow(pipeline).to receive(:extract).and_wrap_original do |original, **kwargs|
+          original.call(**kwargs).with(feed_channel: facts)
+        end
+        outcome = pipeline.to_outcome_and_result.first
+
+        expect(outcome.feed_channel).to be(facts)
+        expect(outcome.scrape_target).to have_attributes(effective_url: outcome.response.url.to_s)
       end
     end
 

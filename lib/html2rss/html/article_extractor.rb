@@ -14,11 +14,10 @@ module Html2rss
         # @param article_tag [Nokogiri::XML::Node] article-like container to extract from
         # @param base_url [String, Html2rss::Url] base url used to resolve relative links
         # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
-        # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
         # @param time_zone [String] channel time zone for naive leftover dates
         # @return [Hash{Symbol => Object}] extracted article attributes
-        def call(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false, time_zone: 'UTC')
-          new(article_tag, base_url:, selected_anchor:, fallback_anchorless:, time_zone:).call
+        def call(article_tag, base_url:, selected_anchor: nil, time_zone: 'UTC')
+          new(article_tag, base_url:, selected_anchor:, time_zone:).call
         end
       end
 
@@ -26,15 +25,13 @@ module Html2rss
       # @param article_tag [Nokogiri::XML::Node] article-like container to extract from
       # @param base_url [String, Html2rss::Url] base url used to resolve relative links
       # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
-      # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
       # @param time_zone [String] channel time zone for naive leftover dates
-      def initialize(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false, time_zone: 'UTC')
+      def initialize(article_tag, base_url:, selected_anchor: nil, time_zone: 'UTC')
         raise ArgumentError, 'article_tag is required' unless article_tag
 
         @article_tag = article_tag
         @base_url = base_url
         @selected_anchor = selected_anchor
-        @fallback_anchorless = fallback_anchorless
         @time_zone = time_zone
       end
 
@@ -67,22 +64,20 @@ module Html2rss
           href = selected_anchor&.[]('href').to_s
 
           if href.empty?
-            anchorless_url_fallback
+            generated_id_url
           else
             Url.from_relative(href.split('#').first.strip, base_url)
           end
         end
       end
 
-      def anchorless_url_fallback
-        return unless @fallback_anchorless
-
+      def generated_id_url
         id = generate_id
         Url.from_relative("##{id}", base_url) if id
       end
 
       def extract_headline
-        return fallback_anchorless_title unless headline_source
+        return first_text_title unless headline_source
 
         title_pieces.headline_text(headline_source)
       end
@@ -90,19 +85,13 @@ module Html2rss
       # Kicker and headline text ({TitlePieces}) of this card.
       def title_pieces = @title_pieces ||= TitlePieces.new(article_tag, headline_source, anchor: selected_anchor)
 
-      def fallback_anchorless_title
-        return unless @fallback_anchorless && selected_anchor.nil?
-
+      def first_text_title
         text_node = article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }
         text_node&.text&.strip
       end
 
       def heading
-        @heading ||= HeadingExtractor.call(
-          article_tag,
-          fallback_anchorless: @fallback_anchorless,
-          selected_anchor:
-        )
+        @heading ||= HeadingExtractor.call(article_tag, selected_anchor:)
       end
 
       def headline_source = heading || selected_anchor
@@ -180,8 +169,7 @@ module Html2rss
           article_tag,
           heading:,
           url: (selected_anchor ? extract_url : nil),
-          selected_anchor:,
-          fallback_anchorless: @fallback_anchorless
+          selected_anchor:
         )
       end
 

@@ -4,66 +4,94 @@ module Html2rss
   module Html
     module ArticleRules
       ##
-      # DOM-agnostic enclosure URL/type normalization.
+      # The one rule for which HTML elements become enclosures, and their URL/type normalization.
+      #
+      # DOM-agnostic: {ArticleExtractor::EnclosureExtractor} (Nokogiri) and {SstArticleExtractor} (SST)
+      # only visit {ELEMENT_NAMES}, adapt their node API to {.from_element} and pass the result through
+      # {.unique}. Images (+img[src]+), players (+audio[src]+, +video[src]+), a player's +source[src]+ with
+      # its +type+, and file links ({FILE_LINK}) qualify; an +iframe+ (embed player page) never does,
+      # and only an http(s) URL is one (no +data:+, +blob:+, +javascript:+ or +mailto:+).
       module Enclosure
-        # Href path suffixes treated as download/archive enclosure links.
-        ARCHIVE_HREF_SUFFIXES = %w[.pdf .zip .tar.gz .tgz].freeze
+        # A link to a file: its path (before any query or fragment) ends, in any case, in a downloadable
+        # document or archive extension (+.pdf+, +.zip+, +.tar.gz+, +.tgz+) or an audio or video one
+        # ({Article::Enclosure::MEDIA_TYPES}, which also types it), such as an episode's download link.
+        FILE_LINK = /
+          \A[^?\#]*\.
+          (?:pdf|zip|tar\.gz|tgz|#{Regexp.union(Article::Enclosure::MEDIA_TYPES.keys).source})
+          (?:[?\#]|\z)
+        /ix
+        # Element names that may carry an enclosure.
+        ELEMENT_NAMES = %w[img audio video source a].freeze
+        # Players whose own +src+ and inner +source+ elements name a media file.
+        MEDIA_ELEMENTS = %w[audio video].freeze
 
         class << self
           ##
-          # @param href [String]
-          # @return [Boolean]
-          def archive_href?(href)
-            ARCHIVE_HREF_SUFFIXES.any? { |suffix| href.to_s.end_with?(suffix) }
+          # The enclosure an HTML element stands for, if any. A player's file carries the player as its
+          # kind, so an untyped file without a media extension is still audio or video
+          # ({Article::Enclosure::KIND_TYPES}).
+          #
+          # @param name [String] element name (lower case)
+          # @param base_url [String, Html2rss::Url]
+          # @param src [String, nil] the element's +src+ attribute
+          # @param href [String, nil] the element's +href+ attribute
+          # @param type [String, nil] the element's +type+ attribute
+          # @yieldreturn [String, nil] the name of the nearest {MEDIA_ELEMENTS} player around the element (an
+          #   ancestor, not only the parent: the HTML4 parser nests sibling +source+ elements), or nil; asked
+          #   only for a +source+
+          # @return [Hash{Symbol => Object}, nil]
+          def from_element(name, base_url, src:, href:, type:)
+            case name
+            when 'img' then from_image(src, base_url)
+            when 'audio', 'video' then from_media(src, type, base_url, kind: name.to_sym)
+            when 'source' then from_source(src, type, base_url, yield)
+            when 'a' then from_anchor(href, base_url)
+            end
           end
 
           ##
-          # @param src [String]
-          # @param base_url [String, Html2rss::Url]
-          # @return [Hash{Symbol => Object}, nil]
+          # @param href [String, nil] an anchor's +href+
+          # @return [Boolean] whether it names a file {.from_element} turns into an enclosure ({FILE_LINK})
+          def file_link?(href) = href.to_s.match?(FILE_LINK)
+
+          ##
+          # @param src [String, nil]
+          # @param type [String, nil] declared MIME type; nil lets {Article::Enclosure#type} guess it
+          # @param base_url [String, Html2rss::Url, nil]
+          # @param kind [Symbol, nil] +:audio+ or +:video+ when the source proves the file's kind
+          # @return [Hash{Symbol => Object}, nil] nil unless +src+ resolves to an http(s) URL ({Url.resolve_web})
+          def from_media(src, type, base_url, kind: nil)
+            return unless (url = Url.resolve_web(src, base_url))
+
+            { url:, type:, kind: }.compact
+          end
+
+          ##
+          # One enclosure per URL, at its first position in document order; a duplicate declaring a type
+          # wins over an untyped one (+<video src=x><source src=x type=video/webm>+).
+          #
+          # @param enclosures [Array<Hash{Symbol => Object}>] {.from_element} results in document order
+          # @return [Array<Hash{Symbol => Object}>]
+          def unique(enclosures)
+            enclosures.group_by { _1[:url] }.map { |_url, same| same.find { _1[:type] } || same.first }
+          end
+
+          private
+
           def from_image(src, base_url)
-            return if src.to_s.empty?
+            return unless (url = Url.resolve_web(src, base_url))
 
-            abs = Url.from_relative(src, base_url)
-            { url: abs, type: Article::Enclosure.guess_content_type_from_url(abs, default: 'image/jpeg') }
+            { url:, type: Article::Enclosure.guess_content_type_from_url(url, default: 'image/jpeg') }
           end
 
-          ##
-          # @param src [String]
-          # @param type [String, nil]
-          # @param base_url [String, Html2rss::Url]
-          # @return [Hash{Symbol => Object}, nil]
-          def from_media(src, type, base_url)
-            return if src.to_s.empty?
-
-            { url: Url.from_relative(src, base_url), type: }
+          def from_source(src, type, base_url, player)
+            from_media(src, type, base_url, kind: player.to_sym) if player
           end
 
-          ##
-          # @param src [String]
-          # @param base_url [String, Html2rss::Url]
-          # @return [Hash{Symbol => Object}, nil]
-          def from_iframe(src, base_url)
-            return if src.to_s.empty?
-
-            abs = Url.from_relative(src, base_url)
-            { url: abs, type: Article::Enclosure.guess_content_type_from_url(abs, default: 'text/html') }
-          end
-
-          ##
-          # @param href [String]
-          # @param base_url [String, Html2rss::Url]
-          # @return [Hash{Symbol => Object}, nil]
           def from_anchor(href, base_url)
-            return if href.to_s.empty?
+            return unless file_link?(href) && (url = Url.resolve_web(href, base_url))
 
-            abs = Url.from_relative(href, base_url)
-            type = if href.end_with?('.pdf')
-                     Article::Enclosure.guess_content_type_from_url(abs)
-                   else
-                     'application/zip'
-                   end
-            { url: abs, type: }
+            { url: }
           end
         end
       end

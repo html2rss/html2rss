@@ -128,6 +128,23 @@ module Html2rss
     end
 
     ##
+    # The one resolver for a declared web reference (a media file, an item link, a player +src+, an
+    # advertised feed): +ref+ resolved against +base_url+ when relative, kept only when http(s) ({#web?}).
+    # A +javascript:+, +data:+, +ftp:+ or +mailto:+ reference, or a relative one without a base, names none.
+    #
+    # @param ref [String, Html2rss::Url, nil] an absolute or relative URL, possibly padded with whitespace
+    # @param base_url [String, Html2rss::Url, nil] the document the reference appears in
+    # @return [Url, nil] the absolute http(s) URL, or nil when +ref+ is blank, unparseable or not http(s)
+    def self.resolve_web(ref, base_url = nil)
+      return unless ref.to_s.match?(/\S/)
+
+      url = from_relative(ref, base_url)
+      url if url.web?
+    rescue InvalidUrlError
+      nil
+    end
+
+    ##
     # Extracts a base URL from HTML metadata tags.
     #
     # @param html [String] raw HTML content
@@ -159,8 +176,7 @@ module Html2rss
     end
 
     def self.validate_scheme(url)
-      scheme = url.scheme
-      raise InvalidUrlError, "URL scheme '#{scheme}' is not supported" unless SUPPORTED_SCHEMES.include?(scheme)
+      raise InvalidUrlError, "URL scheme '#{url.scheme}' is not supported" unless url.web?
     end
 
     private_class_method :validate_channel_url, :validate_scheme
@@ -212,6 +228,10 @@ module Html2rss
 
     # @return [Boolean] whether the URL includes scheme and host
     def absolute? = @uri.absolute?
+
+    # @return [Boolean] whether the URL is an absolute http(s) URL ({SUPPORTED_SCHEMES}), the only kind a feed
+    #   ships as a link, enclosure or player source
+    def web? = SUPPORTED_SCHEMES.include?(scheme)
 
     ##
     # Returns the URL query string as a hash of string keys and values.

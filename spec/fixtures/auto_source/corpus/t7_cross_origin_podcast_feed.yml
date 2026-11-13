@@ -1,0 +1,17 @@
+---
+case: A podcast landing page whose only episode list is its podcast feed, advertised by a head alternate on the hosting platform's feed host (another origin) over plain http. The feed must be followed cross-origin as an advertised feed, fetched as https, and every episode must ship its audio file as the RSS enclosure.
+responses: t7_cross_origin_podcast_feed
+expected:
+- https://example.com/news/episodes/12-new-sea-wall
+- https://example.com/news/episodes/11-oyster-beds
+- https://example.com/news/episodes/10-lifeboat-crew
+enclosures:
+  https://example.com/news/episodes/12-new-sea-wall:
+    url: https://media.example.net/tide-talk/12.mp3
+    type: audio/mpeg
+  https://example.com/news/episodes/11-oyster-beds:
+    url: https://media.example.net/tide-talk/11.mp3
+    type: audio/mpeg
+  https://example.com/news/episodes/10-lifeboat-crew:
+    url: https://media.example.net/tide-talk/10.m4a
+    type: audio/mp4

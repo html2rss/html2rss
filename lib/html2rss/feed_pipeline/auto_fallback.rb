@@ -108,26 +108,15 @@ module Html2rss
         end
 
         # @param response [RequestService::Response] successful response
-        # @param articles [Array] extracted articles
-        # @param dedup_dropped [Integer] articles removed by deduplication
+        # @param extraction [Html2rss::FeedPipeline::Extraction] its articles, drops and feed channel facts
         # @param selected_strategy [Symbol] concrete strategy that produced items
         # @param attempt_count [Integer] number of attempts recorded for this chain
-        # @param admission_drops [Hash{String => Integer}] Cleanup drop tallies
         # @param scrape_target [Html2rss::ScrapeTarget]
         # @return [void]
-        # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- PipelineOutcome kwargs stay co-located
-        def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:,
-                     scrape_target:, admission_drops: {})
+        def succeed!(response:, extraction:, selected_strategy:, attempt_count:, scrape_target:)
           @result = PipelineOutcome.new(
-            response:,
-            articles:,
-            dedup_dropped:,
-            selected_strategy:,
-            attempt_count:,
-            strategy_attempts: attempts,
-            admission_drops:,
-            scrape_target:,
-            entry_resolution:
+            response:, selected_strategy:, attempt_count:, strategy_attempts: attempts,
+            scrape_target:, entry_resolution:, **extraction.to_h
           )
         end
 
@@ -222,11 +211,9 @@ module Html2rss
 
       # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Metrics/ParameterLists -- extract + resolution delegate
       def process_response(response:, strategy:, next_strategy:, request_session:, state:, elapsed_ms: nil)
-        articles, dedup_dropped, admission_drops = pipeline.deduplicated_articles(
-          config:, response:, request_session:
-        )
+        extraction = pipeline.extract(config:, response:, request_session:)
         state.remember_response(response)
-        items_count = articles.size
+        items_count = extraction.articles.size
         state.record_items(strategy:, items_count:, transport_meta: response.transport_meta, elapsed_ms:)
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
@@ -234,16 +221,13 @@ module Html2rss
 
         if (outcome = FeedResolution.try_apply!(
           pipeline:, config:, response:, session: request_session, strategy:, resources:,
-          articles:, scrape_target:, state:, budget:
+          articles: extraction.articles, scrape_target:, state:, budget:
         ))
           @scrape_target = outcome.scrape_target
           return
         end
 
-        if items_count.positive?
-          return record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:,
-                                state:)
-        end
+        return record_success(response:, strategy:, extraction:, state:) if items_count.positive?
 
         if DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
           state.abort!
@@ -254,14 +238,10 @@ module Html2rss
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
       end
 
-      # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- success kwargs + structured selected log
-      def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, state:)
+      # rubocop:disable-next Metrics/MethodLength -- success + structured selected log
+      def record_success(response:, strategy:, extraction:, state:)
         attempt_count = state.attempts.size
-        state.succeed!(
-          response:, articles:, dedup_dropped:, selected_strategy: strategy,
-          attempt_count:, admission_drops:,
-          scrape_target:
-        )
+        state.succeed!(response:, extraction:, selected_strategy: strategy, attempt_count:, scrape_target:)
         return unless attempt_count > 1
 
         Log.info({

@@ -68,6 +68,32 @@ RSpec.describe Html2rss do
       expect(described_class.feed(config)).to be_a(RSS::Rss)
       expect(described_class.json_feed(config)).to include(:version, :items)
     end
+
+    context 'when the enclosure selector picks an image and no image selector is configured' do
+      let(:config) do
+        { channel: { url: 'https://example.com/news', title: 'Example News' }, strategy: :default,
+          selectors: { items: { selector: 'article', enhance: false }, title: { selector: 'h1' },
+                       url: { selector: 'a', extractor: 'href' },
+                       enclosure: { selector: 'img', extractor: 'attribute', attribute: 'src' } } }
+      end
+      let(:response) do
+        Html2rss::RequestService::Response.new(
+          body: '<article><h1>Harbor reopens</h1><a href="/a">Read</a><img src="/i/harbor.jpg"></article>',
+          url: Html2rss::Url.from_absolute('https://example.com/news'),
+          headers: { 'content-type' => 'text/html' }, status: 200
+        )
+      end
+
+      it 'makes that image the item image in RSS and JSON Feed, never the RSS enclosure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        item = Nokogiri.XML(described_class.feed(config).to_s).at_css('channel > item')
+        json_item = described_class.json_feed(config)[:items].first
+
+        expect(item.css('enclosure')).to be_empty
+        expect(Nokogiri::HTML.fragment(item.at_css('description').text).at_css('img')['src'])
+          .to eq('https://example.com/i/harbor.jpg')
+        expect(json_item[:image]).to eq('https://example.com/i/harbor.jpg')
+      end
+    end
   end
 
   describe '.feed' do
@@ -93,14 +119,16 @@ RSpec.describe Html2rss do
 
       # Item XML shape (pubDate, category, enclosure attrs, description rel/target) is owned by
       # feed_builder/rss_spec + sanitize_html_spec. Keep one VCR smoke here.
-      it 'builds channel metadata and a guid/enclosure smoke item', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      # The configured enclosure is an avatar image URL without type or file extension: no downloadable
+      # document (Article::Enclosure#document?), so it is no RSS enclosure.
+      it 'builds channel metadata and a guid smoke item without an untyped RSS enclosure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(xml.css('channel > title').text).to eq 'Releases · nuxt/nuxt.js · GitHub'
         expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
         expect(xml.css('channel > item').count).to be > 0
 
         item = xml.css('channel > item').first
         expect(item.css('guid').text).to eq 'resdti'
-        expect(item.css('enclosure').attr('url').value).to start_with('https://')
+        expect(item.css('enclosure')).to be_empty
       end
 
       context 'with items having order key and reverse as value' do

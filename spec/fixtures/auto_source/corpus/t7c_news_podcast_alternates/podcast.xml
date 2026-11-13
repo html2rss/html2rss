@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Example Daily Morning Podcast</title>
+    <link>https://example.com/podcast/</link>
+    <description>Synthetic podcast feed</description>
+    <item>
+      <title>Morning briefing, November 10</title>
+      <link>https://example.com/podcast/2026-11-10</link>
+      <guid isPermaLink="false">pod-2026-11-10</guid>
+      <pubDate>Tue, 10 Nov 2026 05:00:00 GMT</pubDate>
+      <description>Ten minutes of the day's local news.</description>
+      <itunes:duration>10:12</itunes:duration>
+      <enclosure url="https://example.com/podcast/files/2026-11-10.mp3" type="audio/mpeg" length="9800000"/>
+    </item>
+  </channel>
+</rss>
