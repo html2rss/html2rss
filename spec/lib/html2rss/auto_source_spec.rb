@@ -1087,5 +1087,30 @@ RSpec.describe Html2rss::AutoSource do
         .to eq('different_domain' => 10, 'low_word_count' => 1)
     end
   end
+
+  describe 'a document <base>' do
+    let(:url) { Html2rss::Url.from_absolute('https://example.com/en/list/') }
+    let(:body) do
+      <<~HTML
+        <html><head>#{base}</head><body>
+          <article><h2>A story that has a proper headline</h2>
+            <p>Some teaser text that gives the story a body worth reading.</p>
+            <a href="stories/one">Read more</a></article>
+          <article><h2>Another story with a proper headline</h2>
+            <p>More teaser text that gives the story a body worth reading.</p>
+            <a href="stories/two">Read more</a></article>
+        </body></html>
+      HTML
+    end
+
+    context 'when the page declares <base href="/">' do
+      let(:base) { '<base href="/">' }
+
+      it 'does not change auto-source output: links still resolve against the page URL' do
+        expect(auto_source.articles.map { _1.url.to_s })
+          .to contain_exactly('https://example.com/en/list/stories/one', 'https://example.com/en/list/stories/two')
+      end
+    end
+  end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers

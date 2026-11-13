@@ -24,7 +24,12 @@ module Html2rss
       CHARSET_PARAMETER = /charset\s*=\s*["']?([\w.:-]+)/i
       # Bytes scanned for a meta charset hint (HTML spec looks at the first 1024).
       META_CHARSET_BYTES = 2048
-      private_constant :CHARSET_PARAMETER, :META_CHARSET_BYTES, :FEED_CT_MARKERS, :FEED_BODY_MARKERS
+      # The element that sets the document base URL: the first +<base>+ with an +href+ in tree order, unless the
+      # parser leaves it inert (inside +template+, +noscript+, +iframe+, +textarea+ or +title+) or it is not an
+      # HTML +base+ (inside +svg+).
+      BASE_ELEMENT = '//base[@href][not(ancestor::template or ancestor::noscript or ancestor::iframe or ' \
+                     'ancestor::textarea or ancestor::title or ancestor::svg)]'
+      private_constant :BASE_ELEMENT, :CHARSET_PARAMETER, :META_CHARSET_BYTES, :FEED_CT_MARKERS, :FEED_BODY_MARKERS
 
       ##
       # @param body [String] the body of the response
@@ -60,6 +65,18 @@ module Html2rss
 
       # @return [Html2rss::Url] the URL of the response
       attr_reader :url
+
+      ##
+      # The document base URL (WHATWG) that relative references in the body resolve against: the first
+      # +<base href>+ of an HTML body in tree order (one inside +template+, +noscript+, +iframe+, +textarea+,
+      # +title+ or +svg+ does not count) resolved against {#url}, when that is http(s); otherwise {#url}
+      # (no +<base>+, an empty +href+, a +javascript:+ or +data:+ one, or a non-HTML body). Only {Selectors} reads
+      # it, to resolve item links and enclosures; auto-source, pagination, discovery and every request keep {#url}.
+      #
+      # @return [Html2rss::Url] the URL a selector config's relative references resolve against
+      def base_url
+        @base_url ||= document_base_url
+      end
 
       # @return [Hash] allowlisted upstream transport telemetry
       attr_reader :transport_meta
@@ -115,6 +132,12 @@ module Html2rss
       end
 
       private
+
+      # @return [Html2rss::Url] the first usable +<base href>+ resolved against {#url}, else {#url}
+      def document_base_url
+        href = parsed_body.at_xpath(BASE_ELEMENT)&.[]('href') if html_response?
+        Url.resolve_web(href, url) || url
+      end
 
       def freeze_or(value, default) = value.nil? || value.empty? ? default : value.freeze
 

@@ -55,7 +55,7 @@ module Html2rss
     # @param time_zone [String] Time zone string used for date parsing.
     def initialize(response, selectors:, time_zone:)
       @response = response
-      @url = response.url
+      @url = response.base_url
       @selectors = selectors
       @time_zone = time_zone
       @rss_item_attributes = @selectors.keys.select { SELECTABLE_SELECTOR_KEYS.include?(_1) }
