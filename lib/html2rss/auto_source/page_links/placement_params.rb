@@ -13,9 +13,10 @@ module Html2rss
       #   argument (+/news.php?id=1+ and +/news.php?id=2+ are two articles of one path); and
       # - at least {MIN_REPEATED_PATHS} of those paths, and at least {MIN_REPEATED_SHARE} of all its paths,
       #   appear under two or more values of it while every other query pair stays equal: the same story
-      #   linked from several slots (+?pos=top+, +?pos=latest+). Repeating is the param's dominant behaviour,
-      #   so one listing paginated (+/news?page=1+, +/news?page=2+) or translated (+/a?lang=en+, +/a?lang=de+)
-      #   among other paths that carry the param once never collapses.
+      #   linked from several slots (+?pos=top+, +?pos=latest+). One listing paginated (+/news?page=1+,
+      #   +/news?page=2+) or translated (+/a?lang=en+, +/a?lang=de+) among other paths that carry the
+      #   param once is a single repeat, not a convention, and never collapses. The share stays low because a
+      #   front page links most stories once and few twice (a real front page repeats on about one path in eight).
       #
       # No param name is listed; the page decides. A page without the evidence keeps the param significant,
       # so a fetch that renders fewer slots keeps the param on item URLs.
@@ -25,7 +26,7 @@ module Html2rss
         # Fewest of those paths that must appear under two or more of its values, all else equal.
         MIN_REPEATED_PATHS = 2
         # Least share of the param's paths that must be such repeated paths.
-        MIN_REPEATED_SHARE = 0.5
+        MIN_REPEATED_SHARE = Rational(1, 20)
 
         class << self
           ##

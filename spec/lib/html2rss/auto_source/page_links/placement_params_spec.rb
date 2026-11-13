@@ -47,16 +47,17 @@ RSpec.describe Html2rss::AutoSource::PageLinks::PlacementParams do
     end
 
     it 'needs MIN_REPEATED_SHARE of the paths repeated, the share itself included', :aggregate_failures do
-      expect(described_class::MIN_REPEATED_SHARE).to eq(0.5)
-      expect(names[*placed, '/d?pos=top', '/e?pos=top']).to be_empty
-      expect(names[*placed, '/d?pos=top']).to eq(Set['pos'])
-      expect(names[*placed, '/c?pos=latest', '/d?pos=top', '/e?pos=top', '/f?pos=top']).to eq(Set['pos'])
+      singles = ->(count) { Array.new(count) { "/p#{_1}?pos=top" } }
+
+      expect(described_class::MIN_REPEATED_SHARE).to eq(Rational(1, 20))
+      expect(names[*placed, *singles[37]]).to eq(Set['pos'])
+      expect(names[*placed, *singles[38]]).to be_empty
     end
 
-    it 'finds the param on a small share once MIN_REPEATED_SHARE allows it' do
-      stub_const("#{described_class}::MIN_REPEATED_SHARE", 0.2)
+    it 'finds the param on a front page that repeats a minority of its stories' do
+      singles = Array.new(40) { "/p#{_1}?pos=top" }
 
-      expect(names[*placed, '/d?pos=top', '/e?pos=top']).to eq(Set['pos'])
+      expect(names[*placed, '/c?pos=latest', *singles]).to eq(Set['pos'])
     end
 
     it 'counts distinct paths, not stories, and accepts more than MIN_PATHS', :aggregate_failures do
