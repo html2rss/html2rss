@@ -46,6 +46,15 @@ RSpec.describe Html2rss::Config do
   end
 
   describe '.load_yaml' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:write_yaml) do
+      lambda do |name, content|
+        File.join(tmp_dir, name).tap { File.write(_1, content) }
+      end
+    end
+
+    after { FileUtils.remove_entry(tmp_dir) }
+
     context 'when the file does not exist' do
       let(:file) { 'non-existing-file' }
 
@@ -66,6 +75,27 @@ RSpec.describe Html2rss::Config do
                                     described_class::MultipleFeedsConfig::CONFIG_KEY_FEEDS)
         end.to raise_error(Html2rss::Config::InvalidConfig,
                            "`#{described_class::MultipleFeedsConfig::CONFIG_KEY_FEEDS}` is a reserved feed name")
+      end
+    end
+
+    context 'when the file holds a YAML list' do
+      it 'raises InvalidConfig naming the file' do
+        path = write_yaml.call('list.yml', "- a\n- b\n")
+
+        expect { described_class.load_yaml(path) }
+          .to raise_error(Html2rss::Config::InvalidConfig, "File '#{path}' must contain a YAML mapping (a Hash)")
+      end
+
+      it 'raises InvalidConfig for an empty file' do
+        expect { described_class.load_yaml(write_yaml.call('empty.yml', '')) }
+          .to raise_error(Html2rss::Config::InvalidConfig, /mapping/)
+      end
+    end
+
+    context 'when the file is not valid YAML' do
+      it 'raises InvalidConfig' do
+        expect { described_class.load_yaml(write_yaml.call('bad.yml', "a: [\n")) }
+          .to raise_error(Html2rss::Config::InvalidConfig, /could not be parsed/)
       end
     end
 
@@ -185,7 +215,18 @@ RSpec.describe Html2rss::Config do
     end
 
     it 'uses safe_load so untrusted YAML cannot instantiate Ruby objects' do
-      expect { described_class.from_yaml("--- !ruby/object:Object {}\n") }.to raise_error(Psych::DisallowedClass)
+      expect { described_class.from_yaml("--- !ruby/object:Object {}\n") }
+        .to raise_error(Html2rss::Config::InvalidConfig, /YAML could not be parsed/)
+    end
+
+    it 'reports a YAML syntax error as InvalidConfig' do
+      expect { described_class.from_yaml("a: [\n") }
+        .to raise_error(Html2rss::Config::InvalidConfig, /YAML could not be parsed/)
+    end
+
+    it 'reports a non-string key as InvalidConfig' do
+      expect { described_class.from_yaml("? [a]\n: b\n") }
+        .to raise_error(Html2rss::Config::InvalidConfig, /config must use string or symbol keys/)
     end
 
     it 'accepts a String subclass document' do

@@ -111,6 +111,11 @@ RSpec.describe Html2rss::CLI, '#capture' do
       expect(File.read(File.join(dir, 'example.com', 'index.yml'))).to eq("yaml: 1\n")
     end
 
+    it 'derives the --output-dir folder from a backslash URL' do
+      expect { run_capture.call(['https:\\\\example.com\\blog'], { output_dir: dir }) }
+        .to output("Wrote captured config to #{File.join(dir, 'example.com', 'index.yml')}\n").to_stdout
+    end
+
     it 'writes to --write, creating parent directories', :aggregate_failures do
       target = File.join(dir, 'nested', 'out.yml')
 

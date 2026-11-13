@@ -25,7 +25,7 @@ module Html2rss
       # @return [Array(Hash, Html2rss::Config::ValidationReport)]
       def resolve_and_validate(config_input, feed_name: nil, params: {})
         raw = resolve_raw_hash(config_input, feed_name)
-      rescue Psych::Exception, InvalidConfig, InvalidOption => error
+      rescue InvalidConfig => error
         [{}, IssueMapper.parse_failure(error.message)]
       else
         working = HashUtil.deep_dup(raw)
@@ -73,7 +73,9 @@ module Html2rss
         parsed = YAML.safe_load(string)
         raise InvalidConfig, 'YAML must deserialize to a Hash' unless parsed.is_a?(Hash)
 
-        HashUtil.deep_symbolize_keys(parsed, context: 'config')
+        symbolize_config(parsed)
+      rescue Psych::Exception => error
+        raise InvalidConfig, "YAML could not be parsed: #{error.message}"
       end
 
       ##
@@ -91,7 +93,7 @@ module Html2rss
         raise InvalidConfig, "File '#{file}' does not exist" unless File.exist?(file)
         raise InvalidConfig, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
 
-        yaml = YAML.safe_load_file(file, symbolize_names: true)
+        yaml = read_yaml_mapping(file)
 
         return yaml unless yaml.key?(multiple_feeds_key)
 
@@ -226,6 +228,24 @@ module Html2rss
         end
       end
       private :resolve_raw_hash
+
+      def read_yaml_mapping(file)
+        yaml = YAML.safe_load_file(file, symbolize_names: true)
+        return yaml if yaml.is_a?(Hash)
+
+        raise InvalidConfig, "File '#{file}' must contain a YAML mapping (a Hash)"
+      rescue Psych::Exception => error
+        raise InvalidConfig, "File '#{file}' could not be parsed: #{error.message}"
+      end
+      private :read_yaml_mapping
+
+      # Loaded config keys that cannot be symbolized (non-string, non-symbol) are a config-load failure.
+      def symbolize_config(parsed)
+        HashUtil.deep_symbolize_keys(parsed, context: 'config')
+      rescue InvalidOption => error
+        raise InvalidConfig, error.message
+      end
+      private :symbolize_config
     end
 
     ##
