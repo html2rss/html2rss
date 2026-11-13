@@ -16,7 +16,7 @@ module Html2rss
     # feed-resolution feed slot all read it. Alternates are fetched as +:advertised_feed+ with the
     # page's {RequestService::FeedAdvertisement}, so a feed the page advertises on another host
     # is followed (see {RequestService::Policy}). Path guesses stay same-origin.
-    module Discovery
+    module Discovery # rubocop:disable Metrics/ModuleLength -- discovery ordering + probe stay on one owner
       # Common feed path suffixes probed after head +rel=alternate+ hints.
       DEFAULT_PATHS = CandidateCatalog::FEED_PATHS
       # Words marking a podcast page in its URL host, path or title; {AUDIO_HINT} adds audio file formats.
@@ -154,6 +154,8 @@ module Html2rss
           else
             request_session.follow_up(url:, relation: :auto_source, origin_url:)
           end
+        rescue Html2rss::ContractError
+          raise
         rescue Html2rss::Error => error
           Log.debug("Syndication::Discovery: probe skipped host=#{origin_url.host} (#{error.class})")
           nil

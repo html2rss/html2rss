@@ -36,7 +36,7 @@ rss = Html2rss.apply(result.config)
 ### Options
 
 ```ruby
-Html2rss.capture('https://spa-site.com', strategy: :botasaurus)
+Html2rss.capture('https://example.com', strategy: :botasaurus)
 Html2rss.capture('https://example.com', items_selector: '.article-card')
 Html2rss.capture('https://example.com', strategy: :local_file, local_file_path: './page.html')
 Html2rss.capture('https://example.com', max_redirects: 8, max_requests: 4)

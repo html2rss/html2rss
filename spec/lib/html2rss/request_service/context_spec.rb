@@ -119,7 +119,7 @@ RSpec.describe Html2rss::RequestService::Context do
       let(:request) { { 1 => 'x' } }
 
       it 'names the request in the error' do
-        expect { instance }.to raise_error(ArgumentError, 'request must use string or symbol keys (found 1)')
+        expect { instance }.to raise_error(Html2rss::InvalidOption, 'request must use string or symbol keys (found 1)')
       end
     end
 
@@ -127,7 +127,7 @@ RSpec.describe Html2rss::RequestService::Context do
       subject(:instance) { described_class.new(url:, policy: nil, budget:) }
 
       it 'raises an argument error' do
-        expect { instance }.to raise_error(ArgumentError, 'policy must not be nil')
+        expect { instance }.to raise_error(Html2rss::RequestService::Context::InvalidError, 'policy must not be nil')
       end
     end
 
@@ -135,7 +135,7 @@ RSpec.describe Html2rss::RequestService::Context do
       subject(:instance) { described_class.new(url:) }
 
       it 'raises an argument error' do
-        expect { instance }.to raise_error(ArgumentError, 'budget is required')
+        expect { instance }.to raise_error(Html2rss::RequestService::Context::InvalidError, 'budget is required')
       end
     end
 
@@ -143,7 +143,7 @@ RSpec.describe Html2rss::RequestService::Context do
       subject(:instance) { described_class.new(url:, budget: nil) }
 
       it 'raises an argument error' do
-        expect { instance }.to raise_error(ArgumentError, 'budget must not be nil')
+        expect { instance }.to raise_error(Html2rss::RequestService::Context::InvalidError, 'budget must not be nil')
       end
     end
   end

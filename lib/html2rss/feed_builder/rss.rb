@@ -73,7 +73,7 @@ module Html2rss
       # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
       # @param generator [String] required preformatted generator comment (from {Status})
       def initialize(channel:, articles:, generator:, stylesheets: [])
-        raise ArgumentError, 'generator must be a non-blank String' if blank_string?(generator)
+        raise InvalidOption, 'generator must be a non-blank String' if blank_string?(generator)
 
         @channel = channel
         @articles = articles

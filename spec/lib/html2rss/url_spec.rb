@@ -44,6 +44,70 @@ RSpec.describe Html2rss::Url do
       expect(described_class.from_relative('item', 'HTTPS://Example.COM/dir/').to_s)
         .to eq('https://example.com/dir/item')
     end
+
+    {
+      ['docs\\a.pdf', 'https://example.com/x/'] => 'https://example.com/x/docs/a.pdf',
+      ['  ..\\a.pdf', 'http://example.com/x/y/'] => 'http://example.com/x/a.pdf',
+      ['\\a', 'https://example.com/x/'] => 'https://example.com/a',
+      ['\\\\example.net\\a', 'https://example.com/'] => 'https://example.net/a',
+      ['a\\b?q=x\\y#f\\g', 'HTTPS://example.com/'] => 'https://example.com/a/b?q=x%5Cy#f%5Cg'
+    }.each_pair do |(ref, base), expected|
+      it "resolves #{ref.inspect} against #{base} to #{expected}" do
+        expect(described_class.from_relative(ref, base).to_s).to eq(expected)
+      end
+    end
+
+    it 'keeps an absolute reference without consulting an unparseable base' do
+      expect(described_class.from_relative('https://example.net/a', 'http://exa mple').to_s)
+        .to eq('https://example.net/a')
+    end
+
+    it 'strips trailing whitespace from a relative query' do
+      expect(described_class.from_relative('/news?page=2  ', 'https://example.com/').to_s)
+        .to eq('https://example.com/news?page=2')
+    end
+
+    it 'strips trailing whitespace around a backslash path' do
+      expect(described_class.from_relative(' docs\\a.pdf  ', 'https://example.com/x/').to_s)
+        .to eq('https://example.com/x/docs/a.pdf')
+    end
+  end
+
+  describe 'backslashes (WHATWG: path separators in http(s) URLs)' do
+    {
+      'https://example.com/files\\decisions\\a.pdf' => 'https://example.com/files/decisions/a.pdf',
+      'http://example.com\\a' => 'http://example.com/a',
+      'https:\\\\example.com\\a' => 'https://example.com/a',
+      'https:/\\example.com/a' => 'https://example.com/a',
+      'https://example.com/a\\b?q=x\\y#f\\g' => 'https://example.com/a/b?q=x%5Cy#f%5Cg',
+      'https://example.com/a?x=1\\2' => 'https://example.com/a?x=1%5C2',
+      'https://example.com/a#x\\y' => 'https://example.com/a#x%5Cy'
+    }.each_pair do |raw, expected|
+      it "reads #{raw.inspect} as #{expected}", :aggregate_failures do
+        expect(described_class.from_absolute(raw).to_s).to eq(expected)
+        expect(described_class.from_relative(raw, 'https://example.net/').to_s).to eq(expected)
+      end
+    end
+
+    it 'reads a scheme-less reference with a backslash against a base without a scheme' do
+      expect(described_class.from_relative('files\\a.pdf',
+                                           'example.net/base/').to_s).to eq('example.net/base/files%5Ca.pdf')
+    end
+
+    it 'keeps the authority host when a backslash precedes an @ (no host smuggling)', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com\\@evil.example/')
+
+      expect(url.host).to eq('example.com')
+      expect(url.to_s).to eq('https://example.com/@evil.example/')
+      expect(described_class.resolve_web('\\\\example.com\\@evil.example/', 'https://example.net/').host)
+        .to eq('example.com')
+    end
+
+    it 'leaves non-http(s) URLs untouched', :aggregate_failures do
+      expect(described_class.from_absolute('ftp://example.com/a\\b').to_s).to eq('ftp://example.com/a%5Cb')
+      expect(described_class.from_relative('a\\b', 'ftp://example.com/x/').to_s).to eq('ftp://example.com/x/a%5Cb')
+      expect(described_class.sanitize('mailto:a\\b@example.com').to_s).to eq('mailto:a%5Cb@example.com')
+    end
   end
 
   describe '.sanitize' do
@@ -51,15 +115,18 @@ RSpec.describe Html2rss::Url do
       nil => nil,
       ' ' => nil,
       'http://example.com/ ' => 'http://example.com/',
-      'http://ex.ampl/page?sc=345s#abc' => 'http://ex.ampl/page?sc=345s#abc',
+      'http://ex.example/page?sc=345s#abc' => 'http://ex.example/page?sc=345s#abc',
       'https://example.com/sprite.svg#play' => 'https://example.com/sprite.svg#play',
       'mailto:bogus@void.space' => 'mailto:bogus@void.space',
-      'http://übermedien.de' => 'http://xn--bermedien-p9a.de/',
-      'http://www.詹姆斯.com/' => 'http://www.xn--8ws00zhy3a.com/',
-      ',https://wurstfing.er:4711' => 'https://wurstfing.er:4711/',
+      'http://übermedien.example' => 'http://xn--bermedien-p9a.example/',
+      'http://www.詹姆斯.example/' => 'http://www.xn--8ws00zhy3a.example/',
+      ',https://wurstfing.example:4711' => 'https://wurstfing.example:4711/',
       'feed:https://h2r.example.com/auto_source/aHR123' => 'https://h2r.example.com/auto_source/aHR123',
       'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/' => 'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/',
       'ftp://example.com/file' => 'ftp://example.com/file',
+      'https:\\\\example.com\\a?q=x\\y' => 'https://example.com/a?q=x%5Cy',
+      'https:/\\example.com\\a' => 'https://example.com/a',
+      'https:/example.com/a' => nil,
       'mailto://user@example.com' => 'mailto://user@example.com'
     }.each_pair do |raw_url, expected|
       it "sanitizes #{raw_url.inspect} to #{expected.inspect}" do
@@ -422,7 +489,7 @@ RSpec.describe Html2rss::Url do
     end
 
     it 'returns the registrable domain (eTLD+1)' do
-      expect(described_class.from_absolute('https://www.wp.pl/').domain).to eq('wp.pl')
+      expect(described_class.from_absolute('https://www.news.example.com/').domain).to eq('example.com')
     end
 
     it 'uses the host for IP addresses instead of a public-suffix suffix' do
@@ -567,7 +634,7 @@ RSpec.describe Html2rss::Url do
         'http://subdomain.example.com:8080/path?query=value#fragment' => 'http://subdomain.example.com:8080/path?query=value#fragment',
         'https://example.com/path with spaces' => 'https://example.com/path%20with%20spaces',
         'https://example.com/path@segment' => 'https://example.com/path@segment',
-        'https://truthsocial.com/@realDonaldTrump' => 'https://truthsocial.com/@realDonaldTrump'
+        'https://social.example/@someone' => 'https://social.example/@someone'
       }.each_pair do |input_url, expected_url|
         it "accepts #{input_url.inspect} and returns normalized URL" do
           result = described_class.for_channel(input_url)

@@ -31,12 +31,11 @@ module Html2rss
       # @option opts [Integer] :use_top_selectors list strategy selector budget
       # @option opts [Scoring::LinkResolver, nil] :link_resolver page-scoped destination facts cache
       def initialize(document, base_url:, strategy:, **opts)
-        raise ArgumentError, 'document must be SST::Document' unless document.is_a?(SST::Document)
-        raise ArgumentError, "unknown strategy: #{strategy.inspect}" unless Segment::STRATEGIES.include?(strategy)
+        raise Segment::InvalidError, 'document must be SST::Document' unless document.is_a?(SST::Document)
 
         @document = document
         @base_url = base_url
-        @strategy = strategy
+        @strategy = Segment.strategy!(strategy)
         @minimum_selector_frequency = opts.fetch(:minimum_selector_frequency, 2)
         @use_top_selectors = opts.fetch(:use_top_selectors, 5)
         @link_resolver = opts[:link_resolver] || Scoring::LinkResolver.new(base_url)

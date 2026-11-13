@@ -44,7 +44,7 @@ module Html2rss
         # @param _context [Selectors::StepEnv] post-processor context
         # @return [void]
         def self.validate_args!(value, _context)
-          raise ArgumentError, 'The `value` option is missing or empty.' if value.to_s.empty?
+          raise MissingOption, 'The `value` option is missing or empty.' if value.to_s.empty?
         end
 
         ##

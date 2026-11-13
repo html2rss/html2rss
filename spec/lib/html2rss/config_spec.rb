@@ -46,13 +46,22 @@ RSpec.describe Html2rss::Config do
   end
 
   describe '.load_yaml' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:write_yaml) do
+      lambda do |name, content|
+        File.join(tmp_dir, name).tap { File.write(_1, content) }
+      end
+    end
+
+    after { FileUtils.remove_entry(tmp_dir) }
+
     context 'when the file does not exist' do
       let(:file) { 'non-existing-file' }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect do
           described_class.load_yaml(file)
-        end.to raise_error(ArgumentError,
+        end.to raise_error(Html2rss::Config::InvalidConfig,
                            "File 'non-existing-file' does not exist")
       end
     end
@@ -60,19 +69,83 @@ RSpec.describe Html2rss::Config do
     context 'when the file exists & the feed name is reserved' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect do
           described_class.load_yaml(file,
                                     described_class::MultipleFeedsConfig::CONFIG_KEY_FEEDS)
-        end.to raise_error(ArgumentError,
+        end.to raise_error(Html2rss::Config::InvalidConfig,
                            "`#{described_class::MultipleFeedsConfig::CONFIG_KEY_FEEDS}` is a reserved feed name")
+      end
+    end
+
+    context 'when the file holds a YAML list' do
+      it 'raises InvalidConfig naming the file' do
+        path = write_yaml.call('list.yml', "- a\n- b\n")
+
+        expect { described_class.load_yaml(path) }
+          .to raise_error(Html2rss::Config::InvalidConfig, "File '#{path}' must contain a YAML mapping (a Hash)")
+      end
+
+      it 'raises InvalidConfig for an empty file' do
+        expect { described_class.load_yaml(write_yaml.call('empty.yml', '')) }
+          .to raise_error(Html2rss::Config::InvalidConfig, /mapping/)
+      end
+    end
+
+    context 'when the file holds keys that cannot be symbolized' do
+      {
+        'a top-level integer key' => "1: 2\n",
+        'a nested integer key' => "channel:\n  url: https://example.com\n  1: 2\n"
+      }.each do |label, body|
+        it "raises InvalidConfig and reports a failed validation for #{label}", :aggregate_failures do
+          path = write_yaml.call('intkey.yml', body)
+
+          expect { described_class.load_yaml(path) }.to raise_error(Html2rss::Config::InvalidConfig, /config/)
+          expect(described_class.resolve_and_validate(path).last).not_to be_success
+        end
+      end
+    end
+
+    context 'when feeds is not a mapping' do
+      {
+        'a list' => "feeds:\n  - a\n",
+        'a scalar' => "feeds: x\n"
+      }.each do |label, body|
+        it "raises InvalidConfig naming the file for #{label}, with or without a feed name", :aggregate_failures do
+          path = write_yaml.call('feeds.yml', body)
+          message = /File '#{Regexp.escape(path)}': `feeds` must be a mapping/
+
+          expect { described_class.load_yaml(path) }.to raise_error(Html2rss::Config::InvalidConfig, message)
+          expect { described_class.load_yaml(path, 'a') }.to raise_error(Html2rss::Config::InvalidConfig, message)
+          expect(described_class.resolve_and_validate(path, feed_name: 'a').last).not_to be_success
+        end
+      end
+    end
+
+    context 'when a feed entry is not a mapping' do
+      it 'raises InvalidConfig naming the file and feed', :aggregate_failures do
+        path = write_yaml.call('feeds.yml', "feeds:\n  a:\n    - 1\n")
+
+        expect { described_class.load_yaml(path, 'a') }
+          .to raise_error(Html2rss::Config::InvalidConfig, "File '#{path}': feed 'a' must be a mapping")
+        expect(described_class.resolve_and_validate(path, feed_name: 'a').last).not_to be_success
+      end
+    end
+
+    context 'when the file is not valid YAML' do
+      it 'raises InvalidConfig' do
+        path = write_yaml.call('bad.yml', "a: [\n")
+
+        expect { described_class.load_yaml(path) }
+          .to raise_error(Html2rss::Config::InvalidConfig,
+                          /File '#{Regexp.escape(path)}' could not be parsed: .*did not find expected node/m)
       end
     end
 
     context 'when the file exists & is single config' do
       let(:file) { 'spec/fixtures/single.test.yml' }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect(described_class.load_yaml(file)).to be_a(Hash)
       end
     end
@@ -80,21 +153,21 @@ RSpec.describe Html2rss::Config do
     context 'when the file exists with multiple feeds & the feed name is not found' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect do
           described_class.load_yaml(file,
                                     'non-existing-feed')
-        end.to raise_error(ArgumentError, /Feed 'non-existing-feed' not found under `feeds` key/)
+        end.to raise_error(Html2rss::Config::InvalidConfig, /Feed 'non-existing-feed' not found under `feeds` key/)
       end
     end
 
     context 'when the file exists with multiple feeds & the feed name is omitted' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
-      it 'raises an ArgumentError listing the available feeds' do
+      it 'raises InvalidConfig listing the available feeds' do
         expect { described_class.load_yaml(file) }.to raise_error(
-          ArgumentError,
-          'Feed name is required under `feeds`. Available feeds: nuxt-releases, json, notitle, withparams'
+          Html2rss::Config::InvalidConfig,
+          'Feed name is required under `feeds`. Available feeds: releases_page, json, notitle, withparams'
         )
       end
     end
@@ -126,8 +199,8 @@ RSpec.describe Html2rss::Config do
                         { href: '/rss.css', media: 'all', type: 'text/css' },
                         { href: '/special.css', type: 'text/css' }],
           channel: { language: 'en', url: String },
-          selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                       url: { extractor: 'href', selector: '#src-horo-today' } }
+          selectors: { description: { selector: 'p' }, items: { selector: 'div.daily-reading' },
+                       url: { extractor: 'href', selector: '#reading-today' } }
         }
       end
 
@@ -173,15 +246,30 @@ RSpec.describe Html2rss::Config do
     end
 
     it 'rejects non-hash documents so callers cannot pass a YAML list as a config' do
-      expect { described_class.from_yaml("- items\n") }.to raise_error(ArgumentError, /must deserialize to a Hash/)
+      expect do
+        described_class.from_yaml("- items\n")
+      end.to raise_error(Html2rss::Config::InvalidConfig, /must deserialize to a Hash/)
     end
 
     it 'rejects non-strings' do
-      expect { described_class.from_yaml({ channel: {} }) }.to raise_error(ArgumentError, /must be a String/)
+      expect do
+        described_class.from_yaml({ channel: {} })
+      end.to raise_error(Html2rss::Config::InvalidConfig, /must be a String/)
     end
 
     it 'uses safe_load so untrusted YAML cannot instantiate Ruby objects' do
-      expect { described_class.from_yaml("--- !ruby/object:Object {}\n") }.to raise_error(Psych::DisallowedClass)
+      expect { described_class.from_yaml("--- !ruby/object:Object {}\n") }
+        .to raise_error(Html2rss::Config::InvalidConfig, /YAML could not be parsed/)
+    end
+
+    it 'reports a YAML syntax error as InvalidConfig' do
+      expect { described_class.from_yaml("a: [\n") }
+        .to raise_error(Html2rss::Config::InvalidConfig, /YAML could not be parsed: .*did not find expected node/m)
+    end
+
+    it 'reports a non-string key as InvalidConfig' do
+      expect { described_class.from_yaml("? [a]\n: b\n") }
+        .to raise_error(Html2rss::Config::InvalidConfig, /config must use string or symbol keys/)
     end
 
     it 'accepts a String subclass document' do
@@ -205,8 +293,8 @@ RSpec.describe Html2rss::Config do
                       { href: '/rss.css', media: 'all', type: 'text/css' },
                       { href: '/special.css', type: 'text/css' }],
         channel: { language: 'en', url: 'http://example.com' },
-        selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                     url: { extractor: 'href', selector: '#src-horo-today' } }
+        selectors: { description: { selector: 'p' }, items: { selector: 'div.daily-reading' },
+                     url: { extractor: 'href', selector: '#reading-today' } }
       }
     end
 
@@ -436,22 +524,22 @@ RSpec.describe Html2rss::Config do
       end
     end
 
-    it 'does not swallow IssueMapper ArgumentError as a soft :parse issue' do
+    it 'does not swallow an IssueMapper InvalidError as a soft :parse issue' do
       allow(described_class::IssueMapper).to receive(:from).and_raise(
-        ArgumentError, 'unmapped Dry validation predicate: :boom?'
+        Html2rss::Config::IssueMapper::InvalidError, 'unmapped Dry validation predicate: :boom?'
       )
 
       expect { described_class.resolve_and_validate(config) }
-        .to raise_error(ArgumentError, /unmapped Dry validation predicate/)
+        .to raise_error(Html2rss::ContractError, /unmapped Dry validation predicate/)
     end
 
-    it 'surfaces IssueMapper ArgumentError through Html2rss.validate' do
+    it 'surfaces an IssueMapper InvalidError through Html2rss.validate' do
       allow(described_class::IssueMapper).to receive(:from).and_raise(
-        ArgumentError, 'unmapped Dry validation predicate: :boom?'
+        Html2rss::Config::IssueMapper::InvalidError, 'unmapped Dry validation predicate: :boom?'
       )
 
       expect { Html2rss.validate(config) }
-        .to raise_error(ArgumentError, /unmapped Dry validation predicate/)
+        .to raise_error(Html2rss::ContractError, /unmapped Dry validation predicate/)
     end
   end
 
@@ -894,8 +982,8 @@ RSpec.describe Html2rss::Config do
                         { href: '/rss.css', media: 'all', type: 'text/css' },
                         { href: '/special.css', type: 'text/css' }],
           channel: { language: 'en', url: 'http://example.com' },
-          selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                       url: { extractor: 'href', selector: '#src-horo-today' } }
+          selectors: { description: { selector: 'p' }, items: { selector: 'div.daily-reading' },
+                       url: { extractor: 'href', selector: '#reading-today' } }
         }
       end
 
@@ -1013,7 +1101,7 @@ RSpec.describe Html2rss::Config do
     context 'when the configuration is invalid' do
       let(:config) { { headers: { 'User-Agent': nil, 'Content-Language': 0xBADF00D } } }
 
-      it 'raises an ArgumentError' do
+      it 'raises InvalidConfig' do
         expect { instance }.to raise_error(described_class::InvalidConfig, /Invalid configuration:/)
       end
     end

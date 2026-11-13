@@ -60,12 +60,12 @@ RSpec.describe Html2rss::Status do
 
       expect do
         described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: 0, selected_strategy: 'default')
-      end.to raise_error(ArgumentError, /selected_strategy/)
+      end.to raise_error(Html2rss::Status::InvalidError, /selected_strategy/)
 
       expect do
         described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: 0,
                             selected_strategy: :default, attempt_count: 0)
-      end.to raise_error(ArgumentError, /attempt_count must be >= 1/)
+      end.to raise_error(Html2rss::Status::InvalidError, /attempt_count must be >= 1/)
     end
 
     it 'defensively copies tallies so callers cannot mutate telemetry', :aggregate_failures do
@@ -168,7 +168,7 @@ RSpec.describe Html2rss::Status do
     it 'rejects entry_resolution values that are not a Hash or Diag' do
       expect do
         described_class.build(articles: [], dedup_dropped: 0, entry_resolution: Object.new)
-      end.to raise_error(ArgumentError, /Hash or FeedResolution::Diag/)
+      end.to raise_error(Html2rss::Status::InvalidError, /Hash or FeedResolution::Diag/)
     end
   end
 

@@ -1,0 +1,41 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://example.com/headers
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - html2rss-request
+      X-Something:
+      - Foobar
+      Authorization:
+      - Token deadbea7
+      Cookie:
+      - monster=MeWantCookie
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      date:
+      - Fri, 13 Nov 2026 10:00:00 GMT
+      content-type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: |
+        {
+          "headers": {
+            "Accept": "application/json",
+            "Authorization": "Token deadbea7",
+            "Cookie": "monster=MeWantCookie",
+            "Host": "example.com",
+            "User-Agent": "html2rss-request",
+            "X-Something": "Foobar"
+          }
+        }
+  recorded_at: Fri, 13 Nov 2026 10:00:00 GMT
+recorded_with: VCR 6.0.0

@@ -1,0 +1,52 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://example.com/en-gb/HT000001
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers: {}
+  response:
+    status:
+      code: 301
+      message: Moved Permanently
+    headers:
+      date:
+      - Fri, 13 Nov 2026 10:00:00 GMT
+      content-length:
+      - '0'
+      location:
+      - https://example.com/en-gb/security-releases
+    body:
+      encoding: UTF-8
+      string: ''
+  recorded_at: Fri, 13 Nov 2026 10:00:00 GMT
+- request:
+    method: get
+    uri: https://example.com/en-gb/security-releases
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers: {}
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      date:
+      - Fri, 13 Nov 2026 10:00:00 GMT
+      content-type:
+      - text/html;charset=utf-8
+      content-encoding:
+      - gzip
+      content-length:
+      - '1441'
+      vary:
+      - Accept-Encoding
+    body:
+      encoding: ASCII-8BIT
+      string: !binary |-
+        H4sIAEPm9moAA6WbTW/bVhBF9/4Vr9rbevO+SAK0ALdJCwRoUtQFii5pi7aEyrIg0W7970tZcdJcogXuzCoSRfHKxuSAc3zVfvfu0w+//fHLe7caHjaLs/b4j9t02/vLWb89/+n72fFY3y0XZ861D/3QudtVtz/0w+Xsabg7r2evLwzrYdMv3v/dPew2vTv0t0/79fDi9v2m7w79wZ27t9eun3a7x/3Qzk9vOWvnp6u3N4/Ll1NIt94eH4wPV/Lf1xzfKJ9PW66f3e2mOxwuZ0N3s+nP/9p3u12/n51eP36+4+G3Z8fnb2lfj+wX7bBafOweetdtl269vXvcP3TD+nHrNuvtn+MHXr2ecfXcrTfHy7nxhC9Hfz19Krfshv50cD5ecRKwXLSdW+37u8vZfPz13t/MJXjvZbb4fb287wf36dpJfeEvpJ13x2ssX9/0+cXd6nE7/jKPH+/1BxoOX87wwf3Y37jgQzkdY+LDJD6w8dH93O2V8XESH9n45K522vg0iU9sfB5/+hdlfIZ4ufBsfHEfnrbK+DKJp0evGuM3yvhqEk+PXu2unu6V8fUknh69xl33O2V8M4lnR0+8+3Q76OLFQ3ygR0/EfXx8VsYj9QI9ehLcu/5WGY/UC/ToSXQfOuV/PEHqBXr0JOmZL0i9wI9e1jNfkHqRH72iZ74g9SI/epWe+YLUi/zo1XrmC1Iv8qPX6JkvSL1Ij17weuYHpF6iRy+InvkBqZfo0QtBz/yA1Ev06IWoZ35A6iV69ELSMz8g9RI/elnP/IDUy/zoFT3zA1Iv86NX6ZkfkHqZH71az/yA1Mv8vZ7omR+QeplfM4Ke+RGpV/g1I+qZH5F6hV8zkp75EalX+DUj65kfkXqFH72iZ35E6hV+9Co98yNSr+JHr9YzPyL1Kn70Gj3zI1Kv4u/1vJ75EalX8fd6omd+ROpV/JoR9MxP31JvHDx+zYh65ieZxNNrRtIzP4VJPD16Wc/8FCfx9OgVPfNTmsTTo1fpmZ8yxPNeb9zx1MxPZRJPj16jZ36qJvH0vZ7XMz/Vk3h6zRA981MziafXDIPPz0g93usFg8/PSD3e6wWDz89IPd7rBYPPz0g93usFg8/PSD3e6wWDz89IPd7rBYPPz0g93ut5g9vJSD3e63mD28lIPd7reYPbyUg93ut5g9spSD3e63mD2ylIPd7reYPbKUg93ut5g9spSD3e63mD2ylIPd7rjTuemvkFqcd7vXHHUzO/IPV4rzfueGrmF6Qe7/WOO56W+QWpx3u9ccdTM78g9XivN+54auZXSD3e6407npr5FVKP93rjjqdmfoXU473euOOpmV8h9XivN+54auZXSD3e60mjZ36F1OO93vHveFrmV0g93usFg8+vkHq81wsGn18h9XivFww+v0Lq8V4vGHx+/S31isLrBYPPr2UST4+ewefXYRJPj57B59dxEk+PnsHn12kST9/rGdxOnSFe0dczuJ26TOLpNcPgdupqEk+vGQa3U9eTeHrNMLidupnE06NncDsNUo/3epauZoPU472epavZIPV4r2fpajZIPUVfz9DVbJB6ir6eoavZIPUUfT1DV7NB6in6eoauZoPUU/T1DF3NBqmn6OsZupoNUo/3eoaupnikHu/1DF1N8Ug93usZuprikXq81zN0NcUj9RR9PX1XUzxST9HX0/t88Ug9RV9P7/PFI/UUfT29zxeP1FP09fQ+XzxSj/d6hq6meKQe7/UMXU0RpB7v9QxdTRGkHu/1DF1NEaSeoq+ndzsiSD1FX0/vdkSQeoq+nt7tiCD1FH09vdsRQeop+np6tyOC1OO9nqGrKYLU472eoaspgtTjvZ6hqynw3Yys8Hr/39Ucn/37m7/j069fDG7ny/Xz8WE7P30FuZ2fzm3np+9G/wPGCD3gLD0AAA==
+  recorded_at: Fri, 13 Nov 2026 10:00:00 GMT
+recorded_with: VCR 6.0.0

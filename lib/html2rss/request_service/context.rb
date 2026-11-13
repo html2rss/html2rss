@@ -6,6 +6,9 @@ module Html2rss
     # Holds information needed to send requests to websites.
     # To be passed down to the RequestService's strategies.
     class Context
+      # Raised when a context is built without its runtime policy or request budget.
+      class InvalidError < Html2rss::ContractError; end
+
       ##
       # @param url [String, Html2rss::Url] the URL to request
       # @param headers [Hash] HTTP request headers
@@ -16,7 +19,7 @@ module Html2rss
       # @option request_options [Policy] :policy runtime request policy
       # @option request_options [Budget] :budget shared request budget for the feed build
       # @option request_options [FeedAdvertisement, nil] :advertisement page proof for an +:advertised_feed+ follow-up
-      # @raise [ArgumentError] if policy or budget is explicitly nil
+      # @raise [InvalidError] if policy or budget is nil or budget is missing
       def initialize(url:, headers: {}, request: {}, **request_options)
         @url = Html2rss::Url.from_absolute(url)
         @headers = normalize_headers(headers).freeze
@@ -65,12 +68,12 @@ module Html2rss
       def assign_request_options(request_options)
         @relation = request_options.fetch(:relation, :initial)
         @policy = request_options.fetch(:policy, Policy.default)
-        raise ArgumentError, 'policy must not be nil' if @policy.nil?
+        raise InvalidError, 'policy must not be nil' if @policy.nil?
 
         @origin_url = normalized_origin_url(request_options[:origin_url])
         @advertisement = request_options[:advertisement]
-        @budget = request_options.fetch(:budget) { raise ArgumentError, 'budget is required' }
-        raise ArgumentError, 'budget must not be nil' if @budget.nil?
+        @budget = request_options.fetch(:budget) { raise InvalidError, 'budget is required' }
+        raise InvalidError, 'budget must not be nil' if @budget.nil?
       end
 
       def normalized_origin_url(origin_url)

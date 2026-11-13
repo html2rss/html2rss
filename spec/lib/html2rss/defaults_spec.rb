@@ -51,12 +51,12 @@ RSpec.describe Html2rss::Defaults do
       expect(config.logger.level).to eq(Logger::ERROR)
     end
 
-    it 'raises ArgumentError for invalid log level' do
-      expect { config.log_level = :foo }.to raise_error(ArgumentError, /invalid log level/)
+    it 'raises InvalidOption for invalid log level' do
+      expect { config.log_level = :foo }.to raise_error(Html2rss::InvalidOption, /invalid log level/)
     end
 
-    it 'raises ArgumentError for invalid integer log level' do
-      expect { config.log_level = 6 }.to raise_error(ArgumentError, /invalid log level/)
+    it 'raises InvalidOption for invalid integer log level' do
+      expect { config.log_level = 6 }.to raise_error(Html2rss::InvalidOption, /invalid log level/)
     end
   end
 
@@ -74,17 +74,17 @@ RSpec.describe Html2rss::Defaults do
       expect(config.headers).to eq(callable)
     end
 
-    it 'raises ArgumentError for invalid headers' do
+    it 'raises InvalidOption for invalid headers' do
       expect { config.headers = 'not' }.to raise_error(
-        ArgumentError, /headers must be a Hash or Proc/
+        Html2rss::InvalidOption, /headers must be a Hash or Proc/
       )
     end
 
-    it 'raises ArgumentError for a callable that is not a Proc' do
+    it 'raises InvalidOption for a callable that is not a Proc' do
       callable = Object.new
       def callable.call = {}
 
-      expect { config.headers = callable }.to raise_error(ArgumentError, /headers must be a Hash or Proc/)
+      expect { config.headers = callable }.to raise_error(Html2rss::InvalidOption, /headers must be a Hash or Proc/)
     end
 
     it 'dups and freezes the assigned Hash', :aggregate_failures do
@@ -149,13 +149,16 @@ RSpec.describe Html2rss::Defaults do
       expect(config.min_ttl).to be_nil
     end
 
-    it 'raises ArgumentError for zero or negative numbers', :aggregate_failures do
-      expect { config.min_ttl = 0 }.to raise_error(ArgumentError, /must be a positive integer/)
-      expect { config.min_ttl = -10 }.to raise_error(ArgumentError, /must be a positive integer/)
+    it 'raises InvalidOption for zero or negative numbers', :aggregate_failures do
+      expect { config.min_ttl = 0 }.to raise_error(Html2rss::InvalidOption, /must be a positive integer/)
+      expect { config.min_ttl = -10 }.to raise_error(Html2rss::InvalidOption, /must be a positive integer/)
     end
 
-    it 'raises ArgumentError for invalid types' do
-      expect { config.min_ttl = 'abc' }.to raise_error(ArgumentError, /must be a positive integer/)
+    it 'raises InvalidOption naming the rejected value', :aggregate_failures do
+      expect { config.min_ttl = 'abc' }
+        .to raise_error(Html2rss::InvalidOption, 'min_ttl must be a positive integer, got "abc"')
+      expect { config.min_ttl = [] }
+        .to raise_error(Html2rss::InvalidOption, 'min_ttl must be a positive integer, got []')
     end
   end
 
@@ -168,12 +171,14 @@ RSpec.describe Html2rss::Defaults do
       expect(config.stylesheets).to eq(stylesheets)
     end
 
-    it 'raises ArgumentError if not an Array' do
-      expect { config.stylesheets = { href: 'style.css' } }.to raise_error(ArgumentError, /must be an Array/)
+    it 'raises InvalidOption if not an Array' do
+      expect { config.stylesheets = { href: 'style.css' } }.to raise_error(Html2rss::InvalidOption, /must be an Array/)
     end
 
-    it 'raises ArgumentError if any item in the Array is not a Hash' do
-      expect { config.stylesheets = ['style.css'] }.to raise_error(ArgumentError, /must be an Array of Hashes/)
+    it 'raises InvalidOption if any item in the Array is not a Hash' do
+      expect do
+        config.stylesheets = ['style.css']
+      end.to raise_error(Html2rss::InvalidOption, /must be an Array of Hashes/)
     end
 
     it 'copies and freezes the array and its hashes', :aggregate_failures do
@@ -226,7 +231,7 @@ RSpec.describe Html2rss::Defaults do
       config.logger = bare
 
       expect(bare.formatter).to equal(kept)
-      expect { config.logger = Object.new }.to raise_error(ArgumentError, 'logger must be a Logger')
+      expect { config.logger = Object.new }.to raise_error(Html2rss::InvalidOption, 'logger must be a Logger')
     end
   end
 
@@ -258,7 +263,7 @@ RSpec.describe Html2rss::Defaults do
 
     it 'rejects a formatter that is not a Proc or Logger::Formatter' do
       expect { Html2rss.configure { |config| config.logger_formatter = 'not callable' } }
-        .to raise_error(ArgumentError, /formatter must be a Proc, Logger::Formatter, or nil/)
+        .to raise_error(Html2rss::InvalidOption, /formatter must be a Proc, Logger::Formatter, or nil/)
     end
   end
 

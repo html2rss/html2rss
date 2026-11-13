@@ -104,6 +104,8 @@ module Html2rss
 
           @feed_url = response.url
           Syndication::Parser.parse_response(response)
+        rescue Html2rss::ContractError
+          raise
         rescue Html2rss::Error => error
           Log.warn({
             event_name: 'auto_source.native_feed.failed',

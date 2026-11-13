@@ -55,9 +55,9 @@ module Html2rss
     #
     # @param logger [Logger]
     # @return [Logger] the logger
-    # @raise [ArgumentError] if logger is not a Logger
+    # @raise [InvalidOption] if logger is not a Logger
     def logger=(logger)
-      raise ArgumentError, 'logger must be a Logger' unless logger.is_a?(Logger)
+      raise InvalidOption, 'logger must be a Logger' unless logger.is_a?(Logger)
 
       @logger = logger
       @logger.level = @log_level
@@ -69,7 +69,7 @@ module Html2rss
     #
     # @param level [Symbol, String, Integer] the new log level
     # @return [Integer] the normalized log level
-    # @raise [ArgumentError] if the log level is invalid
+    # @raise [InvalidOption] if the log level is invalid
     def log_level=(level)
       @log_level = normalize_log_level(level)
       @logger.level = @log_level
@@ -80,13 +80,13 @@ module Html2rss
     #
     # @param formatter [Proc, Logger::Formatter, nil] the new logger formatter
     # @return [Proc, Logger::Formatter, nil] the new logger formatter
-    # @raise [ArgumentError] if formatter is not a Proc, Logger::Formatter, or nil
+    # @raise [InvalidOption] if formatter is not a Proc, Logger::Formatter, or nil
     def logger_formatter=(formatter)
       @logger_formatter = case formatter
                           when nil, Proc, Logger::Formatter
                             formatter
                           else
-                            raise ArgumentError, 'formatter must be a Proc, Logger::Formatter, or nil'
+                            raise InvalidOption, 'formatter must be a Proc, Logger::Formatter, or nil'
                           end
       @logger.formatter = @logger_formatter
     end
@@ -96,14 +96,14 @@ module Html2rss
     #
     # @param headers [Hash, Proc, nil] the HTTP request headers to globally apply
     # @return [Hash, Proc, nil] the assigned headers
-    # @raise [ArgumentError] if headers is not a Hash, Proc, or nil
+    # @raise [InvalidOption] if headers is not a Hash, Proc, or nil
     def headers=(headers)
       @headers = case headers
                  when nil then nil
                  when Hash then headers.dup.freeze
                  when Proc then headers
                  else
-                   raise ArgumentError, 'headers must be a Hash or Proc'
+                   raise InvalidOption, 'headers must be a Hash or Proc'
                  end
     end
 
@@ -124,18 +124,9 @@ module Html2rss
     #
     # @param ttl [Integer, String, nil] the minimum TTL
     # @return [Integer, nil] the normalized minimum TTL
-    # @raise [ArgumentError] if ttl is not a positive integer
+    # @raise [InvalidOption] if ttl is not a positive integer
     def min_ttl=(ttl)
-      if ttl.nil?
-        @min_ttl = nil
-      else
-        val = Integer(ttl)
-        raise ArgumentError unless val.positive?
-
-        @min_ttl = val
-      end
-    rescue ArgumentError, TypeError
-      raise ArgumentError, "min_ttl must be a positive integer, got #{ttl.inspect}"
+      @min_ttl = (positive_ttl(ttl) unless ttl.nil?)
     end
 
     ##
@@ -143,10 +134,10 @@ module Html2rss
     #
     # @param stylesheets [Array<Hash>] the XML stylesheet processing instructions to include in the generated feed
     # @return [Array<Hash>] the assigned stylesheets
-    # @raise [ArgumentError] if stylesheets is not an Array of hashes
+    # @raise [InvalidOption] if stylesheets is not an Array of hashes
     def stylesheets=(stylesheets)
-      raise ArgumentError, 'stylesheets must be an Array' unless stylesheets.is_a?(Array)
-      raise ArgumentError, 'stylesheets must be an Array of Hashes' unless stylesheets.all?(Hash)
+      raise InvalidOption, 'stylesheets must be an Array' unless stylesheets.is_a?(Array)
+      raise InvalidOption, 'stylesheets must be an Array of Hashes' unless stylesheets.all?(Hash)
 
       @stylesheets = stylesheets.map { |h| h.dup.freeze }.freeze
     end
@@ -166,13 +157,20 @@ module Html2rss
 
     private
 
+    def positive_ttl(ttl)
+      val = Integer(ttl, exception: false)
+      return val if val&.positive?
+
+      raise InvalidOption, "min_ttl must be a positive integer, got #{ttl.inspect}"
+    end
+
     def normalize_log_level(level)
       if level.is_a?(Integer)
-        raise ArgumentError, "invalid log level: #{level}" unless LOG_LEVELS.value?(level)
+        raise InvalidOption, "invalid log level: #{level}" unless LOG_LEVELS.value?(level)
 
         level
       else
-        LOG_LEVELS.fetch(level.to_s.downcase.to_sym) { raise ArgumentError, "invalid log level: #{level}" }
+        LOG_LEVELS.fetch(level.to_s.downcase.to_sym) { raise InvalidOption, "invalid log level: #{level}" }
       end
     end
   end

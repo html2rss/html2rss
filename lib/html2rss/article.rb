@@ -49,10 +49,15 @@ module Html2rss
       @url = @image = @guid = @enclosures = @categories = @published_at = NOT_SET
     end
 
+    # Sole owner of the "an item needs a URL" rule: auto-source ({#valid?}) and selector items
+    # ({Html2rss::Selectors#each}) both admit only linked articles.
+    # @return [Boolean] true when the article carries a URL
+    def linked? = !url.to_s.empty?
+
     # Checks if the article is valid based on the presence of URL, ID, and either title or description.
     # @return [Boolean] True if the article is valid, otherwise false.
     def valid?
-      !url.to_s.empty? && (!title.to_s.empty? || !description.to_s.empty?) && !id.to_s.empty?
+      linked? && (!title.to_s.empty? || !description.to_s.empty?) && !id.to_s.empty?
     end
 
     # @param new_url [String, Html2rss::Url] replacement article URL

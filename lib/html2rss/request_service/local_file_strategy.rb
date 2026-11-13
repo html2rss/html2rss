@@ -20,11 +20,11 @@ module Html2rss
 
       ##
       # @return [Response] the mock response wrapped around the file contents
-      # @raise [ArgumentError] if the local file path is missing
+      # @raise [InvalidOption] if the local file path is missing
       # @raise [Errno::ENOENT] if the file does not exist
       def fetch
         file_path = ctx.request[:local_file_path]
-        raise ArgumentError, 'Local file path is required for local_file strategy' unless file_path
+        raise InvalidOption, 'Local file path is required for local_file strategy' unless file_path
 
         body = File.read(file_path)
         Response.new(

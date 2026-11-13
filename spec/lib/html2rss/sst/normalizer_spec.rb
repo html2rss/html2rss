@@ -334,9 +334,9 @@ RSpec.describe Html2rss::SST::Normalizer do
 
   describe '.call input validation' do
     it 'rejects nil and unsupported input', :aggregate_failures do
-      expect { described_class.call(nil) }.to raise_error(Html2rss::InvalidOption, 'input is required')
+      expect { described_class.call(nil) }.to raise_error(Html2rss::SST::InvalidError, 'input is required')
       expect { described_class.call(42) }
-        .to raise_error(Html2rss::InvalidOption, 'expected String or Nokogiri::XML::Node, got Integer')
+        .to raise_error(Html2rss::SST::InvalidError, 'expected String or Nokogiri::XML::Node, got Integer')
     end
   end
 

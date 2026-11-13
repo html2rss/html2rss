@@ -165,7 +165,7 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
     let(:pipeline) { Html2rss::FeedPipeline.new(config) }
     let(:empty_response) { build_response.call(body: '<html><body><div>empty</div></body></html>') }
     let(:item_response) do
-      build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+      build_response.call(body: '<html><body><article><a href="/n/bota"><h1>bota</h1></a></article></body></html>')
     end
     let(:strategy_results) { {} }
 
@@ -420,6 +420,20 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       it 'does not log a next hop after the last strategy', :aggregate_failures do
         expect { pipeline.to_result }.to raise_error(RuntimeError, 'late')
         expect(Html2rss::Log).not_to have_received(:warn).with(a_string_including('botasaurus ->'))
+      end
+    end
+
+    context 'when default raises a contract error' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:strategy_results) do
+        {
+          default: Html2rss::RequestService::Context::InvalidError.new('bad context'),
+          botasaurus: item_response
+        }
+      end
+
+      it 'propagates instead of falling back', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::ContractError)
+        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
       end
     end
 

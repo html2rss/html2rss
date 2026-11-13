@@ -24,7 +24,7 @@ module Html2rss
       #
       #     <section>
       #       Lorem <b>ipsum</b> dolor...
-      #       <iframe src="https://evil.corp/miner"></iframe>
+      #       <iframe src="https://evil.example/miner"></iframe>
       #       <script>alert();</script>
       #     </section>
       #

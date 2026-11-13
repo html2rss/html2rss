@@ -41,7 +41,7 @@ RSpec.describe Html2rss::FeedPipeline do
       let(:config) { base_config.merge(strategy: :default) }
       let(:pipeline) { described_class.new(config) }
       let(:response) do
-        build_response.call(body: '<html><body><article><h1>default</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><a href="/a"><h1>default</h1></a></article></body></html>')
       end
 
       before do
@@ -75,6 +75,33 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
+    context 'when a selector item has no resolvable link' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) { base_config.merge(strategy: :default) }
+      let(:result) { described_class.new(config).to_result }
+      let(:response) do
+        build_response.call(
+          body: '<html><body><article><h1>no link</h1></article>' \
+                '<article><a href="/a"><h1>linked</h1></a></article></body></html>'
+        )
+      end
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, **|
+          ctx.budget.consume!
+          response
+        end
+      end
+
+      it 'leaves it out of the RSS feed', :aggregate_failures do
+        expect(result.to_rss.items.map(&:title)).to eq(['linked'])
+        expect(result.to_rss.items.map(&:link)).to eq(['https://example.com/a'])
+      end
+
+      it 'leaves it out of the JSON Feed' do
+        expect(result.to_json_feed[:items].map { _1[:title] }).to eq(['linked'])
+      end
+    end
+
     context 'when the config interpolates params' do
       let(:config) do
         base_config.merge(
@@ -88,7 +115,8 @@ RSpec.describe Html2rss::FeedPipeline do
       before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, **|
           ctx.budget.consume!
-          build_response.call(body: '<html><body><article><h1>scoped</h1></article></body></html>', url: ctx.url.to_s)
+          build_response.call(body: '<html><body><article><a href="/a"><h1>scoped</h1></a></article></body></html>',
+                              url: ctx.url.to_s)
         end
       end
 
@@ -193,7 +221,7 @@ RSpec.describe Html2rss::FeedPipeline do
         build_response.call(body: '<html><body><div>empty</div></body></html>')
       end
       let(:item_response) do
-        build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><a href="/a"><h1>bota</h1></a></article></body></html>')
       end
       let(:strategy_results) do
         {
@@ -432,7 +460,7 @@ RSpec.describe Html2rss::FeedPipeline do
         let(:strategy_results) do
           {
             default: build_response.call(
-              body: '<html><body><article><h1>seznam</h1></article></body></html>',
+              body: '<html><body><article><a href="/a"><h1>seznam</h1></a></article></body></html>',
               headers: { 'content-type' => 'application/octet-stream' }
             ),
             botasaurus: item_response
@@ -516,8 +544,10 @@ RSpec.describe Html2rss::FeedPipeline do
 
     context 'with selector pagination strategies' do
       it 'paginates using url_template strategy and content-stops on empty page', :aggregate_failures do
-        p1 = build_response.call(body: '<html><body><article><h1>Item 1</h1></article></body></html>', url: 'https://example.com/news')
-        p2 = build_response.call(body: '<html><body><article><h1>Item 2</h1></article></body></html>', url: 'https://example.com/news?page=2')
+        p1 = build_response.call(body: '<html><body><article><a href="/a"><h1>Item 1</h1></a></article></body></html>',
+                                 url: 'https://example.com/news')
+        p2 = build_response.call(body: '<html><body><article><a href="/b"><h1>Item 2</h1></a></article></body></html>',
+                                 url: 'https://example.com/news?page=2')
         p3 = build_response.call(body: '<html><body><div>No items</div></body></html>', url: 'https://example.com/news?page=3')
         responses = { 'https://example.com/news' => p1, 'https://example.com/news?page=2' => p2, 'https://example.com/news?page=3' => p3 }
 
@@ -539,6 +569,111 @@ RSpec.describe Html2rss::FeedPipeline do
       end
       # rubocop:enable RSpec/ExampleLength
     end
+
+    it 'tallies selector items dropped for having no URL as admission drops', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      config = Html2rss::Config.from_hash(
+        { channel: { url: 'https://example.com/news' }, strategy: :default,
+          selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a.missing' } } }
+      )
+      response = build_response.call(body: '<article><h1>A</h1></article><article><h1>B</h1></article>')
+      session = instance_double(Html2rss::RequestSession, page_responses: [response])
+      extraction = described_class.new({}).extract(config:, response:, request_session: session)
+
+      expect(extraction.articles).to be_empty
+      expect(extraction.admission_drops).to eq('missing_url' => 2)
+    end
+
+    it 'keeps paginating past an empty first page', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      config = Html2rss::Config.from_hash(
+        { channel: { url: 'https://example.com/news' }, strategy: :default,
+          selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a' } } }
+      )
+      page1 = build_response.call(body: '<div>No items</div>')
+      page2 = build_response.call(body: '<article><h1>A</h1><a href="/a">a</a></article>',
+                                  url: 'https://example.com/news?page=2')
+      session = instance_double(Html2rss::RequestSession, page_responses: [page1, page2])
+      extraction = described_class.new({}).extract(config:, response: page1, request_session: session)
+
+      expect(extraction.articles.size).to eq(1)
+      expect(extraction.admission_drops).to eq({})
+    end
+
+    it 'tallies the unlinked items of a page that ends pagination', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      config = Html2rss::Config.from_hash(
+        { channel: { url: 'https://example.com/news' }, strategy: :default,
+          selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a' } } }
+      )
+      page1 = build_response.call(body: '<article><h1>A</h1><a href="/a">a</a></article><article><h1>B</h1></article>')
+      page2 = build_response.call(body: '<article><h1>C</h1></article>' * 3, url: 'https://example.com/news?page=2')
+      session = instance_double(Html2rss::RequestSession, page_responses: [page1, page2])
+      extraction = described_class.new({}).extract(config:, response: page1, request_session: session)
+
+      expect(extraction.articles.size).to eq(1)
+      expect(extraction.admission_drops).to eq('missing_url' => 4)
+    end
+
+    # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength -- inline configs and HTML fixtures
+    describe '#selector_articles' do
+      let(:selector_config) do
+        Html2rss::Config.from_hash(
+          { channel: { url: 'https://example.com/news', time_zone: 'Europe/Berlin' }, strategy: :default,
+            selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a' } } }
+        )
+      end
+      let(:html) { '<article><h1>A</h1><a href="/a">a</a></article>' }
+      let(:session) { instance_double(Html2rss::RequestSession) }
+
+      it 'extracts nothing for a feed response', :aggregate_failures do
+        response = build_response.call(body: '<rss version="2.0"><channel></channel></rss>',
+                                       headers: { 'content-type' => 'application/rss+xml' })
+        extraction = described_class.new({}).extract(config: selector_config, response:, request_session: session)
+
+        expect(extraction.articles).to eq([])
+        expect(extraction.admission_drops).to eq({})
+      end
+
+      it 'extracts nothing without selectors', :aggregate_failures do
+        config = Html2rss::Config.from_hash({ channel: { url: 'https://example.com/news' }, auto_source: {} })
+        allow(Html2rss::AutoSource).to receive(:new).and_return(
+          instance_double(Html2rss::AutoSource, articles: [], admission_drops: {}, feed_channel: nil)
+        )
+        extraction = described_class.new({}).extract(config:, response: build_response.call(body: html),
+                                                     request_session: session)
+
+        expect(extraction.articles).to eq([])
+      end
+
+      it 'builds the selectors with the configured time zone' do
+        response = build_response.call(body: html)
+        allow(session).to receive(:page_responses).and_return([response])
+        allow(Html2rss::Selectors).to receive(:new).and_call_original
+        described_class.new({}).extract(config: selector_config, response:, request_session: session)
+
+        expect(Html2rss::Selectors).to have_received(:new).with(response, selectors: selector_config.selectors,
+                                                                          time_zone: 'Europe/Berlin')
+      end
+    end
+
+    describe '#collect_articles' do
+      it 'sums selector and auto-source drops of the same reason', :aggregate_failures do
+        config = Html2rss::Config.from_hash(
+          { channel: { url: 'https://example.com/news' }, strategy: :default,
+            selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a.missing' } },
+            auto_source: {} }
+        )
+        response = build_response.call(body: '<article><h1>A</h1></article>')
+        allow(Html2rss::AutoSource).to receive(:new).and_return(
+          instance_double(Html2rss::AutoSource, articles: [], admission_drops: { 'missing_url' => 2, 'sponsored' => 1 },
+                                                feed_channel: nil)
+        )
+        session = instance_double(Html2rss::RequestSession, page_responses: [response])
+        extraction = described_class.new({}).extract(config:, response:, request_session: session)
+
+        expect(extraction.admission_drops).to eq('missing_url' => 3, 'sponsored' => 1)
+      end
+    end
+
+    # rubocop:enable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength
 
     it 'extracts the AutoSource admission drops and feed channel facts with the articles' do # rubocop:disable RSpec/ExampleLength
       facts = Html2rss::Syndication::ChannelFacts.new(author: 'Feed Author')
@@ -588,7 +723,7 @@ RSpec.describe Html2rss::FeedPipeline do
         build_response.call(body: '<html><body><div>empty</div></body></html>')
       end
       let(:item_response) do
-        build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><a href="/a"><h1>bota</h1></a></article></body></html>')
       end
 
       before do

@@ -74,7 +74,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
 
   it 'raises blocked-surface classification when response body is an anti-bot interstitial' do # rubocop:disable RSpec/ExampleLength -- challenge detection check
     body = '<html><head><title>Just a moment...</title></head>' \
-           '<body>Checking your browser before accessing canva.com.</body></html>'
+           '<body>Checking your browser before accessing example.com.</body></html>'
     stub_request(:get, 'https://example.com')
       .to_return(status: 200, body:, headers: { 'Content-Type' => 'text/html' })
 

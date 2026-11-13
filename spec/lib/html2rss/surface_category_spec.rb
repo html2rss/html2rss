@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::SurfaceCategory do
   it 'rejects unknown names' do
-    expect { described_class[:maybe] }.to raise_error(ArgumentError, 'unknown surface category: :maybe')
+    expect { described_class[:maybe] }.to raise_error(Html2rss::InvalidOption, 'unknown surface category: :maybe')
   end
 
   it 'looks up symbols and strings', :aggregate_failures do

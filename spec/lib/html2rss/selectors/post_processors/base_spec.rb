@@ -141,17 +141,4 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
       expect(typed).to have_received(:validate_options!).with(context)
     end
   end
-
-  describe '#call' do
-    before do
-      allow(described_class).to receive_messages(assert_type: nil, validate_options!: nil, validate_args!: nil)
-    end
-
-    it 'raises NotImplementedError' do
-      expect do
-        described_class.new('value',
-                            Html2rss::Selectors::StepEnv.new(step_config: {})).call
-      end.to raise_error(NotImplementedError, 'You must implement the `call` method in the post processor')
-    end
-  end
 end

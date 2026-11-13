@@ -478,6 +478,17 @@ RSpec.describe Html2rss::Capture do
       end
     end
 
+    context 'when the title derivation raises a contract error' do
+      before do
+        stub_outcome(html_response('<html></html>'), articles: [])
+        allow(Html2rss::Channel).to receive(:from_response).and_raise(Html2rss::RequestService::Context::InvalidError)
+      end
+
+      it 'propagates instead of omitting the title' do
+        expect { described_class.new(url).build }.to raise_error(Html2rss::ContractError)
+      end
+    end
+
     context 'when native feed discovery fails' do
       before do
         stub_outcome(html_response('<html></html>'), articles: [])
@@ -489,6 +500,17 @@ RSpec.describe Html2rss::Capture do
 
         expect(result.native_feed).to be_nil
         expect(result.native_feed?).to be(false)
+      end
+    end
+
+    context 'when native feed discovery raises a contract error' do
+      before do
+        stub_outcome(html_response('<html></html>'), articles: [])
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_raise(Html2rss::RequestService::Context::InvalidError)
+      end
+
+      it 'propagates instead of treating it as no native feed' do
+        expect { described_class.new(url).build }.to raise_error(Html2rss::ContractError)
       end
     end
 

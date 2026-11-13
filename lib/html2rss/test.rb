@@ -17,7 +17,7 @@ module Html2rss
       ##
       # @param name [Symbol, String]
       # @return [FailureKind]
-      def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown failure kind: #{name.inspect}" }
+      def self.[](name) = ALL.fetch(name.to_sym) { raise InvalidOption, "unknown failure kind: #{name.inspect}" }
 
       ##
       # @return [Boolean]
@@ -174,6 +174,8 @@ module Html2rss
       config = build_test_config(raw_config, strategy, params)
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, compare_enhance:, sample_limit:)
+    rescue Html2rss::ContractError
+      raise
     rescue Html2rss::Error => error
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       execution_failure_result(error, raw_config, duration)
@@ -262,6 +264,7 @@ module Html2rss
       native_feed = probe_native_feed_url(channel_url, config, pipeline_outcome.response)&.to_s if probe_native_feed
       report = QualityReport.from_audit(audit, native_feed:)
       report = append_url_mismatch_warning(report, channel_url, feed_result)
+      report = append_items_without_url_warning(report, pipeline_outcome)
       merge_enhance_audit(report, config, pipeline_outcome)
     end
 
@@ -321,6 +324,21 @@ module Html2rss
     end
     private_class_method :enhance_gains_to_h
 
+    # Selector items dropped for having no URL ({Selectors#admission_drops}) leave nothing for the audit to
+    # see, so the warning names the +url+ selector as the place to look.
+    def self.append_items_without_url_warning(report, pipeline_outcome)
+      dropped = pipeline_outcome.admission_drops.fetch(Selectors::MISSING_URL_REASON, 0)
+      return report unless dropped.positive?
+
+      QualityReport.new(
+        warnings: (report.warnings + [:items_without_url]).freeze,
+        metrics: report.metrics.merge(items_without_url: dropped),
+        native_feed: report.native_feed,
+        defer_reason: report.defer_reason
+      )
+    end
+    private_class_method :append_items_without_url_warning
+
     def self.append_url_mismatch_warning(report, channel_url, feed_result)
       return report unless url_mismatch?(channel_url, feed_result)
 
@@ -355,10 +373,10 @@ module Html2rss
 
       resources = FeedPipeline::RuntimePolicy.resources_for(config)
       strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(config.strategy)
-      session = RequestSession.build(
-        config:, strategy:, budget: resources.budget, policy: resources.policy
-      )
+      session = RequestSession.build(config:, strategy:, budget: resources.budget, policy: resources.policy)
       Syndication::Discovery.native_feed_url(response:, request_session: session)
+    rescue Html2rss::ContractError
+      raise
     rescue Html2rss::Error
       nil
     end

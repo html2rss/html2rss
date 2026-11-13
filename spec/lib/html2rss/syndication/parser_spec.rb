@@ -756,7 +756,11 @@ RSpec.describe Html2rss::Syndication::Parser do
         url: Html2rss::Url.from_absolute('https://example.com/')
       )
 
-      expect { described_class.parse_response(response).articles }.to raise_error(ArgumentError, /syndication feed/)
+      expect do
+        described_class.parse_response(response).articles
+      end.to raise_error(
+        Html2rss::RequestService::UnsupportedResponseContentType, /syndication feed/
+      )
     end
 
     it 'resolves relative item links against the response URL' do

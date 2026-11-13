@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.shared_examples 'auto source option forwarding' do |method:|
-  let(:url) { 'https://www.welt.de/' }
+  let(:url) { 'https://www.example.com/' }
   let(:feed_result) do
     instance_double(Html2rss::FeedResult, to_rss: nil, to_json_feed: nil)
   end

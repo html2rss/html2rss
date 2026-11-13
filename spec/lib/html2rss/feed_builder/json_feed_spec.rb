@@ -28,19 +28,19 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
   it 'requires a non-blank user_comment' do
     expect do
       described_class.new(channel:, articles:, user_comment: nil)
-    end.to raise_error(ArgumentError, 'user_comment must be a non-blank String')
+    end.to raise_error(Html2rss::InvalidOption, 'user_comment must be a non-blank String')
   end
 
   it 'rejects a whitespace user_comment' do
     expect do
       described_class.new(channel:, articles:, user_comment: ' ')
-    end.to raise_error(ArgumentError, 'user_comment must be a non-blank String')
+    end.to raise_error(Html2rss::InvalidOption, 'user_comment must be a non-blank String')
   end
 
   it 'rejects a non-string user_comment' do
     expect do
       described_class.new(channel:, articles:, user_comment: 1)
-    end.to raise_error(ArgumentError, 'user_comment must be a non-blank String')
+    end.to raise_error(Html2rss::InvalidOption, 'user_comment must be a non-blank String')
   end
 
   it 'accepts a String subclass user_comment' do
@@ -106,7 +106,7 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
     it 'rejects a non-string feed_url' do
       expect do
         described_class.new(channel:, articles:, user_comment:, feed_url: :symbol)
-      end.to raise_error(ArgumentError, /feed_url must be a String or nil/)
+      end.to raise_error(Html2rss::InvalidOption, /feed_url must be a String or nil/)
     end
 
     it 'accepts a String subclass feed_url' do

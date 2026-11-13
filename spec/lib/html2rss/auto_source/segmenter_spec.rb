@@ -1,6 +1,20 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Segmenter do
+  context 'with invalid construction input' do
+    let(:document) { document_for('<html><body><article><a href="/a">A</a></article></body></html>') }
+
+    it 'rejects a document that is not an SST::Document' do
+      expect { described_class.new(Object.new, base_url: 'https://example.com', strategy: :semantic) }
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'document must be SST::Document')
+    end
+
+    it 'rejects a strategy outside Segment::STRATEGIES' do
+      expect { described_class.new(document, base_url: 'https://example.com', strategy: :bogus) }
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'unknown strategy: :bogus')
+    end
+  end
+
   describe '.call with :semantic' do
     let(:html) do
       <<~HTML

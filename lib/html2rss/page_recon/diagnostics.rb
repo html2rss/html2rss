@@ -57,6 +57,8 @@ module Html2rss
       def self.batch(urls:, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY)
         Batch.map(Array(urls), concurrency:) do |url|
           call(url:, strategy:)
+        rescue Html2rss::ContractError
+          raise
         rescue Html2rss::Error => error
           error_report(url, error)
         end

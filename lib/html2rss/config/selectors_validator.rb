@@ -142,7 +142,7 @@ module Html2rss
           end
         end
 
-        # Same compile as Gsub#call. ArgumentError is the bound; Gsub maps
+        # Same compile as Gsub#call. InvalidOption is the bound; Gsub maps
         # parser errors onto that path so admit and execute still share it.
         #
         # @param klass [Class]
@@ -156,7 +156,7 @@ module Html2rss
 
           Selectors::PostProcessors::Gsub.compiled_pattern(pattern)
           nil
-        rescue ArgumentError => error
+        rescue InvalidOption => error
           error.message
         end
       end

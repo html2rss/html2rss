@@ -43,10 +43,10 @@ RSpec.describe 'exe/html2rss', :slow do
     end
   end
 
-  context 'with feed config: nuxt-releases' do
+  context 'with feed config: releases_page' do
     context 'with arguments: apply YAML_FILE' do
       subject(:output) do
-        capture_cli_output('apply', 'spec/fixtures/single.test.yml', cassette: 'nuxt-releases')
+        capture_cli_output('apply', 'spec/fixtures/single.test.yml', cassette: 'releases_page')
       end
 
       it 'generates the RSS', :aggregate_failures do
@@ -59,7 +59,7 @@ RSpec.describe 'exe/html2rss', :slow do
 
     context 'with arguments: feed YAML_FILE (alias for apply)' do
       subject(:output) do
-        capture_cli_output('feed', 'spec/fixtures/single.test.yml', cassette: 'nuxt-releases')
+        capture_cli_output('feed', 'spec/fixtures/single.test.yml', cassette: 'releases_page')
       end
 
       it 'generates the RSS via the feed alias', :aggregate_failures do
@@ -72,7 +72,7 @@ RSpec.describe 'exe/html2rss', :slow do
 
     context 'with arguments: apply YAML_FILE FEED_NAME' do
       subject(:output) do
-        capture_cli_output('apply', 'spec/fixtures/feeds.test.yml', 'nuxt-releases', cassette: 'nuxt-releases')
+        capture_cli_output('apply', 'spec/fixtures/feeds.test.yml', 'releases_page', cassette: 'releases_page')
       end
 
       it 'generates the RSS', :aggregate_failures do
@@ -93,7 +93,7 @@ RSpec.describe 'exe/html2rss', :slow do
     it 'processes and escapes the params' do
       expect(output)
         .to include('<description>The value of param is: value</description>',
-                    'horoscope-general-daily-today.aspx?sign=10</link>')
+                    '/daily/reading?sign=10</link>')
     end
   end
 

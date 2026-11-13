@@ -82,13 +82,13 @@ RSpec.describe Html2rss::FeedResolution do
         articles: nil,
         surface_category: :listing
       )
-    end.to raise_error(ArgumentError, 'articles must be an Array')
+    end.to raise_error(Html2rss::FeedResolution::InvalidError, 'articles must be an Array')
   end
 
   it 'rejects a truthy non-array on the runner' do
     expect do
       described_class::Runner.new(entry_url:, response:, session:, config:, articles: 'no')
-    end.to raise_error(ArgumentError, 'articles must be an Array')
+    end.to raise_error(Html2rss::FeedResolution::InvalidError, 'articles must be an Array')
   end
 
   it 'rejects a runner entry URL that is not absolute' do
@@ -251,6 +251,14 @@ RSpec.describe Html2rss::FeedResolution do
       allow(retry_session).to receive(:fetch_initial_response).and_raise(Html2rss::RequestService::InvalidUrl)
 
       expect { apply_outcome }.to raise_error(Html2rss::RequestService::InvalidUrl)
+    end
+
+    it 're-raises contract errors from the retry' do
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(retry_session).to receive(:fetch_initial_response)
+        .and_raise(Html2rss::RequestService::Context::InvalidError)
+
+      expect { apply_outcome }.to raise_error(Html2rss::ContractError)
     end
 
     it 'returns nil when the retry raises a generic error', :aggregate_failures do

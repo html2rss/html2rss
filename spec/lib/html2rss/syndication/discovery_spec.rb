@@ -409,6 +409,13 @@ RSpec.describe Html2rss::Syndication::Discovery do
       expect(selected.to_s).to eq('https://example.com/news/atom.xml')
     end
 
+    it 'propagates contract errors raised while probing a candidate' do
+      allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::Context::InvalidError)
+
+      expect { described_class.best_feed_url(page_url:, request_session: session, html: '') }
+        .to raise_error(Html2rss::ContractError)
+    end
+
     it 'caps candidate probes at max_probes when no feed is found', :aggregate_failures do
       miss = Html2rss::RequestService::Response.new(
         body: 'not a feed',

@@ -13,6 +13,9 @@ module Html2rss
   # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
   # Tallies and counters are validated and frozen at construction (including Marshal load).
   class Status
+    # Raised when telemetry fields fail validation at construction.
+    class InvalidError < Html2rss::ContractError; end
+
     # Keys kept in {#to_h} even when zero or empty.
     ALWAYS_REPORTED = %i[version dedup_dropped].freeze
     private_constant :ALWAYS_REPORTED
@@ -157,14 +160,14 @@ module Html2rss
       case value
       when Hash, FeedResolution::Diag then value.to_h
       else
-        raise ArgumentError, "entry_resolution must be a Hash or FeedResolution::Diag, got #{value.class}"
+        raise InvalidError, "entry_resolution must be a Hash or FeedResolution::Diag, got #{value.class}"
       end.transform_keys(&:to_sym).freeze
     end
 
     def validate_selected_strategy!(selected_strategy, attempts)
       return if selected_strategy.nil?
-      raise ArgumentError, 'selected_strategy must be a Symbol or nil' unless selected_strategy.is_a?(Symbol)
-      raise ArgumentError, 'attempt_count must be >= 1 when selected_strategy is set' if attempts < 1
+      raise InvalidError, 'selected_strategy must be a Symbol or nil' unless selected_strategy.is_a?(Symbol)
+      raise InvalidError, 'attempt_count must be >= 1 when selected_strategy is set' if attempts < 1
     end
   end
 end

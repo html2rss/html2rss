@@ -128,6 +128,17 @@ RSpec.describe Html2rss::Recon do
       end
     end
 
+    context 'when Discovery raises a contract error' do
+      let(:discovered_feed) { nil }
+
+      it 'propagates instead of recording a discovery_error note' do
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url)
+          .and_raise(Html2rss::RequestService::Context::InvalidError)
+
+        expect { described_class.call(url) }.to raise_error(Html2rss::ContractError)
+      end
+    end
+
     context 'when HTTP status is missing' do
       let(:page_recon_result) { super().with(status: nil) }
       let(:discovered_feed) { nil }
@@ -267,6 +278,14 @@ RSpec.describe Html2rss::Recon do
         expect(result.drop?).to be(true)
         expect(result.requested_url.to_s).to eq(url)
         expect(result.notes.first).to include('connection refused')
+      end
+    end
+
+    context 'when probe raises a contract error' do
+      it 'propagates instead of returning a DROP verdict' do
+        allow(Html2rss::PageRecon).to receive(:probe).and_raise(Html2rss::RequestService::Context::InvalidError)
+
+        expect { described_class.call(url) }.to raise_error(Html2rss::ContractError)
       end
     end
 

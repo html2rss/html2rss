@@ -11,11 +11,14 @@ module Html2rss
     # description metadata. If none of these identifiers are available it
     # defaults to the article object's hash to preserve the original entry.
     class Deduplicator
+      # Raised when the deduplicator is built without an article list.
+      class InvalidError < Html2rss::ContractError; end
+
       ##
       # @param articles [Array<Html2rss::Article>]
-      # @raise [ArgumentError] if articles are not provided
+      # @raise [InvalidError] if articles are not provided
       def initialize(articles)
-        raise ArgumentError, 'articles must be provided' unless articles
+        raise InvalidError, 'articles must be provided' unless articles
 
         @articles = articles
       end

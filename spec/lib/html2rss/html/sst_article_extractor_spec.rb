@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Html::SstArticleExtractor do
+  it 'rejects a value that is not a segment' do
+    expect { described_class.new(Object.new, base_url: 'https://example.com') }
+      .to raise_error(Html2rss::Html::InvalidError, 'segment is required')
+  end
+
   describe 'leftover hygiene' do
     let(:extractor_time_zone) { 'UTC' }
     let(:leftover_fields) do

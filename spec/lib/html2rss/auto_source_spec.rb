@@ -820,6 +820,13 @@ RSpec.describe Html2rss::AutoSource do
                                                             )
         )
       end
+      let(:quarantine_log) do
+        {
+          event_name: 'auto_source.quarantined', host: url.host, error_class: 'ArgumentError',
+          message: 'Html2rss::AutoSource: Html2rss::AutoSource::Scraper::Schema quarantined ArgumentError: ' \
+                   'bad structured payload'
+        }.to_json
+      end
 
       before do
         allow(Html2rss::Log).to receive(:warn)
@@ -835,7 +842,7 @@ RSpec.describe Html2rss::AutoSource do
       it 'quarantines ArgumentError and continues the tier', :aggregate_failures do
         expect(articles.size).to eq(1)
         expect(articles.first.scraper).to eq(Html2rss::AutoSource::Scraper::SemanticHtml)
-        expect(Html2rss::Log).to have_received(:warn).with(/quarantined ArgumentError/)
+        expect(Html2rss::Log).to have_received(:warn).with(quarantine_log)
       end
     end
 
@@ -886,9 +893,20 @@ RSpec.describe Html2rss::AutoSource do
 
       let(:schema_each) { proc { |&block| block.call('not an item') } }
 
-      it 'raises a TypeError naming the scraper' do
+      it 'raises a ScraperContractError naming the scraper instead of quarantining it' do
         expect { articles }
-          .to raise_error(TypeError, 'Html2rss::AutoSource::Scraper::Schema yielded String; expected Article or Hash')
+          .to raise_error(described_class::ScraperContractError,
+                          'Html2rss::AutoSource::Scraper::Schema yielded String; expected Article or Hash')
+      end
+    end
+
+    context 'when a scraper raises a non-scraper contract error' do
+      include_context 'with a lone Schema scraper'
+
+      let(:schema_each) { proc { raise Html2rss::Status::InvalidError } }
+
+      it 'propagates instead of quarantining the scraper' do
+        expect { articles }.to raise_error(Html2rss::Status::InvalidError)
       end
     end
 
@@ -1035,7 +1053,7 @@ RSpec.describe Html2rss::AutoSource do
   end
 
   describe 'URL identity cost (non-wall-clock regression guard)' do
-    let(:body) { File.read('spec/fixtures/page_1.html') }
+    let(:body) { File.read('spec/fixtures/news_front_page.html') }
 
     let(:counts) { Hash.new(0) }
 
@@ -1057,16 +1075,16 @@ RSpec.describe Html2rss::AutoSource do
     it 'normalizes each URL once and reuses one Cleanup result', :aggregate_failures do
       expect(auto_source.articles.size).to eq(25)
       expect(counts[:cleanup]).to eq(1)
-      expect(counts[:normalize]).to be <= 260 # master: 358
+      expect(counts[:normalize]).to be <= 160 # measured: 139
     end
 
     it 'keeps drop tallies stable', :aggregate_failures do
       auto_source.articles
 
-      # One segment per whole-card link frees top-K slots for the fixture's absolute-host
-      # footer links, which Cleanup drops as different_domain.
+      # The fixture's sister-site rail links to example.net (different_domain); one compact
+      # story carries a two-word title (low_word_count).
       expect(auto_source.admission_drops)
-        .to eq('invalid' => 1, 'different_domain' => 35, 'low_word_count' => 1)
+        .to eq('different_domain' => 10, 'low_word_count' => 1)
     end
   end
 end

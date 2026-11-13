@@ -9,7 +9,7 @@ RSpec.describe Html2rss::ErrorKind do
     end
 
     it 'rejects unknown kinds' do
-      expect { described_class[:nope] }.to raise_error(ArgumentError, /unknown error kind: :nope/)
+      expect { described_class[:nope] }.to raise_error(Html2rss::InvalidOption, /unknown error kind: :nope/)
     end
 
     it 'keeps the closed set stable' do

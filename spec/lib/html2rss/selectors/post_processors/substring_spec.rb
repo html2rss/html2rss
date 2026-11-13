@@ -48,8 +48,10 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
     context 'when start and end options are equal' do
       let(:step_config) { { start: 2, end: 2 } }
 
-      it 'raises an ArgumentError' do
-        expect { subject }.to raise_error(ArgumentError, 'The `start` value must be unequal to the `end` value.')
+      it 'raises InvalidOption' do
+        expect do
+          subject
+        end.to raise_error(Html2rss::InvalidOption, 'The `start` value must be unequal to the `end` value.')
       end
     end
 

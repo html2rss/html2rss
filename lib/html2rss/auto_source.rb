@@ -22,7 +22,13 @@ module Html2rss
     # Default max articles to keep (also the short-circuit floor across scraper tiers).
     DEFAULT_LIMIT = 25
 
-    # Operational scraper failures quarantined within a tier; programmer errors propagate.
+    # Raised when a scraper yields an item that is neither an Article nor a Hash (a scraper bug).
+    class ScraperContractError < Html2rss::ContractError; end
+
+    # Operational scraper failures quarantined within a tier; programmer errors (including any
+    # {Html2rss::ContractError}) propagate.
+    # +ArgumentError+ stays for stdlib raises on publisher bytes (e.g. +invalid byte sequence+ after
+    # +CGI.unescapeHTML+ of a surrogate entity); lib raises are {Html2rss::Error} (CONTEXT.md § Error handling).
     OPERATIONAL_ERRORS = [
       Html2rss::Error,
       ArgumentError,
@@ -322,11 +328,11 @@ module Html2rss
 
     def run_scraper(instance)
       instance.map { |item| article_from_scraper_item(item, instance) }
+    rescue ContractError
+      raise
     rescue *OPERATIONAL_ERRORS => error
       Log.warn({
-        event_name: 'auto_source.quarantined',
-        host: url.host,
-        error_class: error.class.name,
+        event_name: 'auto_source.quarantined', host: url.host, error_class: error.class.name,
         message: "#{self.class}: #{instance.class} quarantined #{error.class}: #{error.message}"
       }.to_json)
       []
@@ -342,7 +348,7 @@ module Html2rss
         # composed by Html::SstArticleExtractor.
         Article.new(**item, compose_title: item.key?(:kicker), scraper: instance.class)
       else
-        raise TypeError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
+        raise ScraperContractError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
       end
     end
 

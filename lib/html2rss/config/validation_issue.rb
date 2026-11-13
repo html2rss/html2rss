@@ -10,6 +10,9 @@ module Html2rss
     # +path+ is JSON-pointer-friendly segments. +code+ is closed ({CODES}).
     # +expected+ / +actual+ are JSON-ish or +nil+ (never invented).
     class ValidationIssue
+      # Raised when an issue is built with a code outside {CODES}.
+      class InvalidError < Html2rss::ContractError; end
+
       # Closed set of issue codes (mapper owns Dry predicate → code).
       CODES = Set[
         :missing_key,
@@ -27,7 +30,7 @@ module Html2rss
       # @param expected [Hash, String, Numeric, true, false, nil]
       # @param actual [Hash, String, Numeric, true, false, nil]
       def initialize(path:, code:, message:, expected: nil, actual: nil)
-        raise ArgumentError, "unknown ValidationIssue code: #{code.inspect}" unless CODES.include?(code)
+        raise InvalidError, "unknown ValidationIssue code: #{code.inspect}" unless CODES.include?(code)
 
         super(
           path: Array(path).freeze,

@@ -42,6 +42,8 @@ module Html2rss
     URI_REGEXP = Addressable::URI::URIREGEX
     # Schemes accepted by channel URL validation.
     SUPPORTED_SCHEMES = %w[http https].to_set.freeze
+    SCHEME_PREFIX = /\A([a-z][a-z0-9+.-]*):/i
+    private_constant :SCHEME_PREFIX
 
     ##
     # Creates a URL from a relative path and base URL.
@@ -51,7 +53,7 @@ module Html2rss
     # @return [Url] the resolved, normalized absolute URL
     # @raise [InvalidUrlError] if the URL cannot be parsed
     def self.from_relative(relative_url, base_url)
-      url = Addressable::URI.parse(relative_url.to_s.strip)
+      url = parse(relative_url.to_s.strip, base_url.to_s[SCHEME_PREFIX, 1])
       return new(url.normalize) if url.absolute?
 
       join_parsed_base(base_url, url)
@@ -69,16 +71,40 @@ module Html2rss
     private_class_method :join_parsed_base
 
     ##
+    # The one parse entry. Like browsers (WHATWG URL), a backslash before the query or fragment of an
+    # http(s) URL is a path separator: +files\a.pdf+ is +files/a.pdf+ and +https:\\example.com\x+ is
+    # +https://example.com/x+. A backslash ends the authority, so +https://example.com\@host.example/+
+    # keeps +example.com+ as host. Query and fragment, and non-http(s) URLs, are left untouched.
+    #
+    # @param text [String] raw URL or reference
+    # @param base_scheme [String, nil] scheme a scheme-less +text+ resolves against
+    # @return [Addressable::URI]
+    # @raise [Addressable::URI::InvalidURIError]
+    def self.parse(text, base_scheme = nil)
+      return Addressable::URI.parse(text) unless text.include?('\\') && web_scheme?(text, base_scheme)
+
+      head, separator, tail = text.partition(/[?#]/)
+      Addressable::URI.parse("#{head.tr('\\', '/')}#{separator}#{tail}")
+    end
+    private_class_method :parse
+
+    # @return [Boolean] whether +text+, or the +base_scheme+ a scheme-less +text+ resolves against, is http(s)
+    def self.web_scheme?(text, base_scheme)
+      SUPPORTED_SCHEMES.include?((text[SCHEME_PREFIX, 1] || base_scheme)&.downcase)
+    end
+    private_class_method :web_scheme?
+
+    ##
     # Creates a URL by sanitizing a raw URL string.
     # Removes spaces and extracts the first valid URL from the string.
     #
     # @param raw_url [String] the raw URL string to sanitize
     # @return [Url, nil] the sanitized URL, or nil if no valid URL found
     def self.sanitize(raw_url)
-      match = raw_url.to_s.match(%r{(?:(?:https?|ftp)://|mailto:)[^\s<>"]+})
+      match = raw_url.to_s.match(%r{(?:https?:[/\\]{2}|ftp://|mailto:)[^\s<>"]+})
       return unless match
 
-      new(Addressable::URI.parse(match[0]).normalize)
+      new(parse(match[0]).normalize)
     end
 
     ##
@@ -90,7 +116,7 @@ module Html2rss
     def self.from_absolute(url_string)
       return url_string if url_string.is_a?(self)
 
-      new(Addressable::URI.parse(url_string.to_s.lstrip).normalize).tap do |url|
+      new(parse(url_string.to_s.lstrip).normalize).tap do |url|
         raise InvalidUrlError, 'URL must be absolute' unless url.absolute?
       end
     rescue Addressable::URI::InvalidURIError
@@ -204,8 +230,8 @@ module Html2rss
     # @return [String, nil] userinfo user, without the password
     def user = @uri.user
 
-    # Registrable domain (eTLD+1). Same-site hosts like www.wp.pl and wiadomosci.wp.pl
-    # share `wp.pl`. IP literals stay the host so 1.2.3.4 is not treated as `3.4`.
+    # Registrable domain (eTLD+1). Same-site hosts like www.example.com and news.example.com
+    # share `example.com`. IP literals stay the host so 1.2.3.4 is not treated as `3.4`.
     #
     # @return [String, nil]
     def domain

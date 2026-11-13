@@ -20,7 +20,7 @@ module Html2rss
       public_constant :MCP_CONTRACT_VERSION
 
       # Raised when apply/validate config uses an unpublished MCP request adapter.
-      class UnpublishedRequestError < ArgumentError; end
+      class UnpublishedRequestError < Html2rss::InvalidOption; end
 
       # JSON Schema property for a source page URL.
       URL_PROPERTY = {

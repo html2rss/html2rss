@@ -94,7 +94,7 @@
     {
       "id": 3,
       "title": "Space Exploration Mission Discovers New Planet",
-      "content": "<p>NASA's latest space exploration mission has discovered a potentially habitable planet in a nearby star system. The planet, designated Kepler-442b, shows promising signs of having liquid water and a stable atmosphere.</p><p>This discovery opens up new possibilities for future space exploration and the search for extraterrestrial life.</p>",
+      "content": "<p>An example agency's latest space exploration mission has discovered a potentially habitable planet in a nearby star system. The planet, designated Example-1b, shows promising signs of having liquid water and a stable atmosphere.</p><p>This discovery opens up new possibilities for future space exploration and the search for extraterrestrial life.</p>",
       "author": {
         "id": 103,
         "name": "Dr. Elena Rodriguez",

@@ -81,7 +81,7 @@ module Html2rss
 
         unless value.each_key.all?(Symbol)
           invalid_key = value.keys.find { _1.class != Symbol }
-          raise ArgumentError, "#{context} must use symbol keys (found #{invalid_key.inspect})"
+          raise InvalidOption, "#{context} must use symbol keys (found #{invalid_key.inspect})"
         end
 
         value.each_value { assert_symbol_keys!(_1, context:, deep:) } if deep
@@ -98,7 +98,7 @@ module Html2rss
 
         unless value.each_key.all?(String)
           invalid_key = value.keys.find { _1.class != String }
-          raise ArgumentError, "#{context} must use string keys (found #{invalid_key.inspect})"
+          raise InvalidOption, "#{context} must use string keys (found #{invalid_key.inspect})"
         end
 
         value.each_value { assert_string_keys!(_1, context:, deep:) } if deep
@@ -111,7 +111,7 @@ module Html2rss
         in Symbol then key
         in String then key.to_sym
         else
-          raise ArgumentError, "#{context} must use string or symbol keys (found #{key.inspect})"
+          raise InvalidOption, "#{context} must use string or symbol keys (found #{key.inspect})"
         end
       end
     end

@@ -279,6 +279,13 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
 
       expect { described_class.batch(urls: ['https://example.com/a']) }.to raise_error(NoMethodError)
     end
+
+    it 'propagates contract errors instead of building a per-URL report' do
+      allow(described_class).to receive(:call).and_raise(Html2rss::RequestService::Context::InvalidError)
+
+      expect { described_class.batch(urls: ['https://example.com/a']) }
+        .to raise_error(Html2rss::ContractError)
+    end
   end
 
   describe 'wire payload assembly' do

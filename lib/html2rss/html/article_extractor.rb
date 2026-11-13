@@ -27,7 +27,7 @@ module Html2rss
       # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
       # @param time_zone [String] channel time zone for naive leftover dates
       def initialize(article_tag, base_url:, selected_anchor: nil, time_zone: 'UTC')
-        raise ArgumentError, 'article_tag is required' unless article_tag
+        raise InvalidError, 'article_tag is required' unless article_tag
 
         @article_tag = article_tag
         @base_url = base_url
@@ -62,18 +62,8 @@ module Html2rss
       def extract_url
         @extract_url ||= begin
           href = selected_anchor&.[]('href').to_s
-
-          if href.empty?
-            generated_id_url
-          else
-            Url.from_relative(href.split('#').first.strip, base_url)
-          end
+          Url.from_relative(href.split('#').first, base_url) unless href.empty?
         end
-      end
-
-      def generated_id_url
-        id = generate_id
-        Url.from_relative("##{id}", base_url) if id
       end
 
       def extract_headline

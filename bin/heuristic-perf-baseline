@@ -11,7 +11,7 @@ require_relative '../lib/html2rss'
 require_relative 'lib/perf_baseline'
 
 FIXTURES = [
-  'spec/fixtures/page_1.html',
+  'spec/fixtures/news_front_page.html',
   'spec/fixtures/multi_link_block.html',
   'spec/fixtures/local_feed_test.html',
   'spec/fixtures/auto_source/corpus/menu_mixed_top_level.html',

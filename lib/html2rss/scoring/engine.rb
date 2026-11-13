@@ -46,9 +46,9 @@ module Html2rss
       ##
       # @param id [Symbol]
       # @return [Symbol]
-      # @raise [ArgumentError] when id is not in the closed set
+      # @raise [InvalidOption] when id is not in the closed set
       def self.assert_feature_id!(id)
-        raise ArgumentError, "unknown feature: #{id.inspect}" unless FEATURE_IDS.include?(id)
+        raise InvalidOption, "unknown feature: #{id.inspect}" unless FEATURE_IDS.include?(id)
 
         id
       end

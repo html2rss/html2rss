@@ -141,6 +141,14 @@ RSpec.describe Html2rss::Batch do
       )
     end
 
+    it 'propagates contract errors instead of recording a per-URL failure' do
+      allow(Html2rss).to receive(:auto_feed_result).with('https://example.com/b', strategy: :auto, limit: 10)
+                                                   .and_raise(Html2rss::RequestService::Context::InvalidError)
+
+      expect { described_class.batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: 2) }
+        .to raise_error(Html2rss::ContractError)
+    end
+
     it 'defaults to the auto strategy, a limit of 10 and the default worker count', :aggregate_failures do
       allow(described_class).to receive(:run).and_call_original
       described_class.batch_scrape(urls:)

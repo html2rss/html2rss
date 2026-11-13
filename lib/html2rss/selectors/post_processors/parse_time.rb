@@ -63,14 +63,14 @@ module Html2rss
         # @param _value [String] extracted time string (unused; type-checked via VALUE_TYPE)
         # @param context [Selectors::StepEnv] must carry a usable +time_zone+
         # @return [void]
-        # @raise [ArgumentError] when time_zone is nil or empty
+        # @raise [MissingOption] when time_zone is nil or empty
         def self.validate_args!(_value, context)
           time_zone_value = context.time_zone
 
-          raise ArgumentError, 'time_zone cannot be nil or empty', [], cause: nil if time_zone_value.nil?
+          raise MissingOption, 'time_zone cannot be nil or empty', [], cause: nil if time_zone_value.nil?
 
           assert_type(time_zone_value, String, :time_zone, context:)
-          raise ArgumentError, 'time_zone cannot be nil or empty', [], cause: nil if time_zone_value.empty?
+          raise MissingOption, 'time_zone cannot be nil or empty', [], cause: nil if time_zone_value.empty?
         end
 
         ##

@@ -691,6 +691,13 @@ RSpec.describe Html2rss::MCP::Server do
         end
       end
 
+      it 'surfaces a ContractError as a JSON-RPC internal error, not a tool error envelope' do
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(Html2rss::RequestService::Context::InvalidError, 'bug')
+
+        result = call_tool.call('scrape', { url: 'https://example.com' })
+        expect(result).to include(error: include(code: -32_603, message: 'Internal error'))
+      end
+
       it 'logs tool exceptions to the gem logger' do
         allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
 
@@ -900,11 +907,11 @@ RSpec.describe Html2rss::MCP::Server do
     end
 
     it 'rejects unknown transports' do
-      expect { described_class.start(transport: :udp) }.to raise_error(ArgumentError, /Unknown transport/)
+      expect { described_class.start(transport: :udp) }.to raise_error(Html2rss::InvalidOption, /Unknown transport/)
     end
 
-    # rubocop:disable-next RSpec/ExampleLength -- LoadError messaging contract
-    it 'raises an actionable LoadError when HTTP deps are missing' do
+    # rubocop:disable-next RSpec/ExampleLength -- missing-dependency messaging contract
+    it 'raises an actionable HttpTransportUnavailable when HTTP deps are missing', :aggregate_failures do
       allow(described_class).to receive(:require).and_wrap_original do |original, name|
         raise LoadError, 'cannot load such file -- rackup' if name == 'rackup'
 
@@ -912,7 +919,10 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       expect { described_class.start(transport: :http) }
-        .to raise_error(LoadError, /HTTP transport requires the rackup and webrick gems/)
+        .to raise_error(described_class::HttpTransportUnavailable, /requires the rackup and webrick gems/) do |error|
+          expect(error).to be_a(Html2rss::Error)
+          expect(error.cause).to be_a(LoadError)
+        end
     end
   end
 

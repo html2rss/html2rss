@@ -3,11 +3,11 @@
 RSpec.describe Html2rss::SST::Node do
   describe '.build' do
     it 'requires a name' do
-      expect { described_class.build(name: nil) }.to raise_error(ArgumentError)
+      expect { described_class.build(name: nil) }.to raise_error(Html2rss::SST::InvalidError)
     end
 
     it 'requires typed attrs' do
-      expect { described_class.build(name: :div, attrs: { href: 'x' }) }.to raise_error(ArgumentError)
+      expect { described_class.build(name: :div, attrs: { href: 'x' }) }.to raise_error(Html2rss::SST::InvalidError)
     end
 
     it 'exposes predicates, traversal, and leaf checks', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -39,7 +39,7 @@ RSpec.describe Html2rss::SST::Node do
 
     it 'coerces names to symbols and rejects blank names', :aggregate_failures do
       expect(described_class.build(name: 'div').name).to eq(:div)
-      expect { described_class.build(name: '  ') }.to raise_error(ArgumentError, 'name is required')
+      expect { described_class.build(name: '  ') }.to raise_error(Html2rss::SST::InvalidError, 'name is required')
     end
 
     it 'defaults missing attrs, children and text to empty values', :aggregate_failures do
@@ -53,9 +53,9 @@ RSpec.describe Html2rss::SST::Node do
 
     it 'rejects attrs that are not typed and children that are not nodes', :aggregate_failures do
       expect { described_class.build(name: :div, attrs: Object.new) }
-        .to raise_error(ArgumentError, 'attrs must be SST::Attrs')
+        .to raise_error(Html2rss::SST::InvalidError, 'attrs must be SST::Attrs')
       expect { described_class.build(name: :div, children: ['text']) }
-        .to raise_error(ArgumentError, 'children must be SST::Node instances')
+        .to raise_error(Html2rss::SST::InvalidError, 'children must be SST::Node instances')
     end
   end
 

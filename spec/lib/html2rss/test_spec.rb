@@ -83,6 +83,8 @@ RSpec.describe Html2rss::Test do
         ]
       end
 
+      let(:outcome_admission_drops) { {} }
+
       before do
         outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
           response: Html2rss::RequestService::Response.new(
@@ -95,7 +97,7 @@ RSpec.describe Html2rss::Test do
           selected_strategy: :default,
           attempt_count: 0,
           strategy_attempts: [],
-          admission_drops: {},
+          admission_drops: outcome_admission_drops,
           scrape_target: nil,
           entry_resolution: nil, feed_channel: nil
         )
@@ -189,6 +191,24 @@ RSpec.describe Html2rss::Test do
         expect(result.error_message).to include('Extracted 2 items (minimum required: 5)')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:min_items])
         expect(result.rss).to be_nil
+      end
+
+      context 'when selector items were dropped for having no URL' do # rubocop:disable RSpec/NestedGroups
+        let(:outcome_admission_drops) { { 'missing_url' => 3 } }
+
+        it 'warns items_without_url and counts the drops', :aggregate_failures do
+          result = described_class.call(valid_config)
+
+          expect(result.quality_report.warnings).to include(:items_without_url)
+          expect(result.quality_report.metrics[:items_without_url]).to eq(3)
+        end
+      end
+
+      it 'does not warn items_without_url when nothing was dropped', :aggregate_failures do
+        result = described_class.call(valid_config)
+
+        expect(result.quality_report.warnings).not_to include(:items_without_url)
+        expect(result.quality_report.metrics).not_to have_key(:items_without_url)
       end
 
       it 'keeps the fetched page body when the item count is below min_items' do
@@ -354,6 +374,12 @@ RSpec.describe Html2rss::Test do
         expect(result.quality_report.native_feed).to be_nil
       end
 
+      it 'propagates a discovery contract error' do
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_raise(Html2rss::RequestService::Context::InvalidError)
+
+        expect { described_class.call(valid_config) }.to raise_error(Html2rss::ContractError)
+      end
+
       it 'reports the exact result when execution fails', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(10.0, 12.34567)
         allow(Html2rss::FeedPipeline).to receive(:new).and_raise(Html2rss::Error, 'network failure')
@@ -432,6 +458,18 @@ RSpec.describe Html2rss::Test do
         expect(result.error_message).to include('network failure')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:execution])
         expect(result.response_body).to be_nil
+      end
+    end
+
+    context 'when live extraction raises a contract error' do
+      before do
+        pipeline = instance_double(Html2rss::FeedPipeline)
+        allow(pipeline).to receive(:to_outcome_and_result).and_raise(Html2rss::RequestService::Context::InvalidError)
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
+      end
+
+      it 'propagates instead of returning a failed Test::Result' do
+        expect { described_class.call(valid_config) }.to raise_error(Html2rss::ContractError)
       end
     end
 
@@ -547,7 +585,7 @@ RSpec.describe Html2rss::Test do
     let(:response) do
       Html2rss::RequestService::Response.new(url: 'https://example.com/news', headers: {}, body: '<html></html>')
     end
-    let(:pipeline_outcome) { instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:) }
+    let(:pipeline_outcome) { instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:, admission_drops: {}) }
     let(:status) { instance_double(Html2rss::Status, scrape_url: 'https://example.com/news', entry_url: '') }
     let(:feed_result) { instance_double(Html2rss::FeedResult, status:) }
     let(:slice) do
@@ -668,6 +706,47 @@ RSpec.describe Html2rss::Test do
         described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:)
 
         expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
+      end
+    end
+
+    describe '.append_items_without_url_warning' do
+      let(:native) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
+      let(:pipeline_outcome) do
+        instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:, admission_drops: { 'missing_url' => 2 })
+      end
+
+      before { allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(native) }
+
+      it 'adds the warning and count to the report and keeps the rest of it', :aggregate_failures do
+        result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:,
+                                                                    pipeline_outcome:)
+
+        expect(result).to have_attributes(
+          warnings: %i[native_feed_present items_without_url w_one duplicate_urls],
+          native_feed: 'https://example.com/feed.xml', defer_reason: :native_feed
+        )
+        expect(result.warnings).to be_frozen
+        expect(result.metrics).to include(items_without_url: 2)
+      end
+
+      context 'when enhance is off' do # rubocop:disable RSpec/NestedGroups
+        let(:enhance) { false }
+
+        it 'returns a frozen warnings list' do
+          result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:,
+                                                                      pipeline_outcome:)
+
+          expect(result.warnings).to be_frozen
+        end
+      end
+
+      it 'ignores other drop reasons', :aggregate_failures do
+        allow(pipeline_outcome).to receive(:admission_drops).and_return('sponsored' => 4)
+        result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:,
+                                                                    pipeline_outcome:)
+
+        expect(result.warnings).not_to include(:items_without_url)
+        expect(result.metrics).not_to have_key(:items_without_url)
       end
     end
   end

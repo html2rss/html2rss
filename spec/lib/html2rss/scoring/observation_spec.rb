@@ -73,7 +73,7 @@ RSpec.describe Html2rss::Scoring::Observation do
 
     it 'raises for an unknown mode' do
       expect { build.call.hard_junk?(mode: :bogus) }
-        .to raise_error(ArgumentError, 'unknown hard_junk mode: :bogus')
+        .to raise_error(Html2rss::InvalidOption, 'unknown hard_junk mode: :bogus')
     end
 
     it 'drops recommended chrome titles that are shallow and weak in both modes', :aggregate_failures do

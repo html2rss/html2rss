@@ -18,7 +18,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
                       title: 'Invalid Article'),
       instance_double(Html2rss::Article,
                       valid?: true,
-                      url: Html2rss::Url.from_relative('http://otherdomain.com/article3', 'http://example.com'),
+                      url: Html2rss::Url.from_relative('http://other.example/article3', 'http://example.com'),
                       title: 'Different Domain Article'),
       instance_double(Html2rss::Article,
                       valid?: true,
@@ -355,7 +355,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     end
 
     it 'drops off-domain articles when keep_different_domain is omitted' do
-      off_domain = Html2rss::Url.from_absolute('https://otherdomain.com/article3')
+      off_domain = Html2rss::Url.from_absolute('https://other.example/article3')
       article = instance_double(Html2rss::Article, valid?: true, url: off_domain, title: 'Different Domain Article')
 
       expect(described_class.call([article], url:).articles).to be_empty
@@ -422,26 +422,26 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     end
 
     context 'when article hosts share a registrable domain' do
-      let(:url) { Html2rss::Url.from_absolute('https://www.wp.pl/') }
+      let(:url) { Html2rss::Url.from_absolute('https://www.site.example/') }
       let(:articles) do
         [
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('https://wiadomosci.wp.pl/story-one'),
-                          title: 'Wiadomosci Portal Story Title Words'),
+                          url: Html2rss::Url.from_absolute('https://news.site.example/story-one'),
+                          title: 'News Portal Story Title Words'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('https://film.wp.pl/story-two'),
+                          url: Html2rss::Url.from_absolute('https://film.site.example/story-two'),
                           title: 'Film Portal Story Title Words'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('https://otherdomain.com/story-three'),
+                          url: Html2rss::Url.from_absolute('https://other.example/story-three'),
                           title: 'Offsite Portal Story Title Words')
         ]
       end
 
       it 'keeps same-site portal hosts and still drops true off-site', :aggregate_failures do
-        expect(cleaned.map { |article| article.url.host }).to contain_exactly('wiadomosci.wp.pl', 'film.wp.pl')
+        expect(cleaned.map { |article| article.url.host }).to contain_exactly('news.site.example', 'film.site.example')
         expect(result.drop_tallies['different_domain']).to eq(1)
       end
     end
@@ -480,7 +480,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
                           title: 'Amex Offer Slug Extra Words'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('https://example.com/www.partner.de/energieloesungen/pv'),
+                          url: Html2rss::Url.from_absolute('https://example.com/www.partner.example/energieloesungen/pv'),
                           title: 'Partner Energy Solutions Extra Words'),
           instance_double(Html2rss::Article,
                           valid?: true,
@@ -517,10 +517,10 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         { title: 'lucy.smith.token', reason: :cms_token },
         { title: 'methode-article-slug', reason: :cms_token },
         { title: 'Reuters reports major breakthrough today', reason: nil },
-        { title: 'Courtesy Casie Ellison via pool camera', reason: :credit },
+        { title: 'Courtesy Pat Doe via pool camera', reason: :credit },
         { title: 'Courtesy Call Yields Breakthrough Deal', reason: nil },
         { title: 'US Navy/Handout/Reuters', reason: :credit },
-        { title: "Analysis•\nJim Lo Scalzo/Reuters", reason: :credit },
+        { title: "Analysis•\nSam Roe/Reuters", reason: :credit },
         { title: 'Live Updates• AFP desk report line', reason: :credit },
         { title: 'v_m_hw_pass', reason: :slug },
         { title: 'story-has-edit-branch', reason: :slug },

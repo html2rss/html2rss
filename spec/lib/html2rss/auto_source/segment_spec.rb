@@ -4,6 +4,10 @@ RSpec.describe Html2rss::AutoSource::Segment do
   let(:node) { document_for('<html><body><a href="/one">One headline</a></body></html>').index.each_node.first }
   let(:subclassed_node) { Class.new(node.class).allocate }
 
+  it 'returns a known strategy unchanged for the Segmenter to keep' do
+    expect(described_class::STRATEGIES.map { described_class.strategy!(_1) }).to eq(described_class::STRATEGIES.to_a)
+  end
+
   describe '.build' do
     it 'builds a segment carrying every field' do
       segment = described_class.build(root_node: node, primary_link: node, strategy: :list, position: 3)
@@ -30,30 +34,30 @@ RSpec.describe Html2rss::AutoSource::Segment do
 
     it 'rejects a non-node root_node', :aggregate_failures do
       expect { described_class.build(root_node: 'x', strategy: :list, position: 0) }
-        .to raise_error(ArgumentError, 'root_node must be SST::Node')
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'root_node must be SST::Node')
       expect { described_class.build(root_node: nil, strategy: :list, position: 0) }
-        .to raise_error(ArgumentError, 'root_node must be SST::Node')
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'root_node must be SST::Node')
     end
 
     it 'rejects a non-node primary_link', :aggregate_failures do
       expect { described_class.build(root_node: node, primary_link: 'x', strategy: :list, position: 0) }
-        .to raise_error(ArgumentError, 'primary_link must be SST::Node or nil')
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'primary_link must be SST::Node or nil')
       expect { described_class.build(root_node: node, primary_link: true, strategy: :list, position: 0) }
-        .to raise_error(ArgumentError, 'primary_link must be SST::Node or nil')
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'primary_link must be SST::Node or nil')
     end
 
     it 'rejects unknown strategies with the inspected value', :aggregate_failures do
       expect { described_class.build(root_node: node, strategy: :bogus, position: 0) }
-        .to raise_error(ArgumentError, 'unknown strategy: :bogus')
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'unknown strategy: :bogus')
       expect { described_class.build(root_node: node, strategy: nil, position: 0) }
-        .to raise_error(ArgumentError, 'unknown strategy: nil')
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'unknown strategy: nil')
     end
 
     it 'rejects a non-Integer position', :aggregate_failures do
       expect { described_class.build(root_node: node, strategy: :list, position: '1') }
-        .to raise_error(ArgumentError, 'position must be Integer')
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'position must be Integer')
       expect { described_class.build(root_node: node, strategy: :list, position: nil) }
-        .to raise_error(ArgumentError, 'position must be Integer')
+        .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'position must be Integer')
     end
   end
 end

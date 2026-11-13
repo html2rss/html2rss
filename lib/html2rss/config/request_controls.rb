@@ -173,7 +173,7 @@ module Html2rss
         return config[:request] = {} if request_config.nil?
         return if request_config.is_a?(Hash)
 
-        raise ArgumentError, 'request config must be a hash'
+        raise InvalidOption, 'request config must be a hash'
       end
     end
   end

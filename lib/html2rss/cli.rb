@@ -198,13 +198,8 @@ module Html2rss
     # @param source [String, nil] YAML file path or '-'
     # @param feed_name [String, nil] optional named feed
     # @return [void]
-    def apply(source = nil, feed_name = nil) # rubocop:disable Metrics/AbcSize
-      config = if File.file?(source.to_s)
-                 Html2rss.config_from_yaml_file(source.to_s, feed_name)
-               else
-                 raw_content, = read_config_input(source)
-                 Config.from_yaml(raw_content)
-               end
+    def apply(source = nil, feed_name = nil)
+      config = execute_feed { load_apply_config(source, feed_name) }
       config[:params] = options[:params] || {}
       execute_feed { apply_runtime_request_overrides!(config) }
       apply_local_file_input!(config, options[:input]) if options[:input]
@@ -259,6 +254,8 @@ module Html2rss
     # @return [void]
     def mcp
       Html2rss::MCP.start(transport: options[:transport].to_sym, port: options[:port])
+    rescue Html2rss::MCP::Server::HttpTransportUnavailable => error
+      raise Thor::Error, error.message
     end
 
     desc 'doctor [TYPE]', 'Runtime preflight checks (botasaurus)'
@@ -311,7 +308,7 @@ module Html2rss
 
       expected = Recon::Verdict[verdict_filter.downcase]
       results.select { |r| r.verdict == expected }
-    rescue ArgumentError => error
+    rescue InvalidOption => error
       raise Thor::Error, error.message
     end
 
@@ -334,7 +331,7 @@ module Html2rss
 
     def handle_capture_output(result, url) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       if options[:output_dir]
-        dir = File.join(options[:output_dir], URI.parse(url).host.to_s.delete_prefix('www.'))
+        dir = File.join(options[:output_dir], Html2rss::Url.from_absolute(url).host.to_s.delete_prefix('www.'))
         FileUtils.mkdir_p(dir)
         file_path = File.join(dir, 'index.yml')
         File.write(file_path, result.yaml)
@@ -414,6 +411,13 @@ module Html2rss
       options[:strategy]&.to_sym || :auto
     end
 
+    def load_apply_config(source, feed_name)
+      return Html2rss.config_from_yaml_file(source.to_s, feed_name) if File.file?(source.to_s)
+
+      raw_content, = read_config_input(source)
+      Config.from_yaml(raw_content)
+    end
+
     def execute_feed # rubocop:disable Metrics/MethodLength
       yield
     rescue Html2rss::RequestService::RedirectLimitReached => error
@@ -429,6 +433,7 @@ module Html2rss
            Html2rss::RequestService::BlockedSurfaceDetected,
            Html2rss::NoFeedItemsExtracted,
            Html2rss::InvalidOption,
+           Html2rss::Config::InvalidConfig,
            Html2rss::Url::InvalidUrlError => error
       raise Thor::Error, error.message
     end

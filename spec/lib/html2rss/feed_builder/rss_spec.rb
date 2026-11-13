@@ -47,19 +47,19 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
   it 'requires a non-blank generator' do
     expect do
       described_class.new(channel:, articles:, generator: ' ')
-    end.to raise_error(ArgumentError, 'generator must be a non-blank String')
+    end.to raise_error(Html2rss::InvalidOption, 'generator must be a non-blank String')
   end
 
   it 'rejects a non-string generator' do
     expect do
       described_class.new(channel:, articles:, generator: 1)
-    end.to raise_error(ArgumentError, 'generator must be a non-blank String')
+    end.to raise_error(Html2rss::InvalidOption, 'generator must be a non-blank String')
   end
 
   it 'rejects a generator that is blank only after stripping both sides' do
     expect do
       described_class.new(channel:, articles:, generator: " \n")
-    end.to raise_error(ArgumentError, 'generator must be a non-blank String')
+    end.to raise_error(Html2rss::InvalidOption, 'generator must be a non-blank String')
   end
 
   it 'accepts a String subclass generator' do

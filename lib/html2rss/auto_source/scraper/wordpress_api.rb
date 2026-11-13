@@ -107,6 +107,8 @@ module Html2rss
             relation: :auto_source,
             origin_url: url
           )
+        rescue Html2rss::ContractError
+          raise
         rescue Html2rss::Error => error
           Log.warn({
             event_name: 'wordpress_api.fetch_failed',

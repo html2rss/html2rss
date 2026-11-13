@@ -13,10 +13,10 @@ module Html2rss
       # @param degraded [Boolean] true when MAX_NODES forced semantic-tag-only mode
       # @param node_count [Integer]
       # @return [Document]
-      # @raise [ArgumentError] when root/index missing
+      # @raise [InvalidError] when root/index missing
       def self.build(root:, index:, degraded: false, node_count: 0)
-        raise ArgumentError, 'root is required' unless root.is_a?(Node)
-        raise ArgumentError, 'index is required' unless index.is_a?(Index)
+        raise InvalidError, 'root is required' unless root.is_a?(Node)
+        raise InvalidError, 'index is required' unless index.is_a?(Index)
 
         new(root:, index:, degraded: !!degraded, node_count: Integer(node_count))
       end

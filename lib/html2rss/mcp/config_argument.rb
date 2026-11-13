@@ -8,12 +8,15 @@ module Html2rss
     #
     # Config does not know MCP. YAML parsing stays on {Html2rss::Config.from_yaml}.
     class ConfigArgument
+      # Raised unless exactly one of +config+ or +yaml+ is present.
+      class ExclusiveInputError < Html2rss::InvalidOption; end
+
       class << self
         ##
         # @param config [Hash, nil] feed configuration hash
         # @param yaml [String, nil] feed configuration YAML
         # @return [ConfigArgument]
-        # @raise [ArgumentError] unless exactly one of +config+ or +yaml+ is present
+        # @raise [ExclusiveInputError] unless exactly one of +config+ or +yaml+ is present
         # @raise [Html2rss::InvalidOption] when +config+ is not a Hash or +yaml+ is not a String
         # @raise [Contract::UnpublishedRequestError] when the parsed config uses
         #   an unpublished MCP strategy or +request.local_file_path+
@@ -24,7 +27,7 @@ module Html2rss
                    in [false, true]
                      Config.from_yaml(require_type!(yaml, String, 'yaml'))
                    else
-                     raise ArgumentError, 'Provide exactly one of config or yaml'
+                     raise ExclusiveInputError, 'Provide exactly one of config or yaml'
                    end
           Contract.assert_published_request!(parsed)
           new(config: parsed)

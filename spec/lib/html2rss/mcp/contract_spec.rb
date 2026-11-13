@@ -77,7 +77,7 @@ RSpec.describe Html2rss::MCP::Contract do
         if row[:parse] == :ok
           expect { Html2rss::MCP::ConfigArgument.parse(**kwargs) }.not_to raise_error
         else
-          expect { Html2rss::MCP::ConfigArgument.parse(**kwargs) }.to raise_error(ArgumentError)
+          expect { Html2rss::MCP::ConfigArgument.parse(**kwargs) }.to raise_error(Html2rss::MCP::ConfigArgument::ExclusiveInputError)
         end
 
         if row[:schema] == :valid

@@ -70,13 +70,6 @@ module Html2rss
           )
           nil
         end
-
-        # @param page_response [RequestService::Response]
-        # @param page_number [Integer] 1-based target page number (e.g. 2 for second page)
-        # @return [Html2rss::Url, String, nil]
-        def next_page_url(page_response, page_number:)
-          raise NotImplementedError, "#{self.class}#next_page_url must be implemented by subclass"
-        end
       end
     end
   end

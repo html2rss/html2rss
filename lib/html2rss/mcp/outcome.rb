@@ -8,8 +8,9 @@ module Html2rss
     # Typed MCP tool result. Owns next-step policy; guidance copy lives in
     # {Playbook}.
     class Outcome # rubocop:disable Metrics/ClassLength -- next-step policy + factories stay co-located
-      # Matches {ConfigArgument} XOR +ArgumentError+ messages.
-      XOR_ERROR = /exactly one of config or yaml/
+      # Raised when an outcome is built with a wrong-typed next step or payload.
+      class InvalidError < Html2rss::ContractError; end
+
       NextStep = Data.define(:name, :guidance)
 
       ##
@@ -22,7 +23,7 @@ module Html2rss
         ##
         # @param name [Symbol, String]
         # @return [NextStep]
-        def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown next_step: #{name.inspect}" }
+        def self.[](name) = ALL.fetch(name.to_sym) { raise InvalidOption, "unknown next_step: #{name.inspect}" }
       end
 
       ##
@@ -31,8 +32,8 @@ module Html2rss
       # @param guidance [String]
       # @param payload [Hash]
       def initialize(ok:, next_step:, guidance:, payload:) # rubocop:disable Naming/MethodParameterName -- +ok+ is the envelope field
-        raise ArgumentError, 'next_step must be a NextStep' unless next_step.is_a?(NextStep)
-        raise ArgumentError, 'payload must be a Hash' unless payload.is_a?(Hash)
+        raise InvalidError, 'next_step must be a NextStep' unless next_step.is_a?(NextStep)
+        raise InvalidError, 'payload must be a Hash' unless payload.is_a?(Hash)
 
         super(ok: !!ok, next_step:, guidance: guidance.to_s.freeze, payload: payload.dup.freeze)
       end
@@ -218,7 +219,13 @@ module Html2rss
           warnings = test_result.quality_report&.warnings
           return base if warnings.nil? || warnings.empty?
 
-          "#{base} Review payload.quality_report warnings: #{warnings.join(', ')}."
+          "#{base} Review payload.quality_report warnings: #{warnings.join(', ')}.#{items_without_url_hint(warnings)}"
+        end
+
+        def items_without_url_hint(warnings)
+          return '' unless warnings.include?(:items_without_url)
+
+          ' Items were dropped for having no URL: fix the selectors.url selector (it must match a link on each item).'
         end
 
         def capture_payload(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
@@ -237,14 +244,9 @@ module Html2rss
         def next_step_for_error(error)
           case error
           when RequestService::BotasaurusConfigurationError then NextStep[:read_runtime]
-          when Contract::UnpublishedRequestError then NextStep[:validate]
-          when ArgumentError then argument_error_next_step(error)
+          when Contract::UnpublishedRequestError, ConfigArgument::ExclusiveInputError then NextStep[:validate]
           else NextStep[:inspect]
           end
-        end
-
-        def argument_error_next_step(error)
-          XOR_ERROR.match?(error.message) ? NextStep[:validate] : NextStep[:inspect]
         end
       end
     end

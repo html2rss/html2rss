@@ -11,7 +11,7 @@ module Html2rss
   #
   # Configuration is validated during initialization.
   class Config # rubocop:disable Metrics/ClassLength
-    # Raised when a configuration hash fails runtime validation.
+    # Raised when a configuration cannot be loaded (YAML shape, file, feed name) or fails runtime validation.
     class InvalidConfig < Html2rss::Error; end
 
     class << self
@@ -25,7 +25,7 @@ module Html2rss
       # @return [Array(Hash, Html2rss::Config::ValidationReport)]
       def resolve_and_validate(config_input, feed_name: nil, params: {})
         raw = resolve_raw_hash(config_input, feed_name)
-      rescue Psych::Exception, ArgumentError => error
+      rescue InvalidConfig => error
         [{}, IssueMapper.parse_failure(error.message)]
       else
         working = HashUtil.deep_dup(raw)
@@ -66,14 +66,16 @@ module Html2rss
       #
       # @param string [String] YAML document
       # @return [Hash{Symbol => Object}] configuration hash
-      # @raise [ArgumentError] if +string+ is not a String or does not deserialize to a Hash
+      # @raise [InvalidConfig] if +string+ is not a String or does not deserialize to a Hash
       def from_yaml(string)
-        raise ArgumentError, 'YAML must be a String' unless string.is_a?(String)
+        raise InvalidConfig, 'YAML must be a String' unless string.is_a?(String)
 
         parsed = YAML.safe_load(string)
-        raise ArgumentError, 'YAML must deserialize to a Hash' unless parsed.is_a?(Hash)
+        raise InvalidConfig, 'YAML must deserialize to a Hash' unless parsed.is_a?(Hash)
 
-        HashUtil.deep_symbolize_keys(parsed, context: 'config')
+        symbolize_config(parsed)
+      rescue Psych::Exception => error
+        raise InvalidConfig, "YAML could not be parsed: #{error.message}"
       end
 
       ##
@@ -85,25 +87,16 @@ module Html2rss
       # @param feed_name [String, nil] the feed name when using multiple feeds.
       # @param multiple_feeds_key [Symbol] the key under which multiple feeds are defined.
       # @return [Hash{Symbol => Object}] the configuration hash.
-      # @raise [ArgumentError] if the file doesn't exist or feed is not found.
-      # rubocop:disable-next Metrics/MethodLength
+      # @raise [InvalidConfig] if the file doesn't exist or feed is not found.
       def load_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
-        raise ArgumentError, "File '#{file}' does not exist" unless File.exist?(file)
-        raise ArgumentError, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
+        raise InvalidConfig, "File '#{file}' does not exist" unless File.exist?(file)
+        raise InvalidConfig, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
 
-        yaml = YAML.safe_load_file(file, symbolize_names: true)
+        yaml = read_yaml_mapping(file)
 
         return yaml unless yaml.key?(multiple_feeds_key)
 
-        unless feed_name
-          available_feeds = yaml.fetch(multiple_feeds_key).keys.join(', ')
-          raise ArgumentError,
-                "Feed name is required under `#{multiple_feeds_key}`. Available feeds: #{available_feeds}"
-        end
-
-        config = yaml.dig(multiple_feeds_key, feed_name.to_sym)
-        raise ArgumentError, "Feed '#{feed_name}' not found under `#{multiple_feeds_key}` key." unless config
-
+        config = select_feed(file, feed_name, yaml.fetch(multiple_feeds_key), multiple_feeds_key)
         MultipleFeedsConfig.to_single_feed(config, yaml, multiple_feeds_key:)
       end
 
@@ -226,6 +219,41 @@ module Html2rss
         end
       end
       private :resolve_raw_hash
+
+      def read_yaml_mapping(file)
+        yaml = YAML.safe_load_file(file)
+        return symbolize_config(yaml) if yaml.is_a?(Hash)
+
+        raise InvalidConfig, "File '#{file}' must contain a YAML mapping (a Hash)"
+      rescue Psych::Exception => error
+        raise InvalidConfig, "File '#{file}' could not be parsed: #{error.message}"
+      end
+      private :read_yaml_mapping
+
+      # @return [Hash{Symbol => Object}] the named feed's config from the +feeds+ mapping
+      def select_feed(file, feed_name, feeds, key)
+        unless feeds.is_a?(Hash)
+          raise InvalidConfig, "File '#{file}': `#{key}` must be a mapping of feed names to configs"
+        end
+        unless feed_name
+          raise InvalidConfig, "Feed name is required under `#{key}`. Available feeds: #{feeds.keys.join(', ')}"
+        end
+
+        config = feeds[feed_name.to_sym]
+        raise InvalidConfig, "Feed '#{feed_name}' not found under `#{key}` key." unless config
+        raise InvalidConfig, "File '#{file}': feed '#{feed_name}' must be a mapping" unless config.is_a?(Hash)
+
+        config
+      end
+      private :select_feed
+
+      # Loaded config keys that cannot be symbolized (non-string, non-symbol) are a config-load failure.
+      def symbolize_config(parsed)
+        HashUtil.deep_symbolize_keys(parsed, context: 'config')
+      rescue InvalidOption => error
+        raise InvalidConfig, error.message
+      end
+      private :symbolize_config
     end
 
     ##

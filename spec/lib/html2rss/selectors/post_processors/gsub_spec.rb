@@ -142,21 +142,21 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     %w[(a+)+ (a*)* (?:a+)+ (a+b)+ (x(a+))+].each do |pattern|
       it "rejects nested quantifiers in #{pattern}" do
         expect { described_class.compiled_pattern(pattern) }
-          .to raise_error(ArgumentError, 'pattern contains nested quantifiers')
+          .to raise_error(Html2rss::InvalidOption, 'pattern contains nested quantifiers')
       end
     end
 
     %w[( (?) *].each do |pattern|
-      it "rejects unparsable pattern #{pattern.inspect} as ArgumentError", :aggregate_failures do
-        expect { described_class.compiled_pattern(pattern) }.to raise_error(ArgumentError) do |error|
+      it "rejects unparsable pattern #{pattern.inspect} as InvalidOption", :aggregate_failures do
+        expect { described_class.compiled_pattern(pattern) }.to raise_error(Html2rss::InvalidOption) do |error|
           expect(error).not_to be_a(Regexp::Parser::Error)
         end
       end
     end
 
-    it 're-raises the parser message as ArgumentError without a cause', :aggregate_failures do
+    it 're-raises the parser message as InvalidOption without a cause', :aggregate_failures do
       expect { described_class.compiled_pattern('(') }
-        .to raise_error(ArgumentError, /\APremature end of pattern/) do |error|
+        .to raise_error(Html2rss::InvalidOption, /\APremature end of pattern/) do |error|
           expect(error.cause).to be_nil
         end
     end
@@ -171,21 +171,21 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
         Html2rss::Selectors::StepEnv.new(step_config: { pattern: '(a+)+', replacement: 'x' })
       )
 
-      expect { processor.call }.to raise_error(ArgumentError, 'pattern contains nested quantifiers')
+      expect { processor.call }.to raise_error(Html2rss::InvalidOption, 'pattern contains nested quantifiers')
     end
 
     it 'rejects an authored pattern longer than the character cap' do
       over = 'a' * (described_class::MAX_PATTERN_LENGTH + 1)
 
       expect { described_class.compiled_pattern(over) }
-        .to raise_error(ArgumentError, "pattern exceeds #{described_class::MAX_PATTERN_LENGTH} characters")
+        .to raise_error(Html2rss::InvalidOption, "pattern exceeds #{described_class::MAX_PATTERN_LENGTH} characters")
     end
 
     it 'counts characters of the authored string, including surrounding slashes' do
       wrapped = "/#{'a' * described_class::MAX_PATTERN_LENGTH}/"
 
       expect { described_class.compiled_pattern(wrapped) }
-        .to raise_error(ArgumentError, "pattern exceeds #{described_class::MAX_PATTERN_LENGTH} characters")
+        .to raise_error(Html2rss::InvalidOption, "pattern exceeds #{described_class::MAX_PATTERN_LENGTH} characters")
     end
 
     it 'accepts an authored pattern of exactly the character cap', :aggregate_failures do
@@ -220,7 +220,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     end
 
     it 'rejects a non-string pattern with the exact message' do
-      expect { described_class.compiled_pattern(1) }.to raise_error(ArgumentError, 'must be a string!')
+      expect { described_class.compiled_pattern(1) }.to raise_error(Html2rss::InvalidOption, 'must be a string!')
     end
   end
 end

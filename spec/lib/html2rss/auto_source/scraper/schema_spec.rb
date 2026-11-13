@@ -8,11 +8,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       '@id': '4582066',
       '@type': 'Article',
       additionalType: 'ArticleTeaser',
-      url: '/news/Google-entlaesst-Python-Team-fuer-billigere-Arbeitskraefte-in-Muenchen-9703029.html',
-      title: 'Für Einsparungen kündigt Google komplettem Python-Team',
-      kicker: 'Ersatz wohl in München',
-      abstract: 'Einem Python-Team wurde offenbar komplett gekündigt.',
-      image: 'https://www.heise.de/imgs/18/4/5/8/2/0/6/6/shutterstock_1777981682-958a1d575a8f5e3e.jpeg'
+      url: '/news/Stadtbibliothek-verlaengert-Oeffnungszeiten-in-Muenchen-9703029.html',
+      title: 'Für Pendler öffnet die Stadtbibliothek länger',
+      kicker: 'Neue Abendzeiten in München',
+      abstract: 'Die Bibliothek bleibt werktags bis 22 Uhr geöffnet.',
+      image: 'https://www.example.com/imgs/18/4/5/8/2/0/6/6/library_1777981682-958a1d575a8f5e3e.jpeg'
     }
   end
   let(:news_article_schema_object) do
@@ -20,19 +20,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     {
       '@context': 'https://schema.org',
       '@type': 'NewsArticle',
-      url: 'http://www.bbc.com/news/world-us-canada-39324587',
+      url: 'http://www.example.com/news/harbor-council-39324587',
       publisher: {
         '@type': 'Organization',
-        name: 'BBC News',
-        logo: 'http://www.bbc.co.uk/news/special/2015/newsspec_10857/bbc_news_logo.png?cb=1'
+        name: 'Example News',
+        logo: 'http://www.example.net/news/special/2015/newsspec_10857/example_news_logo.png?cb=1'
       },
-      headline: "Trump Russia claims: FBI's Comey confirms investigation of election 'interference'",
-      mainEntityOfPage: 'http://www.bbc.com/news/world-us-canada-39324587',
-      articleBody: "Director Comey says the probe into last year's US election would assess if crimes were committed.",
+      headline: "Harbor claims: Council's chair confirms review of the 'ferry contract'",
+      mainEntityOfPage: 'http://www.example.com/news/harbor-council-39324587',
+      articleBody: "The chair says the review of last year's ferry tender will assess if rules were broken.",
       image: [
-        'http://ichef-1.bbci.co.uk/news/560/media/images/75306000/jpg/_75306515_line976.jpg',
-        'http://ichef.bbci.co.uk/news/560/cpsprodpb/8AB9/production/_95231553_comey2.jpg',
-        'http://ichef.bbci.co.uk/news/560/cpsprodpb/17519/production/_95231559_committee.jpg'
+        'http://img-1.example.net/news/560/media/images/75306000/jpg/_75306515_line976.jpg',
+        'http://img.example.net/news/560/cpsprodpb/8AB9/production/_95231553_harbor2.jpg',
+        'http://img.example.net/news/560/cpsprodpb/17519/production/_95231559_council.jpg'
       ],
       datePublished: '2017-03-20T20:30:54+00:00'
     }
@@ -412,7 +412,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       it 'scrapes the article_hash' do
         expect { |b| new.each(&b) }.to yield_with_args(
           hash_including(
-            title: "Trump Russia claims: FBI's Comey confirms investigation of election 'interference'"
+            title: "Harbor claims: Council's chair confirms review of the 'ferry contract'"
           )
         )
       end
@@ -426,7 +426,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       it 'scrapes the article' do
         expect do |b|
           new.each(&b)
-        end.to yield_with_args hash_including(title: 'Für Einsparungen kündigt Google komplettem Python-Team')
+        end.to yield_with_args hash_including(title: 'Für Pendler öffnet die Stadtbibliothek länger')
       end
     end
 

@@ -5,7 +5,7 @@ RSpec.describe Html2rss::Test::FailureKind do
 
   describe '.[]' do
     it 'rejects unknown names with the offending name' do
-      expect { described_class[:timeout] }.to raise_error(ArgumentError, 'unknown failure kind: :timeout')
+      expect { described_class[:timeout] }.to raise_error(Html2rss::InvalidOption, 'unknown failure kind: :timeout')
     end
 
     it 'returns the same instance for symbol and string names', :aggregate_failures do

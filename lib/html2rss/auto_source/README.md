@@ -57,7 +57,7 @@ Production heuristic scrapers and the page check reuse one `SST::Document` and o
 
 ## Measuring changes
 
-Precision and recall changes are measured on the labeled corpus (`bin/auto-source-corpus`, ratchet spec, `make corpus-baseline`); see `CONTEXT.md` § Auto-source corpus. Wall/alloc budgets: `make perf-baseline`. Revision-to-revision effect on saved real pages: `bin/compare-revisions`.
+Precision and recall changes are measured on the labeled corpus (`bin/auto-source-corpus`, ratchet spec, `make corpus-baseline`); see `CONTEXT.md` § Auto-source corpus. Wall/alloc budgets: `make perf-baseline` (auto-source), `make perf-baseline-selectors`, `make perf-baseline-feed` (native-feed parse, RSS/JSON Feed render, descriptions); `make perf-check` gates all three (`bin/lib/perf_baseline.rb` owns the 1.15x allocation rule). Revision-to-revision effect on saved real pages: `bin/compare-revisions`.
 
 ## Non-goals
 

@@ -204,6 +204,8 @@ module Html2rss
       rescue *NON_FALLBACK_ERRORS => error
         state.record_error(strategy:, error:, elapsed_ms: monotonic_ms - started_ms)
         state.abort!
+      rescue Html2rss::ContractError
+        raise
       rescue Html2rss::Error => error
         state.record_error(strategy:, error:, elapsed_ms: monotonic_ms - started_ms)
         log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy && request_session

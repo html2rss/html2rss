@@ -32,9 +32,9 @@ RSpec.describe Html2rss::RequestSession::Pager do
       expect(pager).to be_a(Html2rss::RequestSession::Pager::CustomSelector)
     end
 
-    it 'raises ArgumentError for unknown strategy' do
+    it 'raises InvalidOption for unknown strategy' do
       expect { described_class.for({ strategy: 'unknown' }, session:, initial_response:) }
-        .to raise_error(ArgumentError, /Unknown pagination strategy/)
+        .to raise_error(Html2rss::InvalidOption, /Unknown pagination strategy/)
     end
   end
 
@@ -174,12 +174,6 @@ RSpec.describe Html2rss::RequestSession::Pager do
       it 'coerces to DEFAULT_MAX_PAGES without raising' do
         expect(pager.to_a).to eq([initial_response])
       end
-    end
-
-    it 'raises NotImplementedError from the abstract next_page_url' do
-      expect { pager.to_a }.to raise_error(
-        NotImplementedError, /Html2rss::RequestSession::Pager::Base#next_page_url must be implemented by subclass/
-      )
     end
 
     it 'returns an enumerator when called without a block', :aggregate_failures do

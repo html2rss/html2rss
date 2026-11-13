@@ -81,6 +81,12 @@ RSpec.describe Html2rss::FeedResolution::Probe do
 
     expect(probe.call(candidate_url)).to be_nil
   end
+
+  it 'propagates contract errors raised by the follow-up' do
+    allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::Context::InvalidError)
+
+    expect { probe.call(candidate_url) }.to raise_error(Html2rss::ContractError)
+  end
 end
 
 # rubocop:enable RSpec/ExampleLength

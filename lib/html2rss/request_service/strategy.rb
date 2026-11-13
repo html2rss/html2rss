@@ -18,12 +18,13 @@ module Html2rss
       # Executes the request through the shared preflight/postflight path.
       #
       # @return [Response] the response from the strategy
-      # @raise [NotImplementedError] if the subclass does not implement `#fetch`
       def execute
         check_timeout!
         response = perform_execute
         postflight!(response)
         response
+      rescue Html2rss::ContractError
+        raise
       rescue StandardError => error
         handle_error(error)
       end
@@ -40,15 +41,6 @@ module Html2rss
       def perform_execute
         preflight!
         fetch
-      end
-
-      ##
-      # Adapter hook: perform the transport-specific fetch after preflight.
-      #
-      # @return [Response] normalized response
-      # @raise [NotImplementedError] when a subclass omits the hook
-      def fetch
-        raise NotImplementedError, 'Subclass must implement #fetch'
       end
 
       ##

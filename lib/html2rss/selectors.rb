@@ -35,6 +35,10 @@ module Html2rss
     # Config selector keys that map onto a different {Article} attribute.
     # +:enclosure+ stays singular in YAML; Article stores +:enclosures+.
     SELECTOR_TO_ARTICLE_KEY = { enclosure: :enclosures }.freeze
+    # Admission-drop reason tallied for selector items that carry no URL (same shape as
+    # {AutoSource#admission_drops}).
+    MISSING_URL_REASON = 'missing_url'
+
     # Selector keys that may be copied onto an Article (PROVIDED_KEYS + mapped aliases).
     SELECTABLE_SELECTOR_KEYS = Set[*(Html2rss::Article::PROVIDED_KEYS + SELECTOR_TO_ARTICLE_KEY.keys)].freeze
     # ArticleExtractor keys that enhance can fill. Skip the extractor when all are already present.
@@ -56,6 +60,7 @@ module Html2rss
       @time_zone = time_zone
       @rss_item_attributes = @selectors.keys.select { SELECTABLE_SELECTOR_KEYS.include?(_1) }
       @parsed_body = nil
+      @unlinked_count = 0
       @compiled_fields = compile_selector_fields
       @compiled_item_fields = @rss_item_attributes.filter_map { @compiled_fields[_1] }
     end
@@ -70,39 +75,52 @@ module Html2rss
     end
 
     ##
-    # Iterates over each scraped article.
+    # Drop tallies for the last iteration: items skipped for having no URL, as {AutoSource#admission_drops}.
+    #
+    # @return [Hash{String => Integer}] empty when every item was linked
+    def admission_drops
+      @unlinked_count.positive? ? { MISSING_URL_REASON => @unlinked_count }.freeze : {}.freeze
+    end
+
+    ##
+    # Iterates over each scraped article. An item without a URL is skipped and tallied in {#admission_drops},
+    # as in auto-source ({Html2rss::Article#linked?}).
     #
     # @yield [article] Gives each article as an Html2rss::Article.
     # @return [Enumerator] An enumerator if no block is given.
     def each(&)
-      return enum_for(:each) unless block_given?
+      return enum_for unless block_given?
 
       enhance = enhance?
+      @unlinked_count = 0
 
       parsed_body.css(items_selector).each do |item|
         article_hash = extract_article(item)
 
         enhance_article_hash(article_hash, item) if enhance
 
-        yield Html2rss::Article.new(**article_hash, scraper: self.class)
+        article = build_article(article_hash)
+        article.linked? ? yield(article) : @unlinked_count += 1
       end
     end
 
     ##
     # Yields +baseline+, +enhanced+, and the item node per list entry for enhance diagnostics.
+    #
+    # @param linked_only [Boolean] skip items {#each} would drop for having no URL
     # Consumed by {Test::EnhanceAudit} so the extraction loop has one owner.
     #
     # @yieldparam baseline [Hash]
     # @yieldparam enhanced [Hash]
     # @yieldparam item [Nokogiri::XML::Element]
     # @return [Enumerator] if no block is given
-    def each_enhance_pair
-      return enum_for(:each_enhance_pair) unless block_given?
+    def each_enhance_pair(linked_only: false)
+      return enum_for(:each_enhance_pair, linked_only:) unless block_given?
 
       parsed_body.css(items_selector).each do |item|
         baseline = extract_article(item)
         enhanced = enhance_article_hash(baseline.dup, item)
-        yield baseline, enhanced, item
+        yield baseline, enhanced, item unless linked_only && !build_article(enhanced).linked?
       end
     end
 
@@ -189,6 +207,8 @@ module Html2rss
       end
     end
 
+    def build_article(article_hash) = Article.new(**article_hash, scraper: self.class)
+
     def extract_article(item)
       scope = item_env_for(item, @url)
       hash = @compiled_item_fields.each_with_object({}) do |field, h|
@@ -196,11 +216,28 @@ module Html2rss
         next if value.nil?
 
         article_key = field.article_key
-        h[article_key] = article_key == :enclosures ? wrap_enclosure_value(value) : value
+        h[article_key] = article_value(article_key, value, scope)
       end
 
       hash[:url] ||= default_item_url(item) if anchor_element?(item)
       hash
+    end
+
+    def article_value(article_key, value, scope)
+      case article_key
+      when :enclosures then wrap_enclosure_value(value)
+      when :url then resolve_url_value(value, scope.base_url)
+      else value
+      end
+    end
+
+    # A +url+ selector value that is a single whitespace-free string token (a +static+ value or a post-processor
+    # result) resolves against the page URL like an +href+; a value that is no http(s) reference stays as given.
+    # Text with surrounding words is left to +Article#url+'s sanitizer, which extracts the embedded URL.
+    def resolve_url_value(value, base_url)
+      return value unless value.is_a?(String) && value.match?(/\A\S+\z/)
+
+      Url.resolve_web(value, base_url) || value
     end
 
     def enhance_article_hash(article_hash, article_tag) # rubocop:disable Metrics/MethodLength -- merge extracted keys

@@ -12,9 +12,11 @@ Architecture and seam ownership map: `CONTEXT.md`.
 
 ## Error handling
 
-- Raise only `Html2rss::Error` subclasses defined next to their owner (e.g. `Url::InvalidUrlError`, `Article::Enclosure::InvalidError`); never bare `ArgumentError`, `TypeError`, `RuntimeError` or `StandardError`.
-- Never write to stderr (`warn`, `$stderr`, `puts` in `lib/`); log through `Html2rss::Log`.
-- Rescue named classes only.
+- Raise only `Html2rss::Error` subclasses defined next to their owner (e.g. `Url::InvalidUrlError`, `Article::Enclosure::InvalidError`); never a class Ruby defines at boot (`ArgumentError`, `IOError`, `LoadError`, `Errno::*`, ...), a bare message string, or an alias of a core class.
+- `InvalidOption` is for caller-supplied options; an object built from wrong parts raises its owner's `InvalidError < Html2rss::ContractError`.
+- Never write to the console (`warn`, `puts`, `$stderr`, `$>`, `Warning.warn`, `display`, ... in `lib/`); log through `Html2rss::Log`.
+- `Html2rss/LocalErrorClass` enforces the raise rule (raise/subclass/alias of a boot exception class, string raises) and `Html2rss/NoConsoleOutput` the console rule (CLI excluded); never disable them inline. Details: `CONTEXT.md` § Error handling.
+- Rescue named classes only. Every broad rescue (`Html2rss::Error`, `StandardError`, `Exception`, bare) re-raises `Html2rss::ContractError` first; `Html2rss/ContractErrorReraise` enforces it, never disable it inline.
 
 ## Testing Contracts
 

@@ -47,10 +47,10 @@ RSpec.describe Html2rss::CLI, '#scrape' do
   end
 
   it 'scrapes a local file with the local_file strategy', :aggregate_failures do
-    expect { run_scrape.call(['https://a.test'], { input: 'spec/fixtures/page_1.html' }) }.to output.to_stdout
+    expect { run_scrape.call(['https://a.test'], { input: 'spec/fixtures/news_front_page.html' }) }.to output.to_stdout
     expect(Html2rss).to have_received(:scrape).with(
       'https://a.test', hash_including(strategy: :local_file,
-                                       local_file_path: File.expand_path('spec/fixtures/page_1.html'))
+                                       local_file_path: File.expand_path('spec/fixtures/news_front_page.html'))
     )
   end
 

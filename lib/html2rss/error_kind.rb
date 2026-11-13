@@ -21,8 +21,8 @@ module Html2rss
     ##
     # @param name [Symbol, String] one of +ALL.keys+
     # @return [ErrorKind]
-    # @raise [ArgumentError] when the name is not a known kind
-    def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown error kind: #{name.inspect}" }
+    # @raise [InvalidOption] when the name is not a known kind
+    def self.[](name) = ALL.fetch(name.to_sym) { raise InvalidOption, "unknown error kind: #{name.inspect}" }
 
     ##
     # @return [Boolean] whether repeating the same request may succeed

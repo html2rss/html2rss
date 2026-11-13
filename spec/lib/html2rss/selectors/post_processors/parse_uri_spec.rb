@@ -36,12 +36,12 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseUri do
   context 'with a missing or empty value' do
     it 'raises for an empty string' do
       expect { described_class.new('', context) }
-        .to raise_error(ArgumentError, 'The `value` option is missing or empty.')
+        .to raise_error(Html2rss::Selectors::PostProcessors::MissingOption, 'The `value` option is missing or empty.')
     end
 
     it 'raises for nil' do
       expect { described_class.new(nil, context) }
-        .to raise_error(ArgumentError, 'The `value` option is missing or empty.')
+        .to raise_error(Html2rss::Selectors::PostProcessors::MissingOption, 'The `value` option is missing or empty.')
     end
   end
 end

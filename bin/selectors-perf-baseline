@@ -10,9 +10,9 @@ require 'nokogiri'
 require_relative '../lib/html2rss'
 require_relative 'lib/perf_baseline'
 
-PAGE_1_SELECTORS = {
-  items: { selector: 'article.slide', enhance: true },
-  title: { selector: 'h3.title' },
+NEWS_FRONT_PAGE_SELECTORS = {
+  items: { selector: 'article.story', enhance: true },
+  title: { selector: 'h3.headline' },
   url: { selector: 'a', extractor: 'href' },
   published_at: { selector: 'time' }
 }.freeze
@@ -34,10 +34,10 @@ CASES = [
     yml: 'spec/examples/conditional_processing_site.yml'
   },
   {
-    name: 'page_1',
-    html: 'spec/fixtures/page_1.html',
-    selectors: PAGE_1_SELECTORS,
-    url: 'https://PAGE.com/',
+    name: 'news_front_page',
+    html: 'spec/fixtures/news_front_page.html',
+    selectors: NEWS_FRONT_PAGE_SELECTORS,
+    url: 'https://example.com/',
     time_zone: 'America/New_York'
   }
 ].freeze

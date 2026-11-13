@@ -48,11 +48,11 @@ RSpec.describe Html2rss::FeedResult do
     # rubocop:disable-next RSpec/ExampleLength -- type errors, subclass acceptance, and frozen articles
     it 'rejects a non-Channel, non-Status, or non-Article and freezes stored articles', :aggregate_failures do
       expect { described_class.new(channel: Object.new, articles:, status:) }
-        .to raise_error(ArgumentError, 'channel must be a Html2rss::Channel')
+        .to raise_error(Html2rss::FeedResult::InvalidError, 'channel must be a Html2rss::Channel')
       expect { described_class.new(channel:, articles:, status: Object.new) }
-        .to raise_error(ArgumentError, 'status must be a Html2rss::Status')
+        .to raise_error(Html2rss::FeedResult::InvalidError, 'status must be a Html2rss::Status')
       expect { described_class.new(channel:, articles: [Object.new], status:) }
-        .to raise_error(ArgumentError, 'articles must all be Html2rss::Article')
+        .to raise_error(Html2rss::FeedResult::InvalidError, 'articles must all be Html2rss::Article')
 
       built = described_class.new(channel: channel_subclass, articles:, status: status_subclass)
 
@@ -62,16 +62,16 @@ RSpec.describe Html2rss::FeedResult do
 
     it 'rejects a non-array articles list or stylesheet list', :aggregate_failures do
       expect { described_class.new(channel:, articles: nil, status:) }
-        .to raise_error(ArgumentError, 'articles must be an Array')
+        .to raise_error(Html2rss::FeedResult::InvalidError, 'articles must be an Array')
       expect { described_class.new(channel:, articles:, status:, stylesheets: nil) }
-        .to raise_error(ArgumentError, 'stylesheets must be an Array')
+        .to raise_error(Html2rss::FeedResult::InvalidError, 'stylesheets must be an Array')
     end
 
     it 'rejects String lists for articles and stylesheets', :aggregate_failures do
       expect { described_class.new(channel:, articles: 'hello', status:) }
-        .to raise_error(ArgumentError, 'articles must be an Array')
+        .to raise_error(Html2rss::FeedResult::InvalidError, 'articles must be an Array')
       expect { described_class.new(channel:, articles:, status:, stylesheets: 'rss.xsl') }
-        .to raise_error(ArgumentError, 'stylesheets must be an Array')
+        .to raise_error(Html2rss::FeedResult::InvalidError, 'stylesheets must be an Array')
     end
 
     it 'accepts Array subclasses for articles and stylesheets', :aggregate_failures do
@@ -195,7 +195,7 @@ RSpec.describe Html2rss::FeedResult do
     it 'rejects a non-string stylesheet media value' do
       sheet = { href: 'rss.xsl', type: 'text/xsl', media: :all }
       built = described_class.new(channel:, articles:, status:, stylesheets: [sheet])
-      expect { built.to_rss }.to raise_error(ArgumentError, 'stylesheet.media must be a String')
+      expect { built.to_rss }.to raise_error(Html2rss::InvalidOption, 'stylesheet.media must be a String')
     end
 
     it 'copies stylesheet values from an object that converts to a hash' do

@@ -36,7 +36,7 @@ RSpec.describe Html2rss::CLI do
 
     it 'handles local file input via --input' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
-      expect { cli.invoke(:apply, ['example.yml'], { input: 'spec/fixtures/page_1.html' }) }
+      expect { cli.invoke(:apply, ['example.yml'], { input: 'spec/fixtures/news_front_page.html' }) }
         .to output("#{rss_xml}\n").to_stdout
     end
 
@@ -67,6 +67,36 @@ RSpec.describe Html2rss::CLI do
 
       allow(Html2rss).to receive(:apply).and_raise(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
       expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /must be absolute/)
+    end
+  end
+
+  describe 'config files that cannot be loaded' do
+    let(:tmp_dir) { Dir.mktmpdir }
+
+    after { FileUtils.remove_entry(tmp_dir) }
+
+    {
+      'an integer key' => "1: 2\n",
+      'a nested integer key' => "channel:\n  url: https://example.com\n  1: 2\n",
+      'feeds as a list' => "feeds:\n  - a\n",
+      'feeds as a scalar' => "feeds: x\n"
+    }.each do |label, body|
+      context "with #{label}" do
+        let(:path) { File.join(tmp_dir, 'bad.yml').tap { File.write(_1, body) } }
+
+        it 'fails validate, apply, and test with a clean Thor::Error', :aggregate_failures do
+          expect { cli.validate(path) }.to raise_error(Thor::Error)
+          expect { cli.apply(path) }.to raise_error(Thor::Error)
+          expect { cli.test(path) }.to raise_error(Thor::Error)
+        end
+      end
+    end
+
+    it 'fails a named feed that is not a mapping with a clean Thor::Error', :aggregate_failures do
+      path = File.join(tmp_dir, 'feeds.yml').tap { File.write(_1, "feeds:\n  a:\n    - 1\n") }
+
+      expect { cli.validate(path, 'a') }.to raise_error(Thor::Error, /feed 'a' must be a mapping/)
+      expect { cli.apply(path, 'a') }.to raise_error(Thor::Error, /feed 'a' must be a mapping/)
     end
   end
 
@@ -288,7 +318,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'captures from local file via --input' do
-      expect { cli.invoke(:capture, [nil], { input: 'spec/fixtures/page_1.html' }) }
+      expect { cli.invoke(:capture, [nil], { input: 'spec/fixtures/news_front_page.html' }) }
         .to output(/channel:/).to_stdout
     end
 
@@ -508,6 +538,14 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:mcp, [], { transport: 'http', port: 4010 })
 
       expect(Html2rss::MCP).to have_received(:start).with(transport: :http, port: 4010)
+    end
+
+    it 'reports a missing HTTP transport dependency as a CLI error' do
+      allow(Html2rss::MCP).to receive(:start)
+        .and_raise(Html2rss::MCP::Server::HttpTransportUnavailable, 'HTTP transport requires rackup')
+
+      expect { cli.invoke(:mcp, [], { transport: 'http' }) }
+        .to raise_error(Thor::Error, 'HTTP transport requires rackup')
     end
   end
 

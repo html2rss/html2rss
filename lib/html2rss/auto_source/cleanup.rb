@@ -6,7 +6,8 @@ module Html2rss
     # Cleanup is responsible for cleaning up the extracted articles.
     # :reek:MissingSafeMethod { enabled: false }
     # It applies various strategies to filter and refine the article list.
-    # Sole producer of admission drop tallies for {Html2rss::Status}.
+    # Producer of the auto-source admission drop tallies for {Html2rss::Status}; {Html2rss::Selectors} tallies
+    # its own +missing_url+ drops.
     class Cleanup # rubocop:disable Metrics/ClassLength -- reject steps + tallies stay co-located
       # Default cleanup behavior for auto-sourced article lists.
       DEFAULT_CONFIG = {

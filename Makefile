@@ -9,7 +9,7 @@ SHELL_SCRIPTS = \
 	bin/ready \
 	bin/setup
 
-.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline perf-baseline-selectors perf-check corpus-baseline compare-revisions mutant-test mutant
+.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline perf-baseline-selectors perf-baseline-feed perf-check corpus-baseline compare-revisions mutant-test mutant
 
 help: ## Show available commands
 	@echo "Available commands:"
@@ -23,7 +23,8 @@ help: ## Show available commands
 	@echo "  make docs    - Generate documentation"
 	@echo "  make perf-baseline - Record auto-source wall/alloc baseline"
 	@echo "  make perf-baseline-selectors - Record selectors wall/alloc baseline"
-	@echo "  make perf-check - Gate allocations against the recorded budgets"
+	@echo "  make perf-baseline-feed - Record feed-building wall/alloc baseline"
+	@echo "  make perf-check- Gate allocations against the recorded budgets"
 	@echo "  make corpus-baseline - Re-record the auto-source corpus ratchet baseline"
 	@echo "  make compare-revisions BASE=<rev> HEAD=<rev> PAGES=<dir> [LIMIT=<n>] - Compare auto-source on saved pages"
 	@echo "  make ready   - Run the local PR readiness checks"
@@ -73,9 +74,13 @@ perf-baseline: ## Record auto-source wall/alloc baseline markdown
 perf-baseline-selectors: ## Record selectors wall/alloc baseline markdown
 	$(RUBY_RUNNER)bin/selectors-perf-baseline --write spec/perf/baseline-selectors.md
 
+perf-baseline-feed: ## Record feed-building (native parse, RSS/JSON Feed render, descriptions) wall/alloc baseline markdown
+	$(RUBY_RUNNER)bin/feed-perf-baseline --write spec/perf/baseline-feed.md
+
 perf-check: ## Fail when allocations exceed the recorded budgets (wall time is advisory)
 	$(RUBY_RUNNER)bin/heuristic-perf-baseline --check spec/perf/baseline-auto-source.md > /dev/null
 	$(RUBY_RUNNER)bin/selectors-perf-baseline --check spec/perf/baseline-selectors.md > /dev/null
+	$(RUBY_RUNNER)bin/feed-perf-baseline --check spec/perf/baseline-feed.md > /dev/null
 
 corpus-baseline: ## Re-record the auto-source corpus ratchet baseline
 	$(RUBY_RUNNER)bin/auto-source-corpus --write-baseline

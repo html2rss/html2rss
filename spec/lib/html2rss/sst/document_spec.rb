@@ -9,11 +9,15 @@ RSpec.describe Html2rss::SST::Document do
 
   describe '.build' do
     it 'requires a root node' do
-      expect { described_class.build(root: nil, index:) }.to raise_error(ArgumentError, 'root is required')
+      expect do
+        described_class.build(root: nil, index:)
+      end.to raise_error(Html2rss::SST::InvalidError, 'root is required')
     end
 
     it 'requires an index' do
-      expect { described_class.build(root:, index: nil) }.to raise_error(ArgumentError, 'index is required')
+      expect do
+        described_class.build(root:, index: nil)
+      end.to raise_error(Html2rss::SST::InvalidError, 'index is required')
     end
 
     it 'defaults to a non-degraded document with no nodes counted', :aggregate_failures do

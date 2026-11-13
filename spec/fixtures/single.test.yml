@@ -1,9 +1,7 @@
-# This config is for demonstration only.
-# FYI: Github provides an atom feed for releases of every project.
-# You should directly subscribe to that feed. :)
+# Synthetic demonstration config; every URL points at example.com.
 ---
 channel:
-  url: https://github.com/nuxt/nuxt.js/releases
+  url: https://example.com/example/widget/releases
 selectors:
   items:
     selector: ".release"

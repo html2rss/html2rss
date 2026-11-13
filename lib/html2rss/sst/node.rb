@@ -16,7 +16,7 @@ module Html2rss
       # @param children [Array<Node>, nil]
       # @param tag_path [String, nil] index-free ancestry path for list clustering
       # @return [Node]
-      # @raise [ArgumentError] on invalid name/attrs/children
+      # @raise [InvalidError] on invalid name/attrs/children
       def self.build(name:, attrs: nil, own_text: nil, children: nil, tag_path: nil, tails: nil) # rubocop:disable Metrics/ParameterLists
         attrs_value = coerce_attrs(attrs)
         kids = coerce_children(children)
@@ -32,7 +32,7 @@ module Html2rss
       end
 
       def self.coerce_name(name)
-        raise ArgumentError, 'name is required' if name.nil? || name.to_s.strip.empty?
+        raise InvalidError, 'name is required' if name.nil? || name.to_s.strip.empty?
 
         name.to_sym
       end
@@ -40,7 +40,7 @@ module Html2rss
 
       def self.coerce_attrs(attrs)
         attrs_value = attrs.nil? ? Attrs.empty : attrs
-        raise ArgumentError, 'attrs must be SST::Attrs' unless attrs_value.is_a?(Attrs)
+        raise InvalidError, 'attrs must be SST::Attrs' unless attrs_value.is_a?(Attrs)
 
         attrs_value
       end
@@ -48,7 +48,7 @@ module Html2rss
 
       def self.coerce_children(children)
         kids = Array(children).freeze
-        raise ArgumentError, 'children must be SST::Node instances' unless kids.all?(Node)
+        raise InvalidError, 'children must be SST::Node instances' unless kids.all?(Node)
 
         kids
       end

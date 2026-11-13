@@ -6,6 +6,9 @@ module Html2rss
     # Maps internal Dry::Validation messages to {ValidationIssue} (predicate → code).
     # Not a public API — Dry stays inside Validator / this mapper.
     module IssueMapper
+      # Raised when the schema yields a Dry predicate this mapper has no code for (a mapping-table gap).
+      class InvalidError < Html2rss::ContractError; end
+
       # Dry schema predicates → closed {ValidationIssue::CODES}.
       PREDICATE_CODES = {
         key?: :missing_key,
@@ -65,7 +68,7 @@ module Html2rss
           return :invalid_value if predicate.nil?
 
           PREDICATE_CODES.fetch(predicate) do
-            raise ArgumentError, "unmapped Dry validation predicate: #{predicate.inspect}"
+            raise InvalidError, "unmapped Dry validation predicate: #{predicate.inspect}"
           end
         end
 

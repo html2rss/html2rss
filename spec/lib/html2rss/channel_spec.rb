@@ -242,7 +242,9 @@ RSpec.describe Html2rss::Channel do
       expect(built.call(stamp).last_build_date).to equal(stamp)
       expect(built.call(http_date).last_build_date).to eq(Time.httpdate(http_date))
       expect(built.call(string_subclass).last_build_date).to eq(Time.httpdate(http_date))
-      expect { built.call(1) }.to raise_error(ArgumentError, 'last_build_date must be a Time or HTTP-date String')
+      expect do
+        built.call(1)
+      end.to raise_error(Html2rss::InvalidOption, 'last_build_date must be a Time or HTTP-date String')
     end
   end
 

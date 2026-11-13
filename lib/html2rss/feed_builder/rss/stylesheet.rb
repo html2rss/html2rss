@@ -43,9 +43,9 @@ module Html2rss
         # @param type [String] MIME type (`text/css` or `text/xsl`)
         # @param media [String] media query hint for the stylesheet
         def initialize(href:, type:, media: 'all')
-          raise ArgumentError, 'stylesheet.href must be a String' unless href.is_a?(String)
-          raise ArgumentError, 'stylesheet.type invalid' unless TYPES.include?(type)
-          raise ArgumentError, 'stylesheet.media must be a String' unless media.is_a?(String)
+          raise InvalidOption, 'stylesheet.href must be a String' unless href.is_a?(String)
+          raise InvalidOption, 'stylesheet.type invalid' unless TYPES.include?(type)
+          raise InvalidOption, 'stylesheet.media must be a String' unless media.is_a?(String)
 
           @href = href
           @type = type

@@ -114,14 +114,6 @@ module Html2rss
         end
 
         attr_reader :value, :context
-
-        # Abstract method to be implemented by subclasses
-        #
-        # @return [Object] transformed value
-        # @raise [NotImplementedError] if not implemented in subclass
-        def call
-          raise NotImplementedError, 'You must implement the `call` method in the post processor'
-        end
       end
     end
   end

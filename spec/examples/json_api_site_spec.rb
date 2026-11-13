@@ -18,7 +18,7 @@ RSpec.describe 'JSON API Site Configuration' do
     [
       {
         title: "ACME Corp's Revolutionary AI Breakthrough Changes Everything",
-        link: nil,
+        link: 'https://example.com/posts/1',
         description_includes: [
           '<source src="https://example.com/audio/ai-breakthrough-podcast.mp3"',
           "It can finally understand 'it works on my machine'"
@@ -29,7 +29,7 @@ RSpec.describe 'JSON API Site Configuration' do
       },
       {
         title: 'Climate Change Summit Reaches Historic Agreement',
-        link: nil,
+        link: 'https://example.com/posts/2',
         description_includes: [
           '<img src="https://example.com/images/climate-summit.jpg"',
           'groundbreaking agreement on climate change mitigation'
@@ -40,7 +40,7 @@ RSpec.describe 'JSON API Site Configuration' do
       },
       {
         title: 'Space Exploration Mission Discovers New Planet',
-        link: nil,
+        link: 'https://example.com/posts/3',
         description_includes: [
           '<source src="https://example.com/audio/space-discovery-podcast.mp3"',
           'This discovery opens up new possibilities for future space exploration'
@@ -51,7 +51,7 @@ RSpec.describe 'JSON API Site Configuration' do
       },
       {
         title: 'Medical Breakthrough Offers Hope for Cancer Patients',
-        link: nil,
+        link: 'https://example.com/posts/4',
         description_includes: [
           '<img src="https://example.com/images/cancer-research.jpg"',
           'Clinical trials have shown a 75% success rate'
@@ -62,7 +62,7 @@ RSpec.describe 'JSON API Site Configuration' do
       },
       {
         title: 'Renewable Energy Reaches New Milestone',
-        link: nil,
+        link: 'https://example.com/posts/5',
         description_includes: [
           '<source src="https://example.com/audio/renewable-energy-podcast.mp3"',
           'Solar and wind power have led this transformation'
@@ -73,7 +73,7 @@ RSpec.describe 'JSON API Site Configuration' do
       },
       {
         title: 'Cybersecurity Threats Reach All-Time High',
-        link: nil,
+        link: 'https://example.com/posts/6',
         description_includes: [
           '<img src="https://example.com/images/cybersecurity.jpg"',
           'Organizations are being urged to implement stronger security measures'
@@ -93,7 +93,7 @@ RSpec.describe 'JSON API Site Configuration' do
     expect_feed_items(items, expected_items)
   end
 
-  it 'omits item links when no selector is configured' do
-    expect(items.map(&:link)).to all(be_nil)
+  it 'links each item to its post through the url selector' do
+    expect(items.map(&:link)).to eq((1..6).map { "https://example.com/posts/#{_1}" })
   end
 end

@@ -33,13 +33,13 @@ module Html2rss
         ##
         # @param name [Symbol, String] config or configure strategy value
         # @return [Auto, Concrete] resolved feed-level plan
-        # @raise [ArgumentError] when +name+ is neither +:auto+ nor a registered strategy
+        # @raise [InvalidOption] when +name+ is neither +:auto+ nor a registered strategy
         def resolve(name)
           normalized = name.to_sym
           return Auto.new if normalized == AUTO_NAME
 
           unless RequestService.strategy_registered?(normalized)
-            raise ArgumentError, "unknown strategy plan: #{name.inspect}"
+            raise InvalidOption, "unknown strategy plan: #{name.inspect}"
           end
 
           Concrete.new(strategy: normalized)
@@ -64,7 +64,7 @@ module Html2rss
 
           resolve(name)
           true
-        rescue ArgumentError
+        rescue InvalidOption
           false
         end
 

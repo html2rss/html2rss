@@ -756,7 +756,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       'absolute @id' => [{ '@id': 'https://example.com/i#article' }, 'https://example.com/i'],
       'mainEntityOfPage over @id' => [{ mainEntityOfPage: 'https://example.com/m', '@id': 'https://example.com/i' },
                                       'https://example.com/m'],
-      'explicit url over fallbacks' => [{ url: 'https://example.com/u#frag', mainEntityOfPage: 'https://e.com/m' },
+      'explicit url over fallbacks' => [{ url: 'https://example.com/u#frag', mainEntityOfPage: 'https://m.example/m' },
                                         'https://example.com/u#frag'],
       'non-http mainEntityOfPage' => [{ mainEntityOfPage: 'urn:uuid:1', '@id': 'ftp://example.com/x' }, nil],
       'embedUrl never' => [{ embedUrl: 'https://example.com/embed/1#t' }, nil],

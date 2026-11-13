@@ -253,7 +253,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
         [
           {
             name: 'Long Enough App Name',
-            link: 'https://apps.apple.com/app/id1',
+            link: 'https://apps.example.com/app/id1',
             description: 'A short pitch.',
             categories: %w[games productivity],
             icon: 'https://cdn.example.com/icon.png'
@@ -266,7 +266,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
           a_hash_including(
             title: 'Long Enough App Name',
             description: 'A short pitch.',
-            url: Html2rss::Url.from_absolute('https://apps.apple.com/app/id1'),
+            url: Html2rss::Url.from_absolute('https://apps.example.com/app/id1'),
             categories: %w[games productivity],
             image: Html2rss::Url.from_absolute('https://cdn.example.com/icon.png')
           )
