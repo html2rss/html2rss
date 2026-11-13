@@ -225,8 +225,8 @@ module Html2rss
     # @return [String, nil] userinfo user, without the password
     def user = @uri.user
 
-    # Registrable domain (eTLD+1). Same-site hosts like www.wp.pl and wiadomosci.wp.pl
-    # share `wp.pl`. IP literals stay the host so 1.2.3.4 is not treated as `3.4`.
+    # Registrable domain (eTLD+1). Same-site hosts like www.example.com and news.example.com
+    # share `example.com`. IP literals stay the host so 1.2.3.4 is not treated as `3.4`.
     #
     # @return [String, nil]
     def domain
