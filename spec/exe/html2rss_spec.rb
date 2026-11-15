@@ -43,6 +43,20 @@ RSpec.describe 'exe/html2rss', :slow do
     end
   end
 
+  context 'when spawned without a UTF-8 locale' do
+    subject(:status) do
+      _stdout, _stderr, status = Open3.capture3(
+        RbConfig.ruby, '-EUS-ASCII', executable,
+        'scrape', 'https://example.com/', '--input', 'spec/fixtures/news_front_page.html'
+      )
+      status
+    end
+
+    it 'scrapes without encoding errors' do
+      expect(status).to be_success
+    end
+  end
+
   context 'with feed config: releases_page' do
     context 'with arguments: apply YAML_FILE' do
       subject(:output) do
