@@ -1,6 +1,10 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+# MCP clients and cron often spawn this process without LANG, which leaves Ruby
+# on US-ASCII. Bundled data (public_suffix's list) and configs are UTF-8.
+Encoding.default_external = Encoding::UTF_8
+
 require 'html2rss'
 
 Html2rss::CLI.start(ARGV)
