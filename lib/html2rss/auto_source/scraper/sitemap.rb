@@ -151,7 +151,7 @@ module Html2rss
         def target_sitemap_url
           link_tag = parsed_body.at_css(SITEMAP_LINK_SELECTOR)
           href = link_tag ? link_tag['href'] : '/sitemap.xml'
-          Html2rss::Url.from_relative(href, url)
+          Html2rss::Url.resolve_web(href, url) || Html2rss::Url.resolve_web('/sitemap.xml', url)
         end
 
         def article_from_entry(entry)
