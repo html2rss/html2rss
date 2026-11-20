@@ -102,7 +102,7 @@ module Html2rss
       # @return [IPAddr, nil] the IPv4 embedded in a NAT64 or 6to4 address, else nil
       def embedded_ipv4(address)
         if NAT64_PREFIX.include?(address)
-          IPAddr.new_ntoh(address.hton[-4, 4])
+          IPAddr.new_ntoh(address.hton[12..])
         elsif SIX_TO_FOUR_PREFIX.include?(address)
           IPAddr.new_ntoh(address.hton[2, 4])
         end
