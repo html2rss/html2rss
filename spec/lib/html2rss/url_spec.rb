@@ -141,6 +141,65 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe 'host validation' do
+    {
+      'a Unicode IDN' => ['http://bücher.example/a', 'xn--bcher-kva.example'],
+      'a punycode IDN' => ['http://xn--bcher-kva.example/a', 'xn--bcher-kva.example'],
+      'localhost' => ['http://localhost/a', 'localhost'],
+      'an IPv4 literal' => ['http://1.2.3.4/a', '1.2.3.4'],
+      'a bracketed IPv6 literal' => ['http://[::1]/a', '[::1]'],
+      'a trailing dot' => ['http://example.com./a', 'example.com'],
+      'an underscore label' => ['http://a_b.example.com/a', 'a_b.example.com'],
+      'a 63 character label' => ["http://#{'a' * 63}.example/a", "#{'a' * 63}.example"]
+    }.each do |name, (raw, host)|
+      it "accepts #{name}" do
+        expect(described_class.from_absolute(raw).host).to eq(host)
+      end
+    end
+
+    {
+      'an unclosed bracket' => 'http://[bad/2026/11/20/a',
+      'an unbalanced closing bracket' => 'http://a]/a',
+      'trailing text after an IPv6 literal' => 'http://[::1]x/a',
+      'an IPv6 literal that does not parse' => 'http://[1:2]/a',
+      'an empty label' => 'http://a..b/a',
+      'a leading dot' => 'http://.example.com/a',
+      'an encoded space' => 'http://a%20b.example/a',
+      'an encoded control character' => 'http://exa%00mple.com/a',
+      'a leading hyphen' => 'http://-a.example/a',
+      'a trailing hyphen' => 'http://a-.example/a',
+      'a 64 character label' => "http://#{'a' * 64}.example/a",
+      'a host longer than 253 characters' => "http://#{(['a' * 60] * 5).join('.')}.example/a",
+      'an out-of-range IPv4 literal' => 'http://999.1.1.1/a',
+      'a numeric last label' => 'http://example.123/a',
+      'an unsafe character' => 'http://a!b.example/a'
+    }.each do |name, raw|
+      it "rejects #{name}" do
+        expect { described_class.from_absolute(raw) }.to raise_error(described_class::InvalidUrlError)
+      end
+    end
+
+    it 'rejects a space and a control character in the host' do
+      expect { described_class.from_absolute("http://a b.example/\u0001") }.to raise_error(described_class::InvalidUrlError)
+      expect { described_class.from_absolute("http://a\u0001b.example/") }.to raise_error(described_class::InvalidUrlError)
+    end
+
+    it 'rejects a malformed host resolved from a relative reference or built directly' do
+      expect { described_class.from_relative('http://[bad/x', 'https://example.com/') }
+        .to raise_error(described_class::InvalidUrlError)
+      expect { described_class.new(Addressable::URI.parse('http://[bad/x')) }
+        .to raise_error(described_class::InvalidUrlError, 'URL host is invalid')
+    end
+
+    it 'keeps a hostless URL valid' do
+      expect(described_class.from_relative('/a/b', 'https://example.com/').to_s).to eq('https://example.com/a/b')
+    end
+
+    it 'sanitizes to nil when the host is invalid' do
+      expect(described_class.sanitize('see http://[bad/x now')).to be_nil
+    end
+  end
+
   describe '.from_absolute' do
     it 'parses an absolute URL string' do
       expect(described_class.from_absolute('https://example.com/path').to_s).to eq('https://example.com/path')

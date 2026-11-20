@@ -45,6 +45,11 @@ module Html2rss
     SCHEME_PREFIX = /\A([a-z][a-z0-9+.-]*):/i
     private_constant :SCHEME_PREFIX
 
+    # One DNS label: 1-63 letters, digits, underscores and inner hyphens (IDN labels arrive punycoded).
+    DNS_LABEL = /\A[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?\z/i
+    MAX_HOST_LENGTH = 253
+    private_constant :DNS_LABEL, :MAX_HOST_LENGTH
+
     ##
     # Creates a URL from a relative path and base URL.
     #
@@ -216,6 +221,8 @@ module Html2rss
     #
     # @param uri [Addressable::URI] the normalized Addressable::URI (internal use only)
     def initialize(uri)
+      raise InvalidUrlError, 'URL host is invalid' unless valid_host?(uri.host)
+
       @uri = uri
       @path_segments = path.split('/').reject(&:empty?).freeze
       freeze
@@ -450,6 +457,42 @@ module Html2rss
     def article_params = query ? query_params.reject { tracking_param?(_1) }.sort : NO_PARAMS
 
     def tracking_param?(pair) = TRACKING_PARAM.match?(pair.partition('=').first)
+
+    ##
+    # The one host rule: no host (relative or opaque URL), a DNS name, an IPv4 literal, or a bracketed IPv6
+    # literal that parses. A trailing dot is allowed; a Unicode host is checked in its punycode form.
+    #
+    # @param host [String, nil]
+    # @return [Boolean]
+    def valid_host?(host)
+      return true if host.nil? || host.empty?
+
+      host = Addressable::IDNA.to_ascii(host) unless host.ascii_only?
+      return ipv6_literal?(host) if host.start_with?('[')
+
+      dns_name_or_ipv4?(host.delete_suffix('.'))
+    end
+
+    def ipv6_literal?(host)
+      host.end_with?(']') && IPAddr.new(host[1..-2], Socket::AF_INET6).ipv6?
+    rescue IPAddr::Error
+      false
+    end
+
+    def dns_name_or_ipv4?(name)
+      labels = name.split('.', -1)
+      return false if labels.empty?
+
+      return ipv4_literal?(name) if labels.last.match?(/\A\d+\z/)
+
+      name.length <= MAX_HOST_LENGTH && labels.all? { DNS_LABEL.match?(_1) }
+    end
+
+    def ipv4_literal?(name)
+      IPAddr.new(name, Socket::AF_INET).ipv4?
+    rescue IPAddr::Error
+      false
+    end
 
     def ip_address_host?
       !IPAddr.new(host).nil?
