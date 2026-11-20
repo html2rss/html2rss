@@ -66,6 +66,11 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
       end
     end
 
+    it 'ignores digit-led segments that are not calendar years (unlike the routing shape)', :aggregate_failures do
+      expect(described_class.call('https://e.com/9999/01/01/slug', time_zone: 'UTC')).to be_nil
+      expect(described_class.call('https://e.com/58201224/slug', time_zone: 'UTC')).to be_nil
+    end
+
     it 'yields nothing for an invalid or opaque uri', :aggregate_failures do
       expect(described_class.call('https://e.com/a?next=/2026/11/20/slug', time_zone: 'UTC')).to be_nil
       expect(described_class.call('https://2026-11-20-x.example.com/a', time_zone: 'UTC')).to be_nil
