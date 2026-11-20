@@ -5,11 +5,10 @@ require 'spec_helper'
 RSpec.describe Html2rss::RequestService::NetworkGuardFilter do
   let(:guard) { Html2rss::RequestService::NetworkGuard.new(allow_private_networks: false) }
   let(:url) { Html2rss::Url.from_absolute('https://nat64.test/feed') }
-  let(:nat64) { Html2rss::RequestService::NetworkGuard::NAT64_PREFIX }
 
   describe '.extra_options' do
     it 'releases only the NAT64 prefix from the ssrf filter' do
-      expect(described_class.extra_options({})).to eq(safe_private_ranges: [nat64])
+      expect(described_class.extra_options({})).to eq(safe_private_ranges: [Html2rss::RequestService::NetworkGuard::NAT64_PREFIX])
     end
   end
 

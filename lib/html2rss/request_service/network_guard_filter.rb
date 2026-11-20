@@ -13,13 +13,18 @@ module Html2rss
     # Loading +:ssrf_filter+ first as a dependency keeps this module ahead of it in the
     # ancestors; a spec pins that order.
     module NetworkGuardFilter
+      # Strict guard instance: the plugin only exists on the SSRF-protected session.
       GUARD = NetworkGuard.new(allow_private_networks: false)
 
       class << self
+        # @param klass [Class] HTTPX session class being extended
+        # @return [void]
         def load_dependencies(klass)
           klass.plugin(:ssrf_filter)
         end
 
+        # @param options [HTTPX::Options] session options
+        # @return [HTTPX::Options] options with the NAT64 prefix released to {NetworkGuard}
         def extra_options(options)
           options.merge(safe_private_ranges: [NetworkGuard::NAT64_PREFIX])
         end
@@ -36,6 +41,9 @@ module Html2rss
 
       # Connection hooks.
       module ConnectionMethods
+        # @param addrs [Array<#address>] resolved entries
+        # @return [void]
+        # @raise [HTTPX::ServerSideRequestForgeryError] when no entry is allowed
         def addresses=(addrs)
           super(addrs.reject { |entry| NetworkGuardFilter.denied?(entry.address) })
         end
