@@ -46,9 +46,13 @@ module Html2rss
     private_constant :SCHEME_PREFIX
 
     # One DNS label: 1-63 letters, digits, underscores and inner hyphens (IDN labels arrive punycoded).
-    DNS_LABEL = /\A[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?\z/i
+    DNS_LABEL = '[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?'
+    DNS_NAME = /\A(?:#{DNS_LABEL}\.)*#{DNS_LABEL}\z/i
+    OCTET = '(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+    IPV4 = /\A(?:#{OCTET}\.){3}#{OCTET}\z/
+    NUMERIC_LAST_LABEL = /(?:\A|\.)\d+\z/
     MAX_HOST_LENGTH = 253
-    private_constant :DNS_LABEL, :MAX_HOST_LENGTH
+    private_constant :DNS_LABEL, :DNS_NAME, :OCTET, :IPV4, :NUMERIC_LAST_LABEL, :MAX_HOST_LENGTH
 
     ##
     # Creates a URL from a relative path and base URL.
@@ -463,7 +467,7 @@ module Html2rss
     # literal that parses. A trailing dot is allowed; a Unicode host is checked in its punycode form.
     #
     # @param host [String, nil]
-    # @return [Boolean]
+    # @return [Boolean] truthy when valid
     def valid_host?(host)
       return true if host.nil? || host.empty?
 
@@ -474,24 +478,15 @@ module Html2rss
     end
 
     def ipv6_literal?(host)
-      host.end_with?(']') && IPAddr.new(host[1..-2], Socket::AF_INET6).ipv6?
+      IPAddr.new(host, Socket::AF_INET6)
     rescue IPAddr::Error
       false
     end
 
     def dns_name_or_ipv4?(name)
-      labels = name.split('.', -1)
-      return false if labels.empty?
+      return IPV4.match?(name) if NUMERIC_LAST_LABEL.match?(name)
 
-      return ipv4_literal?(name) if labels.last.match?(/\A\d+\z/)
-
-      name.length <= MAX_HOST_LENGTH && labels.all? { DNS_LABEL.match?(_1) }
-    end
-
-    def ipv4_literal?(name)
-      IPAddr.new(name, Socket::AF_INET).ipv4?
-    rescue IPAddr::Error
-      false
+      name.length <= MAX_HOST_LENGTH && DNS_NAME.match?(name)
     end
 
     def ip_address_host?
