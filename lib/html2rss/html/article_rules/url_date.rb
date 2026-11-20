@@ -21,7 +21,9 @@ module Html2rss
       module UrlDate
         # Earliest year accepted as a publication year.
         MIN_YEAR = 1995
+        # A whole segment that is a plausible-looking four-digit year.
         YEAR = /\A(?:19|20)\d{2}\z/
+        # A whole segment of one or two digits (month or day).
         DAY = /\A\d{1,2}\z/
         # One segment +YYYY-MM-DD+ or +YYYY_MM_DD+ (same separator), then +-+/+_+ and a slug, or its end
         # (a later segment must then be the slug).
