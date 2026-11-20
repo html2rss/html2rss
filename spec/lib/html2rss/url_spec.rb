@@ -172,21 +172,21 @@ RSpec.describe Html2rss::Url do
       'a host longer than 253 characters' => "http://#{(['a' * 60] * 5).join('.')}.example/a",
       'an out-of-range IPv4 literal' => 'http://999.1.1.1/a',
       'a numeric last label' => 'http://example.123/a',
-      'an unsafe character' => 'http://a!b.example/a'
+      'an unsafe character' => 'http://a!b.example/a',
+      'a space' => 'http://a b.example/a',
+      'a control character' => "http://a\u0001b.example/a"
     }.each do |name, raw|
       it "rejects #{name}" do
         expect { described_class.from_absolute(raw) }.to raise_error(described_class::InvalidUrlError)
       end
     end
 
-    it 'rejects a space and a control character in the host' do
-      expect { described_class.from_absolute("http://a b.example/\u0001") }.to raise_error(described_class::InvalidUrlError)
-      expect { described_class.from_absolute("http://a\u0001b.example/") }.to raise_error(described_class::InvalidUrlError)
-    end
-
-    it 'rejects a malformed host resolved from a relative reference or built directly' do
+    it 'rejects a malformed host resolved from a relative reference' do
       expect { described_class.from_relative('http://[bad/x', 'https://example.com/') }
         .to raise_error(described_class::InvalidUrlError)
+    end
+
+    it 'rejects a malformed host on direct construction' do
       expect { described_class.new(Addressable::URI.parse('http://[bad/x')) }
         .to raise_error(described_class::InvalidUrlError, 'URL host is invalid')
     end
