@@ -10,6 +10,7 @@ module Html2rss
       :utility_path,
       :taxonomy_path,
       :vanity_path,
+      :media_path,
       :shallow,
       :strong_post_suffix,
       :high_confidence_junk_path,
@@ -32,6 +33,7 @@ module Html2rss
           utility_path: classifier.utility_path?,
           taxonomy_path: classifier.taxonomy_path?,
           vanity_path: classifier.vanity_path?,
+          media_path: classifier.media_path?,
           shallow: classifier.shallow?,
           high_confidence_junk_path: classifier.junk_path?,
           high_confidence_utility_destination: classifier.utility_destination?

@@ -103,8 +103,8 @@ module Html2rss
         #   (default false)
         # @param corroboration [Corroboration, nil] page check for structured-tier items, run
         #   before dedupe so a dropped structured copy leaves the URL to a later tier
-        # @param page_links [#call, nil] lazy source of the page's {PageLinks}; called only when
-        #   a page-derived item is checked for sponsorship
+        # @param page_links [#call, nil] lazy source of the page's {PageLinks}: the one article identity
+        #   ({PageLinks#identity}), the placement params dropped from item URLs, and the sponsorship check
         # @return [Result] cleaned articles and frozen drop tallies
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
         def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
@@ -118,10 +118,12 @@ module Html2rss
             reject_uncorroborated!(articles, corroboration, tallies)
             canonicalize_urls!(articles, corroboration)
           end
-          deduplicate_by_url!(articles, tallies)
+          identity = page_identity(page_links)
+          drop_placement_params!(articles, page_links)
+          deduplicate_by_url!(articles, tallies, identity)
           reject_sponsored!(articles, page_links, tallies) unless keep_sponsored
           keep_only_http_urls!(articles, tallies)
-          reject_self_links!(articles, url, tallies)
+          reject_self_links!(articles, url, tallies, identity)
           reject_different_domain!(articles, url, feed_url, tallies) unless keep_different_domain
           reject_excluded_destinations!(articles, tallies)
           reject_low_quality_titles!(articles, tallies)
@@ -247,15 +249,32 @@ module Html2rss
           end
         end
 
+        # The page's one article key ({PageLinks#identity}, which ignores the page's placement params);
+        # the plain {Url#article_identity} without a page.
+        def page_identity(page_links)
+          ->(url) { page_links ? page_links.call.identity(url) : url.article_identity }
+        end
+
+        # Items carry the page's form of their URL, without the placement params that put one story in
+        # several slots, so the item guid stays one stable form.
+        def drop_placement_params!(articles, page_links)
+          return unless page_links
+
+          articles.map! do |article|
+            url = page_links.call.without_placement(article.url)
+            url.equal?(article.url) ? article : article.with_url(url)
+          end
+        end
+
         # One item per article identity: the first copy wins and later copies fill only the fields it
         # lacks ({Article#merge}), so a native feed item keeps its date, guid and title and takes the
         # page card's image. A read-more titled copy always loses to a copy with a real title: the
         # link text is chrome, the other copy carries the headline.
-        def deduplicate_by_url!(articles, tallies)
-          reject_read_more_copies!(articles, tallies)
+        def deduplicate_by_url!(articles, tallies, identity)
+          reject_read_more_copies!(articles, tallies, identity)
           kept = articles.each_with_object({}) do |article, by_identity|
-            identity = article.url.article_identity
-            by_identity[identity] = by_identity[identity]&.merge(article) || article
+            key = identity.call(article.url)
+            by_identity[key] = by_identity[key]&.merge(article) || article
           end
           folded = articles.size - kept.size
           tallies['duplicate_url'] += folded if folded.positive?
@@ -276,10 +295,10 @@ module Html2rss
           end
         end
 
-        def reject_self_links!(articles, base_url, tallies)
-          source_identity = base_url.article_identity
+        def reject_self_links!(articles, base_url, tallies, identity)
+          source_identity = identity.call(base_url)
           tally_reject!(articles, tallies, 'self_link') do |article|
-            article.url.article_identity == source_identity
+            identity.call(article.url) == source_identity
           end
         end
 
@@ -338,10 +357,10 @@ module Html2rss
           end
         end
 
-        def reject_read_more_copies!(articles, tallies)
-          titled = articles.reject { |article| read_more_title?(article) }.to_set { |a| a.url.article_identity }
+        def reject_read_more_copies!(articles, tallies, identity)
+          titled = articles.reject { |article| read_more_title?(article) }.to_set { |a| identity.call(a.url) }
           tally_reject!(articles, tallies, 'duplicate_url') do |article|
-            read_more_title?(article) && titled.include?(article.url.article_identity)
+            read_more_title?(article) && titled.include?(identity.call(article.url))
           end
         end
 

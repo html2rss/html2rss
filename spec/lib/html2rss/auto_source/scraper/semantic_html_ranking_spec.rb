@@ -835,4 +835,127 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
     end
   end
+
+  describe '.group_bonus' do
+    it 'grows by a fixed amount per doubling of the group', :aggregate_failures do
+      expect(described_class.group_bonus(1)).to eq(0.0)
+      expect(described_class.group_bonus(2)).to eq(3.0)
+      expect(described_class.group_bonus(16)).to eq(12.0)
+    end
+
+    it 'is bounded', :aggregate_failures do
+      expect(described_class.group_bonus(32)).to eq(15.0)
+      expect(described_class.group_bonus(4096)).to eq(15.0)
+    end
+  end
+
+  describe 'repeated-card group ranking' do
+    subject(:urls) do
+      page = Nokogiri::HTML.parse(File.read('spec/fixtures/auto_source/corpus/nested_card_grid_ranking.html'))
+      described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+    end
+
+    let(:grid_urls) { urls.grep(%r{/local/}) }
+
+    it 'reads every nested grid card as an item', :aggregate_failures do
+      expect(grid_urls.size).to eq(25)
+      expect(grid_urls).to all(match(%r{\Ahttps://example\.com/local/2026/11/[a-z-]+/\z}))
+    end
+
+    it 'ranks the grid before the regional module and the service rail', :aggregate_failures do
+      expect(urls.first(25)).to eq(grid_urls)
+      expect(urls.drop(25).grep(%r{/(regional|service)/}).size).to eq(12)
+    end
+
+    it 'keeps the smaller groups' do
+      expect(urls.size).to eq(37)
+    end
+
+    context 'when a huge group of plain cards meets a few markedly more prominent articles' do
+      subject(:urls) do
+        page = Nokogiri::HTML.parse(<<~HTML)
+          <html><body><main>
+            <section>#{Array.new(200) { plain_card.call(_1) }.join}</section>
+            <section>#{Array.new(3) { article_card.call(_1) }.join}</section>
+          </main></body></html>
+        HTML
+        described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+      end
+
+      let(:plain_card) do
+        lambda do |index|
+          %(<div class="cell"><h3><a href="/local/2026/#{index}/story/">Local story #{index} today</a></h3></div>)
+        end
+      end
+      let(:article_card) do
+        lambda do |index|
+          <<~HTML
+            <article class="lead"><h3><a href="/regional/2026/#{index}/story/">Regional story #{index} today</a></h3>
+            <p>Officials expect a smooth rollout of the change.</p><time datetime="2026-11-12T10:00">10:00</time></article>
+          HTML
+        end
+      end
+
+      it 'keeps the bonus bounded, so the articles still lead' do
+        expect(urls.first(3).grep(%r{/regional/}).size).to eq(3)
+      end
+    end
+
+    context 'when a lone prominent article meets a group larger than the item cap' do
+      subject(:urls) do
+        page = Nokogiri::HTML.parse(<<~HTML)
+          <html><body><main>
+            <section>#{Array.new(120) { plain_card.call(_1) }.join}</section>
+            <section>#{lead_card}</section>
+          </main></body></html>
+        HTML
+        described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+      end
+
+      let(:plain_card) do
+        lambda do |index|
+          %(<div class="cell"><h3><a href="/local/2026/#{index}/story/">Local story #{index} today</a></h3></div>)
+        end
+      end
+      let(:lead_card) do
+        <<~HTML
+          <article class="lead"><h3><a href="/regional/2026/0/story/">Regional lead story today</a></h3>
+          <p>Officials expect a smooth rollout of the change.</p><time datetime="2026-11-12T10:00">10:00</time></article>
+        HTML
+      end
+
+      it 'keeps the lead story first: its score beats the bounded group bonus before the cap', :aggregate_failures do
+        expect(urls.first).to eq('https://example.com/regional/2026/0/story/')
+        expect(urls.size).to be <= described_class::TOP_K
+      end
+    end
+
+    context 'when the groups together exceed the item cap' do
+      subject(:urls) do
+        page = Nokogiri::HTML.parse(<<~HTML)
+          <html><body><main>
+            <section>#{Array.new(5) { prominent_card.call(_1) }.join}</section>
+            <section>#{Array.new(120) { plain_card.call(_1) }.join}</section>
+          </main></body></html>
+        HTML
+        described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+      end
+
+      let(:prominent_card) do
+        lambda do |index|
+          %(<div class="rail"><h3><a href="/regional/2026/#{index}/story/">Regional story #{index} today</a></h3></div>)
+        end
+      end
+      let(:plain_card) do
+        lambda do |index|
+          %(<div class="cell"><h3><a href="/local/2026/#{index}/story/">Local story #{index} today</a></h3></div>)
+        end
+      end
+
+      it 'caps after ranking, so the largest group fills the cap', :aggregate_failures do
+        expect(urls.size).to be <= described_class::TOP_K
+        expect(urls.grep(%r{/regional/}).size).to be < 5
+      end
+    end
+  end
 end
