@@ -855,6 +855,26 @@
         }
       },
       "required": []
+    },
+    "enrich": {
+      "type": "object",
+      "properties": {
+        "article_metadata": {
+          "type": "boolean",
+          "not": {
+            "type": "null"
+          }
+        },
+        "max_fetches": {
+          "type": "integer",
+          "not": {
+            "type": "null"
+          },
+          "exclusiveMinimum": 0,
+          "maximum": 10
+        }
+      },
+      "required": []
     }
   },
   "required": [
