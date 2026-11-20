@@ -19,6 +19,7 @@ module Html2rss
       # Accepted residual: evergreen or past-event pages whose path carries a date get that date, since
       # a path cannot tell publication from event date.
       module UrlDate
+        # Calendar-year rule (bounded, 1995..today), unlike PathClassifier::YEARISH_SEGMENT's routing shape.
         # Earliest year accepted as a publication year.
         MIN_YEAR = 1995
         # A whole segment that is a plausible-looking four-digit year.
