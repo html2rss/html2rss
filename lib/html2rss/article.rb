@@ -64,6 +64,14 @@ module Html2rss
     # @return [Article] a copy of this article carrying +value+ as published_at
     def with_published_at(value) = self.class.new(**@to_h, published_at: value)
 
+    # @param value [String, nil] replacement author name
+    # @return [Article] a copy of this article carrying +value+ as author
+    def with_author(value) = self.class.new(**@to_h, author: value)
+
+    # @param value [String, Html2rss::Url, nil] replacement image URL
+    # @return [Article] a copy of this article carrying +value+ as image
+    def with_image(value) = self.class.new(**@to_h, image: value)
+
     # @param new_url [String, Html2rss::Url] replacement article URL
     # @return [Article] a copy of this article carrying +new_url+
     def with_url(new_url) = self.class.new(**@to_h, url: new_url)

@@ -60,6 +60,17 @@ module Html2rss
     end
 
     ##
+    # Returns a session with the same strategy, policy, headers and origin but its own request budget, so a
+    # bounded optional step (article enrichment) cannot spend the listing's request slots. The wall clock is
+    # the remaining time of this session's budget (rounded up, at least one second).
+    #
+    # @param max_requests [Integer] request slots of the new budget
+    # @return [RequestSession]
+    def with_budget_allowance(max_requests)
+      self.class.new(context: allowance_context(max_requests), strategy:, logger:)
+    end
+
+    ##
     # Executes a follow-up request sharing policy, headers, and budget.
     #
     # @param url [String, Html2rss::Url] follow-up request url
@@ -122,6 +133,15 @@ module Html2rss
     private
 
     attr_reader :context, :strategy, :logger, :visited_urls
+
+    def allowance_context(max_requests)
+      remaining = context.budget.remaining_timeout_seconds
+      budget = RequestService::Budget.new(max_requests:, total_timeout_seconds: remaining && [remaining.ceil, 1].max)
+      RequestService::Context.new(
+        url:, headers: context.headers, request: context.request, policy: context.policy, budget:,
+        origin_url: context.origin_url
+      )
+    end
 
     def execute(request_context)
       RequestService.execute(request_context, strategy:).tap do |response|

@@ -332,4 +332,26 @@ RSpec.describe Html2rss::RequestSession do
       )
     end
   end
+
+  describe '#with_budget_allowance' do
+    let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 1) }
+    let(:session) do
+      context = Html2rss::RequestService::Context.new(
+        url: 'https://example.com/news', policy:, budget: Html2rss::RequestService::Budget.new(max_requests: 1)
+      )
+      described_class.new(context:, strategy: :default, logger:)
+    end
+
+    it 'keeps url, strategy and policy but not the original budget', :aggregate_failures do
+      stub_request(:get, %r{example\.com/}).to_return(body: '<html></html>', headers: { 'Content-Type' => 'text/html' })
+      session.fetch_initial_response
+      allowance = session.with_budget_allowance(2)
+
+      expect(allowance.url).to eq(session.url)
+      expect { 2.times { |i| allowance.follow_up(url: "https://example.com/#{i}", relation: :auto_source, origin_url: session.url) } }
+        .not_to raise_error
+      expect { allowance.follow_up(url: 'https://example.com/3', relation: :auto_source, origin_url: session.url) }
+        .to raise_error(Html2rss::RequestService::RequestBudgetExceeded)
+    end
+  end
 end
