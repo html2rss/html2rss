@@ -25,6 +25,10 @@ module Html2rss
         author: [lambda(&:author), ->(article, value) { article.with_author(value) }],
         image: [lambda(&:image), ->(article, value) { article.with_image(value) }]
       }.freeze
+      # Schema.org keys that are weaker sources than a Thing's own author and datePublished.
+      WEAK_KEYS = %i[publisher hiringOrganization organizer datePosted dateCreated dateModified uploadDate].freeze
+      # Schema.org types that are the page's article rather than a related item.
+      ARTICLE_TYPES = Set['Article', 'NewsArticle', 'BlogPosting'].freeze
       # Meta tag keys per field, in precedence order.
       META_KEYS = {
         published_at: %w[article:published_time],
@@ -120,20 +124,33 @@ module Html2rss
         FIELDS.keys.to_h { |field| [field, jsonld_value(things, field) || meta_value(document, field, response.url)] }
       end
 
+      # The page's own article Things, best first: the Thing whose url matches the page, then article-typed
+      # ones, then document order. Each Thing is built without the weaker sources {WEAK_KEYS} (Thing#author
+      # would fall back to publisher; Thing#published_at to modified/upload dates).
       def jsonld_things(document, url)
-        document.css('script[type="application/ld+json"]').flat_map do |script|
-          schema = AutoSource::Scraper::Schema
-          schema.from_script(script).select { schema.scraper_for_schema_object(_1) == schema::Thing }
-                .map { schema::Thing.new(_1, url:) }
-        rescue JSON::ParserError
-          []
-        end
+        things = document.css('script[type="application/ld+json"]').flat_map { thing_objects(_1) }
+                         .map { AutoSource::Scraper::Schema::Thing.new(_1.except(*WEAK_KEYS), url:) }
+        things.each_with_index.sort_by { |thing, index| [thing_rank(thing, url), index] }.map(&:first)
       end
+
+      def thing_objects(script)
+        schema = AutoSource::Scraper::Schema
+        schema.from_script(script).select { schema.scraper_for_schema_object(_1) == schema::Thing }
+      rescue JSON::ParserError
+        []
+      end
+
+      def thing_rank(thing, page_url)
+        return 0 if thing.url && comparable(thing.url) == comparable(page_url)
+
+        types = AutoSource::Scraper::Schema.normalize_types(thing.schema_object[:@type])
+        types.intersect?(ARTICLE_TYPES) ? 1 : 2
+      end
+
+      def comparable(url) = url.to_s.chomp('/')
 
       def jsonld_value(things, field)
         things.each do |thing|
-          next if field == :author && !thing.schema_object[:author]
-
           value = thing_value(thing, field).to_s.strip
           return value unless value.empty?
         end

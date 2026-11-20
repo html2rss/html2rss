@@ -126,6 +126,15 @@ RSpec.describe Html2rss::Status do
   end
 
   describe 'Marshal' do
+    it 'loads a 10-element payload from before enrichment with zero counters', :aggregate_failures do
+      payload = ['1.0.0', {}, 0, nil, 0, [], {}, 'https://a.test', nil, nil]
+      bytes = "\x04\bU#{Marshal.dump(described_class.name.to_sym)[2..]}#{Marshal.dump(payload)[2..]}"
+      legacy = Marshal.load(bytes) # rubocop:disable Security/MarshalLoad -- crafted legacy payload
+
+      expect([legacy.enriched, legacy.enrich_failed, legacy.enrich_skipped_cross_origin]).to eq([0, 0, 0])
+      expect(legacy.entry_url).to eq('https://a.test')
+    end
+
     it 'round-trips every member', :aggregate_failures do
       restored = Marshal.load(Marshal.dump(status))
 

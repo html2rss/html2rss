@@ -153,7 +153,8 @@ module Html2rss
         enriched, enrich_failed, enrich_skipped_cross_origin = payload
       initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy:, attempt_count:,
                  strategy_attempts:, admission_drops:, entry_url:, scrape_url:,
-                 entry_resolution:, enriched:, enrich_failed:, enrich_skipped_cross_origin:)
+                 entry_resolution:, enriched: enriched || 0, enrich_failed: enrich_failed || 0,
+                 enrich_skipped_cross_origin: enrich_skipped_cross_origin || 0)
     end
 
     def freeze_tallies(tallies)

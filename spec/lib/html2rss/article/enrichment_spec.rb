@@ -39,6 +39,49 @@ RSpec.describe Html2rss::Article::Enrichment do
       expect(result.tally).to eq(enriched: 1)
     end
 
+    def ld_page(*objects)
+      scripts = objects.map { %(<script type="application/ld+json">#{JSON.generate(_1)}</script>) }
+      "<!doctype html><html><head>#{scripts.join}</head><body></body></html>"
+    end
+
+    it 'takes author only from the Thing author and the date only from datePublished', :aggregate_failures do
+      weak = { '@type' => 'NewsArticle', headline: 'H', publisher: { '@type' => 'Organization', name: 'Pub' },
+               dateModified: '2024-09-09', uploadDate: '2024-08-08', dateCreated: '2024-07-07' }
+      stub_page('s', ld_page(weak))
+      filled = described_class.call([article('s')], request_session: session).articles.first
+
+      expect(filled.author).to be_nil
+      expect(filled.published_at).to be_nil
+    end
+
+    it 'prefers the Thing matching the page url over a related article listed first', :aggregate_failures do
+      related = { '@type' => 'NewsArticle', url: 'https://example.com/other', author: { name: 'Related' },
+                  datePublished: '2020-01-01' }
+      own = { '@type' => 'NewsArticle', url: 'https://example.com/p', author: { name: 'Own' },
+              datePublished: '2024-01-01' }
+      stub_page('p', ld_page(related, own))
+      filled = described_class.call([article('p')], request_session: session).articles.first
+
+      expect(filled.author).to eq('Own')
+      expect(filled.published_at.year).to eq(2024)
+    end
+
+    it 'prefers an article-typed Thing over another type when no url matches', :aggregate_failures do
+      other = { '@type' => 'TechArticle', name: 'R', author: { name: 'Cook' } }
+      news = { '@type' => 'BlogPosting', headline: 'B', author: { name: 'Blogger' } }
+      stub_page('q', ld_page(other, news))
+
+      expect(described_class.call([article('q')], request_session: session).articles.first.author).to eq('Blogger')
+    end
+
+    it 'keeps document order when nothing matches or is article-typed' do
+      first = { '@type' => 'TechArticle', name: 'A', author: { name: 'First' } }
+      second = { '@type' => 'TechArticle', name: 'B', author: { name: 'Second' } }
+      stub_page('r', ld_page(first, second))
+
+      expect(described_class.call([article('r')], request_session: session).articles.first.author).to eq('First')
+    end
+
     it 'falls back to meta tags and resolves a relative image', :aggregate_failures do
       stub_page('m', meta_html)
       filled = described_class.call([article('m')], request_session: session).articles.first

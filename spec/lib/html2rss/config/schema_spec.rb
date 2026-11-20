@@ -7,6 +7,15 @@ RSpec.describe Html2rss::Config::Schema do
   describe '.json_schema' do
     subject(:json_schema) { described_class.json_schema }
 
+    it 'caps enrich.max_fetches at Article::Enrichment::MAX_FETCHES', :aggregate_failures do
+      max_fetches = described_class.json_schema.dig('properties', 'enrich', 'properties', 'max_fetches')
+
+      expect(max_fetches.fetch('maximum')).to eq(Html2rss::Article::Enrichment::MAX_FETCHES)
+      expect(JSON.parse(File.read(described_class.path)).dig('properties', 'enrich', 'properties', 'max_fetches',
+                                                             'maximum'))
+        .to eq(Html2rss::Article::Enrichment::MAX_FETCHES)
+    end
+
     it 'includes channel as a required top-level property' do
       expect(json_schema.fetch('required')).to include('channel')
     end
