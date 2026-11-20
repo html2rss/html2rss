@@ -310,8 +310,8 @@ module Html2rss
         return false if segments.size < 2 || leading_high_confidence_junk?
 
         last = segments.last
-        chrome = SEGMENT_SETS[:utility] | SEGMENT_SETS[:vanity]
-        last.match?(DOCUMENT_SLUG_SEGMENT) && last.split(/[-_.]/).none? { chrome.include?(_1.downcase) }
+        utility = SEGMENT_SETS.fetch(:utility) # vanity words are a subset of utility
+        last.match?(DOCUMENT_SLUG_SEGMENT) && last.split(/[-_.]/).none? { utility.include?(_1.downcase) }
       end
 
       def slug_last_segment?
