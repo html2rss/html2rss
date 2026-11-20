@@ -20,7 +20,13 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
       'https://e.com/2026/11/21/slug' => '2026-11-21',
       'https://e.com/2026/11/20/x-2026-11-20' => '2026-11-20',
       'https://e.com/1995/01/02/slug' => '1995-01-02',
-      'https://e.com/2026/11/20/2026-11-20-slug' => '2026-11-20'
+      'https://e.com/2026/11/20/2026-11-20-slug' => '2026-11-20',
+      'https://e.com/2026/11/20/日本語-スラッグ' => '2026-11-20',
+      'https://e.com/2026/11/20/%E6%97%A5%E6%9C%AC%E8%AA%9E-%E3%82%B9%E3%83%A9%E3%83%83%E3%82%B0' => '2026-11-20',
+      'https://e.com/2026/11/20/%D9%85%D9%82%D8%A7%D9%84%D8%A9-%D8%AC%D8%AF%D9%8A%D8%AF%D8%A9' => '2026-11-20',
+      'https://e.com/2026-11-20-%D9%85%D9%82%D8%A7%D9%84%D8%A9' => '2026-11-20',
+      'https://日本語.example/2026/11/20/slug' => '2026-11-20',
+      'https://xn--wgv71a119e.example/2026/11/20/slug' => '2026-11-20'
     }.each do |url, iso|
       it "reads #{iso} from #{url}" do
         expect(described_class.call(url, time_zone: 'UTC').to_date.iso8601).to eq(iso)
@@ -50,7 +56,10 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
       'https://e.com/docs/2024.1.2-release-notes',
       'https://e.com/2026/11-20-slug',
       'https://e.com/2026-1-5-slug',
-      'https://e.com/2026-11-20'
+      'https://e.com/2026-11-20',
+      'https://e.com/2026%2F11%2F20/slug',
+      'https://e.com/2026/11%2F20/slug',
+      'https://e.com/2026/11/20%2Fslug'
     ].each do |url|
       it "yields nothing for #{url}" do
         expect(described_class.call(url, time_zone: 'UTC')).to be_nil
@@ -60,7 +69,8 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
     it 'yields nothing for an invalid or opaque uri', :aggregate_failures do
       expect(described_class.call('https://e.com/a?next=/2026/11/20/slug', time_zone: 'UTC')).to be_nil
       expect(described_class.call('https://2026-11-20-x.example.com/a', time_zone: 'UTC')).to be_nil
-      expect(described_class.call('http://[bad/2026/11/20/a', time_zone: 'UTC')).to be_nil
+      expect(described_class.call('/2026/11/20/relative', time_zone: 'UTC')).to be_nil
+      expect(described_class.call('', time_zone: 'UTC')).to be_nil
       expect(described_class.call('mailto:a@b.c', time_zone: 'UTC')).to be_nil
     end
 

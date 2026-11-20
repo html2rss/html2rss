@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'date'
-require 'uri'
 
 module Html2rss
   module Html
@@ -22,10 +21,11 @@ module Html2rss
       module UrlDate
         # Earliest year accepted as a publication year.
         MIN_YEAR = 1995
-        # +/YYYY/M/D/slug+: the day is a whole segment, a slug segment follows.
-        SLASHED = %r{(?<![^/])((?:19|20)\d{2})/(\d{1,2})/(\d{1,2})(?=/[^/])}
-        # +YYYY-MM-DD+ or +YYYY_MM_DD+ (same separator), then +-+, +_+ or +/+ and a slug.
-        JOINED = %r{(?<![^/])((?:19|20)\d{2})([-_])(\d{2})\2(\d{2})(?=[-_/][^/])}
+        YEAR = /\A(?:19|20)\d{2}\z/
+        DAY = /\A\d{1,2}\z/
+        # One segment +YYYY-MM-DD+ or +YYYY_MM_DD+ (same separator), then +-+/+_+ and a slug, or its end
+        # (a later segment must then be the slug).
+        JOINED = /\A((?:19|20)\d{2})([-_])(\d{2})\2(\d{2})(?:[-_].|(\z))/m
 
         class << self
           ##
@@ -33,22 +33,32 @@ module Html2rss
           # @param time_zone [String] channel time zone
           # @return [DateTime, nil] local midnight of the one unambiguous path date
           def call(url, time_zone:)
-            dates = path_dates(url, time_zone:)
+            dates = path_dates(Url.from_absolute(url).decoded_path_segments, time_zone:)
             return unless dates.one?
 
             Date.at_midnight(dates.first, time_zone:)
+          rescue Url::InvalidUrlError
+            nil
           end
 
           private
 
-          def path_dates(url, time_zone:)
-            path = URI.parse(url.to_s).path.to_s
+          def path_dates(segments, time_zone:)
             latest = Date.local_today(time_zone:) + 1
-            joined = path.scan(JOINED).map { |year, _separator, month, day| [year, month, day] }
-            candidates = path.scan(SLASHED) + joined
-            candidates.map { |parts| plausible(parts.map(&:to_i), latest) }.uniq
-          rescue URI::InvalidURIError
-            []
+            candidates = segments.each_index.filter_map { candidate(segments.drop(_1)) }
+            candidates.map { plausible(_1.map(&:to_i), latest) }.uniq
+          end
+
+          # +/YYYY/M/D/slug+ is four consecutive segments; the joined shape is one segment, so a decoded
+          # +%2F+ inside a segment never makes a boundary.
+          def candidate(segments)
+            case segments
+            in [YEAR => year, DAY => month, DAY => day, _, *] then [year, month, day]
+            in [segment, *rest] if (match = JOINED.match(segment)) && (!match[5] || rest.any?)
+              match.values_at(1, 3, 4)
+            else
+              nil
+            end
           end
 
           # A path with any implausible or second distinct date is ambiguous, so nil stays in the list.
