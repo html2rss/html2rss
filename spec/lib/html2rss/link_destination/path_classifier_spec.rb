@@ -115,6 +115,8 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       expect(trusted.call(1, 'x2026')).to be(false)
       expect(trusted.call(1, '2026 ')).to be(false)
       expect(trusted.call(1, '2026')).to be(true)
+      expect(trusted.call(1, '58201224')).to be(true) # routing shape, not a calendar year
+      expect(trusted.call(1, '9999-recap')).to be(true)
       expect(trusted.call(1, 'press')).to be(true)
       expect(trusted.call(1, 'Press')).to be(true)
       expect(trusted.call(1, 'misc', 'blog')).to be(false)
