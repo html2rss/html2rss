@@ -9,14 +9,14 @@ RSpec.describe Html2rss::Html::ArticleRules::Date do
     end
   end
 
-  describe '.today' do
+  describe '.local_today' do
     it 'is the current calendar day in the zone, UTC when blank or invalid', :aggregate_failures do
       allow(Time).to receive(:now).and_return(Time.utc(2026, 11, 20, 23, 30))
 
-      expect(described_class.today(time_zone: 'Asia/Tokyo')).to eq(Date.new(2026, 11, 21))
-      expect(described_class.today(time_zone: '')).to eq(Date.new(2026, 11, 20))
-      expect(described_class.today(time_zone: nil)).to eq(Date.new(2026, 11, 20))
-      expect(described_class.today(time_zone: 'Not/AZone')).to eq(Date.new(2026, 11, 20))
+      expect(described_class.local_today(time_zone: 'Asia/Tokyo')).to eq(Date.new(2026, 11, 21))
+      expect(described_class.local_today(time_zone: '')).to eq(Date.new(2026, 11, 20))
+      expect(described_class.local_today(time_zone: nil)).to eq(Date.new(2026, 11, 20))
+      expect(described_class.local_today(time_zone: 'Not/AZone')).to eq(Date.new(2026, 11, 20))
     end
   end
 

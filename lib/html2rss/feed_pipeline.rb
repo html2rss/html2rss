@@ -94,12 +94,10 @@ module Html2rss
     # merge and dedup, so no earlier stage (card walk, merge, scoring) ever sees a URL date.
     def with_url_dates(articles, time_zone)
       articles.map do |article|
-        if article.published_at
-          article
-        else
-          article.with_published_at(Html::ArticleRules::UrlDate.call(article.url,
-                                                                     time_zone:))
-        end
+        next article if article.published_at
+
+        date = Html::ArticleRules::UrlDate.call(article.url, time_zone:)
+        date ? article.with_published_at(date) : article
       end
     end
 

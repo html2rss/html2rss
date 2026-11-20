@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
   describe '.call' do
-    before { allow(Html2rss::Html::ArticleRules::Date).to receive(:today).and_return(Date.new(2026, 11, 20)) }
+    before { allow(Html2rss::Html::ArticleRules::Date).to receive(:local_today).and_return(Date.new(2026, 11, 20)) }
 
     fixture = File.join(__dir__, '../../../../fixtures/link_destination/newspaper4k_pubdate_urls.txt')
     File.readlines(fixture, chomp: true).grep_v(/\A#/).reject(&:empty?).map { _1.split(' ', 2) }.each do |label, url|
@@ -15,7 +15,8 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
       'https://e.com/2026/11/20/slug' => '2026-11-20',
       'https://e.com/2026-11-20-slug' => '2026-11-20',
       'https://e.com/news/2026_11_05/slug' => '2026-11-05',
-      'https://e.com/2026.1.5/slug' => '2026-01-05',
+      'https://e.com/2026/1/5/slug' => '2026-01-05',
+      'https://e.com/2026-11-20/slug' => '2026-11-20',
       'https://e.com/2026/11/21/slug' => '2026-11-21',
       'https://e.com/2026/11/20/x-2026-11-20' => '2026-11-20',
       'https://e.com/1995/01/02/slug' => '1995-01-02',
@@ -43,7 +44,13 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
       'https://e.com/shop/sku-2023-10-15-blue',
       'https://e.com/shop/a2023-10-15-blue',
       'https://e.com/2026-11-20.html',
-      'https://e.com/2026-11-20-'
+      'https://e.com/2026-11-20-',
+      'https://e.com/2024/05/10-best-laptops',
+      'https://e.com/2024/05/5-ways-to-save',
+      'https://e.com/docs/2024.1.2-release-notes',
+      'https://e.com/2026/11-20-slug',
+      'https://e.com/2026-1-5-slug',
+      'https://e.com/2026-11-20'
     ].each do |url|
       it "yields nothing for #{url}" do
         expect(described_class.call(url, time_zone: 'UTC')).to be_nil
@@ -59,7 +66,8 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
 
     it 'judges the future bound against today in the configured time zone', :aggregate_failures do
       rules_date = Html2rss::Html::ArticleRules::Date
-      allow(rules_date).to receive(:today).with(time_zone: 'Pacific/Kiritimati').and_return(Date.new(2026, 11, 21))
+      allow(rules_date).to receive(:local_today).with(time_zone: 'Pacific/Kiritimati').and_return(Date.new(2026, 11,
+                                                                                                           21))
 
       expect(described_class.call('https://e.com/2026/11/22/a', time_zone: 'Pacific/Kiritimati')).not_to be_nil
       expect(described_class.call('https://e.com/2026/11/23/a', time_zone: 'Pacific/Kiritimati')).to be_nil
