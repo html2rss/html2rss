@@ -8,7 +8,8 @@ RSpec.describe Html2rss::Status do
     described_class.new(
       **base, scraper_tallies: { 'Selectors' => 1 }, dedup_dropped: 2, selected_strategy: :default, attempt_count: 1,
               strategy_attempts: [{ strategy: :default }], admission_drops: { 'credit' => 1 },
-              entry_url: 'https://a.test', scrape_url: 'https://b.test', entry_resolution: { applied: true }
+              entry_url: 'https://a.test', scrape_url: 'https://b.test', entry_resolution: { applied: true },
+              enriched: 1, enrich_failed: 1, enrich_skipped_cross_origin: 1
     )
   end
 

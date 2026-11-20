@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::FeedPipeline, 'article enrichment' do
+RSpec.describe Html2rss::FeedPipeline, '#extract' do
   let(:listing) do
     <<~HTML
       <html><body>
@@ -44,7 +44,7 @@ RSpec.describe Html2rss::FeedPipeline, 'article enrichment' do
 
   it 'keeps a failed item and falls back to its URL date when the page has none', :aggregate_failures do
     stub_html('https://example.com/2023/01/02/dated-story', '<html></html>')
-    outcome, result = described_class.new(config).to_outcome_and_result
+    outcome, = described_class.new(config).to_outcome_and_result
 
     expect(outcome.articles.map { _1.url.path }).to include('/offsite', '/2023/01/02/dated-story')
     expect(outcome.articles.find { _1.url.path.include?('dated') }.published_at.iso8601).to start_with('2023-01-02')
@@ -54,7 +54,7 @@ RSpec.describe Html2rss::FeedPipeline, 'article enrichment' do
     let(:enrich) { nil }
 
     it 'makes no article fetches and adds no counters', :aggregate_failures do
-      outcome, result = described_class.new(config).to_outcome_and_result
+      _, result = described_class.new(config).to_outcome_and_result
 
       expect(WebMock).not_to have_requested(:get, %r{example\.com/(2023|offsite)})
       expect(result.status.to_h).not_to include(:enriched, :enrich_failed)

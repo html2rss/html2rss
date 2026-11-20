@@ -342,6 +342,7 @@ RSpec.describe Html2rss::RequestSession do
       described_class.new(context:, strategy: :default, logger:)
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- stubbed HTTP and budget exhaustion
     it 'keeps url, strategy and policy but not the original budget', :aggregate_failures do
       stub_request(:get, %r{example\.com/}).to_return(body: '<html></html>', headers: { 'Content-Type' => 'text/html' })
       session.fetch_initial_response

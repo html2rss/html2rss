@@ -77,6 +77,7 @@ RSpec.describe Html2rss::Status do
       expect { status.scraper_tallies['Selectors'] = 2 }.to raise_error(FrozenError)
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- one status per counter state
     it 'reports enrichment counters only when set, and keeps them through Marshal', :aggregate_failures do
       plain = described_class.build(articles: [])
       status = described_class.build(

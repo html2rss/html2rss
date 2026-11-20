@@ -6,22 +6,37 @@ module Html2rss
   #
   # {include:file:lib/html2rss/feed_pipeline/README.md}
   class FeedPipeline # rubocop:disable Metrics/ClassLength -- outcome + collect seams stay co-located
+    PipelineOutcome = Data.define(
+      :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
+      :admission_drops, :scrape_target, :entry_resolution, :feed_channel, :enrichment
+    )
+
+    Extraction = Data.define(:articles, :dedup_dropped, :admission_drops, :feed_channel, :enrichment)
+
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
     # selected_strategy: set on :auto success; nil otherwise.
     # attempt_count: auto attempts attempted; 0 outside :auto.
     # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
     # feed_channel: channel facts of the native feed followed ({Syndication::ChannelFacts}); nil without one.
-    PipelineOutcome = Data.define(
-      :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
-      :admission_drops, :scrape_target, :entry_resolution, :feed_channel, :enrichment
-    )
+    # enrichment: {Article::Enrichment} tally (empty when enrichment is off).
+    class PipelineOutcome
+      # @param enrichment [Hash{Symbol => Integer}] defaults to an empty tally (enrichment off)
+      # @param fields [Hash{Symbol => Object}] the remaining members
+      # @option fields [Object] :articles the other members, as named above
+      def initialize(enrichment: {}, **fields) = super
+    end
 
     # What one response yields after extraction and dedup ({#extract}); its fields are the
     # {PipelineOutcome} fields of the same names.
     # articles: unique articles. dedup_dropped: articles removed by deduplication.
     # admission_drops: Cleanup drop tallies. feed_channel: the followed native feed's channel facts
     # ({Syndication::ChannelFacts}); nil without one. enrichment: {Article::Enrichment} tally (empty when off).
-    Extraction = Data.define(:articles, :dedup_dropped, :admission_drops, :feed_channel, :enrichment)
+    class Extraction
+      # @param enrichment [Hash{Symbol => Integer}] defaults to an empty tally (enrichment off)
+      # @param fields [Hash{Symbol => Object}] the remaining members
+      # @option fields [Object] :articles the other members, as named above
+      def initialize(enrichment: {}, **fields) = super
+    end
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config

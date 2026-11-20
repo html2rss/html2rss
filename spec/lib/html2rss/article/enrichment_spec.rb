@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 
+# rubocop:disable-next RSpec/ExampleLength -- stubbed HTTP setup
 RSpec.describe Html2rss::Article::Enrichment do
   let(:full_html) { File.read('spec/fixtures/enrichment/article_full.html') }
   let(:meta_html) { File.read('spec/fixtures/enrichment/article_meta.html') }
@@ -47,7 +48,7 @@ RSpec.describe Html2rss::Article::Enrichment do
       expect(filled.published_at.iso8601).to eq('2024-03-02T10:00:00+00:00')
     end
 
-    it 'does not fetch an article that already has every field' do
+    it 'does not fetch an article that already has every field', :aggregate_failures do
       complete = article('c', author: 'A', image: 'https://example.com/i.jpg', published_at: '2020-01-01')
       result = described_class.call([complete], request_session: session)
 

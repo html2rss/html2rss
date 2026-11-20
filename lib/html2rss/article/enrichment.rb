@@ -14,16 +14,16 @@ module Html2rss
     # budget, so one build makes at most {MAX_TOTAL_REQUESTS} requests: the listing budget
     # ({RequestService::Policy::MAX_REQUESTS_CEILING}) plus {MAX_FETCHES}. A blocked or failed fetch leaves the
     # item unchanged and is counted; enrichment never fails the build.
-    class Enrichment
+    class Enrichment # rubocop:disable Metrics/ClassLength -- fetch, parse and fill share one owner
       # Hard maximum and default number of article fetches per feed build.
       MAX_FETCHES = 10
       # Upper bound on requests one build can make: listing budget plus the enrichment allowance.
       MAX_TOTAL_REQUESTS = RequestService::Policy::MAX_REQUESTS_CEILING + MAX_FETCHES
       # Per field an article page can supply: how to read it from an article and how to set it.
       FIELDS = {
-        published_at: [->(article) { article.published_at }, ->(article, value) { article.with_published_at(value) }],
-        author: [->(article) { article.author }, ->(article, value) { article.with_author(value) }],
-        image: [->(article) { article.image }, ->(article, value) { article.with_image(value) }]
+        published_at: [lambda(&:published_at), ->(article, value) { article.with_published_at(value) }],
+        author: [lambda(&:author), ->(article, value) { article.with_author(value) }],
+        image: [lambda(&:image), ->(article, value) { article.with_image(value) }]
       }.freeze
       # Meta tag keys per field, in precedence order.
       META_KEYS = {
