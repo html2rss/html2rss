@@ -115,4 +115,33 @@ RSpec.describe Html2rss::LinkDestination::DestinationFacts do
       expect(facts.segments.first).to eq('dödsannonser'.unicode_normalize(:nfc))
     end
   end
+
+  describe 'newspaper4k hand-labeled URL table' do
+    # Verdict as the consumers apply it: Corroboration admits on content/strong evidence, Cleanup rejects on
+    # junk or utility destination. `utility_path` alone does not reject a content-bearing path
+    # (clatl `cribnotes/archives/2013/...` is an article).
+    def article_verdict?(facts)
+      (facts.content_path || facts.strong_post_suffix) &&
+        !facts.high_confidence_junk_path && !facts.high_confidence_utility_destination
+    end
+
+    fixture = File.join(__dir__, '../../../fixtures/link_destination/newspaper4k_urls.txt')
+    rows = File.readlines(fixture, chomp: true).grep_v(/\A#/).map { _1.split(' ', 2) }
+
+    # Expected difference: the quoted `javascript:window.open(...)` row is not a parseable URL, so link
+    # resolution never builds facts for it. The bare `javascript:` row parses and is a non-article.
+    unbuildable, buildable = rows.partition { |_label, address| address.start_with?("'") }
+
+    buildable.each do |label, address|
+      it "labels #{address[0, 90]} as article=#{label == '1'}" do
+        expect(article_verdict?(described_class.build(Html2rss::Url.from_absolute(address)))).to eq(label == '1')
+      end
+    end
+
+    unbuildable.map(&:last).each do |address|
+      it "refuses the unparseable link #{address[0, 40]} before facts are built" do
+        expect { Html2rss::Url.from_absolute(address) }.to raise_error(Html2rss::Url::InvalidUrlError)
+      end
+    end
+  end
 end

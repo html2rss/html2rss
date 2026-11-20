@@ -113,7 +113,17 @@ module Html2rss
       # Final label must be alphabetic (TLD-like); exclude common file extensions.
       HOST_SHAPED_SEGMENT = /\A(?:www\.)?(?:[\w-]+\.)+[a-z]{2,24}\z/i
       # Common file-extension suffixes excluded from host-shaped junk matching.
-      FILE_EXTENSION_SEGMENT = /\.(?:pdf|jpe?g|png|gif|svg|webp|css|js|mjs|html?|xml|json|mp4|webm|zip|gz)\z/i
+      # Video files: a path ending in one is a media asset, never an article. Audio stays out (podcast items
+      # link their enclosure) and so do images (`/assets/image.jpg` is pinned as not junk).
+      MEDIA_FILE_EXTENSIONS = %w[mp4 webm flv mov m4v].freeze
+      # All file-extension suffixes, media included (single owner of the list).
+      FILE_EXTENSIONS = (%w[pdf jpe?g png gif svg webp css js mjs html? xml json zip gz] + MEDIA_FILE_EXTENSIONS).freeze
+      # Segment ending in a known file extension.
+      FILE_EXTENSION_SEGMENT = /\.(?:#{FILE_EXTENSIONS.join('|')})\z/i
+      # Segment ending in a video file extension.
+      MEDIA_FILE_SEGMENT = /\.(?:#{MEDIA_FILE_EXTENSIONS.join('|')})\z/i
+      # Document-style permalink: four or more words plus a page extension (`/author/the-long-title_b_123.html`).
+      DOCUMENT_SLUG_SEGMENT = /\A[\p{L}\d]+(?:[-_][\p{L}\d]+){3,}\.(?:html?|shtml|aspx?|php)\z/i
 
       # A single person-name slug: letters only (dated and id slugs carry digits), up to three words.
       NAME_SLUG = /\A\p{L}+(?:-\p{L}+){0,2}\z/
@@ -166,8 +176,8 @@ module Html2rss
       # @return [Boolean] true when the final path segment looks like a post slug
       def strong_post_suffix?
         @strong_post_suffix ||= segments.any? &&
-                                slug_last_segment? &&
-                                trusted_post_context?(segments.size - 1)
+                                ((slug_last_segment? && trusted_post_context?(segments.size - 1)) ||
+                                 document_slug_route?)
       end
 
       # @return [Boolean] true when every path segment is utility chrome
@@ -190,7 +200,8 @@ module Html2rss
       def non_article_path?
         return @non_article_path if defined?(@non_article_path)
 
-        @non_article_path = section_index? || profile_route? || (!strong_post_suffix? && non_article_word_present?)
+        @non_article_path = section_index? || profile_route? || media_file_route? ||
+                            (!strong_post_suffix? && non_article_word_present?)
       end
 
       # @return [Boolean] true when the route is shallow and contains high-confidence noise
@@ -218,6 +229,10 @@ module Html2rss
       def non_article_word?(word)
         joined = word.delete('-_')
         SEGMENT_SETS[:non_article].include?(joined) || joined.match?(PLAYER_SEGMENT)
+      end
+
+      def media_file_route?
+        segments.any? && segments.last.match?(MEDIA_FILE_SEGMENT)
       end
 
       # A people word that ends the path (an index) or is followed by one name slug (a profile page).
@@ -288,6 +303,15 @@ module Html2rss
         segments.zip(@lexicon).first(limit.clamp(0..)).any? do |segment, folded|
           content.include?(folded) || segment.match?(YEARISH_SEGMENT) || context.include?(folded)
         end
+      end
+
+      # A document slug needs no content/year context, unless one of its words is utility chrome.
+      def document_slug_route?
+        return false if segments.size < 2 || leading_high_confidence_junk?
+
+        last = segments.last
+        chrome = SEGMENT_SETS[:utility] | SEGMENT_SETS[:vanity]
+        last.match?(DOCUMENT_SLUG_SEGMENT) && last.split(/[-_.]/).none? { chrome.include?(_1.downcase) }
       end
 
       def slug_last_segment?
