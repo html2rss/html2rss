@@ -39,10 +39,10 @@ module Html2rss
         ##
         # @param articles [Array<Html2rss::Article>] deduplicated articles
         # @param request_session [Html2rss::RequestSession] the listing session (strategy and policy are reused)
-        # @param max_fetches [Integer] article fetch cap, clamped to {MAX_FETCHES}
+        # @param max_fetches [Integer] article fetch cap, capped at {MAX_FETCHES}
         # @return [Result] the articles (unchanged ones kept in place) and the enrichment tally
         def call(articles, request_session:, max_fetches: MAX_FETCHES)
-          cap = max_fetches.clamp(1, MAX_FETCHES)
+          cap = [max_fetches, MAX_FETCHES].min
           new(request_session.with_budget_allowance(cap), cap).call(articles)
         end
       end
@@ -52,7 +52,7 @@ module Html2rss
       def initialize(session, cap)
         @session = session
         @cap = cap
-        @tally = Hash.new(0)
+        @tally = {}
       end
 
       # @param articles [Array<Html2rss::Article>]
@@ -65,7 +65,7 @@ module Html2rss
           budget -= 1
           enrich(article)
         end
-        Result.new(articles: enriched, tally: @tally.slice(:enriched, :enrich_failed, :enrich_skipped_cross_origin))
+        Result.new(articles: enriched, tally: @tally)
       end
 
       private
@@ -80,7 +80,7 @@ module Html2rss
 
         fill(article, page_metadata(response))
       rescue RequestService::CrossOriginFollowUpDenied
-        @tally[:enrich_skipped_cross_origin] += 1
+        count(:enrich_skipped_cross_origin)
         failed(article)
       rescue Html2rss::ContractError
         raise
@@ -93,12 +93,16 @@ module Html2rss
         filled = FIELDS.reduce(article) do |current, (field, (read, write))|
           read.call(current).nil? && found[field] ? write.call(current, found.fetch(field)) : current
         end
-        @tally[:enriched] += 1 unless filled.equal?(article)
+        count(:enriched) unless filled.equal?(article)
         filled
       end
 
+      def count(key)
+        @tally[key] = @tally.fetch(key, 0) + 1
+      end
+
       def failed(article)
-        @tally[:enrich_failed] += 1
+        count(:enrich_failed)
         article
       end
 
