@@ -130,7 +130,7 @@ module Html2rss
       def jsonld_things(document, url)
         things = document.css('script[type="application/ld+json"]').flat_map { thing_objects(_1) }
                          .map { AutoSource::Scraper::Schema::Thing.new(_1.except(*WEAK_KEYS), url:) }
-        things.each_with_index.sort_by { |thing, index| [thing_rank(thing, url), index] }.map(&:first)
+        things.group_by { thing_rank(_1, url) }.sort.flat_map(&:last)
       end
 
       def thing_objects(script)
@@ -141,7 +141,7 @@ module Html2rss
       end
 
       def thing_rank(thing, page_url)
-        return 0 if thing.url && comparable(thing.url) == comparable(page_url)
+        return 0 if comparable(thing.url) == comparable(page_url)
 
         types = AutoSource::Scraper::Schema.normalize_types(thing.schema_object[:@type])
         types.intersect?(ARTICLE_TYPES) ? 1 : 2
