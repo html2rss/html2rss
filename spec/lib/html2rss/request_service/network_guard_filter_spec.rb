@@ -7,6 +7,8 @@ RSpec.describe Html2rss::RequestService::NetworkGuardFilter do
   let(:url) { Html2rss::Url.from_absolute('https://nat64.test/feed') }
 
   describe '.extra_options' do
+    let(:inactive_event) { /"event_name":"network_guard\.nat64_inactive","httpx_version":"2\.0\.0"/ }
+
     it 'releases only the NAT64 prefix from the ssrf filter' do
       expect(described_class.extra_options({})).to eq(safe_private_ranges: [Html2rss::RequestService::NetworkGuard::NAT64_PREFIX])
     end
@@ -23,8 +25,7 @@ RSpec.describe Html2rss::RequestService::NetworkGuardFilter do
         stub_const('HTTPX::VERSION', '2.0.0')
 
         2.times { expect(described_class.extra_options({})).to eq({}) }
-        expect(Html2rss::Log).to have_received(:warn).once
-                                                     .with(/"event_name":"network_guard\.nat64_inactive","httpx_version":"2\.0\.0"/)
+        expect(Html2rss::Log).to have_received(:warn).once.with(inactive_event)
       end
 
       it 'releases nothing when ssrf_filter no longer defines addresses=', :aggregate_failures do
