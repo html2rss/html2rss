@@ -241,6 +241,19 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#decoded_path_segments' do
+    it 'percent-decodes, scrubs and NFC-normalizes each segment', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/%E6%97%A5%E6%9C%AC/e%CC%81/a%2Fb/%FF')
+
+      expect(url.decoded_path_segments).to eq(['日本', "\u00e9", 'a/b', "\uFFFD"])
+      expect(url.decoded_path_segments.map(&:encoding).uniq).to eq([Encoding::UTF_8])
+    end
+
+    it 'returns an empty array for the root path' do
+      expect(described_class.from_absolute('https://example.com/').decoded_path_segments).to eq([])
+    end
+  end
+
   describe '#with_path' do
     it 'returns a new url with the provided path' do
       url = described_class.from_absolute('https://example.com/wp-json?lang=de')

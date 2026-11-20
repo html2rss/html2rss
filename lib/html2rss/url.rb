@@ -272,6 +272,14 @@ module Html2rss
     attr_reader :path_segments
 
     ##
+    # Path segments as plain text: percent-decoded, scrubbed and NFC-normalized (for matching words and digits).
+    #
+    # @return [Array<String>] decoded path segments
+    def decoded_path_segments
+      path_segments.map { Addressable::URI.unencode_component(_1).force_encoding(Encoding::UTF_8).scrub.unicode_normalize(:nfc) }
+    end
+
+    ##
     # Returns a copy of the URL with the provided path.
     #
     # @param path [String] normalized absolute path

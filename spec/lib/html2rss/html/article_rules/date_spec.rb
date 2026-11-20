@@ -1,6 +1,25 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Html::ArticleRules::Date do
+  describe '.at_midnight' do
+    it 'is local midnight of the day in the time zone' do
+      result = described_class.at_midnight(Date.new(2026, 11, 20), time_zone: 'Europe/Berlin')
+
+      expect(result.to_s).to eq('2026-11-20T00:00:00+01:00')
+    end
+  end
+
+  describe '.local_today' do
+    it 'is the current calendar day in the zone, UTC when blank or invalid', :aggregate_failures do
+      allow(Time).to receive(:now).and_return(Time.utc(2026, 11, 20, 23, 30))
+
+      expect(described_class.local_today(time_zone: 'Asia/Tokyo')).to eq(Date.new(2026, 11, 21))
+      expect(described_class.local_today(time_zone: '')).to eq(Date.new(2026, 11, 20))
+      expect(described_class.local_today(time_zone: nil)).to eq(Date.new(2026, 11, 20))
+      expect(described_class.local_today(time_zone: 'Not/AZone')).to eq(Date.new(2026, 11, 20))
+    end
+  end
+
   describe '.earliest' do
     it 'returns the earliest parseable datetime' do
       values = ['2026-03-28T12:00:00Z', 'not-a-date', '2026-01-01T00:00:00Z']
