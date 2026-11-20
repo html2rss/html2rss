@@ -8,15 +8,20 @@
 # FIXTURES holds html/<name>.html paired with metadata/<name>.json (url, title, authors,
 # publish_date, top_image, meta_description). newspaper4k's values are its own snapshot output
 # and contain bugs, so the report measures "agreement" with it, never accuracy. Per field it shows
-# found-by-html2rss %, the source that supplied the value (jsonld / meta) and agreement %
-# (dates by day, authors by case-insensitive name overlap, images by normalized URL, text by
-# whitespace-normalized equality), then lists every disagreement per page.
+# found-by-html2rss %, the source that supplied the value (jsonld / meta) and agreement %, then
+# lists every disagreement per page. JSON-LD values come from the Thing-type objects of the page
+# through Schema::Thing (first object that has the field; description is the longest of
+# description/articleBody/abstract); meta tags fill the gaps. Agreement rules: dates by day, only
+# when both sides parse (else n/a); authors by "any-overlap" of case-insensitive names (meta
+# article:author URLs are skipped); images by host + path (meta URLs made absolute against the
+# page url); title and description by whitespace-normalized, entity-decoded, case-folded equality.
 #
 # Usage: NEWSPAPER4K_FIXTURES=DIR mise exec -- bin/enrichment-eval
 
 ENV['LOG_LEVEL'] ||= 'error'
 
 require 'bundler/setup'
+require 'cgi'
 require 'date'
 require 'json'
 require_relative '../lib/html2rss'
@@ -37,7 +42,7 @@ def usage_error(message)
   exit 1
 end
 
-def text(value) = value.to_s.gsub(/[[:space:]]+/, ' ').strip.downcase
+def text(value) = CGI.unescapeHTML(value.to_s).gsub(/[[:space:]]+/, ' ').strip.downcase
 
 def day(value) = (Date.parse(value.to_s) rescue nil)&.iso8601 # rubocop:disable Style/RescueModifier
 
@@ -45,57 +50,61 @@ def names(value) = Array(value).flat_map { _1.to_s.split(/,|&|\band\b/i) }.map {
 
 def image_key(value)
   uri = URI.parse(value.to_s.strip)
-  "#{uri.host&.downcase}#{uri.path.to_s.chomp('/')}#{"?#{uri.query}" if uri.query}"
+  "#{uri.host&.downcase}#{uri.path.to_s.chomp('/')}"
 rescue URI::InvalidURIError
   text(value)
 end
 
 def agree?(field, ours, theirs)
   case field
-  when :published_at then day(ours) == day(theirs)
+  when :published_at then (ours_day = day(ours)) && (theirs_day = day(theirs)) ? ours_day == theirs_day : nil
   when :author then names(ours).intersect?(names(theirs))
   when :image then image_key(ours) == image_key(theirs)
   else text(ours) == text(theirs)
   end
 end
 
-def jsonld_thing(doc, url)
-  doc.css('script[type="application/ld+json"]').each do |script|
-    Schema.from_script(script).each do |object|
-      next unless Schema.scraper_for_schema_object(object) == Schema::Thing
-
-      return Schema::Thing.new(object, url:)
-    end
+def jsonld_things(doc, url)
+  doc.css('script[type="application/ld+json"]').flat_map do |script|
+    Schema.from_script(script).select { Schema.scraper_for_schema_object(_1) == Schema::Thing }
+          .map { Schema::Thing.new(_1, url:) }
   rescue JSON::ParserError
-    next
+    []
+  end
+end
+
+def jsonld_value(things, field)
+  things.each do |thing|
+    # Thing#author falls back to publisher; only the object's own author counts here.
+    next if field == :author && !thing.schema_object[:author]
+
+    value = thing.public_send(field).to_s.strip
+    return value unless value.empty?
   end
   nil
 end
 
-def jsonld_value(thing, field)
-  return unless thing
-
-  # Thing#author falls back to publisher; only the object's own author counts here.
-  return if field == :author && !thing.schema_object[:author]
-
-  value = thing.public_send(field).to_s.strip
-  value unless value.empty?
-end
-
-def meta_value(doc, field)
+def meta_value(doc, field, url)
   META.fetch(field).last.each do |key|
-    node = doc.at_css("meta[property='#{key}'], meta[name='#{key}']")
-    value = node && node['content'].to_s.strip
-    return value unless value.to_s.empty?
+    value = doc.at_css("meta[property='#{key}'], meta[name='#{key}']")&.[]('content').to_s.strip
+    next if value.empty? || (field == :author && value.include?('://'))
+
+    return field == :image ? absolute(value, url) : value
   end
   nil
+end
+
+def absolute(value, base)
+  Html2rss::Url.from_relative(value, base).to_s
+rescue StandardError
+  value
 end
 
 def extract(doc, url)
-  thing = jsonld_thing(doc, url)
+  things = jsonld_things(doc, url)
   FIELDS.to_h do |field|
-    if (value = jsonld_value(thing, field)) then [field, [value, :jsonld]]
-    elsif (value = meta_value(doc, field)) then [field, [value, :meta]]
+    if (value = jsonld_value(things, field)) then [field, [value, :jsonld]]
+    elsif (value = meta_value(doc, field, url)) then [field, [value, :meta]]
     else [field, [nil, :none]]
     end
   end
@@ -117,14 +126,14 @@ def blank?(value) = Array(value).all? { _1.to_s.strip.empty? }
 
 def percent(part, whole) = whole.zero? ? '-' : format('%.0f%%', 100.0 * part / whole)
 
+def verdict_for(agreed) = { true => :agree, false => :disagree, nil => :n_a }.fetch(agreed)
+
 # Compared cells for one page: [field, source, ours, theirs, verdict] (verdict :agree, :disagree, :n_a).
 def cells(page)
   FIELDS.map do |field|
     ours, source = page[:found].fetch(field)
     theirs = page[:expected][META.fetch(field).first]
-    verdict = if ours.nil? || blank?(theirs) then :n_a
-              else agree?(field, ours, theirs) ? :agree : :disagree
-              end
+    verdict = ours.nil? || blank?(theirs) ? :n_a : verdict_for(agree?(field, ours, theirs))
     [field, source, ours, theirs, verdict]
   end
 end
