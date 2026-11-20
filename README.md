@@ -184,6 +184,20 @@ docker compose -f docker-compose.botasaurus.yml up -d
 
 Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and use strategy `botasaurus` in MCP tools, Capture, or the CLI.
 
+## Article-page enrichment
+
+Listing pages often lack a date, author or image. With `enrich` set, the feed build fetches the item's own page and fills only those missing fields from its JSON-LD (the page's own `author` and `datePublished`) and meta tags (`og:image`, `article:published_time`, `article:author`). Values already found on the listing are never overwritten, and an article-page date wins over a date guessed from the URL. Titles, descriptions and body text are never touched.
+
+```yaml
+enrich:
+  article_metadata: true # default: off
+  max_fetches: 10 # default and hard maximum: 10
+```
+
+Cost: up to `max_fetches` extra requests per build, on top of the normal request budget, using the same request strategy. Links must stay on the feed's origin; others are skipped. A failed or blocked fetch leaves the item unchanged and never fails the build.
+
+`--explain` prints three counts when enrichment ran: `enriched` (items that gained a field), `enrich_failed` (failed or blocked fetches, including cross-origin skips) and `enrich_skipped_cross_origin` (the cross-origin subset).
+
 ## Request Strategies
 
 | Strategy     | Description                                                                 |

@@ -6,22 +6,37 @@ module Html2rss
   #
   # {include:file:lib/html2rss/feed_pipeline/README.md}
   class FeedPipeline # rubocop:disable Metrics/ClassLength -- outcome + collect seams stay co-located
+    PipelineOutcome = Data.define(
+      :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
+      :admission_drops, :scrape_target, :entry_resolution, :feed_channel, :enrichment
+    )
+
+    Extraction = Data.define(:articles, :dedup_dropped, :admission_drops, :feed_channel, :enrichment)
+
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
     # selected_strategy: set on :auto success; nil otherwise.
     # attempt_count: auto attempts attempted; 0 outside :auto.
     # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
     # feed_channel: channel facts of the native feed followed ({Syndication::ChannelFacts}); nil without one.
-    PipelineOutcome = Data.define(
-      :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
-      :admission_drops, :scrape_target, :entry_resolution, :feed_channel
-    )
+    # enrichment: {Article::Enrichment} tally (empty when enrichment is off).
+    class PipelineOutcome
+      # @param enrichment [Hash{Symbol => Integer}] defaults to an empty tally (enrichment off)
+      # @param fields [Hash{Symbol => Object}] the remaining members
+      # @option fields [Object] :articles the other members, as named above
+      def initialize(enrichment: {}, **fields) = super
+    end
 
     # What one response yields after extraction and dedup ({#extract}); its fields are the
     # {PipelineOutcome} fields of the same names.
     # articles: unique articles. dedup_dropped: articles removed by deduplication.
     # admission_drops: Cleanup drop tallies. feed_channel: the followed native feed's channel facts
-    # ({Syndication::ChannelFacts}); nil without one.
-    Extraction = Data.define(:articles, :dedup_dropped, :admission_drops, :feed_channel)
+    # ({Syndication::ChannelFacts}); nil without one. enrichment: {Article::Enrichment} tally (empty when off).
+    class Extraction
+      # @param enrichment [Hash{Symbol => Integer}] defaults to an empty tally (enrichment off)
+      # @param fields [Hash{Symbol => Object}] the remaining members
+      # @option fields [Object] :articles the other members, as named above
+      def initialize(enrichment: {}, **fields) = super
+    end
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
@@ -82,13 +97,37 @@ module Html2rss
     # @return [Extraction] unique articles with their dedup and admission drops and feed channel facts
     def extract(config:, response:, request_session:)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
-      unique = Article::Deduplicator.new(collected).call
-      Extraction.new(articles: unique, dedup_dropped: collected.size - unique.size, admission_drops:, feed_channel:)
+      deduped = Article::Deduplicator.new(collected).call
+      enriched, enrichment = enrich(deduped, config:, request_session:)
+      unique = with_url_dates(enriched, config.time_zone)
+      Extraction.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,
+                     enrichment:)
     end
 
     private
 
     attr_reader :raw_config
+
+    # Opt-in article-page metadata. Runs before {#with_url_dates} so a real article-page date wins over a URL date.
+    def enrich(articles, config:, request_session:)
+      return [articles, {}] unless (options = config.enrich)&.fetch(:article_metadata, false)
+
+      result = Article::Enrichment.call(
+        articles, request_session:, max_fetches: options.fetch(:max_fetches, Article::Enrichment::MAX_FETCHES)
+      )
+      [result.articles, result.tally]
+    end
+
+    # The single owner of the URL-path date fallback: it runs on the final articles, after cross-scraper
+    # merge and dedup, so no earlier stage (card walk, merge, scoring) ever sees a URL date.
+    def with_url_dates(articles, time_zone)
+      articles.map do |article|
+        next article if article.published_at
+
+        date = Html::ArticleRules::UrlDate.call(article.url, time_zone:)
+        date ? article.with_published_at(date) : article
+      end
+    end
 
     def pipeline_outcome_for(config)
       plan = StrategyPlan.resolve(config.strategy)
@@ -181,7 +220,7 @@ module Html2rss
       [articles, {}, feed.channel]
     end
 
-    def feed_result_for(config, outcome) # rubocop:disable Metrics/MethodLength
+    def feed_result_for(config, outcome) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       channel = Channel.from_response(outcome.response, overrides: config.channel, feed: outcome.feed_channel)
       status = Status.build(
         articles: outcome.articles,
@@ -191,7 +230,7 @@ module Html2rss
         strategy_attempts: outcome.strategy_attempts,
         admission_drops: outcome.admission_drops,
         scrape_target: outcome.scrape_target,
-        entry_resolution: outcome.entry_resolution
+        entry_resolution: outcome.entry_resolution, enrichment: outcome.enrichment
       )
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end

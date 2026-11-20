@@ -1,0 +1,9 @@
+---
+case: Cards carry no dates but their link paths do (URL-path date fallback).
+expected:
+- https://example.com/2026/10/20/harbor-ferry-route-returns
+- https://example.com/2026/10/21/library-extends-weekend-hours
+- https://example.com/2026/10/22/river-cleanup-volunteers-record
+- https://example.com/2026/10/23/school-board-approves-budget
+- https://example.com/2026/10/24/night-market-opens-downtown
+- https://example.com/2026/10/25/bike-lane-pilot-expands

@@ -49,6 +49,15 @@ module Html2rss
     SCHEME_PREFIX = /\A([a-z][a-z0-9+.-]*):/i
     private_constant :SCHEME_PREFIX
 
+    # One DNS label: 1-63 letters, digits, underscores and inner hyphens (IDN labels arrive punycoded).
+    DNS_LABEL = '[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?'
+    DNS_NAME = /\A(?:#{DNS_LABEL}\.)*#{DNS_LABEL}\z/i
+    OCTET = '(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+    IPV4 = /\A(?:#{OCTET}\.){3}#{OCTET}\z/
+    NUMERIC_LAST_LABEL = /(?:\A|\.)\d+\z/
+    MAX_HOST_LENGTH = 253
+    private_constant :DNS_LABEL, :DNS_NAME, :OCTET, :IPV4, :NUMERIC_LAST_LABEL, :MAX_HOST_LENGTH
+
     ##
     # Creates a URL from a relative path and base URL.
     #
@@ -109,6 +118,8 @@ module Html2rss
       return unless match
 
       new(parse(match[0]).normalize)
+    rescue Addressable::URI::InvalidURIError, InvalidUrlError
+      nil
     end
 
     ##
@@ -164,12 +175,13 @@ module Html2rss
     #
     # @param ref [String, Html2rss::Url, nil] an absolute or relative URL, possibly padded with whitespace
     # @param base_url [String, Html2rss::Url, nil] the document the reference appears in
-    # @return [Url, nil] the absolute http(s) URL, or nil when +ref+ is blank, unparseable or not http(s)
-    def self.resolve_web(ref, base_url = nil)
+    # @param web_only [Boolean] keep only http(s); +false+ also keeps other schemes (+mailto:+ and the like)
+    # @return [Url, nil] the absolute URL, or nil when +ref+ is blank, unparseable or (with +web_only+) not http(s)
+    def self.resolve_web(ref, base_url = nil, web_only: true)
       return unless ref.to_s.match?(/\S/)
 
       url = from_relative(ref, base_url)
-      url if url.web?
+      url if !web_only || url.web?
     rescue InvalidUrlError
       nil
     end
@@ -217,6 +229,8 @@ module Html2rss
     #
     # @param uri [Addressable::URI] the normalized Addressable::URI (internal use only)
     def initialize(uri)
+      raise InvalidUrlError, 'URL host is invalid' unless valid_host?(uri.host)
+
       @uri = uri
       @path_segments = path.split('/').reject(&:empty?).freeze
       freeze
@@ -274,6 +288,14 @@ module Html2rss
     #
     # @return [Array<String>] normalized path segments
     attr_reader :path_segments
+
+    ##
+    # Path segments as plain text: percent-decoded, scrubbed and NFC-normalized (for matching words and digits).
+    #
+    # @return [Array<String>] decoded path segments
+    def decoded_path_segments
+      path_segments.map { Addressable::URI.unencode_component(_1).force_encoding(Encoding::UTF_8).scrub.unicode_normalize(:nfc) }
+    end
 
     ##
     # Returns a copy of the URL with the provided path.
@@ -471,6 +493,35 @@ module Html2rss
       uri = @uri.dup
       uri.query = query_params.reject(&).join('&')
       self.class.from_absolute(uri)
+    end
+
+    ##
+    # The one host rule: no host (relative or opaque URL), a DNS name, an IPv4 literal, or a bracketed IPv6
+    # literal that parses. Addressable's +normalize+ already strips a trailing dot; a Unicode host is checked in
+    # its punycode form. An IPv4 octet has no leading zero (+01.2.3.4+, +0177.0.0.1+): readers disagree on
+    # whether that is decimal or octal, the classic shape of an address-guard bypass.
+    #
+    # @param host [String, nil]
+    # @return [Boolean] truthy when valid
+    def valid_host?(host)
+      return true if host.nil? || host.empty?
+
+      host = Addressable::IDNA.to_ascii(host) unless host.ascii_only?
+      return ipv6_literal?(host) if host.start_with?('[')
+
+      dns_name_or_ipv4?(host)
+    end
+
+    def ipv6_literal?(host)
+      IPAddr.new(host, Socket::AF_INET6)
+    rescue IPAddr::Error
+      false
+    end
+
+    def dns_name_or_ipv4?(name)
+      return IPV4.match?(name) if NUMERIC_LAST_LABEL.match?(name)
+
+      name.length <= MAX_HOST_LENGTH && DNS_NAME.match?(name)
     end
 
     def ip_address_host?

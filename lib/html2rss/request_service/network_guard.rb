@@ -27,8 +27,17 @@ module Html2rss
         IPAddr.new('::1/128'),
         IPAddr.new('fe80::/10'),
         IPAddr.new('fc00::/7'),
-        IPAddr.new('ff00::/8')
+        IPAddr.new('ff00::/8'),
+        # RFC 8215 local-use NAT64 prefix: not globally reachable.
+        IPAddr.new('64:ff9b:1::/48'),
+        # Teredo (RFC 4380): client address is obfuscated, so the whole prefix is denied.
+        IPAddr.new('2001::/32')
       ].freeze
+      # RFC 6052 well-known NAT64 prefix; the last 32 bits embed an IPv4 address.
+      NAT64_PREFIX = IPAddr.new('64:ff9b::/96')
+      # 6to4 (RFC 3056); bits 16..47 embed an IPv4 address. Decoded only to deny private embeds;
+      # the HTTPX filter still denies all of 2002::/16 at connect.
+      SIX_TO_FOUR_PREFIX = IPAddr.new('2002::/16')
 
       ##
       # @param allow_private_networks [Boolean] whether private network targets are allowed
@@ -75,6 +84,31 @@ module Html2rss
         raise PrivateNetworkDenied, "Private network target denied for #{url}"
       end
 
+      ##
+      # Single owner of the IP allow/deny decision. IPv6 forms that embed an IPv4 address
+      # (IPv4-mapped, NAT64 64:ff9b::/96, 6to4) are allowed only if the embedded IPv4 is.
+      #
+      # @param address [IPAddr] resolved or remote address
+      # @return [Boolean] true when the address must be denied
+      def blocked_ip?(address)
+        native = address.native
+        return true if BLOCKED_IP_RANGES.any? { |range| range.include?(native) }
+
+        embedded = embedded_ipv4(native)
+        !embedded.nil? && blocked_ip?(embedded)
+      end
+
+      ##
+      # @param address [IPAddr] native (non-mapped) address
+      # @return [IPAddr, nil] the IPv4 embedded in a NAT64 or 6to4 address, else nil
+      def embedded_ipv4(address)
+        if NAT64_PREFIX.include?(address)
+          IPAddr.new_ntoh(address.hton[12..])
+        elsif SIX_TO_FOUR_PREFIX.include?(address)
+          IPAddr.new_ntoh(address.hton[2, 4])
+        end
+      end
+
       private
 
       attr_reader :resolver
@@ -119,11 +153,6 @@ module Html2rss
         IPAddr.new(value)
       rescue IPAddr::AddressFamilyError, IPAddr::InvalidAddressError
         nil
-      end
-
-      def blocked_ip?(address)
-        native = address.native
-        BLOCKED_IP_RANGES.any? { |range| range.include?(native) }
       end
     end
   end

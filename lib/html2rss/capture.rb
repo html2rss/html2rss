@@ -329,7 +329,8 @@ module Html2rss
     end
 
     def find_matching_article(segment, articles_by_url)
-      resolved = Url.from_relative(segment.primary_link.attrs.href.to_s, @url)
+      return unless (resolved = Url.resolve_web(segment.primary_link.attrs.href, @url, web_only: false))
+
       articles_by_url[resolved.to_s] || articles_by_url.values.find { |a| fuzzy_url_match?(a.url, resolved) }
     end
 

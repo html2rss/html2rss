@@ -3,7 +3,8 @@
 module Html2rss
   Status = Data.define(
     :version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count,
-    :strategy_attempts, :admission_drops, :entry_url, :scrape_url, :entry_resolution
+    :strategy_attempts, :admission_drops, :entry_url, :scrape_url, :entry_resolution,
+    :enriched, :enrich_failed, :enrich_skipped_cross_origin
   )
 
   ##
@@ -12,13 +13,17 @@ module Html2rss
   # Exposed publicly via {FeedResult#status}. Safe to log without reading articles.
   # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
   # Tallies and counters are validated and frozen at construction (including Marshal load).
-  class Status
+  class Status # rubocop:disable Metrics/ClassLength -- one reader and one validated counter per telemetry field
     # Raised when telemetry fields fail validation at construction.
     class InvalidError < Html2rss::ContractError; end
 
     # Keys kept in {#to_h} even when zero or empty.
     ALWAYS_REPORTED = %i[version dedup_dropped].freeze
     private_constant :ALWAYS_REPORTED
+
+    # Article-enrichment counters (see {Article::Enrichment::Result}).
+    ENRICHMENT_KEYS = %i[enriched enrich_failed enrich_skipped_cross_origin].freeze
+    private_constant :ENRICHMENT_KEYS
 
     class << self
       ##
@@ -34,11 +39,12 @@ module Html2rss
       # @param entry_url [String, nil] original channel URL when entry resolution ran
       # @param scrape_url [String, nil] effective scrape URL after resolution
       # @param entry_resolution [Html2rss::FeedResolution::Diag, Hash, nil] resolution diagnostics
+      # @param enrichment [Hash{Symbol => Integer}] {Article::Enrichment} tally (empty when off)
       # @return [Html2rss::Status]
       # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- Status kwargs stay co-located
       def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0,
                 strategy_attempts: [], admission_drops: {}, scrape_target: nil,
-                entry_url: nil, scrape_url: nil, entry_resolution: nil)
+                entry_url: nil, scrape_url: nil, entry_resolution: nil, enrichment: {})
         tallies = articles.filter_map(&:scraper).tally.transform_keys { |klass| scraper_name(klass) }
         new(
           version: Html2rss::VERSION,
@@ -50,7 +56,8 @@ module Html2rss
           admission_drops:,
           entry_url: entry_url || scrape_target&.entry_url,
           scrape_url: scrape_url || scrape_target&.effective_url,
-          entry_resolution:
+          entry_resolution:,
+          **ENRICHMENT_KEYS.to_h { [_1, enrichment.fetch(_1, 0)] }
         )
       end
 
@@ -73,10 +80,14 @@ module Html2rss
     # @param entry_url [String, nil]
     # @param scrape_url [String, nil]
     # @param entry_resolution [Html2rss::FeedResolution::Diag, Hash, nil]
+    # @param enriched [Integer] items that gained a field from their article page
+    # @param enrich_failed [Integer] article fetches that failed or were blocked
+    # @param enrich_skipped_cross_origin [Integer] fetches skipped by the same-origin policy (subset of enrich_failed)
     # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- Status Data.define members
     def initialize(
       version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
-      strategy_attempts: [], admission_drops: {}, entry_url: nil, scrape_url: nil, entry_resolution: nil
+      strategy_attempts: [], admission_drops: {}, entry_url: nil, scrape_url: nil, entry_resolution: nil,
+      enriched: 0, enrich_failed: 0, enrich_skipped_cross_origin: 0
     )
       dedup = Option.integer(:dedup_dropped, dedup_dropped, min: 0)
       attempts = Option.integer(:attempt_count, attempt_count, min: 0)
@@ -92,7 +103,10 @@ module Html2rss
         admission_drops: freeze_tallies(admission_drops),
         entry_url: freeze_optional_string(entry_url),
         scrape_url: freeze_optional_string(scrape_url),
-        entry_resolution: freeze_entry_resolution(entry_resolution)
+        entry_resolution: freeze_entry_resolution(entry_resolution),
+        enriched: Option.integer(:enriched, enriched, min: 0),
+        enrich_failed: Option.integer(:enrich_failed, enrich_failed, min: 0),
+        enrich_skipped_cross_origin: Option.integer(:enrich_skipped_cross_origin, enrich_skipped_cross_origin, min: 0)
       )
     end
 
@@ -129,15 +143,18 @@ module Html2rss
 
     def marshal_dump
       [version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count, strategy_attempts,
-       admission_drops, entry_url, scrape_url, entry_resolution]
+       admission_drops, entry_url, scrape_url, entry_resolution, enriched, enrich_failed,
+       enrich_skipped_cross_origin]
     end
 
     def marshal_load(payload)
       version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count,
-        strategy_attempts, admission_drops, entry_url, scrape_url, entry_resolution = payload
+        strategy_attempts, admission_drops, entry_url, scrape_url, entry_resolution,
+        enriched, enrich_failed, enrich_skipped_cross_origin = payload
       initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy:, attempt_count:,
                  strategy_attempts:, admission_drops:, entry_url:, scrape_url:,
-                 entry_resolution:)
+                 entry_resolution:, enriched: enriched || 0, enrich_failed: enrich_failed || 0,
+                 enrich_skipped_cross_origin: enrich_skipped_cross_origin || 0)
     end
 
     def freeze_tallies(tallies)

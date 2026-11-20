@@ -111,6 +111,14 @@ RSpec.describe Html2rss::Url do
   end
 
   describe '.sanitize' do
+    it 'is nil when the URL cannot be parsed' do
+      expect(described_class.sanitize('http://x:y:z/a')).to be_nil
+    end
+
+    it 'is nil when the host is invalid' do
+      expect(described_class.sanitize('see http://[bad/x now')).to be_nil
+    end
+
     {
       nil => nil,
       ' ' => nil,
@@ -138,6 +146,79 @@ RSpec.describe Html2rss::Url do
     it 'returns a Url when the string contains an ftp URL' do
       expect(described_class.sanitize('ftp://example.com/file'))
         .to eq(described_class.from_absolute('ftp://example.com/file'))
+    end
+  end
+
+  describe '#initialize' do
+    describe 'host validation' do
+      {
+        'a Unicode IDN' => ['http://bücher.example/a', 'xn--bcher-kva.example'],
+        'a punycode IDN' => ['http://xn--bcher-kva.example/a', 'xn--bcher-kva.example'],
+        'localhost' => ['http://localhost/a', 'localhost'],
+        'an IPv4 literal' => ['http://1.2.3.4/a', '1.2.3.4'],
+        'a bracketed IPv6 literal' => ['http://[::1]/a', '[::1]'],
+        'a trailing dot' => ['http://example.com./a', 'example.com'],
+        'an underscore label' => ['http://a_b.example.com/a', 'a_b.example.com'],
+        'a 253 character host' => ["http://#{[('a' * 63), ('a' * 63), ('a' * 63), ('a' * 61)].join('.')}/a",
+                                   [('a' * 63), ('a' * 63), ('a' * 63), ('a' * 61)].join('.')],
+        'a 63 character label' => ["http://#{'a' * 63}.example/a", "#{'a' * 63}.example"]
+      }.each do |name, (raw, host)|
+        it "accepts #{name}" do
+          expect(described_class.from_absolute(raw).host).to eq(host)
+        end
+      end
+
+      {
+        'an unclosed bracket' => 'http://[bad/2026/11/20/a',
+        'an unbalanced closing bracket' => 'http://a]/a',
+        'trailing text after an IPv6 literal' => 'http://[::1]x/a',
+        'an IPv6 literal that does not parse' => 'http://[1:2]/a',
+        'an IPv4 octet with a leading zero' => 'http://01.2.3.4/a',
+        'an octal-looking IPv4 literal' => 'http://0177.0.0.1/a',
+        'a bracketed IPv4 literal' => 'http://[1.2.3.4]/a',
+        'an empty label' => 'http://a..b/a',
+        'a trailing empty label' => 'http://a../a',
+        'a leading dot' => 'http://.example.com/a',
+        'an encoded space' => 'http://a%20b.example/a',
+        'an encoded control character' => 'http://exa%00mple.com/a',
+        'a leading hyphen' => 'http://-a.example/a',
+        'a trailing hyphen' => 'http://a-.example/a',
+        'a 64 character label' => "http://#{'a' * 64}.example/a",
+        'a host longer than 253 characters' => "http://#{(['a' * 60] * 5).join('.')}.example/a",
+        'an out-of-range IPv4 literal' => 'http://999.1.1.1/a',
+        'a numeric last label' => 'http://example.123/a',
+        'an unsafe character' => 'http://a!b.example/a',
+        'a space' => 'http://a b.example/a',
+        'a control character' => "http://a\u0001b.example/a"
+      }.each do |name, raw|
+        it "rejects #{name}" do
+          expect { described_class.from_absolute(raw) }.to raise_error(described_class::InvalidUrlError)
+        end
+      end
+
+      it 'rejects a malformed host resolved from a relative reference' do
+        expect { described_class.from_relative('http://[bad/x', 'https://example.com/') }
+          .to raise_error(described_class::InvalidUrlError)
+      end
+
+      it 'rejects a malformed host on direct construction' do
+        expect { described_class.new(Addressable::URI.parse('http://[bad/x')) }
+          .to raise_error(described_class::InvalidUrlError, 'URL host is invalid')
+      end
+
+      it 'accepts an unnormalized Unicode host on direct construction' do
+        expect { described_class.new(Addressable::URI.parse('http://bücher.example/a')) }.not_to raise_error
+      end
+
+      it 'rejects an IPv6 literal that is not closed on direct construction' do
+        uri = Addressable::URI.parse('http://x/a').tap { _1.host = '[::1:' }
+
+        expect { described_class.new(uri) }.to raise_error(described_class::InvalidUrlError)
+      end
+
+      it 'keeps a hostless URL valid' do
+        expect(described_class.from_relative('/a/b', 'https://example.com/').to_s).to eq('https://example.com/a/b')
+      end
     end
   end
 
@@ -238,6 +319,19 @@ RSpec.describe Html2rss::Url do
       url = described_class.from_absolute('https://example.com/')
 
       expect(url.path_segments).to eq([])
+    end
+  end
+
+  describe '#decoded_path_segments' do
+    it 'percent-decodes, scrubs and NFC-normalizes each segment', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/%E6%97%A5%E6%9C%AC/e%CC%81/a%2Fb/%FF')
+
+      expect(url.decoded_path_segments).to eq(['日本', "\u00e9", 'a/b', "\uFFFD"])
+      expect(url.decoded_path_segments.map(&:encoding).uniq).to eq([Encoding::UTF_8])
+    end
+
+    it 'returns an empty array for the root path' do
+      expect(described_class.from_absolute('https://example.com/').decoded_path_segments).to eq([])
     end
   end
 
@@ -666,6 +760,16 @@ RSpec.describe Html2rss::Url do
   end
 
   describe '.resolve_web' do
+    it 'drops a non-http(s) reference by default' do
+      expect(described_class.resolve_web('mailto:a@example.com')).to be_nil
+    end
+
+    it 'keeps a non-http(s) reference when web_only is false' do
+      resolved = described_class.resolve_web('mailto:a@example.com', nil, web_only: false)
+
+      expect(resolved.to_s).to eq('mailto:a@example.com')
+    end
+
     it 'resolves a reference, padded or relative, to its absolute http(s) URL', :aggregate_failures do
       expect(described_class.resolve_web(' /a.mp3 ', 'https://example.com/feed/').to_s).to eq('https://example.com/a.mp3')
       expect(described_class.resolve_web('//cdn.example.net/a.mp3', 'https://example.com/').to_s)
