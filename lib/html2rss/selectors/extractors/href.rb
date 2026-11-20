@@ -54,9 +54,9 @@ module Html2rss
         ##
         # Retrieves and returns the normalized absolute URL.
         #
-        # @return [Html2rss::Url, nil] The absolute URL, or nil when nothing matched or the +href+ is blank.
+        # @return [Html2rss::Url, nil] The absolute URL, or nil when nothing matched the +href+ is blank or unparseable.
         def call
-          Url.from_relative(@href, @base_url) unless @href.strip.empty?
+          Url.resolve_web(@href, @base_url, web_only: false)
         end
       end
     end

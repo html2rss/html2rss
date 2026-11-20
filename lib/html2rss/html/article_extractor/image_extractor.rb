@@ -15,7 +15,7 @@ module Html2rss
                     from_style(article_tag) ||
                     from_poster(article_tag)
 
-          Url.from_relative(img_src, base_url) if img_src
+          Url.resolve_web(img_src, base_url)
         end
 
         # @param article_tag [Nokogiri::XML::Element] article container node

@@ -72,7 +72,7 @@ module Html2rss
       def extract_url
         @extract_url ||= begin
           href = @selected_anchor.attrs.href.to_s
-          Url.from_relative(href.split('#').first.strip, @base_url) unless href.empty?
+          Url.resolve_web(href.split('#').first, @base_url, web_only: false)
         end
       end
 
@@ -211,7 +211,7 @@ module Html2rss
 
       def extract_image
         img_src = image_from_srcset || image_from_img || image_from_style || image_from_poster
-        Url.from_relative(img_src, @base_url) if img_src
+        Url.resolve_web(img_src, @base_url)
       end
 
       def image_from_img

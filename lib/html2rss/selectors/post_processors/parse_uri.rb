@@ -48,9 +48,9 @@ module Html2rss
         end
 
         ##
-        # @return [String]
+        # @return [String, nil] nil when +value+ is blank or unparseable
         def call
-          Url.from_relative(value, context.base_url).to_s
+          Url.resolve_web(value, context.base_url, web_only: false)&.to_s
         end
       end
     end

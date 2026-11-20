@@ -23,6 +23,31 @@ RSpec.describe Html2rss::Selectors do
     HTML
   end
 
+  describe 'a malformed link among valid items' do
+    ['http://exa mple.com/x', 'http://[bad/x', 'http://a..b/x'].each do |bad|
+      context "when one item links to #{bad.inspect}" do
+        let(:selectors) do
+          { items: { selector: 'article', enhance: false }, title: { selector: 'h1' },
+            url: { selector: 'a', extractor: 'href' },
+            image: { selector: 'img', extractor: 'attribute', attribute: 'src' } }
+        end
+        let(:body) do
+          <<~HTML
+            <html><body>
+              <article><h1>one</h1><a href="/one">More</a><img src="/one.png"></article>
+              <article><h1>broken</h1><a href="#{bad}">More</a><img src="#{bad}"></article>
+              <article><h1>two</h1><a href="/two">More</a><img src="/two.png"></article>
+            </body></html>
+          HTML
+        end
+
+        it 'still builds the valid items' do
+          expect(instance.articles.map { _1.url.to_s }).to include('http://example.com/one', 'http://example.com/two')
+        end
+      end
+    end
+  end
+
   describe 'default items selector' do
     let(:body) do
       <<~HTML
@@ -177,13 +202,13 @@ RSpec.describe Html2rss::Selectors do
 
   describe '#resolve_url_value' do
     context 'when the url selector is an href extractor' do
-      it 'does not resolve the already absolute url again', :aggregate_failures do
+      it 'does not resolve the already absolute url a second time', :aggregate_failures do
         selectors[:url] = { selector: 'a', extractor: 'href' }
         instance
         allow(Html2rss::Url).to receive(:resolve_web).and_call_original
 
         expect(instance.articles.map { _1.url.to_s }).to eq(%w[http://example.com/article1 http://example.com/article2])
-        expect(Html2rss::Url).not_to have_received(:resolve_web)
+        expect(Html2rss::Url).to have_received(:resolve_web).twice # the href extractor only, once per item
       end
     end
 

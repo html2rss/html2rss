@@ -33,7 +33,8 @@ module Html2rss
 
             url_attribute = URL_ELEMENTS_WITH_URL_ATTRIBUTE[node_name]
             url = node[url_attribute]
-            node[url_attribute] = Url.from_relative(url, @base_url).to_s
+            resolved = Url.resolve_web(url, @base_url, web_only: false)
+            node[url_attribute] = resolved.to_s if resolved
           end
         end
       end

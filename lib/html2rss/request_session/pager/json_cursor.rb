@@ -32,7 +32,7 @@ module Html2rss
           return nil unless (next_url_path = config[:next_url_path])
 
           next_url = dig_path(json_data, next_url_path)
-          Html2rss::Url.from_relative(next_url.to_s, origin_url) if next_url && !next_url.to_s.empty?
+          Html2rss::Url.resolve_web(next_url, origin_url)
         end
 
         # @param json_data [Hash]
