@@ -1,6 +1,7 @@
 # Hand-labeled article / non-article URL table, vendored from newspaper4k
 # (tests/data/test_urls.txt). Format: `<1|0> <url>`, 1 = article.
 # Source: https://github.com/AndyTheFactory/newspaper4k
+# SPDX-License-Identifier: MIT
 # License: MIT, Copyright (c) 2013 Lucas Ou-Yang
 1 http://www.cnn.com/2013/12/17/politics/senate-budget-deal/index.html?hpt=hp_t1
 1 http://www.huffingtonpost.com/akoshia-yoba/giving-the-gift-of-life-a_b_4421799.html

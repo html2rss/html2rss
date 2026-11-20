@@ -122,8 +122,9 @@ module Html2rss
       FILE_EXTENSION_SEGMENT = /\.(?:#{FILE_EXTENSIONS.join('|')})\z/i
       # Segment ending in a video file extension.
       MEDIA_FILE_SEGMENT = /\.(?:#{MEDIA_FILE_EXTENSIONS.join('|')})\z/i
-      # Document-style permalink: four or more words plus a page extension (`/author/the-long-title_b_123.html`).
-      DOCUMENT_SLUG_SEGMENT = /\A[\p{L}\d]+(?:[-_][\p{L}\d]+){3,}\.(?:html?|shtml|aspx?|php)\z/i
+      # Document-style permalink: four or more words, then a numeric id of 5+ digits and a page extension
+      # (`/author/the-long-title_b_4421799.html`). A text-only slug is too common on product, forum and wiki pages.
+      DOCUMENT_SLUG_SEGMENT = /\A[\p{L}\d]+(?:[-_][\p{L}\d]+){3,}[-_]\d{5,}\.(?:html?|shtml|aspx?|php)\z/i
 
       # A single person-name slug: letters only (dated and id slugs carry digits), up to three words.
       NAME_SLUG = /\A\p{L}+(?:-\p{L}+){0,2}\z/
@@ -305,9 +306,10 @@ module Html2rss
         end
       end
 
-      # A document slug needs no content/year context, unless one of its words is utility chrome.
+      # A document slug needs no content/year context, unless a slug word is utility chrome or the path names a
+      # non-article destination (games, quiz, ...).
       def document_slug_route?
-        return false if segments.size < 2 || leading_high_confidence_junk?
+        return false if segments.size < 2 || leading_high_confidence_junk? || non_article_word_present?
 
         last = segments.last
         utility = SEGMENT_SETS.fetch(:utility) # vanity words are a subset of utility

@@ -274,19 +274,35 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       expect(described_class.new(%w[some-author interactive_legal.html]).strong_post_suffix?).to be(false)
     end
 
+    it 'never lets a document slug override the non-article lexicon', :aggregate_failures do
+      %w[games quiz].each do |word|
+        classifier = described_class.new([word, 'best-new-things-of-the-year-190700409.html'])
+
+        expect(classifier.strong_post_suffix?).to be(false)
+        expect(classifier.junk_path?).to be(true)
+      end
+    end
+
+    it 'requires a numeric id in a document slug', :aggregate_failures do
+      [%w[products best-wireless-headphones-under-100.html], %w[forum viewtopic-how-to-fix-this-thing.php],
+       %w[sports nfl-scores-and-standings-this-week.html], %w[wiki Some_Long_Wiki_Page_Title_Here.html]].each do |segs|
+        expect(described_class.new(segs).strong_post_suffix?).to be(false)
+      end
+    end
+
     it 'rejects a document slug whose words are utility chrome', :aggregate_failures do
-      classifier = described_class.new(%w[legal terms-and-conditions-of-use.html])
+      classifier = described_class.new(%w[legal terms-and-conditions-of-use-190700409.html])
 
       expect(classifier.strong_post_suffix?).to be(false)
       expect(classifier.content_path?).to be(false)
     end
 
     it 'rejects a document slug with a vanity word' do
-      expect(described_class.new(%w[shop premium-membership-plans-for-you.html]).strong_post_suffix?).to be(false)
+      expect(described_class.new(%w[shop premium-membership-plans-for-you-190700409.html]).strong_post_suffix?).to be(false)
     end
 
     it 'rejects a document slug under a leading utility segment' do
-      expect(described_class.new(%w[about the-story-of-our-company.html]).strong_post_suffix?).to be(false)
+      expect(described_class.new(%w[about the-story-of-our-company-190700409.html]).strong_post_suffix?).to be(false)
     end
   end
 end

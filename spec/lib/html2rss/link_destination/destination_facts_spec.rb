@@ -144,4 +144,22 @@ RSpec.describe Html2rss::LinkDestination::DestinationFacts do
       end
     end
   end
+
+  describe 'document-slug precision' do
+    %w[
+      games/best-new-games-of-the-year.html
+      quiz/which-character-are-you-today.html
+      products/best-wireless-headphones-under-100.html
+      forum/viewtopic-how-to-fix-this-thing.php
+      sports/nfl-scores-and-standings-this-week.html
+      wiki/Some_Long_Wiki_Page_Title_Here.html
+    ].each do |path|
+      it "does not admit /#{path} as an article", :aggregate_failures do
+        facts = described_class.build(Html2rss::Url.from_absolute("https://example.com/#{path}"))
+
+        expect(facts.strong_post_suffix).to be(false)
+        expect(facts.content_path).to be(false)
+      end
+    end
+  end
 end
