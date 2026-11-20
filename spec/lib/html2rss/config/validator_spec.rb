@@ -93,6 +93,16 @@ RSpec.describe Html2rss::Config::Validator do
         { request: { max_redirects: -1 } },
         [[%i[request max_redirects], 'must be greater than or equal to 0']]
       ],
+      'enrich with defaults' => [{ enrich: { article_metadata: true } }, []],
+      'enrich max_fetches at the hard maximum' => [{ enrich: { article_metadata: true, max_fetches: 10 } }, []],
+      'enrich max_fetches above the hard maximum' => [
+        { enrich: { article_metadata: true, max_fetches: 11 } },
+        [[%i[enrich max_fetches], 'must be less than or equal to 10']]
+      ],
+      'non-positive enrich max_fetches' => [
+        { enrich: { max_fetches: 0 } },
+        [[%i[enrich max_fetches], 'must be greater than 0']]
+      ],
       'zero request max_redirects' => [{ request: { max_redirects: 0 } }, []],
       'positive request max_requests' => [{ request: { max_requests: 1 } }, []],
       'botasaurus max_retries above limit' => [

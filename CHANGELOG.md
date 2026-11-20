@@ -2,6 +2,12 @@
 
 Release notes: https://github.com/html2rss/html2rss/releases
 
+## Unreleased
+
+### Features
+
+- opt-in article-page enrichment (`enrich: { article_metadata: true }`): items missing `published_at`, author or image get those fields from their own page's JSON-LD and meta tags; `enriched`, `enrich_failed` and `enrich_skipped_cross_origin` appear in the status shown by `--explain`
+
 ## [0.19.1](https://github.com/html2rss/html2rss/compare/v0.19.0...v0.19.1) (2026-05-01)
 
 ### Bug Fixes
