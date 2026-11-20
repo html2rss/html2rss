@@ -17,6 +17,15 @@
 # page url); title and description by whitespace-normalized, entity-decoded, case-folded equality.
 #
 # Usage: NEWSPAPER4K_FIXTURES=DIR mise exec -- bin/enrichment-eval
+#
+# Live mode (network): what would fetching each item's own article page add over the listing page?
+#   BUILD_FRESH_URLS=FILE CONFIGS_DIR=DIR  writes the 50-site sample (spec/fixtures/enrichment/fresh_urls.txt)
+#   FRESH_URLS=FILE CONFIGS_DIR=DIR        rebuilds each listing, matches the item by url (else drifted), fetches
+#                                          the article once, prints the table and the GO/NO-GO line (T3)
+# Sample rule: html2rss-configs *.yml sorted by path, configs without a published_at selector first; skip
+# botasaurus and placeholder configs; first config per site whose feed builds with the default strategy; its
+# first item that has a url. Fetches go through RequestService (NetworkGuard, budget), one per site, at most
+# one per second, 10 s total timeout each; a timeout is a failed fetch, 403/429/challenge is blocked.
 
 ENV['LOG_LEVEL'] ||= 'error'
 
@@ -24,9 +33,13 @@ require 'bundler/setup'
 require 'cgi'
 require 'date'
 require 'json'
+require 'yaml'
 require_relative '../lib/html2rss'
 
 Schema = Html2rss::AutoSource::Scraper::Schema
+FETCH_TIMEOUT = 10
+FETCH_INTERVAL = 1.0
+SAMPLE_SIZE = 50
 FIELDS = %i[title description author image published_at].freeze
 # html2rss field => [newspaper4k key, og/article/name meta selectors]
 META = {
@@ -158,6 +171,176 @@ def disagreements(pages)
       "#{page[:name]} #{field} [#{source}] html2rss=#{ours.inspect} newspaper4k=#{theirs.inspect}"
     end
   end
+end
+
+# --- live mode: article page vs listing page -------------------------------------------------------------
+
+# Listing-only values of a feed item (JSON Feed hash), keyed by eval field.
+def listing_fields(item)
+  {
+    title: item[:title], description: item[:content_text] || item[:content_html],
+    author: Array(item[:authors]).filter_map { _1[:name] }.first, image: item[:image],
+    published_at: item[:date_published]
+  }
+end
+
+def feed_items(config_path)
+  Html2rss.json_feed(YAML.safe_load_file(config_path, symbolize_names: true))[:items] || []
+end
+
+def candidate_configs(dir)
+  Dir.glob('**/*.yml', base: dir).sort.filter_map do |rel|
+    body = File.read(File.join(dir, rel))
+    [body.include?('published_at') ? 1 : 0, rel] unless body.match?(/botasaurus|%[<{]/)
+  end.sort.map(&:last)
+end
+
+def sample_url(dir, rel)
+  feed_items(File.join(dir, rel)).find { _1[:url].to_s.start_with?('http') }&.fetch(:url)
+rescue StandardError => error
+  warn "skip #{rel}: #{error.class}"
+end
+
+def build_sample(dir)
+  candidate_configs(dir).each_with_object({}) do |rel, rows|
+    break rows if rows.size >= SAMPLE_SIZE
+
+    site = rel.split('/').first
+    next if rows.key?(site)
+
+    (url = sample_url(dir, rel)) && rows[site] = [rel, url]
+  end.values
+end
+
+SAMPLE_HEADER = <<~TEXT
+  # Fresh-URL sample for FRESH_URLS bin/enrichment-eval, built %<date>s.
+  # Rule: html2rss-configs *.yml sorted by path, configs without a published_at selector first;
+  # skipping botasaurus and %%<param> configs; one config per site, the first whose feed builds with
+  # the default strategy; its first item with a url. Columns: config path <TAB> article URL.
+TEXT
+
+def write_sample(file, dir)
+  rows = build_sample(dir)
+  File.write(file, format(SAMPLE_HEADER, date: Date.today.iso8601) + rows.map { "#{_1.join("\t")}\n" }.join)
+  puts "Wrote #{rows.size} rows to #{file}"
+end
+
+def read_sample(file)
+  File.readlines(file, chomp: true).reject { _1.empty? || _1.start_with?('#') }.map { _1.split("\t", 2) }
+end
+
+def request_context(url)
+  Html2rss::RequestService::Context.new(
+    url:, budget: Html2rss::RequestService::Budget.new(max_requests: 1, total_timeout_seconds: FETCH_TIMEOUT),
+    policy: Html2rss::RequestService::Policy.new(total_timeout_seconds: FETCH_TIMEOUT,
+                                                 read_timeout_seconds: FETCH_TIMEOUT)
+  )
+end
+
+def fetch_kind(status) = { 403 => :blocked, 429 => :blocked }.fetch(status, status.to_i >= 400 ? :failed : :ok)
+
+def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+def fetch_outcome(url)
+  response = Html2rss::RequestService.execute(request_context(url), strategy: :default)
+  { kind: fetch_kind(response.status), status: response.status, host: response.url.host, doc: response.parsed_body }
+rescue Html2rss::RequestService::BlockedSurfaceDetected
+  { kind: :blocked }
+rescue StandardError => error
+  { kind: :failed, error: error.class.name.split('::').last }
+end
+
+# One live fetch: kind is :ok, :blocked (403/429/challenge) or :failed (errors and timeouts), plus wall seconds.
+def fetch_page(url)
+  started = now
+  fetch_outcome(url).merge(seconds: now - started)
+end
+
+def fresh_row(rel, url, dir)
+  item = feed_items(File.join(dir, rel)).find { _1[:url] == url }
+  return { rel:, url:, kind: :drifted } unless item
+
+  page = fetch_page(url)
+  warn "#{rel} #{page[:kind]} #{page[:status]} #{page[:error]}"
+  { rel:, url:, listing: listing_fields(item), article: page[:doc] && extract(page[:doc], url), **page.except(:doc) }
+rescue StandardError => error
+  warn "#{rel} drifted (#{error.class})"
+  { rel:, url:, kind: :drifted }
+end
+
+def fresh_rows(file, dir)
+  last = nil
+  read_sample(file).map do |rel, url|
+    sleep(FETCH_INTERVAL - (now - last)) if last && now - last < FETCH_INTERVAL
+    last = now
+    fresh_row(rel, url, dir)
+  end
+end
+
+def pct(part, whole) = whole.zero? ? 0.0 : 100.0 * part / whole
+
+def percentile(values, quantile)
+  sorted = values.sort
+  sorted.empty? ? 0.0 : sorted[((sorted.size - 1) * quantile).ceil]
+end
+
+def listing_found(rows, field) = pct(rows.count { !blank?(_1[:listing][field]) }, rows.size)
+
+def fresh_lift(rows, field) # rubocop:disable Metrics/AbcSize -- one tally per report column
+  listing = listing_found(rows, field)
+  union = pct(rows.count { !blank?(_1[:listing][field]) || _1[:article][field].first }, rows.size)
+  sources = rows.map { |row| row[:article][field] }.reject { |value, _| value.nil? }.map(&:last)
+  { listing:, union:, lift: union - listing, jsonld: sources.count(:jsonld), meta: sources.count(:meta) }
+end
+
+def fresh_line(field, lift, all_listing)
+  cells = [field, "#{lift[:listing].round}%", "#{lift[:union].round}%", format('%+d', lift[:lift].round),
+           "#{lift[:jsonld]} / #{lift[:meta]}", "#{all_listing.round}%"]
+  "| #{cells.join(' | ')} |"
+end
+
+def verdict(lifts, ok_count, median)
+  lift = %i[published_at image].map { lifts.fetch(_1)[:lift] }.max
+  reasons = []
+  reasons << format('published_at/image lift %.0f < 15 points', lift) if lift < 15
+  reasons << "successful fetches #{ok_count} < 40" if ok_count < 40
+  reasons << format('median fetch %.2f s > 1.5 s', median) if median > 1.5
+  reasons.empty? ? 'GO for T3' : "NO-GO for T3: #{reasons.join('; ')}"
+end
+
+def fresh_summary(rows, rebuilt, fetched) # rubocop:disable Metrics/AbcSize -- one report header
+  count = ->(kind) { rebuilt.count { _1[:kind] == kind } }
+  secs = fetched.map { _1[:seconds] }
+  ["Sample: #{rows.size} urls; fetched ok #{fetched.size}, blocked #{count[:blocked]}, failed #{count[:failed]}, " \
+   "drifted #{rows.size - rebuilt.size} (excluded)",
+   "Fetch wall time over ok fetches: median #{format('%.2f', percentile(secs, 0.5))} s, " \
+   "p90 #{format('%.2f', percentile(secs, 0.9))} s",
+   "Lift columns use the #{fetched.size} ok fetches; last column is listing-only over all #{rebuilt.size} rebuilt.", '']
+end
+
+def fresh_report(rows) # rubocop:disable Metrics/AbcSize -- one report
+  rebuilt = rows.reject { _1[:kind] == :drifted }
+  ok = rebuilt.select { _1[:kind] == :ok }
+  lifts = FIELDS.to_h { [_1, fresh_lift(ok, _1)] }
+  puts fresh_summary(rows, rebuilt, ok),
+       '| field | listing | +article | lift pts | jsonld / meta | listing-only (all) |', '|---|---|---|---|---|---|',
+       *FIELDS.map { fresh_line(_1, lifts.fetch(_1), listing_found(rebuilt, _1)) }, '',
+       verdict(lifts, ok.size, percentile(ok.map { _1[:seconds] }, 0.5))
+end
+
+def configs_dir
+  dir = ENV.fetch('CONFIGS_DIR', '').strip
+  usage_error('CONFIGS_DIR (html2rss-configs lib/html2rss/configs) is not a directory.') unless File.directory?(dir)
+  dir
+end
+
+if (sample_file = ENV.fetch('BUILD_FRESH_URLS', '').strip) != ''
+  write_sample(sample_file, configs_dir)
+  exit
+elsif (fresh_file = ENV.fetch('FRESH_URLS', '').strip) != ''
+  usage_error("FRESH_URLS is not a file: #{fresh_file}") unless File.file?(fresh_file)
+  fresh_report(fresh_rows(fresh_file, configs_dir))
+  exit
 end
 
 dir = ENV.fetch('NEWSPAPER4K_FIXTURES', '').strip

@@ -27,7 +27,7 @@ help: ## Show available commands
 	@echo "  make perf-check- Gate allocations against the recorded budgets"
 	@echo "  make corpus-baseline - Re-record the auto-source corpus ratchet baseline"
 	@echo "  make compare-revisions BASE=<rev> HEAD=<rev> PAGES=<dir> [LIMIT=<n>] - Compare auto-source on saved pages"
-	@echo "  make enrichment-eval NEWSPAPER4K_FIXTURES=<dir> - Measure JSON-LD/meta metadata coverage on newspaper4k fixtures"
+	@echo "  make enrichment-eval NEWSPAPER4K_FIXTURES=<dir> - Measure JSON-LD/meta metadata coverage (NEWSPAPER4K_FIXTURES=DIR or live FRESH_URLS=FILE)"
 	@echo "  make ready   - Run the local PR readiness checks"
 	@echo "  make mutant-test - Run the suite through mutant's test runner"
 	@echo "  make mutant  - Run mutation analysis for SUBJECT"
@@ -89,7 +89,7 @@ corpus-baseline: ## Re-record the auto-source corpus ratchet baseline
 compare-revisions: ## Compare auto-source on saved pages across two revisions (BASE, HEAD, PAGES, optional LIMIT)
 	$(RUBY_RUNNER)bin/compare-revisions $(BASE) $(HEAD) --pages $(PAGES) $(if $(LIMIT),--limit $(LIMIT))
 
-enrichment-eval: ## Measure JSON-LD/meta metadata coverage against newspaper4k fixtures (NEWSPAPER4K_FIXTURES)
+enrichment-eval: ## Measure JSON-LD/meta coverage (NEWSPAPER4K_FIXTURES=DIR, or live FRESH_URLS=FILE CONFIGS_DIR=DIR; BUILD_FRESH_URLS=FILE writes the sample)
 	$(RUBY_RUNNER)bin/enrichment-eval
 
 ready: ## Run the local PR readiness checks

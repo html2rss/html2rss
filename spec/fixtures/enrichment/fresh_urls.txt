@@ -1,0 +1,54 @@
+# Fresh-URL sample for FRESH_URLS bin/enrichment-eval, built 2026-11-20.
+# Rule: html2rss-configs *.yml sorted by path, configs without a published_at selector first;
+# skipping botasaurus and %<param> configs; one config per site, the first whose feed builds with
+# the default strategy; its first item with a url. Columns: config path <TAB> article URL.
+adb.org/news.yml	https://www.adb.org/news/adb-appoints-karthik-muralidharan-chief-economist
+agora-energiewende.org/news-events.yml	https://www.agora-energiewende.org/news-events/new-platform-helps-strengthen-grid-modernisation-expertise-across-asia
+ahram.org.eg/egypt.yml	https://english.ahram.org.eg/News/582953.aspx
+ai.meta.com/blog.yml	https://ai.meta.com/blog/assistive-robotics-university-of-pittsburgh-sam-dino/
+brookings.edu/articles.yml	https://www.brookings.edu/articles/trump-xi-and-putin-what-to-expect-from-the-apec-summit/
+bundesfinanzhof.de/de_presse_pressemitteilungen.yml	https://www.bundesfinanzhof.de/de/presse/pressemeldungen/detail/konzernbesteuerung-organschaft-nur-bei-strikter-umsetzung-des-gewinnabfuehrungsvertrags/
+canva.com/learn.yml	https://www.canva.com/learn/design-thinking/
+cepal.org/press-releases.yml	https://www.cepal.org/en/pressreleases/pension-systems-are-essential-protecting-older-persons-poverty-and-reducing-inequality
+cplp.org/noticias.yml	https://www.cplp.org/noticias/noticias-detalhe/?id=24677
+csem.ch/en_news.yml	https://www.csem.ch/en/news/reshape-reusable-space-landing-gear/
+csiro.au/en_news.yml	https://www.csiro.au/en/news/All/Articles/2026/November/Blackhole-Conversation
+developer.apple.com/tutorials_data_documentation_technotes_json.yml	https://developer.apple.com/documentation/technologies
+drugchecking.berlin/warnings.yml	https://drugchecking.berlin/aktuelle-warnungen#x-26-0591
+ed.ac.uk/news.yml	https://www.ed.ac.uk/news/poignant-composition-gives-voice-to-medicines-silent-teachers
+elastic.co/elasticsearch-release-notes.yml	https://www.elastic.co/docs/release-notes/elasticsearch#elasticsearch-9.5.6-release-notes
+elysee.fr/actualites.yml	https://www.elysee.fr/emmanuel-macron/2026/11/19/disparition-de-david-habib
+espn.com/f1.yml	https://www.espn.com/f1/story/_/id/50472081/v8-return-las-vegas-grand-prix-formula-1
+faa.gov/newsroom.yml	https://www.faa.gov/newsroom/nationwide-ground-stop-questions-and-answers
+fao.org/newsroom.yml	https://www.fao.org/newsroom/detail/fao-food-outlook--global-food-commodity-supplies-remain-generally-ample--but-risks-are-mounting/en
+fdic.gov/press-releases.yml	https://www.fdic.gov/news/press-releases/2026/fdic-approves-deposit-insurance-application-onemain-bank-west-valley-city
+fia.com/documents.yml	https://www.fia.com/system/files/decision-document/2026_las_vegas_grand_prix_-_timetable_v3.pdf
+fiaformulae.com/en_news.yml	https://www.fiaformulae.com/en/news/drivers/the-new-kids-on-the-block-meet-the-2027-rookie-class
+formula1.com/latest.yml	https://www.formula1.com/en/latest/article/best-qualifying-bets-available-before-the-las-vegas-grand-prix.4Qbussswr7sBnmo1wEl7QR
+ftc.gov/press-releases.yml	https://www.ftc.gov/news-events/news/press-releases/2026/11/ftc-takes-enforcement-action-against-safety-harness-manufacturer-allegedly-false-made-usa-claims
+go.dev/release-history.yml	https://go.dev/doc/go1.27
+grafana.com/whatsnew.yml	https://grafana.com/docs/grafana/latest/whatsnew/whats-new-in-v13/
+hai.stanford.edu/news.yml	https://hai.stanford.edu/news/ais-future-is-still-a-choice
+iaapa.org/news.yml	https://iaapa.org/news-funworld/ticketcrm-5000-tickets-per-month
+icj-cij.org/press-releases.yml	https://www.icj-cij.org/sites/default/files/case-related/178/178-20261119-pre-01-00-en.pdf
+icrc.org/news.yml	https://www.icrc.org/en/article/protecting-natural-environment-armed-conflict
+ikea.com/newsroom.yml	https://www.ikea.com/global/en/newsroom/sustainability/ikea-celebrates-30-years-of-the-frakta-bag-261013/
+imperial.ac.uk/news.yml	https://www.imperial.ac.uk/news/articles/admin-services/careers/2026/nervous-about-networking/
+ingenieur.de/karriere_arbeitsleben_heiko_mell.yml	https://www.ingenieur.de/haifischbecken-industrie-was-ingenieure-fur-ihre-karriere-lernen-konnen-51f8bc0d-4529-4028-841c-62eab61c63a7/
+isro.gov.in/press.yml	https://www.isro.gov.in/Atmospheric_Re_entry_of_LVM3_M5_Upper_Stage.html
+issafrica.org/iss-today.yml	https://issafrica.org/iss-today/africa-cannot-afford-to-delay-regulating-autonomous-weapons
+kompas.com/nasional.yml	https://nasional.kompas.com/read/2026/11/20/21492701/di-sidang-kuota-haji-yaqut-klaim-tak-pernah-terima-laporan-pungutan
+lego.com/press-releases.yml	https://www.lego.com/en-gb/aboutus/news/2026/november/lego-f1-las-vegas-grand-prix-2027-portfolio-reveal
+machinelearning.apple.com/research.yml	https://machinelearning.apple.com/research/depth-pro-2-monocular
+maersk.com/press-releases.yml	https://www.maersk.com/news/articles/2026/11/12/maersk-expands-integrated-logistics-capabilities-in-uruguay
+microsoft.com/azure-products.yml	https://azure.microsoft.com/en-us/products/ai-foundry
+mistral.ai/news.yml	https://mistral.ai/news/build-with-studio/
+mozilla.org/security-advisories.yml	https://www.mozilla.org/en-US/security/advisories/mfsa2026-130/
+msf.org/latest.yml	https://www.msf.org/report-burden-occupation-west-bank
+nbim.no/press-releases.yml	https://www.nbim.no/en/news-and-insights/the-press/press-releases/2026/fondet-selger-kontoreiendom-i-sveits/
+news24.com/top-stories.yml	https://www.news24.com/southafrica/crime-and-courts/anc-donor-majola-allegedly-bribed-limpopo-mpl-with-mercedes-g63-for-giyani-water-tender-20261120-0935
+newyorker.com/magazine.yml	https://www.newyorker.com/culture/goings-on/how-sombr-went-from-tiktok-to-madison-square-garden
+nikkei.com/asia-technology.yml	https://asia.nikkei.com/business/technology/artificial-intelligence/japan-sovereign-ai-project-faces-5bn-cost-surge-on-chip-prices-weak-yen
+nokia.com/newsroom.yml	https://www.nokia.com/newsroom/nokia-powers-cmc-networks-emea-r-corridor-connecting-key-hubs-across-europe-the-middle-east-and-africa/
+nomanssky.com/news.yml	https://www.nomanssky.com/2026/11/forsaken-7-14/
+notion.com/blog.yml	https://www.notion.com/blog/the-next-era-of-notion
