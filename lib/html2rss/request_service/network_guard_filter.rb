@@ -12,9 +12,19 @@ module Html2rss
     # IPv4 list on the embedded address. Either denying an address drops it (fail closed).
     # Loading +:ssrf_filter+ first as a dependency keeps this module ahead of it in the
     # ancestors; a spec pins that order.
+    #
+    # The release is gated at load: it is only applied on the tested HTTPX series and while the
+    # +ssrf_filter+ connection still routes resolution through +addresses=+. Otherwise HTTPX keeps
+    # denying all of 64:ff9b::/96 (fail closed) and a warning says NAT64 support is inactive.
+    #
+    # 6to4 is decoded by {NetworkGuard} only to deny private embedded IPv4; HTTPX itself still
+    # denies all of 2002::/16 at connect time.
     module NetworkGuardFilter
       # Strict guard instance: the plugin only exists on the SSRF-protected session.
       GUARD = NetworkGuard.new(allow_private_networks: false)
+
+      # HTTPX series the release was verified against.
+      TESTED_HTTPX_SERIES = '1.9.'
 
       class << self
         # @param klass [Class] HTTPX session class being extended
@@ -25,8 +35,29 @@ module Html2rss
 
         # @param options [HTTPX::Options] session options
         # @return [HTTPX::Options] options with the NAT64 prefix released to {NetworkGuard}
+        #   when HTTPX is in the tested range; unchanged otherwise
         def extra_options(options)
-          options.merge(safe_private_ranges: [NetworkGuard::NAT64_PREFIX])
+          return options.merge(safe_private_ranges: [NetworkGuard::NAT64_PREFIX]) if release_supported?
+
+          warn_inactive
+          options
+        end
+
+        # @return [Boolean] true when the installed HTTPX is the tested series and still hooks +addresses=+
+        def release_supported?
+          HTTPX::VERSION.start_with?(TESTED_HTTPX_SERIES) &&
+            HTTPX::Plugins::SsrfFilter::ConnectionMethods.method_defined?(:addresses=)
+        end
+
+        # Logs once per process; carries no addresses.
+        # @return [void]
+        def warn_inactive
+          # rubocop:disable ThreadSafety/ClassInstanceVariable -- benign once-only log flag
+          return if @warned_inactive
+
+          @warned_inactive = true
+          # rubocop:enable ThreadSafety/ClassInstanceVariable
+          Log.warn({ event_name: 'network_guard.nat64_inactive', httpx_version: HTTPX::VERSION }.to_json)
         end
 
         # @param ipaddr [IPAddr]

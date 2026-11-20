@@ -10,6 +10,30 @@ RSpec.describe Html2rss::RequestService::NetworkGuardFilter do
     it 'releases only the NAT64 prefix from the ssrf filter' do
       expect(described_class.extra_options({})).to eq(safe_private_ranges: [Html2rss::RequestService::NetworkGuard::NAT64_PREFIX])
     end
+
+    context 'when the NAT64 release is unsupported' do
+      before do
+        described_class.instance_variable_set(:@warned_inactive, nil)
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      after { described_class.instance_variable_set(:@warned_inactive, nil) }
+
+      it 'releases nothing and warns once without addresses for an untested HTTPX version', :aggregate_failures do
+        stub_const('HTTPX::VERSION', '2.0.0')
+
+        2.times { expect(described_class.extra_options({})).to eq({}) }
+        expect(Html2rss::Log).to have_received(:warn).once.with(/network_guard\.nat64_inactive/)
+      end
+
+      it 'releases nothing when ssrf_filter no longer defines addresses=', :aggregate_failures do
+        allow(HTTPX::Plugins::SsrfFilter::ConnectionMethods)
+          .to receive(:method_defined?).with(:addresses=).and_return(false)
+
+        expect(described_class.extra_options({})).to eq({})
+        expect(Html2rss::Log).to have_received(:warn).once
+      end
+    end
   end
 
   describe '.denied?' do
@@ -90,6 +114,23 @@ RSpec.describe Html2rss::RequestService::NetworkGuardFilter do
     it 'lets a public NAT64 address reach the socket layer', :aggregate_failures do
       expect(fetch('64:ff9b::8.8.8.8').error).not_to be_a(HTTPX::ServerSideRequestForgeryError)
       expect(HTTPX::TCP).to have_received(:new)
+    end
+
+    [
+      ['an untested HTTPX version', -> { stub_const('HTTPX::VERSION', '2.0.0') }],
+      ['a missing addresses= hook', lambda {
+        allow(HTTPX::Plugins::SsrfFilter::ConnectionMethods).to receive(:method_defined?).and_call_original
+        allow(HTTPX::Plugins::SsrfFilter::ConnectionMethods).to receive(:method_defined?)
+          .with(:addresses=).and_return(false)
+      }]
+    ].each do |label, setup|
+      it "still refuses a public NAT64 address with #{label}", :aggregate_failures do
+        allow(Html2rss::Log).to receive(:warn)
+        instance_exec(&setup)
+
+        expect(fetch('64:ff9b::8.8.8.8').error).to be_a(HTTPX::ServerSideRequestForgeryError)
+        expect(HTTPX::TCP).not_to have_received(:new)
+      end
     end
 
     it 'accepts the connected peer of a public NAT64 address' do

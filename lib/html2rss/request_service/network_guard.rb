@@ -35,7 +35,8 @@ module Html2rss
       ].freeze
       # RFC 6052 well-known NAT64 prefix; the last 32 bits embed an IPv4 address.
       NAT64_PREFIX = IPAddr.new('64:ff9b::/96')
-      # 6to4 (RFC 3056); bits 16..47 embed an IPv4 address.
+      # 6to4 (RFC 3056); bits 16..47 embed an IPv4 address. Decoded only to deny private embeds;
+      # the HTTPX filter still denies all of 2002::/16 at connect.
       SIX_TO_FOUR_PREFIX = IPAddr.new('2002::/16')
 
       ##
