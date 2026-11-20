@@ -1,0 +1,162 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Local, non-CI eval: how much article-page metadata can html2rss already recover from JSON-LD
+# and meta tags, scored against newspaper4k's saved fixture pages. Fixtures are third-party
+# publisher copies and stay outside the repo. No network.
+#
+# FIXTURES holds html/<name>.html paired with metadata/<name>.json (url, title, authors,
+# publish_date, top_image, meta_description). newspaper4k's values are its own snapshot output
+# and contain bugs, so the report measures "agreement" with it, never accuracy. Per field it shows
+# found-by-html2rss %, the source that supplied the value (jsonld / meta) and agreement %
+# (dates by day, authors by case-insensitive name overlap, images by normalized URL, text by
+# whitespace-normalized equality), then lists every disagreement per page.
+#
+# Usage: NEWSPAPER4K_FIXTURES=DIR mise exec -- bin/enrichment-eval
+
+ENV['LOG_LEVEL'] ||= 'error'
+
+require 'bundler/setup'
+require 'date'
+require 'json'
+require_relative '../lib/html2rss'
+
+Schema = Html2rss::AutoSource::Scraper::Schema
+FIELDS = %i[title description author image published_at].freeze
+# html2rss field => [newspaper4k key, og/article/name meta selectors]
+META = {
+  title: ['title', ['og:title']],
+  description: ['meta_description', %w[og:description description]],
+  author: ['authors', %w[article:author author]],
+  image: ['top_image', ['og:image']],
+  published_at: ['publish_date', %w[article:published_time]]
+}.freeze
+
+def usage_error(message)
+  $stderr.write "#{message}\n", 'Usage: NEWSPAPER4K_FIXTURES=DIR mise exec -- bin/enrichment-eval', "\n"
+  exit 1
+end
+
+def text(value) = value.to_s.gsub(/[[:space:]]+/, ' ').strip.downcase
+
+def day(value) = (Date.parse(value.to_s) rescue nil)&.iso8601 # rubocop:disable Style/RescueModifier
+
+def names(value) = Array(value).flat_map { _1.to_s.split(/,|&|\band\b/i) }.map { text(_1) }.reject(&:empty?).to_set
+
+def image_key(value)
+  uri = URI.parse(value.to_s.strip)
+  "#{uri.host&.downcase}#{uri.path.to_s.chomp('/')}#{"?#{uri.query}" if uri.query}"
+rescue URI::InvalidURIError
+  text(value)
+end
+
+def agree?(field, ours, theirs)
+  case field
+  when :published_at then day(ours) == day(theirs)
+  when :author then names(ours).intersect?(names(theirs))
+  when :image then image_key(ours) == image_key(theirs)
+  else text(ours) == text(theirs)
+  end
+end
+
+def jsonld_thing(doc, url)
+  doc.css('script[type="application/ld+json"]').each do |script|
+    Schema.from_script(script).each do |object|
+      next unless Schema.scraper_for_schema_object(object) == Schema::Thing
+
+      return Schema::Thing.new(object, url:)
+    end
+  rescue JSON::ParserError
+    next
+  end
+  nil
+end
+
+def jsonld_value(thing, field)
+  return unless thing
+
+  # Thing#author falls back to publisher; only the object's own author counts here.
+  return if field == :author && !thing.schema_object[:author]
+
+  value = thing.public_send(field).to_s.strip
+  value unless value.empty?
+end
+
+def meta_value(doc, field)
+  META.fetch(field).last.each do |key|
+    node = doc.at_css("meta[property='#{key}'], meta[name='#{key}']")
+    value = node && node['content'].to_s.strip
+    return value unless value.to_s.empty?
+  end
+  nil
+end
+
+def extract(doc, url)
+  thing = jsonld_thing(doc, url)
+  FIELDS.to_h do |field|
+    if (value = jsonld_value(thing, field)) then [field, [value, :jsonld]]
+    elsif (value = meta_value(doc, field)) then [field, [value, :meta]]
+    else [field, [nil, :none]]
+    end
+  end
+end
+
+def evaluate(dir)
+  Dir[File.join(dir, 'metadata', '*.json')].filter_map do |meta_path|
+    name = File.basename(meta_path, '.json')
+    html = File.join(dir, 'html', "#{name}.html")
+    next unless File.exist?(html)
+
+    expected = JSON.parse(File.read(meta_path))
+    found = extract(Nokogiri::HTML(File.read(html)), expected['url'])
+    { name:, expected:, found: }
+  end
+end
+
+def blank?(value) = Array(value).all? { _1.to_s.strip.empty? }
+
+def percent(part, whole) = whole.zero? ? '-' : format('%.0f%%', 100.0 * part / whole)
+
+# Compared cells for one page: [field, source, ours, theirs, verdict] (verdict :agree, :disagree, :n_a).
+def cells(page)
+  FIELDS.map do |field|
+    ours, source = page[:found].fetch(field)
+    theirs = page[:expected][META.fetch(field).first]
+    verdict = if ours.nil? || blank?(theirs) then :n_a
+              else agree?(field, ours, theirs) ? :agree : :disagree
+              end
+    [field, source, ours, theirs, verdict]
+  end
+end
+
+def table_row(field, mine) # rubocop:disable Metrics/AbcSize -- one tally per report column
+  found = mine.reject { _1[1] == :none }
+  compared = mine.reject { _1[4] == :n_a }
+  agreed = compared.count { _1[4] == :agree }
+  [field, percent(found.size, mine.size), found.count { _1[1] == :jsonld }, found.count { _1[1] == :meta },
+   "#{percent(agreed, compared.size)} (#{compared.size} compared)"]
+end
+
+def table(pages)
+  all = pages.flat_map { cells(_1) }
+  rows = FIELDS.map { |field| table_row(field, all.select { _1.first == field }) }
+  [%w[field found jsonld meta agreement], *rows].map { |row| row.map { _1.to_s.ljust(14) }.join.rstrip }
+end
+
+def disagreements(pages)
+  pages.flat_map do |page|
+    cells(page).select { _1[4] == :disagree }.map do |field, source, ours, theirs, _|
+      "#{page[:name]} #{field} [#{source}] html2rss=#{ours.inspect} newspaper4k=#{theirs.inspect}"
+    end
+  end
+end
+
+dir = ENV.fetch('NEWSPAPER4K_FIXTURES', '').strip
+usage_error('NEWSPAPER4K_FIXTURES is not set.') if dir.empty?
+usage_error("NEWSPAPER4K_FIXTURES is not a directory: #{dir}") unless File.directory?(dir)
+
+pages = evaluate(dir)
+usage_error("No html/<name>.html + metadata/<name>.json pairs in #{dir}") if pages.empty?
+
+puts "Pages: #{pages.size} (agreement with newspaper4k's snapshot output, not accuracy)", '', table(pages), ''
+puts 'Disagreements', *disagreements(pages)
