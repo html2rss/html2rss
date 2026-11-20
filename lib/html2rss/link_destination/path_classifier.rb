@@ -105,7 +105,7 @@ module Html2rss
           deep_post_context: Set['press', 'newsroom', 'presse', 'pressemitteilungen', 'prensa'].freeze
         }.freeze
       end
-      # Path segment that begins with a year-like publishing marker.
+      # Routing shape: any digit-led slug or id (4+ digits), not a calendar year; see ArticleRules::UrlDate::YEAR.
       YEARISH_SEGMENT = /\A\d{4,}[\w-]*\z/
       # Hyphenated slug shape common to article permalinks.
       POST_SLUG_SEGMENT = /\A[a-z0-9]+(?:-[a-z0-9]+){2,}\z/i
