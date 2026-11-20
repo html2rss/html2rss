@@ -18,7 +18,8 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
       'https://e.com/2026.1.5/slug' => '2026-01-05',
       'https://e.com/2026/11/21/slug' => '2026-11-21',
       'https://e.com/2026/11/20/x-2026-11-20' => '2026-11-20',
-      'https://e.com/1995/01/02/slug' => '1995-01-02'
+      'https://e.com/1995/01/02/slug' => '1995-01-02',
+      'https://e.com/2026/11/20/2026-11-20-slug' => '2026-11-20'
     }.each do |url, iso|
       it "reads #{iso} from #{url}" do
         expect(described_class.call(url, time_zone: 'UTC').to_date.iso8601).to eq(iso)
@@ -50,6 +51,8 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
     end
 
     it 'yields nothing for an invalid or opaque uri', :aggregate_failures do
+      expect(described_class.call('https://e.com/a?next=/2026/11/20/slug', time_zone: 'UTC')).to be_nil
+      expect(described_class.call('https://2026-11-20-x.example.com/a', time_zone: 'UTC')).to be_nil
       expect(described_class.call('http://[bad/2026/11/20/a', time_zone: 'UTC')).to be_nil
       expect(described_class.call('mailto:a@b.c', time_zone: 'UTC')).to be_nil
     end

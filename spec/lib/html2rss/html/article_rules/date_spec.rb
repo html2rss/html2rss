@@ -15,8 +15,8 @@ RSpec.describe Html2rss::Html::ArticleRules::Date do
 
       expect(described_class.today(time_zone: 'Asia/Tokyo')).to eq(Date.new(2026, 11, 21))
       expect(described_class.today(time_zone: '')).to eq(Date.new(2026, 11, 20))
+      expect(described_class.today(time_zone: nil)).to eq(Date.new(2026, 11, 20))
       expect(described_class.today(time_zone: 'Not/AZone')).to eq(Date.new(2026, 11, 20))
-      expect(described_class.today).to eq(Date.new(2026, 11, 20))
     end
   end
 

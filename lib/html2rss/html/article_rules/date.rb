@@ -34,7 +34,7 @@ module Html2rss
           ##
           # @param time_zone [String] channel time zone
           # @return [::Date] today's calendar day in +time_zone+
-          def today(time_zone: 'UTC') = timezone_for(time_zone.to_s.empty? ? 'UTC' : time_zone.to_s).now.to_date
+          def today(time_zone:) = timezone_for(time_zone.to_s).now.to_date
 
           ##
           # @param date [::Date] calendar day
