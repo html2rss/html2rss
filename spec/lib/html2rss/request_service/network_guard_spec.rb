@@ -13,10 +13,14 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
     0.0.0.0 0.255.255.255 10.0.0.1 10.255.255.255 127.0.0.1 127.255.255.255 169.254.169.254 172.16.0.1
     172.31.255.255 192.168.0.1 192.168.255.255 224.0.0.1 239.255.255.255 ::1 :: fe80::1 febf::1 fc00::1
     fdff::1 ff02::1 ::ffff:127.0.0.1 ::ffff:10.0.0.1 ::ffff:169.254.169.254
+    64:ff9b::10.0.0.1 64:ff9b::127.0.0.1 64:ff9b::169.254.169.254 64:ff9b::192.168.1.1 64:ff9b::0.0.0.0
+    64:ff9b::224.0.0.1 64:ff9b:1::1 64:ff9b:1::808:808 2002:0a00:0001:: 2002:7f00:0001:: 2002:a9fe:a9fe::1
+    2002:c0a8:0101:: 2001:0:4136:e378:8000:63bf:f5ff:fffe 2001::1
   ]
   public_ips = %w[
     1.1.1.1 8.8.8.8 9.255.255.255 11.0.0.1 126.255.255.255 128.0.0.1 169.253.255.255 169.255.0.1 172.15.255.255
     172.32.0.1 192.167.255.255 192.169.0.1 223.255.255.255 240.0.0.1 2001:4860:4860::8888 ::ffff:8.8.8.8
+    64:ff9b::8.8.8.8 64:ff9b::1.1.1.1 2002:0808:0808:: 2001:1::1
   ]
 
   describe '#enforce_public_network!' do
@@ -184,6 +188,26 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
       closed_guard = described_class.new(allow_private_networks: nil, resolver:)
 
       expect { closed_guard.validate_remote_ip!(ip: '127.0.0.1', url:) }.to raise_error(denied)
+    end
+  end
+
+  describe '#embedded_ipv4' do
+    {
+      '64:ff9b::8.8.8.8' => '8.8.8.8',
+      '64:ff9b::10.0.0.1' => '10.0.0.1',
+      '64:ff9b::ffff:ffff' => '255.255.255.255',
+      '2002:0808:0808::1' => '8.8.8.8',
+      '2002:ffff:ffff::' => '255.255.255.255'
+    }.each do |ipv6, ipv4|
+      it "extracts #{ipv4} from #{ipv6}" do
+        expect(guard.embedded_ipv4(IPAddr.new(ipv6))).to eq(IPAddr.new(ipv4))
+      end
+    end
+
+    %w[2001:4860:4860::8888 64:ff9b:1::808:808 ::ffff:8.8.8.8 8.8.8.8 2003::1].each do |ip|
+      it "returns nil for #{ip}" do
+        expect(guard.embedded_ipv4(IPAddr.new(ip))).to be_nil
+      end
     end
   end
 end

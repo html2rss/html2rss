@@ -43,7 +43,7 @@ module Html2rss
 
         # @return [HTTPX::Session]
         def base_ssrf_session
-          @base_ssrf_session ||= base_session.plugin(:ssrf_filter)
+          @base_ssrf_session ||= base_session.plugin(NetworkGuardFilter)
         end
         # rubocop:enable ThreadSafety/ClassInstanceVariable
       end
