@@ -316,6 +316,8 @@ module Html2rss
 
     # @return [Hash{Symbol => Object, nil}] selectors configuration
     def selectors = config[:selectors]
+    # @return [Hash{Symbol => Object}, nil] article-page enrichment options (+article_metadata+, +max_fetches+)
+    def enrich = config[:enrich]
     # @return [Hash{Symbol => Object, nil}] auto-source configuration
     def auto_source = config[:auto_source]
 

@@ -77,6 +77,19 @@ RSpec.describe Html2rss::Status do
       expect { status.scraper_tallies['Selectors'] = 2 }.to raise_error(FrozenError)
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- one status per counter state
+    it 'reports enrichment counters only when set, and keeps them through Marshal', :aggregate_failures do
+      plain = described_class.build(articles: [])
+      status = described_class.build(
+        articles: [], enrichment: { enriched: 2, enrich_failed: 1, enrich_skipped_cross_origin: 1 }
+      )
+
+      expect(plain.to_h).not_to include(:enriched, :enrich_failed, :enrich_skipped_cross_origin)
+      expect(Marshal.load(Marshal.dump(status)).to_h).to include(
+        enriched: 2, enrich_failed: 1, enrich_skipped_cross_origin: 1
+      )
+    end
+
     # rubocop:disable-next RSpec/ExampleLength -- Marshal freeze contract for tallies + attempts
     it 're-freezes tallies and strategy_attempts after Marshal round-trip', :aggregate_failures do
       status = described_class.build(

@@ -178,6 +178,16 @@ RSpec.describe Html2rss::Article do
     end
   end
 
+  describe '#with_author and #with_image' do
+    it 'copy the article with the new value, leaving the original untouched', :aggregate_failures do
+      original = described_class.new(id: 'a', title: 'T', url: 'http://example.com/a')
+      copy = original.with_author('Ada').with_image('http://example.com/i.jpg')
+
+      expect([copy.author, copy.image.to_s, copy.title]).to eq(['Ada', 'http://example.com/i.jpg', 'T'])
+      expect([original.author, original.image]).to eq([nil, nil])
+    end
+  end
+
   describe '#with_url' do
     let(:options) { { id: 'a', title: 'Sample instance', url: 'http://example.com/a?utm_term=t', scraper: Object } }
 
