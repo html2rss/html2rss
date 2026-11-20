@@ -82,13 +82,24 @@ module Html2rss
     # @return [Extraction] unique articles with their dedup and admission drops and feed channel facts
     def extract(config:, response:, request_session:)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
-      unique = Article::Deduplicator.new(collected).call
+      unique = with_url_dates(Article::Deduplicator.new(collected).call, config.time_zone)
       Extraction.new(articles: unique, dedup_dropped: collected.size - unique.size, admission_drops:, feed_channel:)
     end
 
     private
 
     attr_reader :raw_config
+
+    # The single owner of the URL-path date fallback: it runs on the final articles, after cross-scraper
+    # merge and dedup, so no earlier stage (card walk, merge, scoring) ever sees a URL date.
+    def with_url_dates(articles, time_zone)
+      articles.map do |article|
+        next article if article.published_at
+
+        date = Html::ArticleRules::UrlDate.call(article.url, time_zone:)
+        date ? article.with_published_at(date) : article
+      end
+    end
 
     def pipeline_outcome_for(config)
       plan = StrategyPlan.resolve(config.strategy)

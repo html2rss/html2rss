@@ -908,4 +908,67 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
   end
+
+  describe 'URL path date fallback' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:time_zone) { 'Europe/Berlin' }
+    let(:html) { '<html><body></body></html>' }
+    let(:config) do
+      { channel: { url: 'https://example.com/news', time_zone: }, strategy: :default, auto_source: {} }
+    end
+    let(:articles) do
+      response = build_response.call(body: html)
+      allow(Html2rss::RequestService).to receive(:execute) { |ctx, **| ctx.budget.consume! && response }
+      described_class.new(config).to_outcome.articles
+    end
+
+    context 'with an undated card whose link carries a date' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        '<html><body><main><ul>' \
+          '<li><a href="/2026/10/20/harbor-ferry-route-returns">Harbor ferry route returns</a></li>' \
+          '<li><a href="/about/team">About the newsroom team</a></li></ul></main></body></html>'
+      end
+
+      it 'sets published_at to local midnight on the final article', :aggregate_failures do
+        dated = articles.find { _1.url.to_s.include?('harbor') }
+
+        expect(dated.published_at.to_s).to eq('2026-10-20T00:00:00+02:00')
+      end
+    end
+
+    context 'with a markup date and a parent summary (card-walk shape)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        '<html><body><main><ul><li><a href="/2024/05/03/some-story">Headline of the story</a>' \
+          '<p><time datetime="2024-05-04T09:00:00Z">4 May 2024</time> - a longer summary sentence.</p></li>' \
+          '<li><a href="/2024/05/02/other-story">Another headline of a story</a>' \
+          '<p><time datetime="2024-05-03T09:00:00Z">3 May 2024</time> - another summary sentence.</p></li>' \
+          '</ul></main></body></html>'
+      end
+
+      it 'keeps the description and the markup date', :aggregate_failures do
+        article = articles.find { _1.url.to_s.include?('some-story') }
+
+        expect(article.description).to include('summary sentence')
+        expect(article.published_at.to_s).to eq('2024-05-04T09:00:00+00:00')
+      end
+    end
+
+    context 'when structured data and a card both describe one article' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        <<~HTML
+          <html><head><script type="application/ld+json">
+          {"@context":"https://schema.org","@type":"NewsArticle","headline":"Harbor ferry route returns",
+           "url":"https://example.com/2026/10/20/harbor-ferry-route-returns","datePublished":"2026-10-21T08:30:00Z"}
+          </script></head><body><main><ul>
+          <li><a href="/2026/10/20/harbor-ferry-route-returns">Harbor ferry route returns</a></li>
+          </ul></main></body></html>
+        HTML
+      end
+
+      it 'keeps the structured-data time over the URL date', :aggregate_failures do
+        article = articles.find { _1.url.to_s.include?('harbor') }
+
+        expect(article.published_at.to_s).to eq('2026-10-21T08:30:00+00:00')
+      end
+    end
+  end
 end

@@ -31,6 +31,17 @@ module Html2rss
             values.min
           end
 
+          ##
+          # @param time_zone [String] channel time zone
+          # @return [::Date] today's calendar day in +time_zone+
+          def local_today(time_zone:) = timezone_for(time_zone).now.to_date
+
+          ##
+          # @param date [::Date] calendar day
+          # @param time_zone [String] channel time zone
+          # @return [DateTime] midnight of +date+ in +time_zone+
+          def at_midnight(date, time_zone:) = localize(DateTime.new(date.year, date.month, date.day), time_zone)
+
           private
 
           def parse_attr(value, time_zone:)

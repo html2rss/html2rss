@@ -848,3 +848,11 @@ title_unspaced_cjk_floor.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+url_dated_cards.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
