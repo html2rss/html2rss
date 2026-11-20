@@ -464,7 +464,9 @@ module Html2rss
 
     ##
     # The one host rule: no host (relative or opaque URL), a DNS name, an IPv4 literal, or a bracketed IPv6
-    # literal that parses. A trailing dot is allowed; a Unicode host is checked in its punycode form.
+    # literal that parses. Addressable's +normalize+ already strips a trailing dot; a Unicode host is checked in
+    # its punycode form. An IPv4 octet has no leading zero (+01.2.3.4+, +0177.0.0.1+): readers disagree on
+    # whether that is decimal or octal, the classic shape of an address-guard bypass.
     #
     # @param host [String, nil]
     # @return [Boolean] truthy when valid
@@ -474,7 +476,7 @@ module Html2rss
       host = Addressable::IDNA.to_ascii(host) unless host.ascii_only?
       return ipv6_literal?(host) if host.start_with?('[')
 
-      dns_name_or_ipv4?(host.delete_suffix('.'))
+      dns_name_or_ipv4?(host)
     end
 
     def ipv6_literal?(host)

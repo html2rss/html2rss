@@ -173,6 +173,8 @@ RSpec.describe Html2rss::Url do
         'an unbalanced closing bracket' => 'http://a]/a',
         'trailing text after an IPv6 literal' => 'http://[::1]x/a',
         'an IPv6 literal that does not parse' => 'http://[1:2]/a',
+        'an IPv4 octet with a leading zero' => 'http://01.2.3.4/a',
+        'an octal-looking IPv4 literal' => 'http://0177.0.0.1/a',
         'a bracketed IPv4 literal' => 'http://[1.2.3.4]/a',
         'an empty label' => 'http://a..b/a',
         'a trailing empty label' => 'http://a../a',
