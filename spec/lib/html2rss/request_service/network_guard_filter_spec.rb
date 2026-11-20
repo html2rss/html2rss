@@ -23,7 +23,8 @@ RSpec.describe Html2rss::RequestService::NetworkGuardFilter do
         stub_const('HTTPX::VERSION', '2.0.0')
 
         2.times { expect(described_class.extra_options({})).to eq({}) }
-        expect(Html2rss::Log).to have_received(:warn).once.with(/"event_name":"network_guard\.nat64_inactive","httpx_version":"2\.0\.0"/)
+        expect(Html2rss::Log).to have_received(:warn).once
+                                                     .with(/"event_name":"network_guard\.nat64_inactive","httpx_version":"2\.0\.0"/)
       end
 
       it 'releases nothing when ssrf_filter no longer defines addresses=', :aggregate_failures do
