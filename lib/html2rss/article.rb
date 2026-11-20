@@ -60,6 +60,10 @@ module Html2rss
       linked? && (!title.to_s.empty? || !description.to_s.empty?) && !id.to_s.empty?
     end
 
+    # @param value [DateTime, String, nil] replacement publication timestamp
+    # @return [Article] a copy of this article carrying +value+ as published_at
+    def with_published_at(value) = self.class.new(**@to_h, published_at: value)
+
     # @param new_url [String, Html2rss::Url] replacement article URL
     # @return [Article] a copy of this article carrying +new_url+
     def with_url(new_url) = self.class.new(**@to_h, url: new_url)
