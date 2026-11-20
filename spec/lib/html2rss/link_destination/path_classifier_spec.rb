@@ -298,7 +298,8 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
     end
 
     it 'rejects a document slug with a vanity word' do
-      expect(described_class.new(%w[shop premium-membership-plans-for-you-190700409.html]).strong_post_suffix?).to be(false)
+      expect(described_class.new(%w[shop premium-membership-plans-for-you-190700409.html])
+                .strong_post_suffix?).to be(false)
     end
 
     it 'rejects a document slug under a leading utility segment' do
