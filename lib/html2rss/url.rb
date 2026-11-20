@@ -105,6 +105,8 @@ module Html2rss
       return unless match
 
       new(parse(match[0]).normalize)
+    rescue Addressable::URI::InvalidURIError, InvalidUrlError
+      nil
     end
 
     ##
@@ -160,12 +162,13 @@ module Html2rss
     #
     # @param ref [String, Html2rss::Url, nil] an absolute or relative URL, possibly padded with whitespace
     # @param base_url [String, Html2rss::Url, nil] the document the reference appears in
-    # @return [Url, nil] the absolute http(s) URL, or nil when +ref+ is blank, unparseable or not http(s)
-    def self.resolve_web(ref, base_url = nil)
+    # @param web_only [Boolean] keep only http(s); +false+ also keeps other schemes (+mailto:+ and the like)
+    # @return [Url, nil] the absolute URL, or nil when +ref+ is blank, unparseable or (with +web_only+) not http(s)
+    def self.resolve_web(ref, base_url = nil, web_only: true)
       return unless ref.to_s.match?(/\S/)
 
       url = from_relative(ref, base_url)
-      url if url.web?
+      url if !web_only || url.web?
     rescue InvalidUrlError
       nil
     end

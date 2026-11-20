@@ -452,10 +452,7 @@ module Html2rss
     end
 
     def default_item_url(item, base_url = @url)
-      href = item['href'].to_s.strip
-      return if href.empty?
-
-      Url.from_relative(href, base_url)
+      Url.resolve_web(item['href'], base_url, web_only: false)
     end
 
     def item_env_for(item, base_url)
