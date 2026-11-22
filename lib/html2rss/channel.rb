@@ -89,8 +89,7 @@ module Html2rss
 
       # The header's primary tag, lowercased; the header name and tag are case-insensitive (BCP 47).
       def header_language(response)
-        value = headers(response).find { |name, _value| name.casecmp?('content-language') }&.last
-        value.to_s.downcase[/\A[a-z]{2}(?![a-z])/]
+        response.header('content-language').to_s.downcase(:ascii)[/\A[a-z]{2}(?![a-z])/]
       end
 
       # Fallback RSS ttl (in minutes) when no cache directives are present.

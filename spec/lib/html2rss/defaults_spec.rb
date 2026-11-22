@@ -370,6 +370,7 @@ RSpec.describe Html2rss::Defaults do
           Html2rss::RequestService::Response,
           url: 'http://example.com',
           headers: { 'cache-control' => 'max-age=1800' }, # 30 minutes
+          header: nil,
           html_response?: false,
           parsed_body: nil
         )

@@ -119,6 +119,58 @@ RSpec.describe Html2rss::Channel do
       end
     end
 
+    context 'with an uppercase content-language header and a root lang' do
+      let(:headers) { { 'Content-Language' => 'DE', 'content-type': 'text/html' } }
+      let(:body) { '<html lang="fr"><body></body></html>' }
+
+      it 'prefers the header' do
+        expect(instance.language).to eq('de')
+      end
+    end
+
+    context 'with an uppercase content-language list' do
+      let(:headers) { { 'content-language' => 'DE, EN', 'content-type': 'text/html' } }
+
+      it 'extracts the first language' do
+        expect(instance.language).to eq('de')
+      end
+    end
+
+    context 'with an uppercase three-letter content-language tag' do
+      let(:headers) { { 'content-language' => 'JAV', 'content-type': 'text/html' } }
+      let(:body) { '<html lang="fr"><body></body></html>' }
+
+      it 'keeps it invalid and reads the root lang' do
+        expect(instance.language).to eq('fr')
+      end
+    end
+
+    context 'with a Kelvin-sign content-language tag' do
+      let(:headers) { { 'content-language' => "\u212Ao", 'content-type': 'text/html' } }
+      let(:body) { '<html></html>' }
+
+      it 'does not fold it to ASCII' do
+        expect(instance.language).to be_nil
+      end
+    end
+
+    duplicate_header_cases = {
+      'jav before de' => [{ 'Content-Language' => 'jav', 'content-language' => 'de' }, 'de'],
+      'de before jav' => [{ 'content-language' => 'de', 'Content-Language' => 'jav' }, 'de'],
+      'cased pair, no exact key' => [{ 'Content-Language' => 'jav', 'CONTENT-LANGUAGE' => 'de' }, nil]
+    }
+
+    duplicate_header_cases.each do |name, (extra, expected)|
+      context "with duplicate content-language headers (#{name})" do
+        let(:headers) { extra.merge('content-type': 'text/html') }
+        let(:body) { '<html></html>' }
+
+        it 'uses the exact-name header first, else the first match' do
+          expect(instance.language).to eq(expected)
+        end
+      end
+    end
+
     context 'with a content-language list' do
       let(:headers) { { 'content-language' => 'de, en', 'content-type': 'text/html' } }
 

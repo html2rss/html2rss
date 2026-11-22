@@ -107,6 +107,14 @@ module Html2rss
                        cache_age:)
       end
 
+      # @param name [String] header name, lowercase; an exact key wins over a differently cased one
+      # @return [Object, nil] header value when present
+      def header(name)
+        headers.fetch(name) do
+          headers.find { |key, _value| key.casecmp?(name) }&.last
+        end
+      end
+
       # @return [String] normalized content type header value
       def content_type = header('content-type').to_s
 
@@ -150,14 +158,6 @@ module Html2rss
       end
 
       def freeze_or(value, default) = value.nil? || value.empty? ? default : value.freeze
-
-      # @param name [String] canonical header name
-      # @return [Object, nil] header value when present
-      def header(name)
-        headers.fetch(name) do
-          headers.find { |key, _value| key.casecmp?(name) }&.last
-        end
-      end
 
       def parse_html_document
         Nokogiri::HTML(decoded_html_body).tap do |doc|
