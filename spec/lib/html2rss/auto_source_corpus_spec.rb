@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'fileutils'
 require 'tmpdir'
 require_relative '../../support/auto_source_corpus'
 
@@ -70,6 +71,40 @@ RSpec.describe Html2rss::AutoSource do
 
     it 'decodes a saved UTF-8 page despite a stale non-UTF-8 meta charset' do
       expect(titles).to include('Café über Straße número 1')
+    end
+  end
+
+  describe '.response' do
+    let(:dir) { Dir.mktmpdir('corpus-encoding-') }
+    let(:url) { 'https://example.com/news/' }
+    let(:page_text) do
+      lambda do |html, encoding|
+        path = File.join(dir, 'page.html')
+        File.binwrite(path, html.encode(encoding))
+        AutoSourceCorpus.response(path:, url:).parsed_body.at_css('h1').text
+      end
+    end
+
+    after { FileUtils.rm_rf(dir) }
+
+    it 'decodes non-UTF-8 pages from their own meta charset', :aggregate_failures do
+      { 'windows-1251' => 'Новости дня', 'GBK' => '今日新闻', 'Big5' => '今日新聞' }.each do |charset, text|
+        html = "<html><head><meta charset=\"#{charset}\"></head><body><h1>#{text}</h1></body></html>"
+
+        expect(page_text.call(html, charset)).to eq(text)
+      end
+    end
+
+    it 'keeps a valid UTF-8 page UTF-8 despite a stale meta charset' do
+      html = '<html><head><meta charset="windows-1251"></head><body><h1>Новости дня</h1></body></html>'
+
+      expect(page_text.call(html, 'UTF-8')).to eq('Новости дня')
+    end
+
+    it 'leaves invalid UTF-8 without a declared charset visibly undecoded' do
+      html = '<html><body><h1>Новости дня</h1></body></html>'
+
+      expect(page_text.call(html, 'windows-1251')).to include("\uFFFD")
     end
   end
 end

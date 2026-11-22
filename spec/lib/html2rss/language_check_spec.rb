@@ -211,4 +211,45 @@ RSpec.describe LanguageCheck do
                                         evidence: true)).to eq('pages' => {})
     end
   end
+
+  describe 'pages that are not evidence' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- one mixed page set, built in steps
+    let(:html) { ->(meta, text) { "<html><head>#{meta}</head><body><a href=\"/a\">#{text}</a></body></html>" } }
+    let(:stray) { "#{'é' * 40} #{html.call('<meta charset="windows-1251">', 'Contact')}".b.sub('é'.b, "\xE9".b) }
+    let(:files) do
+      { 'gbk.html' => html.call('<meta charset="GBK">', '联系我们').encode('GBK'),
+        'blind.html' => html.call('', 'Новости').encode('windows-1251'),
+        'stale.html' => stray,
+        'href.html' => "<html><body><a href=\"/\xFF\">Contact</a></body></html>".b,
+        'legit.html' => html.call('', "Contact \uFFFD"),
+        'data.json' => '{"a":1}' }
+    end
+    let(:mixed) do
+      files.each { |name, body| File.binwrite(File.join(pages_dir, name), body) }
+      File.write(File.join(pages_dir, 'manifest.tsv'), files.keys.map { "#{_1}\thttps://example.com/\n" }.join)
+      described_class.validate!(code: 'en', pages: pages_dir)
+    end
+    let(:measured) { described_class.measure(mixed, pages_dir, 'en', trace: false, evidence: true) }
+    let(:report) do
+      meta = { code: 'en', pages: mixed, base_sha: 'a' * 40, head_sha: 'b' * 40, dirty: false }
+      described_class::Report.new(meta, { 'measure' => measured, 'memory' => [1] * 5 },
+                                  { 'measure' => measured, 'memory' => [1] * 5 })
+    end
+
+    it 'lists only pages that stay undecodable or are not HTML', :aggregate_failures do
+      expect(measured.fetch('undecodable')).to contain_exactly('blind.html', 'stale.html', 'href.html', 'data.json')
+      expect(measured.fetch('pages').fetch('data.json')).to include('error' => nil)
+    end
+
+    it 'leaves them out of every section and names them', :aggregate_failures do
+      full = report.full
+
+      expect(full).to include('compared 2 of 6 pages', 'anchors: 0 changed of 2 ', 'blind.html  not evidence')
+      expect(full).to include('WARNING not evidence')
+      expect(report.terminal('r.md')).to include('stale.html')
+    end
+
+    it 'counts no text of an undecodable page as term evidence' do
+      expect(measured.dig('evidence', 'texts')).to eq(2)
+    end
+  end
 end
