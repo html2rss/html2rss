@@ -29,7 +29,7 @@ module Html2rss
         **%w[chinese csgb2312 csiso58gb231280 gbk gb_2312 gb_2312-80 iso-ir-58 x-gbk].to_h do |label|
           [label, [Encoding::GBK, Encoding::GB18030].freeze]
         end,
-        'gb2312' => [Encoding::GB18030].freeze,
+        'gb2312' => [Encoding::GBK, Encoding::GB18030].freeze,
         **%w[big5 cn-big5 csbig5 x-x-big5].to_h { |label| [label, [Encoding::Big5, Encoding::Big5_HKSCS].freeze] }
       }.freeze
       # Bytes scanned for a meta charset hint (HTML spec looks at the first 1024).

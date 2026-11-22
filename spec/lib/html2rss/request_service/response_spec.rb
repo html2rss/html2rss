@@ -275,6 +275,11 @@ RSpec.describe Html2rss::RequestService::Response do
       ['decodes cp950 directly: EUDC byte pair 8140 stays private use', 'cp950', '8140', "\uEEB8"],
       ['decodes gbk byte 0x80 as €', 'gbk', '80', '€'],
       ['decodes gbk-only 镕 (e946) under the gb2312 label', 'gb2312', 'e946', '镕'],
+      ['decodes gb2312 with GBK-only byte 0x80 as 中€ (GB2312 fails, GBK takes it)', 'gb2312', 'd6d080', '中€'],
+      ['known limit: gbk page mixing 0x80 and a GB18030 four-byte sequence is scrubbed', 'gbk', 'd6d08081308130',
+       "\uFFFD\u0400\uFFFD0\uFFFD0"],
+      ['known limit: big5 page with a two-code-point HKSCS code (8862) is scrubbed', 'big5', 'a4a48862',
+       "\uFFFD\uFFFD\uFFFDb"],
       ['scrubs an unresolvable internal label instead of raising', 'internal', 'ffff', "\uFFFD" * 2]
     ].each do |name, label, hex, expected|
       context "when a #{label} page contains bytes #{hex}" do
