@@ -265,6 +265,21 @@ RSpec.describe Html2rss::RequestService::Response do
       end
     end
 
+    [
+      ['keeps ‧ (a145) as CP950 maps it', 'a145', '‧'],
+      ['keeps € (a3e1) as CP950 maps it', 'a3e1', '€'],
+      ['keeps ＼ (a240) as CP950 maps it', 'a240', '＼'],
+      ['decodes HKSCS-only 啫 (94dc) fully', '94dc', '啫'],
+      ['scrubs a page mixing € and 啫: no single decoder maps both', 'a3e194dc', "\uFFFD" * 3]
+    ].each do |name, hex, expected|
+      context "when a big5 page contains bytes #{hex}" do
+        let(:body) { "<h1>#{[hex].pack('H*')}</h1>".b.force_encoding(Encoding::UTF_8) }
+        let(:headers) { { 'content-type' => 'text/html; charset=big5' } }
+
+        it(name) { expect(parsed_body.at_css('h1').text).to eq(expected) }
+      end
+    end
+
     context 'when windows-1251 HTML is labeled' do
       let(:body) { '<meta charset="windows-1251"><h1>Привет</h1>'.encode('Windows-1251').force_encoding(Encoding::UTF_8) }
       let(:headers) { { 'content-type' => 'text/html' } }
