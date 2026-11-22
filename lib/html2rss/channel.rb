@@ -77,9 +77,8 @@ module Html2rss
       def language_for(response, overrides = NO_OVERRIDES)
         return overrides[:language] if overrides[:language]
 
-        if (language_code = headers(response)['content-language']&.match(/\A([a-z]{2})(?![a-z])/))
-          return language_code[0]
-        end
+        language_code = headers(response)['content-language'].to_s[/\A[a-z]{2}(?![a-z])/]
+        return language_code if language_code
 
         return unless html_response?(response)
 
