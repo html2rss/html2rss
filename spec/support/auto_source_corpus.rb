@@ -15,15 +15,15 @@ require 'yaml'
 # request session only when the sidecar names saved responses, then scores the admitted URLs against the sidecar.
 # Shared by bin/auto-source-corpus (table + baseline recording) and the ratchet spec.
 #
-# Saved pages are UTF-8 by contract (the capture tool re-encodes them, so an in-page
-# +<meta charset>+ is stale). {.auto_source} owns building the response and declares UTF-8.
+# A saved page whose bytes are valid UTF-8 is UTF-8 (the capture tool re-encodes pages, so an in-page
+# +<meta charset>+ may be stale). A page whose bytes are not is decoded by {Html2rss::RequestService::Response}
+# from its own +<meta charset>+, as in production. {.response} owns building the response.
 module AutoSourceCorpus
   ROOT = File.expand_path('../fixtures/auto_source/corpus', __dir__)
   BASELINE_PATH = File.join(ROOT, 'baseline.yml')
   BASE_URL = 'https://example.com/news/'
   CONTENT_TYPES = { '.html' => 'text/html', '.json' => 'application/json' }.freeze
   FEED_CONTENT_TYPE = 'application/xml'
-  SAVED_PAGE_CHARSET = 'utf-8'
   RECORD_COMMAND = 'mise exec -- make corpus-baseline'
   SST_CALLS = :auto_source_corpus_sst_calls
   # Summed per-page scores, in table column order.
@@ -71,18 +71,20 @@ module AutoSourceCorpus
       Html2rss::AutoSource.new(response(path:, url:), request_session:)
     end
 
-    # The one builder of a Response from a saved file, shared with {SavedResponses}: pages are read
-    # and declared as UTF-8 so a stale in-page meta charset never decodes them; +.xml+ feeds are read
-    # as bytes, since they carry their own encoding declaration.
+    # The one builder of a Response from a saved file, shared with {SavedResponses}: a page whose bytes are
+    # valid UTF-8 is declared UTF-8 so a stale in-page meta charset never decodes it; any other page declares no
+    # charset, so the Response decodes it from its in-page meta charset (or scrubs it when there is none).
+    # +.xml+ feeds are read as bytes, since they carry their own encoding declaration.
     #
     # @param path [String] saved file (+.html+, +.json+ or +.xml+)
     # @param url [String] absolute URL the file stands for
     # @return [Html2rss::RequestService::Response]
     def response(path:, url:)
       feed = File.extname(path) == '.xml'
+      body = File.binread(path)
       Html2rss::RequestService::Response.new(
-        body: feed ? File.binread(path) : File.read(path, encoding: Encoding::UTF_8),
-        headers: { 'content-type' => content_type(path, feed) }, status: 200, url: Html2rss::Url.from_absolute(url)
+        body:, headers: { 'content-type' => content_type(path, feed, body) }, status: 200,
+        url: Html2rss::Url.from_absolute(url)
       )
     end
 
@@ -114,10 +116,11 @@ module AutoSourceCorpus
 
     private
 
-    def content_type(path, feed)
+    def content_type(path, feed, body)
       return FEED_CONTENT_TYPE if feed
 
-      "#{CONTENT_TYPES.fetch(File.extname(path), 'text/html')}; charset=#{SAVED_PAGE_CHARSET}"
+      type = CONTENT_TYPES.fetch(File.extname(path), 'text/html')
+      body.force_encoding(Encoding::UTF_8).valid_encoding? ? "#{type}; charset=utf-8" : type
     end
 
     def install_sst_probe

@@ -106,9 +106,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       facts = pages.to_h { |page| [page.file, anchor_facts(File.join(dir, page.file), page.url)] }
       runs, sites = page_runs(pages, dir, trace:)
       { 'pages' => runs, 'sites' => sites, 'anchors' => facts.transform_values { classify(_1[:texts], code) },
-        'invalid_utf8' => facts.reject do |_, fact|
-          fact[:valid]
-        end.keys, 'evidence' => (term_evidence(lang, facts) if evidence) }
+        'undecodable' => facts.reject { _2[:valid] }.keys, 'evidence' => (term_evidence(lang, facts) if evidence) }
     end
 
     # @param tree [String] revision tree root
@@ -337,12 +335,15 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       tally["#{object.class}\t#{site}##{ObjectSpace.allocation_method_id(object)}"] += 1
     end
 
+    # @return [Hash] the page facts that are evidence: a page left undecodable says nothing about the vocabulary
+    def decodable(facts) = facts.select { |_, fact| fact[:valid] }
+
     # Unique anchor texts and resolved path segments of one saved page.
     def anchor_facts(path, base_url)
-      raw = File.read(path, encoding: Encoding::UTF_8)
-      doc = Nokogiri::HTML(raw.valid_encoding? ? raw : File.binread(path))
+      doc = AutoSourceCorpus.response(path:, url: base_url).parsed_body
       anchors = doc.css('a')
-      { valid: raw.valid_encoding?, texts: anchors.map { _1.text.gsub(/\s+/, ' ').strip }.reject(&:empty?).uniq,
+      { valid: !doc.text.include?("\uFFFD"),
+        texts: anchors.map { _1.text.gsub(/\s+/, ' ').strip }.reject(&:empty?).uniq,
         paths: anchors.filter_map { segments(_1['href'], base_url) }.uniq }
     end
 
@@ -365,6 +366,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     # ----- term evidence -----
 
     def term_evidence(language, facts)
+      facts = decodable(facts)
       texts = facts.flat_map { |_, fact| fact[:texts] }
       segment_counts = facts.values.flat_map { _1[:paths].map(&:uniq) }.flatten.tally
       { 'texts' => texts.size,
@@ -536,13 +538,16 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     def problem_lines
       [*error_lines(of_kind(:one_errored)).map { "  CHANGE errored in one tree  #{_1}" },
        *error_lines(of_kind(:both_errored)).map { "  not compared, errored in both  #{_1}" },
-       *invalid_utf8_lines]
+       *undecodable_lines]
     end
 
-    # Saved pages are UTF-8 by contract; a page that is not reads as mojibake, so its "no change" proves nothing.
-    def invalid_utf8_lines
-      files = @head.fetch('invalid_utf8')
-      files.empty? ? [] : ["  WARNING not valid UTF-8, its items are mojibake in both trees: #{files.join(', ')}"]
+    # A page decoded through its own meta charset is evidence; one that stays undecodable (invalid UTF-8 and no
+    # usable declared charset) has replacement characters in both trees, so its "no change" proves nothing.
+    def undecodable_lines
+      files = @head.fetch('undecodable')
+      return [] if files.empty?
+
+      ["  WARNING undecodable (invalid UTF-8, no usable meta charset), not evidence: #{files.join(', ')}"]
     end
 
     def feed_section
