@@ -259,4 +259,66 @@ RSpec.describe Html2rss::Article::Title do
       end
     end
   end
+
+  describe 'Han type markers on a Chinese page' do
+    let(:chinese) { %w[zh zh-Hant zh-Hans-CN ZH_tw].map { Html2rss::Vocabulary[_1] } }
+    let(:others) { ['ja', 'ja-JP', 'en', 'de', 'zh-', 'xx', nil, :all].map { Html2rss::Vocabulary[_1] } }
+
+    {
+      '独自' => '独自: 見出しの本文',
+      '写真' => '写真: 見出しの本文'
+    }.each do |marker, composed|
+      it "keeps #{marker} as kicker text on a Chinese page and drops it as a marker elsewhere", :aggregate_failures do
+        expect(chinese.map { described_class.compose('見出しの本文', kicker: marker, vocabulary: _1) }).to all(eq(composed))
+        expect(others.map { described_class.compose('見出しの本文', kicker: marker, vocabulary: _1) })
+          .to all(eq('見出しの本文'))
+        expect(described_class.compose('見出しの本文', kicker: marker)).to eq('見出しの本文')
+      end
+    end
+
+    it 'reads a leading bracket naming one of them as the kicker on a Chinese page', :aggregate_failures do
+      expect(chinese.map { described_class.compose('【独自】政府が発表', vocabulary: _1) }).to all(eq('独自: 政府が発表'))
+      expect(chinese.map { described_class.compose('＜写真＞海辺の町', vocabulary: _1) }).to all(eq('写真: 海辺の町'))
+      expect(others.map { described_class.compose('【独自】政府が発表', vocabulary: _1) }).to all(eq('政府が発表'))
+      expect(described_class.compose('＜写真＞海辺の町')).to eq('海辺の町')
+    end
+
+    it 'keeps a bracket marker inside a kicker as noise only where it is a marker', :aggregate_failures do
+      expect(described_class.compose('見出し本文', kicker: '【独自】')).to eq('見出し本文')
+      expect(described_class.compose('見出し本文', kicker: '【独自】', vocabulary: Html2rss::Vocabulary['zh']))
+        .to eq('【独自】: 見出し本文')
+    end
+
+    it 'judges a kicker piece with the page language', :aggregate_failures do
+      expect(chinese.map { described_class.noise_piece?('独自', vocabulary: _1) }).to all(be(false))
+      expect(chinese.map { described_class.noise_piece?(' 写真 ', vocabulary: _1) }).to all(be(false))
+      expect(others.map { described_class.noise_piece?('独自', vocabulary: _1) }).to all(be(true))
+      expect(described_class.noise_piece?('写真')).to be(true)
+    end
+
+    it 'keeps every other marker a marker on a Chinese page', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      zh = Html2rss::Vocabulary['zh']
+      readings = lambda do |marker|
+        [described_class.noise_piece?(marker, vocabulary: zh),
+         described_class.compose('見出しの本文', kicker: marker, vocabulary: zh),
+         described_class.compose("【#{marker}】見出し", vocabulary: zh)]
+      end
+
+      (described_class::TYPE_MARKERS - Html2rss::Vocabulary::CHINESE_WORDS).each do |marker|
+        expect(readings.call(marker)).to eq([true, '見出しの本文', '見出し']), marker
+      end
+    end
+
+    it 'keeps a type label with its marker noise on a Chinese page, since the label is Japanese itself' do
+      expect(described_class.compose('見出しの本文', kicker: '記事の種類：独自', vocabulary: Html2rss::Vocabulary['zh']))
+        .to eq('見出しの本文')
+    end
+
+    it 'leaves every non-Han marker and label alone on a Chinese page', :aggregate_failures do
+      zh = Html2rss::Vocabulary['zh']
+      expect(described_class.compose('Haven', kicker: 'Video', vocabulary: zh)).to eq('Haven')
+      expect(described_class.compose('Haven', kicker: 'Thema: Verkehr', vocabulary: zh)).to eq('Verkehr: Haven')
+      expect(described_class.noise_piece?('Live Blog', vocabulary: zh)).to be(true)
+    end
+  end
 end

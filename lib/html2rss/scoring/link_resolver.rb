@@ -34,6 +34,9 @@ module Html2rss
       # @return [LinkDestination::TextClassifier]
       attr_reader :text_classifier
 
+      # @return [Vocabulary::Scope] the page language's scope
+      attr_reader :vocabulary
+
       ##
       # @param node_or_href [SST::Node, String, #to_s]
       # @return [LinkDestination::DestinationFacts, nil]

@@ -19,9 +19,10 @@ module Html2rss
         # @param base_url [String, Html2rss::Url]
         # @param scraper [Class, nil]
         # @param time_zone [String] channel time zone for naive leftover dates
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
         # @return [Html2rss::Article, nil] nil when the segment has no primary link (no URL of its own)
-        def call(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC')
-          new(ranked_or_segment, base_url:, scraper:, time_zone:).call
+        def call(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil])
+          new(ranked_or_segment, base_url:, scraper:, time_zone:, vocabulary:).call
         end
       end
 
@@ -29,7 +30,8 @@ module Html2rss
       # @param base_url [String, Html2rss::Url]
       # @param scraper [Class, nil]
       # @param time_zone [String] channel time zone for naive leftover dates
-      def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC')
+      # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
+      def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil])
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
@@ -39,6 +41,7 @@ module Html2rss
         @base_url = base_url
         @scraper = scraper
         @time_zone = time_zone
+        @vocabulary = vocabulary
       end
 
       ##
@@ -61,7 +64,8 @@ module Html2rss
           enclosures: extract_enclosures,
           categories: extract_categories(title, root:),
           scraper: @scraper,
-          compose_title: true
+          compose_title: true,
+          vocabulary: @vocabulary
         }
         article = Article.new(**attrs)
         article.valid? ? article : nil
@@ -77,7 +81,10 @@ module Html2rss
       end
 
       # Kicker and headline text ({TitlePieces}) of this card.
-      def title_pieces = @title_pieces ||= TitlePieces.new(@root, heading || @selected_anchor, anchor: @selected_anchor)
+      def title_pieces
+        @title_pieces ||= TitlePieces.new(@root, heading || @selected_anchor, anchor: @selected_anchor,
+                                                                              vocabulary: @vocabulary)
+      end
 
       # Prefer a non-junk headline ({Article} composes it with {#kicker_text}). A credit-only card
       # blanks to nil, and Cleanup drops the untitled item as +blank_title+. Other junk shapes stay

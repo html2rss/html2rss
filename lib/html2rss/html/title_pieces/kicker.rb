@@ -22,10 +22,12 @@ module Html2rss
         # @param nodes [Nodes] reader of the card's nodes
         # @param root [Nokogiri::XML::Node, SST::Node] card root
         # @param source [Nokogiri::XML::Node, SST::Node, nil] headline source: the heading, else the anchor
+        # @param vocabulary [Vocabulary::Scope] the page language's scope ({Article::Title.noise_piece?})
         # @yieldreturn [Nokogiri::XML::Node, SST::Node, nil] the source's headline piece, read only when
         #   no marked or label kicker is found
-        def initialize(nodes, root, source, &)
+        def initialize(nodes, root, source, vocabulary, &)
           @nodes = nodes
+          @vocabulary = vocabulary
           @root = root
           @source = source
           @element = marked || (label || preceding(yield) if source)
@@ -122,7 +124,7 @@ module Html2rss
         def noise(node)
           @nodes.elements(node).select do |piece|
             @nodes.date_element?(piece) || @nodes.concealed?(piece) || @nodes.paid_label?(piece) ||
-              Article::Title.noise_piece?(@nodes.text(piece))
+              Article::Title.noise_piece?(@nodes.text(piece), vocabulary: @vocabulary)
           end
         end
 

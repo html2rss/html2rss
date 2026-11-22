@@ -28,6 +28,29 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     it_behaves_like 'article extractor leftover hygiene'
   end
 
+  describe 'page language' do
+    let(:html) do
+      '<article><b class="kicker">独自</b><h2><a href="/news/story">政府が新しい港湾計画を発表した</a></h2></article>'
+    end
+    let(:scraper_class) { Html2rss::AutoSource::Scraper::SemanticHtml }
+    let(:article_for) do
+      lambda do |**options|
+        described_class.call(segment_for(html), base_url: 'https://example.com', scraper: scraper_class, **options)
+      end
+    end
+
+    it 'reads a Han type marker kicker as text only on a Chinese page', :aggregate_failures do
+      expect(article_for.call.title).to eq('政府が新しい港湾計画を発表した')
+      expect(article_for.call(vocabulary: Html2rss::Vocabulary[:ja]).title).to eq('政府が新しい港湾計画を発表した')
+      expect(article_for.call(vocabulary: Html2rss::Vocabulary['zh-Hans-CN']).title)
+        .to eq('独自: 政府が新しい港湾計画を発表した')
+    end
+
+    it 'stamps the scraper class on the article' do
+      expect(article_for.call.scraper).to be(scraper_class)
+    end
+  end
+
   describe 'in-heading kickers' do
     let(:title_for) do
       ->(html) { described_class.call(segment_for(html), base_url: 'https://example.com')&.title }

@@ -170,7 +170,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
-      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt all])
+      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt all zh])
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
       expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
@@ -204,6 +204,37 @@ RSpec.describe Html2rss::Vocabulary do
       expect { %w[zz qq-QQ nonsense].each { described_class[_1] } }
         .not_to(change { [described_class::SCOPES.size, described_class::SCOPES.keys] })
       expect(described_class::SCOPES).to be_frozen
+    end
+  end
+
+  describe 'the Chinese scope' do
+    let(:chinese) { described_class[:zh] }
+    let(:everything) { described_class[nil] }
+
+    it 'resolves every Chinese tag, script and region included, to the one shared scope', :aggregate_failures do
+      %w[zh ZH zh-Hant zh-Hans zh-Hans-CN zh_TW zh-Hant-HK].each { expect(described_class[_1]).to be(chinese), _1 }
+      expect(chinese.code).to eq(:zh)
+      expect(chinese).to be_frozen
+    end
+
+    it 'shares the frozen ambiguous tables of the all scope: it differs only in type markers', :aggregate_failures do
+      expect(chinese.ambiguous_words).to be(everything.ambiguous_words)
+      expect(chinese.alternations).to be(everything.alternations)
+      expect(chinese.type_markers).to be_frozen
+    end
+
+    it 'leaves out exactly the Chinese words among the type markers', :aggregate_failures do
+      expect(described_class::CHINESE_WORDS).to eq(Set['独自', '写真'])
+      expect(described_class::CHINESE_WORDS).to be_a(Set).and be_frozen
+      expect(described_class::CHINESE_WORDS - described_class::Ja.terms.fetch(:type_marker)).to be_empty
+      expect(chinese.type_markers).to eq(described_class.words(:type_marker) - described_class::CHINESE_WORDS)
+    end
+
+    it 'gives every other scope the identical full marker set', :aggregate_failures do
+      others = described_class::SCOPES.values - [chinese]
+
+      expect(others.map(&:type_markers)).to all(equal(described_class.words(:type_marker)))
+      expect(described_class.words(:type_marker)).to include('独自', '写真', '速報', '動画')
     end
   end
 
@@ -267,6 +298,11 @@ RSpec.describe Html2rss::Vocabulary do
       expect([scope.ambiguous_words, scope.alternations]).to all(be_frozen)
     end
 
+    it 'reads every language\'s type markers, as the one shared set', :aggregate_failures do
+      expect(scope.type_markers).to be(described_class.words(:type_marker))
+      expect(scope.type_markers).to include('速報', 'video')
+    end
+
     it 'holds the ambiguous words and alternatives of its languages only', :aggregate_failures do
       expect(scope.ambiguous_words.fetch(:path_vanity)).to eq(%w[plus])
       expect(scope.ambiguous_words.fetch(:path_media)).to eq([])
@@ -311,7 +347,8 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'unions the shared Set with the ambiguous words, whatever they overlap', :aggregate_failures do
       overlapping = described_class::Scope.new(code: :xx, ambiguous_words: { path_taxonomy: %w[category tema] }.freeze,
-                                               alternations: {}.freeze)
+                                               alternations: {}.freeze,
+                                               type_markers: described_class.words(:type_marker))
 
       expect(overlapping.words(:path_taxonomy)).to eq(described_class.unambiguous_words(:path_taxonomy) | %w[tema])
     end

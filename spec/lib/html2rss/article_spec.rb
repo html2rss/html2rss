@@ -92,6 +92,15 @@ RSpec.describe Html2rss::Article do
       expect(article.title).to eq('Harbor: Ferry returns')
     end
 
+    it 'composes with the page language scope, and stores nothing of it', :aggregate_failures do
+      zh = Html2rss::Vocabulary['zh-Hant']
+      chinese = described_class.new(title: '見出しの本文', kicker: '独自', compose_title: true, vocabulary: zh)
+
+      expect(chinese.title).to eq('独自: 見出しの本文')
+      expect(described_class.new(title: '見出しの本文', kicker: '独自', compose_title: true).title).to eq('見出しの本文')
+      expect(chinese.instance_variables).not_to include(:@vocabulary)
+    end
+
     it 'keeps the title verbatim apart from whitespace by default', :aggregate_failures do
       expect(described_class.new(title: '10:00 Budget vote').title).to eq('10:00 Budget vote')
       expect(described_class.new(title: 'Video: Harbor tour').title).to eq('Video: Harbor tour')

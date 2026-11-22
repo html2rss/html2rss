@@ -2,11 +2,13 @@
 
 module Html2rss
   module Vocabulary
-    Scope = Data.define(:code, :ambiguous_words, :alternations)
+    Scope = Data.define(:code, :ambiguous_words, :alternations, :type_markers)
 
     # What one page language reads (see {Vocabulary.[]}): the unambiguous terms of every language plus the
     # ambiguous terms of this language, or of all of them for the +:all+ scope. One frozen instance per scope;
-    # it keeps only its own ambiguous terms, the unambiguous ones are shared.
+    # it keeps only its own ambiguous terms, the unambiguous ones are shared. +type_markers+ is the set of title
+    # type markers that apply: every language's markers, less (for a Chinese page) the Han ones that are ordinary
+    # Chinese words; the shared +Vocabulary.words(:type_marker)+ itself when nothing is left out.
     class Scope
       # The words that apply, built per call: read once at load by the owner of a concept, never per page.
       #

@@ -40,12 +40,16 @@ module Html2rss
       UNAMBIGUOUS = READINGS.to_h do |reading, concepts|
         [reading, matcher.call(reading, concepts.map { Vocabulary.unambiguous_alternation(_1) })]
       end.freeze
-      # ... and per scope code, the matcher of the ambiguous terms of that scope (compiled once per scope).
-      AMBIGUOUS = Vocabulary::SCOPES.transform_values do |scope|
-        READINGS.to_h do |reading, concepts|
-          [reading, matcher.call(reading, concepts.map { scope.ambiguous_alternation(_1) })]
+      # ... and per scope code, the matcher of the ambiguous terms of that scope (compiled once per distinct
+      # alternatives: the Chinese scope shares the matchers of +:all+).
+      AMBIGUOUS = begin
+        built = {}
+        Vocabulary::SCOPES.transform_values do |scope|
+          built[scope.alternations] ||= READINGS.to_h do |reading, concepts|
+            [reading, matcher.call(reading, concepts.map { scope.ambiguous_alternation(_1) })]
+          end.freeze
         end.freeze
-      end.freeze
+      end
       private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS
 
       # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a

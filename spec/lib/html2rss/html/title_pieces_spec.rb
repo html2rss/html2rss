@@ -33,6 +33,15 @@ RSpec.describe Html2rss::Html::TitlePieces do
       expect([bare.kicker, bare.kicker, bare.kicker_text]).to eq([nil, nil, nil])
     end
 
+    it 'drops a Han type marker piece from the kicker unless the page is Chinese' do
+      html = %(<article><b class="kicker"><i>独自</i> Transit</b><h2>T</h2></article>)
+      root = Nokogiri::HTML.fragment(html).at_css('article')
+      kicker_text = ->(vocabulary) { described_class.new(root, root.at_css('h2'), vocabulary:).kicker_text }
+
+      expect([Html2rss::Vocabulary[:ja], Html2rss::Vocabulary['zh-Hant']].map(&kicker_text))
+        .to eq(['Transit', '独自 Transit'])
+    end
+
     it 'takes a data-tb-kicker element as the kicker' do
       pieces, = pieces_for.call('<article><b data-tb-kicker="">Transit</b><h2><a href="/s">Tram</a></h2></article>')
       expect(pieces.kicker_text).to eq('Transit')
