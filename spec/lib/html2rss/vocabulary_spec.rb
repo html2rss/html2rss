@@ -8,26 +8,51 @@ RSpec.describe Html2rss::Vocabulary do
   let(:bare) { /(?<!\\)[[:space:]#]/ }
 
   describe '::ALL' do
+    # Every (concept, language) cell that holds no term, and nothing else: a human-language concept has terms in
+    # all ten languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese has
+    # no lead-in either), +page_link+ is the English-only pattern (the other languages are read through
+    # +page_link_label+), and a clock suffix, a date piece and an element label exist in one language each.
+    let(:none_cells) do
+      all = %i[en de fr es it nl pl sv ja pt]
+      {
+        clock_suffix: all - %i[de],
+        date_piece: all - %i[ja],
+        element_label: all - %i[ja],
+        read_more_suffix: all - %i[ja],
+        topic_lead: %i[ja],
+        topic_preposition: %i[ja],
+        page_link: all - %i[en],
+        page_link_label: %i[en]
+      }
+    end
+
     it 'lists the languages in a fixed order', :aggregate_failures do
       expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt])
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
     end
 
-    it 'has every language declare every concept, with NONE allowed', :aggregate_failures do
+    it 'has every language declare every concept', :aggregate_failures do
       languages.each do |language|
         expect(language.terms.keys).to match_array(described_class::CONCEPTS), "#{language.code} concepts"
         expect(language.terms).to be_frozen
       end
     end
 
-    it 'holds for pt only a pager noun and the words Spanish shares with it' do
-      pt = languages.last.terms.reject { |_concept, terms| terms.equal?(described_class::NONE) }
+    it 'leaves a concept without terms only in the listed cells, and lists no cell that has terms',
+       :aggregate_failures do
+      cells = languages.flat_map do |language|
+        language.terms.select { |_concept, terms| terms.empty? }.keys.map { [_1, language.code] }
+      end
 
-      expect(pt.keys).to match_array(
-        %i[path_section path_article path_taxonomy path_vanity path_soft_utility path_chrome utility_prefix utility
-           pager_label]
-      )
+      expect(cells.group_by(&:first).transform_values { |pairs| pairs.map(&:last) }).to eq(none_cells)
+      expect(languages.flat_map { _1.terms.values }.select(&:empty?)).to all(be(described_class::NONE))
+    end
+
+    it 'has terms in all ten languages for each of the other concepts', :aggregate_failures do
+      (described_class::CONCEPTS - none_cells.keys).each do |concept|
+        expect(languages.reject { _1.terms.fetch(concept).any? }).to be_empty, concept.to_s
+      end
     end
   end
 
@@ -114,6 +139,14 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'escapes a literal' do
       expect(described_class.alternation(:page_link)).to eq('prev|previous|next|older|newer|first|last')
+    end
+
+    it 'keeps first and last words out of the page link labels, whatever the language', :aggregate_failures do
+      labels = described_class.alternation(:page_link_label)
+
+      expect(described_class.alternation(:page_link)).to eq(described_class::En.terms.fetch(:page_link).join('|'))
+      expect(labels).to include('suivante?', '次へ')
+      expect(labels).not_to match(/premi|primer|primo|erste|eerste|pierwsz|f(?:ö|o)rsta|最初|primeir|dernier|last/i)
     end
 
     it 'keeps a concept only some languages use to those languages', :aggregate_failures do
@@ -275,11 +308,11 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reuses the identical shared Set where a scope adds no ambiguous word', :aggregate_failures do
-      shared = described_class.unambiguous_words(:path_taxonomy)
+      shared = described_class.unambiguous_words(:path_vanity)
 
-      expect(described_class[:ja].words(:path_taxonomy)).to be(shared)
-      expect(described_class[:pl].words(:path_taxonomy)).to be(shared)
-      expect(described_class[:de].words(:path_taxonomy)).not_to be(shared)
+      expect(described_class[:ja].words(:path_vanity)).to be(shared)
+      expect(described_class[:fr].words(:path_vanity)).to be(shared)
+      expect(described_class[:de].words(:path_vanity)).not_to be(shared)
       expect(described_class::SCOPES.values.map { _1.words(:path_office) }.uniq(&:object_id).size).to eq(1)
     end
 

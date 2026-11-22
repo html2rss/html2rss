@@ -248,6 +248,86 @@ kicker_heading_teaser.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_de.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_en.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_es.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_fr.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_it.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_ja.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_nl.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_pl.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_pt.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_sv.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 leafdiv_item_with_info_block.html:
   junk: 0
   real: 8

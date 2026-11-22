@@ -13,13 +13,13 @@ module Html2rss
         path_non_article: %w[jeux necrologie nécrologie endirect],
         path_taxonomy: %w[categorie etiquette etiquettes sujet sujets theme themes],
         path_vanity: %w[s-abonner saboner],
-        path_soft_utility: NONE,
+        path_soft_utility: %w[pour-vous abonnement abonnements tarifs],
         path_chrome: %w[
           auteur auteurs a-propos apropos recherche rechercher aide connexion s-inscrire sinscrire inscription
           compte s-abonner saboner lettre-information confidentialite mentions-legales cgu
         ],
         path_media: %w[vidéo vidéos],
-        path_deep_post_context: NONE,
+        path_deep_post_context: %w[presse espace-presse salle-de-presse],
         type_marker: ['vidéo', 'diaporama', 'en direct', 'communiqué de presse', 'épisode complet'],
         utility_prefix: [
           'voir tout', 'voir tous', 'toutes les nouvelles', /s['’]abonner/, 'flux de commentaires', 'rejoindre'
@@ -44,8 +44,11 @@ module Html2rss
         ad_word: [/publicit(?:e|é)/],
         field_label: ['rubrique', /cat(?:é|e)gorie/, /th(?:è|e)me/],
         type_label: [/type\s+d['’]article/, 'type de contenu'],
-        pager_label: NONE,
+        pager_label: [/pagination(?!\p{L})/, /navigation\s+des\s+pages/],
         page_link: NONE,
+        page_link_label: [
+          /(?:page\s+)?pr(?:é|e)c(?:é|e)dente?/, /(?:page\s+)?suivante?/, /plus\s+anciens?/, /plus\s+r(?:é|e)cents?/
+        ],
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE

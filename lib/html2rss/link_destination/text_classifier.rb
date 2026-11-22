@@ -3,7 +3,7 @@
 module Html2rss
   module LinkDestination
     # Classifies visible anchor text for utility, recommendation and read-more chrome. The terms are
-    # {Vocabulary}'s (en, de, fr, es, it, nl, pl, sv and ja); this owns how each concept is read: a whole
+    # {Vocabulary}'s (en, de, fr, es, it, nl, pl, sv, ja and pt); this owns how each concept is read: a whole
     # text, a prefix, or a whole text with its topic. Utility and recommendation labels honour the page
     # language ({Vocabulary::Scope}); read-more labels read every language.
     class TextClassifier

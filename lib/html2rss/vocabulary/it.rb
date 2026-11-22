@@ -14,9 +14,9 @@ module Html2rss
         path_taxonomy: %w[tema],
         path_vanity: %w[plus],
         path_soft_utility: %w[plus],
-        path_chrome: NONE,
-        path_media: NONE,
-        path_deep_post_context: NONE,
+        path_chrome: %w[chi-siamo contatti archivio cerca aiuto accedi registrati iscriviti abbonati profilo],
+        path_media: %w[video podcast audio],
+        path_deep_post_context: %w[comunicati-stampa sala-stampa ufficio-stampa],
         type_marker: [
           'diretta', 'in diretta', 'diretta streaming', 'fotogallery', 'galleria', 'comunicato stampa',
           'puntata completa'
@@ -45,6 +45,10 @@ module Html2rss
         type_label: ['tipo di articolo', 'tipo di contenuto'],
         pager_label: [/paginazione(?!\p{L})/],
         page_link: NONE,
+        page_link_label: [
+          /(?:pagina\s+)?(?:precedente|successiv[oa]|prossim[oa])/, /pi(?:ù|u)\s+(?:vecchi|recenti)/, 'avanti',
+          'indietro'
+        ],
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE

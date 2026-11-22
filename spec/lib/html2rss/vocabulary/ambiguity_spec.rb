@@ -10,14 +10,15 @@ RSpec.describe Html2rss::Vocabulary do
       utility_prefix: { 'plus' => %i[en de es it nl pl sv pt] },
       utility: {
         'plus' => %i[en de es it nl pl sv pt], 'comment' => %i[en], 'ueber' => %i[de], 'über' => %i[de],
-        'teilen' => %i[de], 'sobre' => %i[es pt], 'dela' => %i[sv], 'delen' => %i[nl]
+        'teilen' => %i[de], 'sobre' => %i[es pt], 'dela' => %i[sv], 'delen' => %i[nl],
+        'comentário' => %i[pt], 'comentários' => %i[pt]
       },
       path_vanity: { 'plus' => %i[en de es it nl pl sv pt] },
       path_soft_utility: { 'plus' => %i[en de es it nl pl sv pt] },
       path_chrome: { 'comment' => %i[en], 'ueber' => %i[de], 'sobre' => %i[es pt] },
       path_taxonomy: {
         'theme' => %i[en fr], 'themes' => %i[en fr], 'thema' => %i[de nl], 'themen' => %i[de],
-        'tema' => %i[es it pt sv], 'temas' => %i[es pt]
+        'tema' => %i[es it pt sv], 'temas' => %i[es pt], 'temat' => %i[pl], 'tematy' => %i[pl], 'テーマ' => %i[ja]
       },
       path_section: { 'entradas' => %i[es pt] },
       path_article: { 'entrada' => %i[es pt] }

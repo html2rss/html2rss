@@ -58,6 +58,7 @@ module Html2rss
         type_label: ['article type', 'content type'],
         pager_label: [/pagination(?!\p{L})/, /pager\b/, /paging\b/, /page\snavigation\b/],
         page_link: %w[prev previous next older newer first last],
+        page_link_label: NONE,
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE

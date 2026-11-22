@@ -31,7 +31,10 @@ module Html2rss
   # language is in scope. {.[]} turns a page's language into one of the shared, frozen {Scope}s; the table is
   # closed, so a page can never add an entry. Every other concept reads all languages.
   module Vocabulary
-    # A concept a language does not use. Explicit, so a missing concept is an error and an empty one is not.
+    # A concept a language does not use. Explicit, so a missing concept is an error and an empty one is not. Every
+    # human-language concept has terms in every language in {ALL}; the cells that may be NONE are listed in the
+    # conformance spec: the suffix reading (only Japanese has it) and the topic lead-ins (Japanese has none),
+    # +page_link+ (English only), and a clock suffix, a date piece and an element label (one language each).
     NONE = [].freeze
 
     # Concepts read as exact strings.
@@ -41,10 +44,12 @@ module Html2rss
     ].freeze
 
     # Concepts read as a compiled regex alternation.
+    # +page_link_label+ holds the previous/next/older/newer words of the other languages, read as a whole label;
+    # +page_link+ stays the English pattern, which accepts text after the word.
     PATTERN_CONCEPTS = %i[
       utility_prefix utility recommended read_more topic_lead topic_preposition read_more_suffix
-      new_window_notice paid_label ad_word field_label type_label pager_label page_link clock_suffix
-      date_piece element_label
+      new_window_notice paid_label ad_word field_label type_label pager_label page_link page_link_label
+      clock_suffix date_piece element_label
     ].freeze
 
     # Word concepts that honour {Language#ambiguous} (the path words; type markers read every language).
@@ -56,7 +61,7 @@ module Html2rss
     # Every concept each language in {ALL} declares.
     CONCEPTS = (WORD_CONCEPTS + PATTERN_CONCEPTS).freeze
 
-    # The languages, in a fixed order. Portuguese holds only the forms that exist today.
+    # The languages, in a fixed order.
     ALL = [En, De, Fr, Es, It, Nl, Pl, Sv, Ja, Pt].freeze
 
     # A language tag: a primary subtag, then region/script subtags (+de+, +de-AT+, +zh_Hant_TW+).

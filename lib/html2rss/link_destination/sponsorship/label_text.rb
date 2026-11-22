@@ -4,7 +4,7 @@ module Html2rss
   module LinkDestination
     module Sponsorship
       ##
-      # How sponsorship label text is read, over {Vocabulary}'s terms (en, de, fr, es, it, nl, pl, sv, ja), in
+      # How sponsorship label text is read, over {Vocabulary}'s terms (en, de, fr, es, it, nl, pl, sv, ja, pt), in
       # two kinds. A paid phrase states paid content; an ad word names an ad and also something editorial
       # (the advertising trade; "Promoted" a team or a person moving up). "Provided by" attribution ("提供")
       # is in neither: it also credits wire and content partners. Only whole texts match; {Sponsorship}

@@ -14,9 +14,12 @@ module Html2rss
         path_taxonomy: %w[thema],
         path_vanity: %w[plus],
         path_soft_utility: %w[plus],
-        path_chrome: NONE,
-        path_media: NONE,
-        path_deep_post_context: NONE,
+        path_chrome: %w[
+          over-ons contact archief zoeken hulp inloggen aanmelden registreren account profiel privacy voorwaarden
+          reacties
+        ],
+        path_media: %w[video videos podcast podcasts audio],
+        path_deep_post_context: %w[persberichten pers],
         type_marker: ['liveblog', 'fotogalerij', 'persbericht', 'volledige aflevering'],
         utility_prefix: [
           'bekijk alles', 'alles bekijken', 'al het nieuws', 'abonneren', 'nieuwsbrief', 'lid worden', 'plus'
@@ -40,6 +43,10 @@ module Html2rss
         type_label: ['artikeltype', 'inhoudstype', 'soort artikel'],
         pager_label: [/paginatie(?!\p{L})/],
         page_link: NONE,
+        page_link_label: [
+          /(?:vorige|volgende)(?:\s+pagina)?/, /(?:oudere|nieuwere)(?:\s+(?:berichten|artikelen))?/, 'ouder',
+          'nieuwer'
+        ],
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE

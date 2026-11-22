@@ -21,7 +21,7 @@ module Html2rss
           autor autoren archiv ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
           konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
         ],
-        path_media: NONE,
+        path_media: %w[video videos podcast podcasts audio],
         path_deep_post_context: %w[presse pressemitteilungen],
         type_marker: ['bildergalerie', 'fotostrecke', 'liveticker', 'pressemitteilung', 'ganze folge'],
         utility_prefix: [
@@ -47,6 +47,10 @@ module Html2rss
         type_label: %w[artikeltyp beitragstyp inhaltstyp],
         pager_label: [/paginierung\b/],
         page_link: NONE,
+        page_link_label: [
+          'vorherige', 'vorherige seite', 'nächste', 'nächste seite', 'naechste', 'naechste seite', 'ältere',
+          'neuere', 'ältere beiträge', 'neuere beiträge', 'zurück', 'weiter'
+        ],
         clock_suffix: %w[Uhr],
         date_piece: NONE,
         element_label: NONE

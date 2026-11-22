@@ -292,7 +292,24 @@ RSpec.describe Html2rss::SST::Normalizer do
       '<ul class="list infinite-pager"><li><a href="/x?page=2">2</a></li></ul>' => false,
       '<ul><li><a href="/x?page=2">2</a></li></ul>' => false,
       '<nav aria-label="Paginated list of articles"><a href="/a">A</a></nav>' => false,
-      '<nav class="gsc-pagination" aria-label="Select a page"><a href="/a">A</a></nav>' => true
+      '<nav class="gsc-pagination" aria-label="Select a page"><a href="/a">A</a></nav>' => true,
+      '<ul class="pagination"><li><a href="/a">Suivant »</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">« Précédent</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">次へ</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">Página siguiente</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">Nächste Seite</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">Vorige pagina</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">Poprzednia strona</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">Nästa sida</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">Pagina successiva</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">Próxima página</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">PRÉCÉDENT</a></li></ul>' => true,
+      '<ul class="pagination"><li><a href="/a">Suivant le match</a></li></ul>' => false,
+      '<ul class="pagination"><li><a href="/a">Siguiente parada: la estación</a></li></ul>' => false,
+      '<ul class="pagination"><li><a href="/a">次へ進むための方法</a></li></ul>' => false,
+      '<ul class="pagination"><li><a href="/a">Premier</a></li></ul>' => false,
+      '<ul class="pagination"><li><a href="/a">Primero</a></li></ul>' => false,
+      '<ul class="pagination"><li><a href="/a">Dernier</a></li></ul>' => false
     }.each do |markup, chrome|
       it "treats #{markup[0, 60]}... inside main as chrome: #{chrome}" do
         doc = described_class.call("<html><body><main>#{markup}</main></body></html>")

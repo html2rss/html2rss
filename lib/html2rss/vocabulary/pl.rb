@@ -11,12 +11,15 @@ module Html2rss
         path_profile: %w[autorzy dziennikarz dziennikarze],
         path_office: %w[redakcja],
         path_non_article: %w[gry kviz horoskopy nekrolog nekrologi nazywo],
-        path_taxonomy: NONE,
+        path_taxonomy: %w[kategoria kategorie tagi temat tematy],
         path_vanity: %w[plus],
         path_soft_utility: %w[plus],
-        path_chrome: NONE,
-        path_media: NONE,
-        path_deep_post_context: NONE,
+        path_chrome: %w[
+          o-nas kontakt archiwum szukaj wyszukiwarka pomoc zaloguj logowanie rejestracja profil konto regulamin
+          prywatnosc polityka-prywatnosci komentarze
+        ],
+        path_media: %w[wideo video podcast audio],
+        path_deep_post_context: %w[prasa centrum-prasowe komunikaty-prasowe],
         type_marker: ['wideo', 'galeria', 'na żywo', 'relacja na żywo', 'komunikat prasowy', 'cały odcinek'],
         utility_prefix: [
           'zobacz wszystko', 'wszystkie wiadomości', 'wszystkie wiadomosci', 'subskrybuj', 'newsletter',
@@ -45,11 +48,15 @@ module Html2rss
         type_label: [/typ\s+artyku(?:ł|l)u/, /typ\s+tre(?:ś|s)ci/, /rodzaj\s+tre(?:ś|s)ci/],
         pager_label: [/paginacja(?!\p{L})/],
         page_link: NONE,
+        page_link_label: [
+          /poprzedni[ae]?(?:\s+strona)?/, /nast(?:ę|e)pn(?:a|y)(?:\s+strona)?/, /(?:starsze|nowsze)(?:\s+wpisy)?/
+        ],
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE
       }.freeze,
       ambiguous: {
+        path_taxonomy: %w[temat tematy],
         utility_prefix: %w[plus],
         utility: %w[plus],
         path_vanity: %w[plus],

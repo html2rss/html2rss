@@ -45,6 +45,10 @@ module Html2rss
         type_label: [/tipo\s+de\s+art(?:í|i)culo/, 'tipo de contenido'],
         pager_label: [/paginación(?!\p{L})/, /paginacion(?!\p{L})/],
         page_link: NONE,
+        page_link_label: [
+          /(?:p(?:á|a)gina\s+)?(?:anterior|siguiente)/, /m(?:á|a)s\s+(?:antiguos?|recientes?)/,
+          /(?:entradas\s+)?(?:anteriores|siguientes)/
+        ],
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE

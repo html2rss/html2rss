@@ -9,14 +9,17 @@ module Html2rss
         path_section: %w[nyheter artiklar],
         path_article: %w[nyhet inlagg inlägg],
         path_profile: %w[skribent skribenter forfattare författare],
-        path_office: NONE,
+        path_office: %w[redaktion redaktionen],
         path_non_article: %w[spel dodsannonser dödsannonser],
         path_taxonomy: %w[tema],
         path_vanity: %w[plus],
         path_soft_utility: %w[plus],
-        path_chrome: NONE,
-        path_media: NONE,
-        path_deep_post_context: NONE,
+        path_chrome: %w[
+          om-oss kontakt arkiv sok sök hjalp hjälp logga-in registrera profil integritet anvandarvillkor
+          användarvillkor prenumerera nyhetsbrev kommentarer
+        ],
+        path_media: %w[video videor podcast podcasts audio],
+        path_deep_post_context: %w[press pressrum pressmeddelanden],
         type_marker: [
           'bildspel', 'direkt', 'direktsändning', 'liverapport', 'livesändning', 'pressmeddelande', 'hela avsnittet'
         ],
@@ -40,6 +43,10 @@ module Html2rss
         type_label: %w[innehållstyp],
         pager_label: [/paginering\b/],
         page_link: NONE,
+        page_link_label: [
+          /f(?:ö|o)reg(?:å|a)ende(?:\s+sida)?/, /n(?:ä|a)sta(?:\s+sida)?/, /(?:ä|a)ldre(?:\s+inl(?:ä|a)gg)?/,
+          /nyare(?:\s+inl(?:ä|a)gg)?/
+        ],
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE

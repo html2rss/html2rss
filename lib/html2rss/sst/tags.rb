@@ -52,10 +52,14 @@ module Html2rss
                                    .join(' or ').then { ".//a[#{_1}]" }.freeze
       # Page-navigation link shapes: a page number, an arrow, prev/next wording, or a page query/path.
       PAGE_LINK_TEXT = /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:#{Vocabulary.alternation(:page_link)})\b.*)\z/im
+      # A whole label that is only a previous/next/older/newer word of another language ("Suivant »", "次へ"),
+      # never one that goes on ("Suivant le match").
+      PAGE_LINK_LABEL = /\A[^\p{L}\p{N}]*(?:#{Vocabulary.alternation(:page_link_label)})[^\p{L}\p{N}]*\z/i
       PAGE_LINK_HREF = %r{[?&](?:page|paged|pg|p)=\d+|/page/\d+}i
       private_constant :PAGE_CHROME, :ALWAYS_CHROME, :UTILITY_LANDMARK, :SECTIONING, :CHROME_ROLES,
                        :PAGE_CHROME_ROLES, :UTILITY_ROLES, :PAGER_NAMES, :PAGER_LABEL, :PAGER_CLASS,
-                       :PAGER_TOKENS, :PAGER_RELS, :PAGER_LINK_XPATH, :PAGE_LINK_TEXT, :PAGE_LINK_HREF
+                       :PAGER_TOKENS, :PAGER_RELS, :PAGER_LINK_XPATH, :PAGE_LINK_TEXT, :PAGE_LINK_LABEL,
+                       :PAGE_LINK_HREF
 
       ##
       # The single chrome-scope rule, folded down the tree by both the SST normalizer
@@ -127,8 +131,9 @@ module Html2rss
       end
 
       def self.page_link?(link)
+        text = link.text.strip
         link['rel'].to_s.downcase.split.any? { PAGER_RELS.include?(_1) } ||
-          link['href'].to_s.match?(PAGE_LINK_HREF) || link.text.strip.match?(PAGE_LINK_TEXT)
+          link['href'].to_s.match?(PAGE_LINK_HREF) || text.match?(PAGE_LINK_TEXT) || text.match?(PAGE_LINK_LABEL)
       end
       private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?, :list_pager?, :page_link?
     end
