@@ -174,7 +174,7 @@ module Html2rss
       def extract_published_at(lines) = extract_published_at_from(article_tag, lines)
 
       def extract_published_at_from(node, lines)
-        DateExtractor.call(node, vocabulary: @vocabulary, leftover_lines: lines, time_zone:)
+        DateExtractor.call(node, leftover_lines: lines, time_zone:)
       end
 
       def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)

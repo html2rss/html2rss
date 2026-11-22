@@ -243,7 +243,7 @@ module Html2rss
 
       def extract_published_at(lines, root: @root)
         datetimes = root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
-        ArticleRules::Date.earliest(datetimes, vocabulary: @vocabulary, leftover_lines: lines, time_zone: @time_zone)
+        ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
       end
 
       def extract_enclosures = ArticleRules::Enclosure.unique(collect_enclosures(@root, nil, []))

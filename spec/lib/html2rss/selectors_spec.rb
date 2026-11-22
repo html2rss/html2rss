@@ -512,10 +512,11 @@ RSpec.describe Html2rss::Selectors do
       end
       let(:selectors) { { items: { selector: 'article', enhance: true }, url: { selector: 'a', extractor: 'href' } } }
 
-      it 'derives the page scope and keeps 独自 and 写真 as words in the enhanced description', :aggregate_failures do
+      it 'keeps a bare 写真 line as a word and reads a dated 独自 chip as a date', :aggregate_failures do
         _baseline, enhanced, = instance.each_enhance_pair.first
 
-        expect(enhanced[:description]).to eq("写真\n2024-03-12 | 独自")
+        expect(enhanced[:description]).to eq('写真')
+        expect(enhanced[:published_at]).to eq(DateTime.parse('2024-03-12T00:00:00Z'))
       end
     end
 

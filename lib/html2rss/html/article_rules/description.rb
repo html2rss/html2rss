@@ -57,10 +57,9 @@ module Html2rss
 
           ##
           # @param line [String, nil]
-          # @param vocabulary [Vocabulary::Scope] the page language's scope, read for type chips
           # @return [Boolean]
-          def date_shaped?(line, vocabulary:)
-            core = date_core(line, vocabulary:)
+          def date_shaped?(line)
+            core = date_core(line)
             return false if core.empty? || core.length > MAX_DATE_CHARS
 
             DATE_SHAPES.any? { |shape| core.match?(shape) }
@@ -68,12 +67,11 @@ module Html2rss
 
           ##
           # @param line [String, nil]
-          # @param vocabulary [Vocabulary::Scope] the page language's scope, read for type chips
           # @return [String]
-          def date_core(line, vocabulary:)
+          def date_core(line)
             normalized = normalize(line)
             CHIP_SEPARATORS.each do |sep|
-              peeled = peel_separator(normalized, sep, vocabulary)
+              peeled = peel_separator(normalized, sep)
               return peeled if peeled
             end
             normalized
@@ -83,19 +81,21 @@ module Html2rss
 
           def normalize(line) = line.to_s.gsub(/[[:space:]]+/, ' ').strip
 
-          def peel_separator(normalized, sep, vocabulary)
+          def peel_separator(normalized, sep)
             idx = normalized.rindex(sep)
             return unless idx
 
             left = normalized[0, idx]
             right = normalized[(idx + sep.length)..]
-            return left if type_chip?(right, vocabulary) || clock_zone?(right)
-            return right if type_chip?(left, vocabulary)
+            return left if type_chip?(right) || clock_zone?(right)
+            return right if type_chip?(left)
 
             nil
           end
 
-          def type_chip?(text, vocabulary) = vocabulary.type_markers.include?(text.downcase)
+          # A chip beside a date is peeled whatever the page language: a word that is no marker on a Chinese page
+          # (+独自+) is still a type chip once a date stands next to it.
+          def type_chip?(text) = Article::Title::TYPE_MARKERS.include?(text.downcase)
 
           def clock_zone?(text) = Article::Title.clock_piece?(text)
 
@@ -103,7 +103,7 @@ module Html2rss
             key = normalized.downcase
             TEXT_CLASSIFIER.read_more?(normalized) || (type_chips && vocabulary.type_markers.include?(key)) ||
               SECTION_NAMES.include?(key) || normalized.end_with?(':') ||
-              date_shaped?(normalized, vocabulary:) || title_echo?(key, title)
+              date_shaped?(normalized) || title_echo?(key, title)
           end
 
           def title_echo?(key, title)

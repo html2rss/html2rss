@@ -21,12 +21,11 @@ module Html2rss
           # @param datetime_strings [Array<String, nil>] raw datetime attribute values
           # @param leftover_lines [Array<String>] leftover visible lines (already split)
           # @param time_zone [String] channel time zone for naive values
-          # @param vocabulary [Vocabulary::Scope] the page language's scope, read for type chips
           # @return [DateTime, nil] earliest successfully parsed instant
-          def earliest(datetime_strings, vocabulary:, leftover_lines: [], time_zone: 'UTC')
+          def earliest(datetime_strings, leftover_lines: [], time_zone: 'UTC')
             values = Array(datetime_strings).filter_map { |value| parse_attr(value, time_zone:) }
             Array(leftover_lines).each do |line|
-              parsed = parse_line(line, vocabulary:, time_zone:)
+              parsed = parse_line(line, time_zone:)
               values << parsed if parsed
             end
             values.min
@@ -49,10 +48,10 @@ module Html2rss
             parse_datetime(value.to_s.strip, time_zone:)
           end
 
-          def parse_line(line, vocabulary:, time_zone:)
-            return unless Description.date_shaped?(line, vocabulary:)
+          def parse_line(line, time_zone:)
+            return unless Description.date_shaped?(line)
 
-            parse_datetime(Description.date_core(line, vocabulary:), time_zone:)
+            parse_datetime(Description.date_core(line), time_zone:)
           end
 
           def parse_datetime(string, time_zone:)
