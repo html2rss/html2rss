@@ -1,0 +1,13 @@
+---
+case: Each story is linked from the top and the latest section with different values of one
+  placement parameter (pos), so it is one article; the archive links differ only by the id
+  parameter of a single script, so each stays its own article.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/school-board-approves-budget
+- https://example.com/news/2026/10/night-market-opens-downtown
+- https://example.com/news/read.php?id=1
+- https://example.com/news/read.php?id=2
+- https://example.com/news/read.php?id=3

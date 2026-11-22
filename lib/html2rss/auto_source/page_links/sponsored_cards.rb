@@ -41,8 +41,9 @@ module Html2rss
 
         # @param document [SST::Document, nil]
         # @param link_resolver [Scoring::LinkResolver, nil]
-        def initialize(document, link_resolver)
-          @claims = AnchorClaims.new(link_resolver)
+        # @param identity [#call] {PageLinks#identity}, the page's one article key for a destination URL
+        def initialize(document, link_resolver, identity)
+          @claims = AnchorClaims.new(link_resolver, identity)
           @linked = Set.new
           @ancestors, @labelled, @links = Array.new(3) { [] }
           @headings = 0

@@ -1,0 +1,16 @@
+---
+case: Item divs that hold a linked heading plus an info div (time, tag chips); the
+  info div must not make the item a non-leaf, or the section becomes one card. Two
+  lead articles make the semantic tier win.
+expected:
+- https://example.com/politics/20261112-EX1T00010/
+- https://example.com/sports/20261112-EX1T00011/
+- https://example.com/national/20261112-EX1T00214/
+- https://example.com/world/20261112-EX1T00092/
+- https://example.com/economy/20261112-EX1T00195/
+- https://example.com/economy/20261112-EX1T00080/
+- https://example.com/economy/20261112-EX1T00248/
+- https://example.com/local/20261112-EX1T00301/
+titles:
+  https://example.com/world/20261112-EX1T00092/: Library extends its weekend hours for families
+  https://example.com/local/20261112-EX1T00301/: New bike lanes connect the east side
