@@ -12,6 +12,11 @@ module Html2rss
       # fixed to UTF-8 (+/u+): a pure-ASCII regexp would be recompiled, and allocate, on each non-ASCII text.
       NEVER = /(?!)/u
 
+      # Direction marks and embedding/isolate controls (LRM, RLM, ALM, LRE..RLO, LRI..PDI): they render nothing and
+      # change no letter, so a label ("\u200FContact\u200F") is read without them ({.strip_bidi}). Only the
+      # label text is read this way; extracted titles and descriptions keep them.
+      BIDI_MARKS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/
+
       # The three label readings, as the alternatives of each scoped concept: a prefix, a whole text, a
       # recommendation. A utility label is a utility word or a recommendation label.
       READINGS = {
@@ -22,6 +27,14 @@ module Html2rss
       }.freeze
 
       class << self
+        ##
+        # The one owner of reading a label without direction marks ({BIDI_MARKS}). Text without a mark is
+        # returned as is, so the common case allocates nothing.
+        #
+        # @param text [String]
+        # @return [String] +text+ without bidi marks
+        def strip_bidi(text) = text.match?(BIDI_MARKS) ? text.gsub(BIDI_MARKS, '') : text
+
         ##
         # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
         # +:utility_label+ reading is a short whole text: a utility term, at most one trailing word, wrapping
@@ -57,7 +70,7 @@ module Html2rss
           end.freeze
         end.freeze
       end
-      private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS
+      private_constant :NEVER, :BIDI_MARKS, :UNAMBIGUOUS, :AMBIGUOUS
 
       # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a
       # multi-word imperative phrase at the start of the text, read in every language. An infinitive or noun
@@ -95,15 +108,11 @@ module Html2rss
         \s*[(\[（【]\s*(?:#{Vocabulary.alternation(:new_window_notice)})\s*[)\]）】]\s*\z
       /ix
 
-      # Direction marks and embedding/isolate controls (LRM, RLM, ALM, LRE..RLO, LRI..PDI): they render nothing and
-      # change no letter, so a label ("\u200FContact\u200F") is read without them. Only the label text is
-      # read this way; extracted titles and descriptions keep them.
-      BIDI_MARKS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/
       # Zero-width non-joiner and joiner. Inside a word they spell Persian, Urdu and Indic words, so a label
       # holding one is trimmed only at its edges, up to the first and last {LABEL_CHAR}.
       JOINER = /[\u200C\u200D]/
       LABEL_CHAR = /[^\s\u200C\u200D]/
-      private_constant :BIDI_MARKS, :JOINER, :LABEL_CHAR
+      private_constant :JOINER, :LABEL_CHAR
 
       # @param memoize [Boolean] remember normalized texts for this instance; opt in only for an instance
       #   scoped to one extraction, never for a shared constant
@@ -159,8 +168,7 @@ module Html2rss
 
       def compute_normal(string)
         text = string.unicode_normalize(:nfc)
-        text = text.gsub(BIDI_MARKS, '') if text.match?(BIDI_MARKS)
-        text = text.sub(NEW_WINDOW_NOTICE, '')
+        text = self.class.strip_bidi(text).sub(NEW_WINDOW_NOTICE, '')
         text.match?(JOINER) ? trim_edges(text) : text
       end
 
