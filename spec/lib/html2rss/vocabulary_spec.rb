@@ -9,33 +9,36 @@ RSpec.describe Html2rss::Vocabulary do
 
   describe '::ALL' do
     # Every (concept, language) cell that holds no term, and nothing else: a human-language concept has terms in
-    # all eleven languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese has
-    # no lead-in either; Russian has none because its bare "more" and "about" are ordinary headline openers),
+    # all twelve languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese has
+    # no lead-in either; Russian has none because its bare "more" and "about" are ordinary headline openers, and
+    # Chinese has neither),
     # +page_link+ is the English-only pattern (the other languages are read through +page_link_label+), a date
     # piece and an element label exist in one language each, a clock suffix in German and Russian, the podcast
-    # words are words of six languages and the unspaced (kana) ones exist in Japanese only. Russian lists a path
+    # words are words of six languages and the unspaced (kana, Han) ones exist in Japanese and Chinese only.
+    # Russian lists a path
     # word only for the concepts whose Cyrillic segments occur in practice (+/видео/+, +/пресс-релизы/+,
     # +/помощь/+); the others are read through the Latin words every language shares.
     let(:none_cells) do
-      all = %i[en de fr es it nl pl sv ja pt ru]
+      all = %i[en de fr es it nl pl sv ja pt ru zh]
       {
-        path_section: %i[ru], path_article: %i[ru], path_profile: %i[ru], path_office: %i[ru],
-        path_non_article: %i[ru], path_taxonomy: %i[ru], path_vanity: %i[ru], path_soft_utility: %i[ru],
+        path_section: %i[ru zh], path_article: %i[ru zh], path_profile: %i[ru zh], path_office: %i[ru zh],
+        path_non_article: %i[ru zh], path_taxonomy: %i[ru zh], path_vanity: %i[ru zh], path_soft_utility: %i[ru zh],
+        path_chrome: %i[zh], path_media: %i[zh], path_deep_post_context: %i[zh],
         clock_suffix: all - %i[de ru],
         date_piece: all - %i[ja],
         element_label: all - %i[ja],
         read_more_suffix: all - %i[ja],
-        topic_lead: %i[ja ru],
-        topic_preposition: %i[ja],
+        topic_lead: %i[ja ru zh],
+        topic_preposition: %i[ja zh],
         page_link: all - %i[en],
         page_link_label: %i[en],
-        podcast_word: %i[de nl pl sv ja],
-        podcast_unspaced: all - %i[ja]
+        podcast_word: %i[de nl pl sv ja zh],
+        podcast_unspaced: all - %i[ja zh]
       }
     end
 
     it 'lists the languages in a fixed order', :aggregate_failures do
-      expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru])
+      expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru zh])
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
     end
@@ -57,7 +60,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(languages.flat_map { _1.terms.values }.select(&:empty?)).to all(be(described_class::NONE))
     end
 
-    it 'has terms in all eleven languages for each of the other concepts', :aggregate_failures do
+    it 'has terms in all twelve languages for each of the other concepts', :aggregate_failures do
       (described_class::CONCEPTS - none_cells.keys).each do |concept|
         expect(languages.reject { _1.terms.fetch(concept).any? }).to be_empty, concept.to_s
       end
@@ -175,7 +178,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
-      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru all zh])
+      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru zh all])
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
       expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
@@ -222,9 +225,9 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese).to be_frozen
     end
 
-    it 'shares the frozen ambiguous tables of the all scope: it differs only in type markers', :aggregate_failures do
-      expect(chinese.ambiguous_words).to be(everything.ambiguous_words)
-      expect(chinese.alternations).to be(everything.alternations)
+    it 'applies only its own ambiguous terms, like every other language scope', :aggregate_failures do
+      expect(chinese.ambiguous_words).not_to be(everything.ambiguous_words)
+      expect(chinese.words(:path_taxonomy)).not_to include('thema')
       expect(chinese.type_markers).to be_frozen
     end
 
@@ -235,11 +238,14 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese.type_markers).to eq(described_class.words(:type_marker) - described_class::CHINESE_WORDS)
     end
 
-    it 'gives every other scope the identical full marker set', :aggregate_failures do
+    it 'gives every other scope, all and ja included, the identical full marker set', :aggregate_failures do
       others = described_class::SCOPES.values - [chinese]
 
       expect(others.map(&:type_markers)).to all(equal(described_class.words(:type_marker)))
-      expect(described_class.words(:type_marker)).to include('独自', '写真', '速報', '動画')
+      expect(described_class.words(:type_marker)).to include('独自', '写真', '速報', '動画', '快讯', '獨家')
+      expect(described_class[:ja].type_markers).to include('独自', '写真')
+      expect(described_class[nil].type_markers).to include('独自', '写真')
+      expect(described_class[:ja].type_markers).to be(described_class[nil].type_markers)
     end
   end
 

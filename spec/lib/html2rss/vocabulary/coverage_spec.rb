@@ -196,6 +196,65 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Chinese labels' do
+    let(:zh) { text.call(:zh) }
+    # Every predicate that would drop a headline (see the Russian labels).
+    let(:readers) do
+      {
+        utility: ->(label) { zh.utility?(label) }, chrome: ->(label) { zh.utility_chrome?(label) },
+        prefix: ->(label) { zh.utility_prefix?(label) }, recommended: ->(label) { zh.recommended?(label) },
+        read_more: ->(label) { zh.read_more?(label) }, junk: ->(label) { !Html2rss::AutoSource::Cleanup.junk_reason(label).nil? }
+      }
+    end
+
+    it 'reads Simplified and Traditional chrome labels', :aggregate_failures do
+      %w[关于我们 關於我們 联系我们 聯絡我們 登录 登入 注册 註冊 订阅 訂閱 分享 搜索 搜尋 更多 查看更多 隐私政策
+         隱私權政策 评论 留言].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
+      %w[推荐阅读 推薦閱讀 相关阅读 相關閱讀 猜你喜欢 猜你喜歡].each { expect(zh.recommended?(_1)).to be(true), _1 }
+      %w[阅读全文 閱讀全文 了解更多 瞭解更多 查看详情 查看詳情 详情 詳情].each do |label|
+        expect(zh.read_more?(label)).to be(true), label
+        expect(Html2rss::AutoSource::Cleanup.junk_reason(label)).to eq(:cta), label
+      end
+      %w[发表评论 發表留言 立即订阅 訂閱電子報].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps ordinary headlines that begin with the same characters as headlines', :aggregate_failures do
+      %w[订阅量创新高，公司股价上涨 登录后发表评论的用户将获奖 评论员表示今年经济向好 注册制改革全面推进
+         更多人选择乘坐地铁 分享经济再度升温 搜索引擎公司发布新产品 關於我們的未來 联系我们的客服被投诉
+         推荐阅读量破亿 留言板上的故事 发表评论：官方回应 登入系統當機多地受影響 評論：選舉結果 直播间里的新规
+         视频会议成主流 独家：某公司将上市 独自开发的软件].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'applies the ambiguous 留言 only on a Chinese or unlabeled page, never a Japanese one', :aggregate_failures do
+      expect(text.call(:zh).utility?('留言')).to be(true)
+      expect(text.call(nil).utility?('留言')).to be(true)
+      expect(text.call(:ja).utility?('留言')).to be(false)
+    end
+
+    it 'reads kicker noise: a type marker, a field label, and keeps 独自 and 写真 as words', :aggregate_failures do
+      title = Html2rss::Article::Title
+      noise = ->(piece) { title.noise_piece?(piece, vocabulary: described_class[:zh]) }
+
+      %w[快讯 快訊 独家 獨家 视频 視頻 圖集 直播 速報].each { expect(noise.call(_1)).to be(true), _1 }
+      ['栏目：', '類別：', '文章类型：独家'].each { expect(noise.call(_1)).to be(true), _1 }
+      %w[独自 写真 视频会议].each { expect(noise.call(_1)).to be(false), _1 }
+      expect(title.compose('港口重新开放', kicker: '独家', vocabulary: described_class[:zh])).to eq('港口重新开放')
+      expect(title.compose('港口重新开放', kicker: '独自', vocabulary: described_class[:zh])).to eq('独自: 港口重新开放')
+    end
+
+    it 'reads a podcast word and a sponsorship label', :aggregate_failures do
+      kind = Html2rss::LinkDestination::Sponsorship::LabelText.method(:kind)
+      hint = Html2rss::Syndication::Discovery::PODCAST_PAGE_HINT
+
+      expect(hint.match?('港口播客')).to be(true)
+      %w[赞助内容 贊助內容 商业合作 業配文].each { expect(kind.call(_1)).to eq(:paid_label), _1 }
+      expect(kind.call('广告')).to eq(:label)
+      expect(kind.call('广告业务增长迅速')).to be_nil
+    end
+  end
+
   describe 'pager nouns' do
     let(:pager) do
       lambda do |label|

@@ -87,5 +87,23 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
     it 'still drops a Nokia-shaped pipe clock line as description chrome' do
       expect(described_class.keep?('August 06 , 2026 | 13:00 PM Europe/Amsterdam', vocabulary:)).to be(false)
     end
+
+    it 'drops the Japanese type chips 独自 and 写真 on a Japanese or unlabeled page, not on a Chinese one',
+       :aggregate_failures do
+      %w[独自 写真].product([nil, :ja, :en]).each do |chip, lang|
+        expect(described_class.keep?(chip, vocabulary: Html2rss::Vocabulary[lang])).to be(false), "#{chip} #{lang}"
+      end
+      %w[独自 写真].each { expect(described_class.keep?(_1, vocabulary: Html2rss::Vocabulary[:zh])).to be(true), _1 }
+      expect(described_class.keep?('快讯', vocabulary: Html2rss::Vocabulary[:zh])).to be(false)
+    end
+
+    it 'peels a 独自 or 写真 chip after a date only where it is a type chip', :aggregate_failures do
+      zh = Html2rss::Vocabulary[:zh]
+      ja = Html2rss::Vocabulary[:ja]
+
+      expect(described_class.date_core('2024-03-12 | 独自', vocabulary: ja)).to eq('2024-03-12')
+      expect(described_class.date_core('2024-03-12 | 独自', vocabulary: zh)).to eq('2024-03-12 | 独自')
+      expect(described_class.date_core('2024-03-12 | 快讯', vocabulary: zh)).to eq('2024-03-12')
+    end
   end
 end

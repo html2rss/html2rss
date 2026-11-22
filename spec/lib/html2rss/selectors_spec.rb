@@ -502,6 +502,24 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
+    context 'when the page language is Chinese' do
+      let(:body) do
+        <<~HTML
+          <html lang="zh-Hant"><body>
+            <article><a href="/a"><h1>港口重新開放</h1></a><p>写真</p><p>2024-03-12 | 独自</p></article>
+          </body></html>
+        HTML
+      end
+      let(:selectors) { { items: { selector: 'article', enhance: true }, url: { selector: 'a', extractor: 'href' } } }
+
+      it 'derives the page scope and keeps 独自 and 写真 as words in the enhanced description', :aggregate_failures do
+        _baseline, enhanced, = instance.each_enhance_pair.first
+
+        expect(instance.vocabulary).to be(Html2rss::Vocabulary[:zh])
+        expect(enhanced[:description]).to eq("写真\n2024-03-12 | 独自")
+      end
+    end
+
     context 'when extractor returns nil' do
       before do
         allow(Html2rss::Html::ArticleExtractor).to receive(:call).and_return(nil)

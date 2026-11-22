@@ -128,6 +128,17 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
         end
       end
 
+      %w[独自 写真].product([[:ja, true], [:zh, false]]).each do |chip, (lang, flagged)|
+        context "with the description #{chip} on a #{lang} page" do
+          let(:engine) { instance_double(Html2rss::Selectors, vocabulary: Html2rss::Vocabulary[lang]) }
+          let(:pairs) { [[{}, { description: chip }, plain_item]] }
+
+          it 'warns only where it is a type marker' do
+            expect(slice.warnings.include?(:enhance_category_only_description)).to be(flagged)
+          end
+        end
+      end
+
       context 'with several flagged items' do
         let(:pairs) do
           [[{}, { description: 'news' }, plain_item], [{}, { description: 'press release' }, plain_item]]
