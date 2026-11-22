@@ -127,7 +127,12 @@ module Html2rss
 
         return unless html_response?(response)
 
-        parsed_body(response)['lang'] || parsed_body(response).at_css('[lang]')&.[]('lang')
+        root_language(parsed_body(response))
+      end
+
+      def root_language(document)
+        lang = document.root&.[]('lang')
+        lang if lang&.match?(/\S/)
       end
 
       def meta_author(response)

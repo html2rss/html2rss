@@ -111,11 +111,36 @@ RSpec.describe Html2rss::Channel do
 
     it_behaves_like 'returns overridden value', :language, :language, 'es'
 
-    context 'with lang attribute on a child element' do
-      let(:body) { '<html><body><div lang="de">Content</div></body></html>' }
+    context 'with a root lang and a different nested lang' do
+      let(:body) { '<html lang="de-AT"><body><blockquote lang="fr">Bonjour</blockquote></body></html>' }
 
-      it 'extracts the language from child element' do
-        expect(instance.language).to eq('de')
+      it 'keeps the root value as written' do
+        expect(instance.language).to eq('de-AT')
+      end
+    end
+
+    context 'without a root lang but with a nested lang' do
+      let(:body) { '<html><body><blockquote lang="fr">Bonjour</blockquote></body></html>' }
+
+      it 'extracts nil' do
+        expect(instance.language).to be_nil
+      end
+    end
+
+    context 'with a blank root lang' do
+      let(:body) { '<html lang="  "><body><div lang="fr">Bonjour</div></body></html>' }
+
+      it 'extracts nil' do
+        expect(instance.language).to be_nil
+      end
+    end
+
+    context 'with a content-language header and a different root lang' do
+      let(:headers) { { 'content-language' => 'en-US', 'content-type': 'text/html' } }
+      let(:body) { '<html lang="fr"><body></body></html>' }
+
+      it 'prefers the header' do
+        expect(instance.language).to eq('en')
       end
     end
   end
