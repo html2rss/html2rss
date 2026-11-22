@@ -52,6 +52,9 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
   PREDICATES = { utility_prefix: 'utility_prefix?', utility: 'utility?', utility_label: 'utility_chrome?',
                  recommended: 'recommended?' }.freeze
   CHANGE_COLUMNS = %w[utility? utility_chrome? recommended? read_more? junk_reason].freeze
+  # What a page decoded from invalid bytes (in text or in an attribute such as an href) leaves behind.
+  REPLACEMENT_CHAR = "\uFFFD"
+
   MEMORY_SNIPPET = "require 'bundler/setup'; require 'objspace'; require 'html2rss'; " \
                    '3.times { GC.start }; puts ObjectSpace.memsize_of_all'
 
@@ -338,13 +341,22 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     # @return [Hash] the page facts that are evidence: a page left undecodable says nothing about the vocabulary
     def decodable(facts) = facts.select { |_, fact| fact[:valid] }
 
-    # Unique anchor texts and resolved path segments of one saved page.
+    # Unique anchor texts and resolved path segments of one saved page; +valid+ is false for a page that is
+    # not evidence (not HTML, or decoded from invalid bytes).
     def anchor_facts(path, base_url)
-      doc = AutoSourceCorpus.response(path:, url: base_url).parsed_body
-      anchors = doc.css('a')
-      { valid: !doc.text.include?("\uFFFD"),
+      response = AutoSourceCorpus.response(path:, url: base_url)
+      return { valid: false, texts: [], paths: [] } unless response.html_response?
+
+      anchors = response.parsed_body.css('a')
+      { valid: decoded?(response),
         texts: anchors.map { _1.text.gsub(/\s+/, ' ').strip }.reject(&:empty?).uniq,
         paths: anchors.filter_map { segments(_1['href'], base_url) }.uniq }
+    end
+
+    # Valid UTF-8 bytes always decode; invalid ones only when no replacement character reached text or attributes.
+    def decoded?(response)
+      response.body.valid_encoding? ||
+        response.parsed_body.xpath('//text()|//@*').none? { _1.content.include?(REPLACEMENT_CHAR) }
     end
 
     def segments(href, base_url)
@@ -459,6 +471,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       @head = head.fetch('measure')
       @memory = { base: LanguageCheck.stats(base.fetch('memory')), head: LanguageCheck.stats(head.fetch('memory')) }
       @files = meta.fetch(:pages).map(&:file)
+      @not_evidence = @head.fetch('undecodable')
     end
 
     # @return [String] the whole report
@@ -491,6 +504,8 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
 
     def feed_states
       @feed_states ||= @files.to_h do |file|
+        next [file, { kind: :not_evidence }] if @not_evidence.include?(file)
+
         base = run_of(@base, file)
         head = run_of(@head, file)
         [file, state_of(base, head)]
@@ -542,12 +557,12 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     end
 
     # A page decoded through its own meta charset is evidence; one that stays undecodable (invalid UTF-8 and no
-    # usable declared charset) has replacement characters in both trees, so its "no change" proves nothing.
+    # usable declared charset) or is not HTML says nothing about the vocabulary, so it is left out of every section.
     def undecodable_lines
       files = @head.fetch('undecodable')
       return [] if files.empty?
 
-      ["  WARNING undecodable (invalid UTF-8, no usable meta charset), not evidence: #{files.join(', ')}"]
+      ["  WARNING not evidence (undecodable, or not HTML): #{files.join(', ')}"]
     end
 
     def feed_section
@@ -564,6 +579,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     end
 
     def state_lines(state)
+      return ['not evidence (undecodable or not HTML)'] if state[:kind] == :not_evidence
       return error_lines({ 'page' => state }) unless state[:kind] == :compared
 
       lines = state[:diff].flat_map { |kind, rows| rows.map { "#{kind.to_s.ljust(8)} #{_1.join('  ')}" } }
@@ -573,12 +589,12 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     # ----- 2. anchors -----
 
     def anchor_changes
-      @anchor_changes ||= @files.to_h do |file|
+      @anchor_changes ||= (@files - @not_evidence).to_h do |file|
         [file, LanguageCheck.anchor_diff(@base.fetch('anchors').fetch(file), @head.fetch('anchors').fetch(file))]
       end
     end
 
-    def anchor_total = @head.fetch('anchors').values.sum(&:size)
+    def anchor_total = @head.fetch('anchors').except(*@not_evidence).values.sum(&:size)
 
     def anchor_counts
       anchor_changes.values.flat_map(&:values).each_with_object(Hash.new(0)) do |(from, to), counts|
@@ -594,6 +610,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
 
     def anchor_section
       ['## 2. Link classification changes', '', *anchor_summary.map { "- #{_1}" }, '',
+       *@not_evidence.map { "#{_1}  not evidence" },
        *anchor_changes.flat_map do |file, changes|
          changes.map do |text, (from, to)|
            anchor_line(file, text, from, to)

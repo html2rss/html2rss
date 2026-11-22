@@ -72,8 +72,9 @@ module AutoSourceCorpus
     end
 
     # The one builder of a Response from a saved file, shared with {SavedResponses}: a page whose bytes are
-    # valid UTF-8 is declared UTF-8 so a stale in-page meta charset never decodes it; any other page declares no
-    # charset, so the Response decodes it from its in-page meta charset (or scrubs it when there is none).
+    # valid or near-valid UTF-8 ({PageBytes}) is declared UTF-8 so a stale in-page meta charset never decodes it;
+    # any other page declares no charset, so the Response decodes it from its in-page meta charset (or scrubs
+    # it when there is none).
     # +.xml+ feeds are read as bytes, since they carry their own encoding declaration.
     #
     # @param path [String] saved file (+.html+, +.json+ or +.xml+)
@@ -120,7 +121,7 @@ module AutoSourceCorpus
       return FEED_CONTENT_TYPE if feed
 
       type = CONTENT_TYPES.fetch(File.extname(path), 'text/html')
-      body.force_encoding(Encoding::UTF_8).valid_encoding? ? "#{type}; charset=utf-8" : type
+      PageBytes.utf8?(body.force_encoding(Encoding::UTF_8)) ? "#{type}; charset=utf-8" : type
     end
 
     def install_sst_probe
@@ -185,6 +186,23 @@ module AutoSourceCorpus
 
       require_relative 'saved_responses'
       SavedResponses.new(File.join(ROOT, dir))
+    end
+  end
+end
+
+##
+# Whether saved page bytes are UTF-8: valid, or near-valid, meaning at most +INVALID_SHARE+ of the non-ASCII
+# bytes are invalid (a stray byte in UTF-8 text). A legacy page (GBK, Big5, windows-1251) has nearly all its
+# non-ASCII bytes invalid as UTF-8; near-valid UTF-8 declared legacy by a stale meta would decode to mojibake.
+module AutoSourceCorpus
+  module PageBytes
+    INVALID_SHARE = 0.05
+
+    # @param bytes [String] page bytes
+    # @return [Boolean]
+    def self.utf8?(bytes)
+      text = bytes.dup.force_encoding(Encoding::UTF_8)
+      text.valid_encoding? || bytes.bytesize - text.scrub('').bytesize <= bytes.b.count("\x80-\xFF".b) * INVALID_SHARE
     end
   end
 end
