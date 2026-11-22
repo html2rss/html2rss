@@ -20,7 +20,7 @@ module Html2rss
       # Common feed path suffixes probed after head +rel=alternate+ hints.
       DEFAULT_PATHS = CandidateCatalog::FEED_PATHS
       # Word-ish podcast hint in a page's URL host, path or +<title>+ (plural allowed, case-insensitive). The
-      # words are {Vocabulary}'s +podcast_word+ (Latin script, read with a letter boundary) and
+      # words are {Vocabulary}'s +podcast_word+ (words read with a letter boundary: Latin and Cyrillic) and
       # +podcast_unspaced+ (written without spaces, so no boundary).
       PODCAST_PAGE_HINT = /
         (?<![[:alpha:]])(?:#{Vocabulary.alternation(:podcast_word)})s?(?![[:alpha:]])

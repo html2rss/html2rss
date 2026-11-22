@@ -7,7 +7,7 @@ require 'nokogiri'
 # The collision gate: an unambiguous label term of one language must not read as chrome in the link text of a
 # page in another language, unless the pair is reviewed here. A term that is also an ordinary word of another
 # language belongs in that language's `ambiguous` list (so it applies only on its own pages); this spec finds the
-# terms nobody flagged. Link texts are the anchors of the corpus pages whose root `lang` is one of the ten
+# terms nobody flagged. Link texts are the anchors of the corpus pages whose root `lang` is one of the eleven
 # vocabulary languages; each term is read exactly as the classifier reads it (`TextClassifier.matcher`).
 RSpec.describe Html2rss::Vocabulary do
   # [language of the term, term, language of the page] => why the pair is reviewed and allowed. Every entry must
