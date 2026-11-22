@@ -68,7 +68,8 @@ module Html2rss
 
       ##
       # The language of a page: the config override, else the +Content-Language+ header, else the document
-      # root's +lang+. The one resolution of the page language; {Vocabulary.[]} scopes the heuristics by it.
+      # root's +lang+. The one resolution of the page language; {Vocabulary.[]} scopes the heuristics by it. A
+      # header's primary tag must be exactly two letters (+en-US+ is +en+, +de, en+ is +de+; +jav+ is not +ja+).
       #
       # @param response [Html2rss::RequestService::Response]
       # @param overrides [Hash{Symbol => Object}] optional channel overrides (+:language+)
@@ -76,7 +77,7 @@ module Html2rss
       def language_for(response, overrides = NO_OVERRIDES)
         return overrides[:language] if overrides[:language]
 
-        if (language_code = headers(response)['content-language']&.match(/^([a-z]{2})/))
+        if (language_code = headers(response)['content-language']&.match(/\A([a-z]{2})(?![a-z])/))
           return language_code[0]
         end
 

@@ -101,6 +101,34 @@ RSpec.describe Html2rss::Channel do
       end
     end
 
+    context 'with a content-language list' do
+      let(:headers) { { 'content-language' => 'de, en', 'content-type': 'text/html' } }
+
+      it 'extracts the first language' do
+        expect(instance.language).to eq('de')
+      end
+    end
+
+    context 'with a three-letter content-language tag' do
+      let(:headers) { { 'content-language' => 'jav', 'content-type': 'text/html' } }
+      let(:body) { '<html lang="fr"><body></body></html>' }
+
+      it 'does not reduce it to a two-letter tag and reads the root lang instead' do
+        expect(instance.language).to eq('fr')
+      end
+    end
+
+    %w[jav fry].each do |tag|
+      context "with the content-language tag #{tag} and no root lang" do
+        let(:headers) { { 'content-language' => tag, 'content-type': 'text/html' } }
+        let(:body) { '<html></html>' }
+
+        it 'extracts nil' do
+          expect(instance.language).to be_nil
+        end
+      end
+    end
+
     context 'without a language' do
       let(:body) { '<html></html>' }
 
