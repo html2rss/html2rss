@@ -171,6 +171,13 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       end
     end
 
+    it 'reads a page-only call-to-action label as a whole label on its own page only', :aggregate_failures do
+      zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
+
+      expect([zh.utility_chrome?('立即订阅'), zh.utility_chrome?('立即订阅 (3)')]).to eq([true, true])
+      expect([classifier.utility_chrome?('立即订阅'), zh.utility_chrome?('立即订阅用户突破百万')]).to eq([false, false])
+    end
+
     it 'reads an ambiguous term only in its own language scope', :aggregate_failures do
       sv = described_class.new(vocabulary: Html2rss::Vocabulary[:sv])
       en = described_class.new(vocabulary: Html2rss::Vocabulary[:en])
@@ -413,7 +420,7 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     let(:readings) do
       described_class::PageReadings.build(Html2rss::Vocabulary::PAGE_PATTERNS.to_h { [_1, scope.own_alternation(_1)] })
     end
-    let(:shared) { described_class::PageReadings.build(Html2rss::Vocabulary::PAGE_PATTERNS.to_h { [_1, ''] }) }
+    let(:shared) { described_class::PageReadings::BY_SCOPE.fetch(:en) }
 
     let(:read) do
       { own_cta: %w[Abonneer-xx], new_window: ['Haven (nieuw-xx)'],
@@ -430,7 +437,8 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     it 'adds nothing to a scope without own terms, which keeps the one shared matcher', :aggregate_failures do
       expect(shared.fetch(:read_more).match?('Lees-xx')).to be(false)
       expect(shared.fetch(:own_cta).match?('Abonneer-xx')).to be(false)
-      %i[ja de all].each { expect(described_class::PageReadings::BY_SCOPE.fetch(_1)).to be(described_class::PageReadings::BY_SCOPE.fetch(:en)) }
+      %i[ja de all].each { expect(described_class::PageReadings::BY_SCOPE.fetch(_1)).to be(shared) }
+      expect(described_class::PageReadings::BY_SCOPE.fetch(:zh)).not_to be(shared)
     end
 
     it 'leaves the shared alternations exactly the terms of the shared languages', :aggregate_failures do
@@ -450,9 +458,31 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     end
   end
 
-  describe 'the shared classifier of a scope' do
-    it 'is one classifier per scope, each reading its own page language' do
-      expect(described_class.for(Html2rss::Vocabulary[:zh])).not_to be(described_class.for(Html2rss::Vocabulary[:all]))
+  describe 'a scope with only read-more terms' do
+    let(:built) do
+      own = Html2rss::Vocabulary::PAGE_PATTERNS.to_h { [_1, _1 == :read_more ? 'lees-xx' : ''] }
+      described_class::PageReadings.build(own)
+    end
+
+    it 'widens the read-more matcher without matching an empty label', :aggregate_failures do
+      expect(built.fetch(:read_more).match?('Lees-xx')).to be(true)
+      expect(['', '...', ' → '].map { built.fetch(:read_more).match?(_1) }).to all(be(false))
+      expect(built).to be_frozen
+    end
+
+    it 'adds no own call to action, and keeps the shared notice', :aggregate_failures do
+      expect(built.fetch(:own_cta).match?('lees-xx')).to be(false)
+      expect(built.fetch(:cta).match?('Subscribe to our newsletter')).to be(true)
+      expect(built.fetch(:new_window).match?('Haven (opens in new tab)')).to be(true)
+    end
+  end
+
+  describe '.for' do
+    it 'is one classifier per scope, each reading its own page language', :aggregate_failures do
+      zh = described_class.for(Html2rss::Vocabulary[:zh])
+
+      expect([zh.read_more?('阅读全文'), described_class.for(Html2rss::Vocabulary[:all]).read_more?('阅读全文')])
+        .to eq([true, false])
     end
   end
 end

@@ -7,8 +7,8 @@ module Html2rss
       # Owner of how the call-to-action, read-more and new-window concepts ({Vocabulary::PAGE_PATTERNS}) are read:
       # one precompiled set of matchers per page scope, built at load. The shared terms are every language of
       # {Vocabulary::ALL}; a {Vocabulary::PAGE_ONLY} language adds its own, read as whole labels only, so a Han
-      # term never opens a headline. A scope without own terms for a concept holds the shared matcher itself, so
-      # nothing is compiled or allocated for it and its output is exactly the shared one.
+      # term never opens a headline. Scopes with the same own terms (every shared language and +:all+ have none)
+      # share one entry, compiled once, so a scope without own terms reads exactly the shared terms.
       module PageReadings
         # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a
         # multi-word imperative phrase at the start of the text, read in every language. An infinitive or noun
@@ -42,32 +42,19 @@ module Html2rss
           /ix
         end
 
-        SHARED = {
-          cta: UTILITY_CTA,
-          own_cta: TextClassifier.whole_label([]),
-          read_more: READ_MORE.call(*READ_MORE_CONCEPTS.map { Vocabulary.alternation(_1) }),
-          new_window: NEW_WINDOW.call(Vocabulary.alternation(:new_window_notice))
-        }.freeze
-
         class << self
           ##
           # @param own [Hash{Symbol => String}] a scope's own alternatives per {Vocabulary::PAGE_PATTERNS} concept
           # @return [Hash{Symbol => Regexp}] +:cta+ (the shared call to action), +:own_cta+ (the own terms as whole
-          #   labels), +:read_more+ and +:new_window+: the shared matchers themselves when the scope has no own
-          #   term for them, else the shared terms widened by the own ones
+          #   labels), +:read_more+ and +:new_window+ (the shared terms widened by the own ones)
           def build(own)
-            SHARED.merge(own_cta: TextClassifier.whole_label([own.fetch(:utility_cta)]), **widened(own)).freeze
-          end
-
-          private
-
-          def widened(own)
             union = ->(concept) { [Vocabulary.alternation(concept), own.fetch(concept)].reject(&:empty?).join('|') }
-            unless own.values_at(*READ_MORE_CONCEPTS).all?(&:empty?)
-              read_more = READ_MORE.call(*READ_MORE_CONCEPTS.map(&union))
-            end
-            notice = NEW_WINDOW.call(union.call(:new_window_notice)) unless own.fetch(:new_window_notice).empty?
-            { read_more:, new_window: notice }.compact
+            {
+              cta: UTILITY_CTA,
+              own_cta: TextClassifier.whole_label([own.fetch(:utility_cta)]),
+              read_more: READ_MORE.call(*READ_MORE_CONCEPTS.map(&union)),
+              new_window: NEW_WINDOW.call(union.call(:new_window_notice))
+            }.freeze
           end
         end
 
@@ -79,7 +66,7 @@ module Html2rss
             built[own] ||= build(own)
           end.freeze
         end
-        private_constant :UTILITY_CTA, :READ_MORE_CONCEPTS, :NEW_WINDOW, :READ_MORE, :SHARED
+        private_constant :UTILITY_CTA, :READ_MORE_CONCEPTS, :NEW_WINDOW, :READ_MORE
       end
     end
   end

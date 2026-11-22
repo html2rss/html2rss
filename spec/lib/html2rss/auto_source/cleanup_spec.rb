@@ -176,6 +176,23 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with a Chinese read-more copy of an article that also has a real title' do
+      let(:read_more_first) do
+        instance_double(Html2rss::Article, valid?: true, url: articles.first.url, title: '阅读全文')
+      end
+
+      before { articles.unshift(read_more_first) }
+
+      it 'drops the copy, and reads the label as junk, on a Chinese page only', :aggregate_failures do
+        zh = Html2rss::Vocabulary[:zh]
+        result = described_class.call(articles.dup, vocabulary: zh, url:)
+
+        expect(result.articles).not_to include(read_more_first)
+        expect(result.drop_tallies['duplicate_url']).to eq(1)
+        expect([zh, vocabulary].map { described_class.junk_reason('阅读全文', vocabulary: _1) }).to eq([:cta, nil])
+      end
+    end
+
     # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- verdict stub + two scraper cohorts
     context 'with a corroboration page check' do
       subject(:result) { described_class.call(articles, vocabulary:, url:, corroboration:) }
