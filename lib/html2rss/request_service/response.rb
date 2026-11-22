@@ -22,15 +22,15 @@ module Html2rss
       FEED_BODY_MARKERS = ['<rss', '<feed xmlns', '<feed ', '<rdf:rdf'].freeze
       # Charset from Content-Type or a leading <meta charset>.
       CHARSET_PARAMETER = /charset\s*=\s*["']?([\w.:-]+)/i
-      # WHATWG label families, with the encodings to try in order: gbk/gb2312 decode as GB18030; big5 (and CP950)
-      # decode as CP950 first so ordinary symbols keep their mapping, then Big5-HKSCS for HKSCS-only characters.
-      CHARSET_LABEL_ENCODINGS = {
-        **%w[chinese csgb2312 csiso58gb231280 gb2312 gb_2312 gb_2312-80 gbk iso-ir-58 x-gbk gb18030].to_h do |label|
-          [label, [Encoding::GB18030].freeze]
+      # WHATWG gbk/big5 label families: encodings tried after the one Ruby resolves for the label (if any), so a page
+      # that decoded before decodes identically and only previously scrubbed pages are rescued. gbk labels fall back
+      # to GB18030 (a superset); big5 labels to Big5-HKSCS. Labels Ruby does not know start from GBK or Big5.
+      CHARSET_FALLBACK_ENCODINGS = {
+        **%w[chinese csgb2312 csiso58gb231280 gbk gb_2312 gb_2312-80 iso-ir-58 x-gbk].to_h do |label|
+          [label, [Encoding::GBK, Encoding::GB18030].freeze]
         end,
-        **%w[big5 big5-hkscs cn-big5 csbig5 x-big5 x-x-big5 windows-950 cp950].to_h do |label|
-          [label, [Encoding::CP950, Encoding::Big5_HKSCS].freeze]
-        end
+        'gb2312' => [Encoding::GB18030].freeze,
+        **%w[big5 cn-big5 csbig5 x-x-big5].to_h { |label| [label, [Encoding::Big5, Encoding::Big5_HKSCS].freeze] }
       }.freeze
       # Bytes scanned for a meta charset hint (HTML spec looks at the first 1024).
       META_CHARSET_BYTES = 2048
@@ -171,11 +171,8 @@ module Html2rss
       end
 
       def transcode_html(bytes, charset)
-        candidates = html_encodings_for(charset)
-        candidates.each do |encoding|
-          text = bytes.dup.force_encoding(encoding)
-          # CP950 silently drops invalid byte pairs on transcode, so only the last candidate may skip validation.
-          return text.encode(Encoding::UTF_8) if text.valid_encoding? || encoding.equal?(candidates.last)
+        html_encodings_for(charset).each do |encoding|
+          return bytes.dup.force_encoding(encoding).encode(Encoding::UTF_8)
         rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
           # try the next candidate
         end
@@ -185,9 +182,9 @@ module Html2rss
       def html_encodings_for(charset)
         return [] if charset.nil? || utf8_charset?(charset)
 
-        CHARSET_LABEL_ENCODINGS.fetch(charset.downcase) { [Encoding.find(charset)] }
+        [Encoding.find(charset), *CHARSET_FALLBACK_ENCODINGS[charset.downcase]].compact
       rescue ArgumentError
-        []
+        CHARSET_FALLBACK_ENCODINGS.fetch(charset.downcase, [])
       end
 
       def utf8_charset?(charset) = charset.to_s.downcase.gsub(/[\s_-]/, '') == 'utf8'

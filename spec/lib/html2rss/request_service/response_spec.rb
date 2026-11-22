@@ -243,8 +243,8 @@ RSpec.describe Html2rss::RequestService::Response do
     end
 
     {
-      'gb2312' => '镕', 'gbk' => '镕', 'x-gbk' => '镕', 'gb_2312-80' => '镕', 'GB2312' => '镕',
-      'big5' => '啫', 'x-big5' => '啫', 'cn-big5' => '啫', 'csbig5' => '啫', 'windows-950' => '啫', 'cp950' => '啫'
+      'gb2312' => '镕', 'gbk' => '镕', 'x-gbk' => '镕', 'gb_2312-80' => '镕', 'GB2312' => '镕', 'X-GBK' => '镕',
+      'big5' => '啫', 'cn-big5' => '啫', 'csbig5' => '啫', 'x-x-big5' => '啫', 'X-X-BIG5' => '啫'
     }.each do |label, char|
       {
         'Content-Type charset' => [{ 'content-type' => "text/html; charset=#{label}" }, ''],
@@ -266,15 +266,20 @@ RSpec.describe Html2rss::RequestService::Response do
     end
 
     [
-      ['keeps ‧ (a145) as CP950 maps it', 'a145', '‧'],
-      ['keeps € (a3e1) as CP950 maps it', 'a3e1', '€'],
-      ['keeps ＼ (a240) as CP950 maps it', 'a240', '＼'],
-      ['decodes HKSCS-only 啫 (94dc) fully', '94dc', '啫'],
-      ['scrubs a page mixing € and 啫: no single decoder maps both', 'a3e194dc', "\uFFFD" * 3]
-    ].each do |name, hex, expected|
-      context "when a big5 page contains bytes #{hex}" do
+      ['keeps ‧ (a145) as Big5 maps it', 'big5', 'a145', '‧'],
+      ['keeps € (a3e1) as Big5 maps it', 'big5', 'a3e1', '€'],
+      ['keeps ＼ (a240) as Big5 maps it', 'big5', 'a240', '＼'],
+      ['decodes HKSCS-only 啫 (94dc) fully', 'big5', '94dc', '啫'],
+      ['scrubs a page mixing € and 啫: no single decoder maps both', 'big5', 'a3e194dc', "\uFFFD" * 3],
+      ['decodes big5-hkscs as Big5-HKSCS only: c6a1 is ①, not private use', 'big5-hkscs', 'c6a1', '①'],
+      ['decodes cp950 directly: EUDC byte pair 8140 stays private use', 'cp950', '8140', "\uEEB8"],
+      ['decodes gbk byte 0x80 as €', 'gbk', '80', '€'],
+      ['decodes gbk-only 镕 (e946) under the gb2312 label', 'gb2312', 'e946', '镕'],
+      ['scrubs an unresolvable internal label instead of raising', 'internal', 'ffff', "\uFFFD" * 2]
+    ].each do |name, label, hex, expected|
+      context "when a #{label} page contains bytes #{hex}" do
         let(:body) { "<h1>#{[hex].pack('H*')}</h1>".b.force_encoding(Encoding::UTF_8) }
-        let(:headers) { { 'content-type' => 'text/html; charset=big5' } }
+        let(:headers) { { 'content-type' => "text/html; charset=#{label}" } }
 
         it(name) { expect(parsed_body.at_css('h1').text).to eq(expected) }
       end
