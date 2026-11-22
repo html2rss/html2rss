@@ -20,25 +20,32 @@ module Html2rss
         utility_label: %i[utility recommended],
         recommended: %i[recommended]
       }.freeze
-      private_constant :READINGS
 
-      # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
-      # +:utility_label+ reading is a short whole text: a utility term, at most one trailing word, wrapping
-      # punctuation, symbols or arrows and one bare count ("Contact us", "Comments (12)", "[Subscribe]").
-      matcher = lambda do |reading, alternatives|
-        alternatives = alternatives.reject(&:empty?)
-        return NEVER if alternatives.empty?
+      class << self
+        ##
+        # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
+        # +:utility_label+ reading is a short whole text: a utility term, at most one trailing word, wrapping
+        # punctuation, symbols or arrows and one bare count ("Contact us", "Comments (12)", "[Subscribe]").
+        # The one owner of how a label term is read, so a spec reads a single term exactly as a page does.
+        #
+        # @param reading [Symbol] a key of {READINGS}
+        # @param alternatives [Array<String>] regex alternatives (see {Vocabulary.compile})
+        # @return [Regexp]
+        def matcher(reading, alternatives)
+          alternatives = alternatives.reject(&:empty?)
+          return NEVER if alternatives.empty?
 
-        alternation = alternatives.join('|')
-        return /\A\s*(#{alternation})\b/iux unless reading == :utility_label
+          alternation = alternatives.join('|')
+          return /\A\s*(#{alternation})\b/iux unless reading == :utility_label
 
-        wrap = '[\s\p{P}\p{S}]*'
-        /\A#{wrap}(?:#{alternation})(?:\s+[\p{L}\p{M}]+)?#{wrap}(?:\d+#{wrap})?\z/iux
+          wrap = '[\s\p{P}\p{S}]*'
+          /\A#{wrap}(?:#{alternation})(?:\s+[\p{L}\p{M}]+)?#{wrap}(?:\d+#{wrap})?\z/iux
+        end
       end
 
       # Per reading, the matcher of the terms every page language applies (shared, compiled once) ...
       UNAMBIGUOUS = READINGS.to_h do |reading, concepts|
-        [reading, matcher.call(reading, concepts.map { Vocabulary.unambiguous_alternation(_1) })]
+        [reading, matcher(reading, concepts.map { Vocabulary.unambiguous_alternation(_1) })]
       end.freeze
       # ... and per scope code, the matcher of the ambiguous terms of that scope (compiled once per distinct
       # alternatives: the Chinese scope shares the matchers of +:all+).
@@ -46,7 +53,7 @@ module Html2rss
         built = {}
         Vocabulary::SCOPES.transform_values do |scope|
           built[scope.alternations] ||= READINGS.to_h do |reading, concepts|
-            [reading, matcher.call(reading, concepts.map { scope.ambiguous_alternation(_1) })]
+            [reading, matcher(reading, concepts.map { scope.ambiguous_alternation(_1) })]
           end.freeze
         end.freeze
       end

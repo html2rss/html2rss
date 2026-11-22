@@ -3,6 +3,48 @@
 RSpec.describe Html2rss::LinkDestination::TextClassifier do
   subject(:classifier) { described_class.new }
 
+  describe '.matcher' do
+    let(:alternation) { Html2rss::Vocabulary.compile(['contact', 'über', 'sign up']) }
+    let(:prefixed) do
+      ['Contact us', '  CONTACT', 'Über uns', 'sign   up now', 'contact',
+       'Contact us today for more details']
+    end
+    let(:not_prefixed) { ['Contactless', 'Please contact us', 'xüber', ''] }
+    let(:labels) { ['Contact', 'Contact us', '[Contact]', '→ Contact ←', 'Contact 12', 'Contact us (3)'] }
+    let(:not_labels) { ['Contact us today', 'Contactless', 'Please contact', 'Contact 12 13', 'Contact us 12 more'] }
+
+    it 'never matches without alternatives, empty ones included', :aggregate_failures do
+      [[], [''], ['', '']].product(%i[utility utility_label recommended utility_prefix]).each do |alternatives, reading|
+        expect(described_class.matcher(reading, alternatives).match?('contact')).to be(false),
+                                                                                    "#{reading} #{alternatives}"
+        expect(described_class.matcher(reading, alternatives).match?('')).to be(false)
+      end
+    end
+
+    %i[utility recommended utility_prefix].each do |reading|
+      it "reads #{reading} as the start of the text at a word boundary, in any case", :aggregate_failures do
+        pattern = described_class.matcher(reading, [alternation])
+
+        expect(prefixed.map { pattern.match?(_1) }).to all(be(true))
+        expect(not_prefixed.map { pattern.match?(_1) }).to all(be(false))
+      end
+    end
+
+    it 'reads the label reading as a short whole text', :aggregate_failures do
+      pattern = described_class.matcher(:utility_label, [alternation])
+
+      expect(labels.map { pattern.match?(_1) }).to all(be(true))
+      expect(not_labels.map { pattern.match?(_1) }).to all(be(false))
+    end
+
+    it 'joins several alternatives and reads each as written', :aggregate_failures do
+      pattern = described_class.matcher(:utility_label, %w[about contact])
+
+      expect(%w[About contact].map { pattern.match?(_1) }).to all(be(true))
+      expect(pattern.match?('abou')).to be(false)
+    end
+  end
+
   describe '#utility?' do
     [
       'About', 'About us', 'Contact', 'Comments', 'Comment', 'Log in', 'login', 'Member', 'Membership',
