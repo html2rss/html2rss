@@ -89,8 +89,13 @@ corpus-baseline: ## Re-record the auto-source corpus ratchet baseline
 compare-revisions: ## Compare auto-source on saved pages across two revisions (BASE, HEAD, PAGES, optional LIMIT)
 	$(RUBY_RUNNER)bin/compare-revisions $(BASE) $(HEAD) --pages $(PAGES) $(if $(LIMIT),--limit $(LIMIT))
 
+# The values travel as environment variables, never spliced into the shell command, so a quote in one is data.
+language-check: export LC_CODE := $(CODE)
+language-check: export LC_PAGES := $(PAGES)
+language-check: export LC_BASE := $(BASE)
+language-check: export LC_OUT := $(OUT)
 language-check: ## Evidence report for a vocabulary language on saved pages (CODE, PAGES, optional BASE, OUT)
-	$(RUBY_RUNNER)bin/language-check --code '$(CODE)' --pages '$(PAGES)' --base '$(BASE)' --out '$(OUT)'
+	$(RUBY_RUNNER)bin/language-check --code "$$LC_CODE" --pages "$$LC_PAGES" --base "$$LC_BASE" --out "$$LC_OUT"
 
 ready: ## Run the local PR readiness checks
 	bin/ready

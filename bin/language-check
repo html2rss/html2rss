@@ -44,7 +44,8 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
   MEMORY_RUNS = 5
   LONG_WORDS = 4
   SAMPLES = 3
-  SUMMARY_LINES = 30
+  # Paths whose changes alter what a measurement of the live checkout reads.
+  MEASURED_PATHS = %w[lib spec/support bin/language-check Gemfile Gemfile.lock *.gemspec].freeze
   FAILED_EXIT = 2
   LABEL_CONCEPTS = %i[utility utility_prefix recommended].freeze
   # The TextClassifier reading each matcher belongs to, as the predicate a caller reads it through.
@@ -110,9 +111,6 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
         end.keys, 'evidence' => (term_evidence(lang, facts) if evidence) }
     end
 
-    # :nocov: the spawning half (a worker and five memory processes per tree) is exercised end to end by a real
-    # run, not by the suite: it takes about a minute.
-
     # @param tree [String] revision tree root
     # @return [Hash{String => String}] environment of a process running in the tree
     def worker_env(tree)
@@ -122,7 +120,30 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       env
     end
 
+    # @param tree [String] revision tree root
+    # @param options [Hash] validated command line
+    # @param out [String] where the worker writes its measurement
+    # @param evidence [Boolean]
+    # @return [Hash] the parsed measurement
+    # @raise [Failure] when the worker exits 2 (its own one-line failure) or fails otherwise
+    def run_worker(tree, options, out, evidence:)
+      _, err, status = Open3.capture3(worker_env(tree), *worker_command(options, out, evidence), chdir: tree)
+      line = err.lines.first.to_s.strip
+      raise Failure, line.delete_prefix('language-check: ') if status.exitstatus == FAILED_EXIT
+      raise Failure, "worker failed in #{tree}: #{line}" unless status.success?
+
+      JSON.parse(File.read(out))
+    end
+
+    def worker_command(options, out, evidence)
+      command = [RbConfig.ruby, File.expand_path(__FILE__), '--worker', out, '--code', options.fetch(:code),
+                 '--pages', options.fetch(:pages)]
+      evidence ? command << '--evidence' : command
+    end
+
     # ----- orchestration -----
+
+    # :nocov: spawning git and a worker per tree is exercised end to end by a real run (about a minute).
 
     # @param options [Hash] validated command line
     # @param pages [Array<RevisionComparison::Page>]
@@ -135,14 +156,21 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       base = with_base_worktree(base_sha) { |tree| measure_tree(tree, options, evidence: false) }
       write_report(options.fetch(:out), meta, base, head)
     end
-
-    # @return [Hash] the head's SHA and whether its tracked files differ from it (results of a dirty tree are
-    #   not reproducible from the SHA)
-    def head_meta(code, pages)
-      dirty = !git('status', '--porcelain', '--untracked-files=no', error: 'git status failed').empty?
-      { code:, pages:, head_sha: git('rev-parse', 'HEAD', error: 'no HEAD commit'), dirty: }
-    end
     # :nocov:
+
+    # @return [Hash] the head's SHA and whether the live checkout differs from it in a measured path (results of a
+    #   dirty tree are not reproducible from the SHA)
+    def head_meta(code, pages)
+      { code:, pages:, head_sha: git('rev-parse', 'HEAD', error: 'no HEAD commit'), dirty: dirty? }
+    end
+
+    # @param root [String] checkout root
+    # @return [Boolean] whether a tracked or untracked file under {MEASURED_PATHS} differs from HEAD
+    def dirty?(root = REPO_ROOT)
+      status = git('status', '--porcelain', '--untracked-files=all', '--', *MEASURED_PATHS,
+                   error: 'git status failed', root:)
+      !status.empty?
+    end
 
     # Builds BASE as a detached worktree and removes exactly that worktree on exit, however the block ends.
     # Nothing repo-global (no prune): another worktree of the developer is never touched.
@@ -163,29 +191,41 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
 
     # ----- comparison -----
 
-    # @param base [Array<Array(String, String)>] +[url, title]+ items in order
+    # @param base [Array<Array(String, String)>] +[url, title]+ items in order, duplicates kept
     # @param head [Array<Array(String, String)>]
-    # @return [Hash{Symbol => Array}] +added+, +removed+, +moved+ (url, base rank, head rank among shared items)
-    #   and +retitled+ (url, base title, head title)
+    # @return [Hash{Symbol => Array}] +added+, +removed+, +retitled+ (url, base title, head title), +moved+
+    #   (url, base rank, head rank among shared items) and +repeated+ (url, base titles, head titles: a URL
+    #   emitted a different number of times or with different titles, which the URL-keyed diff cannot see)
     def feed_diff(base, head)
-      base_urls = base.map(&:first).uniq
-      head_urls = head.map(&:first).uniq
-      { added: head.reject { base_urls.include?(_1.first) }, removed: base.reject { head_urls.include?(_1.first) },
-        moved: moved_items(base_urls & head_urls, head_urls & base_urls),
-        retitled: retitled_items(base.to_h, head.to_h) }
+      diff = RevisionComparison::Diff.new(page: nil, base: item_run(base), head: item_run(head))
+      { added: diff.gained.to_a, removed: diff.lost.to_a, moved: moved_items(base, head),
+        retitled: diff.title_changes, repeated: repeated_items(base, head, diff.title_changes.map(&:first)) }
     end
 
     # @return [Array<Array(String, Integer, Integer)>] url, base rank, head rank among the shared items
-    def moved_items(shared_base, shared_head)
-      shared_head.each_with_index.filter_map do |url, rank|
+    def moved_items(base, head)
+      base_urls = base.map(&:first).uniq
+      head_urls = head.map(&:first).uniq
+      shared_base = base_urls & head_urls
+      (head_urls & base_urls).each_with_index.filter_map do |url, rank|
         [url, shared_base.index(url), rank] if shared_base[rank] != url
       end
     end
 
-    # @return [Array<Array(String, String, String)>] url, base title, head title
-    def retitled_items(base, head)
-      head.filter_map { |url, title| [url, base[url], title] if base.key?(url) && base[url] != title }
+    # @param base [Array<Array(String, String)>]
+    # @param head [Array<Array(String, String)>]
+    # @param seen [Array<String>] URLs already reported as retitled
+    # @return [Array<Array(String, Array<String>, Array<String>)>]
+    def repeated_items(base, head, seen)
+      from = titles_by_url(base)
+      to = titles_by_url(head)
+      from.filter_map do |url, titles|
+        [url, titles, to[url]] if to.key?(url) && titles != to[url] && !seen.include?(url)
+      end
     end
+
+    # @return [Hash{String => Array<String>}] sorted titles of every occurrence, per URL
+    def titles_by_url(items) = items.group_by(&:first).transform_values { |rows| rows.map(&:last).sort }
 
     # @param base [Hash{String => Array}] text => classification, of one page
     # @param head [Hash{String => Array}]
@@ -228,16 +268,23 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       raise Failure, error.message
     end
 
-    def git(*, error:)
-      out, _, status = Open3.capture3('git', '-C', REPO_ROOT, *)
+    def git(*, error:, root: REPO_ROOT)
+      out, _, status = Open3.capture3('git', '-C', root, *)
       raise Failure, error unless status.success?
 
       out.strip
     end
 
+    def item_run(items)
+      RevisionComparison::Run.new(items: items.to_h, drops: {}, wall_ms: 0.0, error: nil, feed: nil)
+    end
+
     def remove_worktree(tree)
       _, err, status = Open3.capture3('git', '-C', REPO_ROOT, 'worktree', 'remove', '--force', tree)
-      $stderr.write("git worktree remove #{tree}: #{err}\n") unless status.success?
+      return if status.success?
+
+      $stderr.write("language-check: could not remove #{tree} (#{err.strip}); remove it with: " \
+                    "git worktree remove --force #{tree}\n")
     end
 
     # One uncapped auto-source run: +[url, title]+ items, or the error that stopped it.
@@ -372,22 +419,9 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     ensure
       FileUtils.rm_rf(File.dirname(out)) if out
     end
+    # :nocov:
 
-    def run_worker(tree, options, out, evidence:)
-      _, err, status = Open3.capture3(worker_env(tree), *worker_command(options, out, evidence), chdir: tree)
-      line = err.lines.first.to_s.strip
-      raise Failure, line.delete_prefix('language-check: ') if status.exitstatus == FAILED_EXIT
-      raise Failure, "worker failed in #{tree}: #{line}" unless status.success?
-
-      JSON.parse(File.read(out))
-    end
-
-    def worker_command(options, out, evidence)
-      command = [RbConfig.ruby, File.expand_path(__FILE__), '--worker', out, '--code', options.fetch(:code),
-                 '--pages', options.fetch(:pages)]
-      evidence ? command << '--evidence' : command
-    end
-
+    # :nocov: spawns five fresh processes per tree.
     # Retained bytes after require 'html2rss', one fresh process each.
     def memory(tree)
       Array.new(MEMORY_RUNS) do
@@ -404,14 +438,15 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       FileUtils.mkdir_p(out)
       report = Report.new(meta, base, head)
       File.write(File.join(out, 'report.md'), report.full)
-      puts report.summary(File.join(out, 'report.md'))
+      # :nocov:
+      puts report.terminal(File.join(out, 'report.md'))
+      # :nocov:
       out
     end
-    # :nocov:
   end
 
   ##
-  # The text of one comparison: +full+ for the report file, +summary+ for the terminal.
+  # The text of one comparison: +full+ for the report file, +terminal+ for the terminal.
   class Report # rubocop:disable Metrics/ClassLength -- one report, four sections
     # @param meta [Hash] +code+, +pages+, +base_sha+, +head_sha+, +dirty+
     # @param base [Hash] +measure+ and +memory+ of the base tree
@@ -430,16 +465,20 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     end
 
     # @param path [String] where the full report was written
-    # @return [String] at most {SUMMARY_LINES} lines
-    def summary(path)
-      lines = [header.first, *feed_summary, *anchor_summary, *evidence_summary, *cost_summary, "report: #{path}"]
-      lines.first(SUMMARY_LINES).join("\n")
+    # @return [String] the header, each section's totals, every warning, error and flag line, and the path
+    def terminal(path)
+      [*header, *feed_summary, *anchor_summary, *evidence_summary, *cost_summary, "report: #{path}"].join("\n")
     end
 
     private
 
     def header
-      dirty = @meta.fetch(:dirty) ? 'dirty (tracked changes: not reproducible from the SHA)' : 'clean'
+      dirty = if @meta.fetch(:dirty)
+                'dirty: the live checkout was measured, not this SHA alone (uncommitted changes under ' \
+                  "#{MEASURED_PATHS.join(', ')})"
+              else
+                'clean'
+              end
       ["# language-check #{@meta.fetch(:code)}: #{@files.size} pages",
        "base #{@meta.fetch(:base_sha)}  head #{@meta.fetch(:head_sha)} (#{dirty})"]
     end
@@ -470,7 +509,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
 
     def feed_totals
       diffs = of_kind(:compared).values.map { _1[:diff] }
-      totals = %i[added removed moved retitled].to_h { |key| [key, diffs.sum { _1[key].size }] }
+      totals = %i[added removed moved retitled repeated].to_h { |key| [key, diffs.sum { _1[key].size }] }
       totals.merge(error_change: of_kind(:one_errored).size)
     end
 
@@ -490,7 +529,8 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       totals = feed_totals
       "feed: compared #{of_kind(:compared).size} of #{@files.size} pages, #{feed_changes} changes " \
         "(added #{totals[:added]}, removed #{totals[:removed]}, reordered #{totals[:moved]}, " \
-        "retitled #{totals[:retitled]}, errored in one tree #{totals[:error_change]})"
+        "retitled #{totals[:retitled]}, repeated #{totals[:repeated]}, " \
+        "errored in one tree #{totals[:error_change]}, errored in both #{of_kind(:both_errored).size})"
     end
 
     def problem_lines
@@ -573,7 +613,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
 
     def evidence_summary
       silent = silent_paths.map { _1['concept'] }
-      [label_summary, *flagged_labels.first(5).map { flag_line(_1) },
+      [label_summary, *flagged_labels.map { flag_line(_1) },
        "  path concepts with zero hits: #{silent.empty? ? 'none' : silent.join(', ')}"]
     end
 
@@ -712,7 +752,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     exit(options&.fetch(:worker, nil) ? FAILED_EXIT : 1)
   end
 
-  # :nocov:
+  # :nocov: the spawned worker's entry; its measuring half is covered through {measure}.
   # Worker mode (internal): runs inside a tree so that tree's lib/ is loaded.
   def self.worker(options, pages)
     ENV['LOG_LEVEL'] ||= 'error'

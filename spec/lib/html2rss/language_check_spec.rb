@@ -3,6 +3,7 @@
 require 'json'
 require 'tmpdir'
 require 'fileutils'
+require 'open3'
 
 # bin/language-check is a script: load it once so its constants are defined once.
 load File.expand_path('../../../bin/language-check', __dir__) unless defined?(LanguageCheck)
@@ -66,13 +67,13 @@ RSpec.describe LanguageCheck do
 
   describe 'the report' do
     it 'finds no change when both trees agree' do
-      summary = report_for.call(head).summary('report.md')
+      summary = report_for.call(head).terminal('report.md')
 
       expect(summary).to include('compared 2 of 2 pages, 0 changes', 'anchors: 0 changed of')
     end
 
     it 'detects removed, reordered, reclassified and one-sided errored pages', :aggregate_failures do
-      summary = report_for.call(changed_base).summary('report.md')
+      summary = report_for.call(changed_base).terminal('report.md')
 
       expect(summary).to include('compared 1 of 2 pages', 'errored in one tree 1', 'CHANGE errored in one tree')
       expect(summary).to match(/anchors: 1 changed of \d+ .*utility\? 1/)
@@ -87,14 +88,14 @@ RSpec.describe LanguageCheck do
 
     it 'flags a loose label term whose hits are mostly long texts, and path concepts without hits',
        :aggregate_failures do
-      summary = report_for.call(head).summary('report.md')
+      summary = report_for.call(head).terminal('report.md')
 
       expect(head.dig('evidence', 'labels').find { _1['term'] == 'contact' }).to include('hits' => 2, 'long' => 2)
       expect(summary).to include('FLAG utility "contact"', 'path concepts with zero hits')
     end
 
     it 'keeps the terminal summary within 30 lines' do
-      expect(report_for.call(changed_base).summary('report.md').lines.size).to be <= 30
+      expect(report_for.call(changed_base).terminal('report.md').lines.size).to be <= 30
     end
   end
 
@@ -123,6 +124,23 @@ RSpec.describe LanguageCheck do
     end
   end
 
+  describe '.feed_diff' do
+    it 'counts a URL emitted a different number of times, or with a differing second title', :aggregate_failures do
+      once = [%w[https://x/a A]]
+
+      expect(described_class.feed_diff([*once, *once], once)[:repeated]).to eq([['https://x/a', %w[A A], %w[A]]])
+      expect(described_class.feed_diff([*once, %w[https://x/a B]], [%w[https://x/a C], %w[https://x/a B]])[:repeated])
+        .to eq([['https://x/a', %w[A B], %w[B C]]])
+    end
+
+    it 'reports added, removed, retitled and reordered items', :aggregate_failures do
+      diff = described_class.feed_diff([%w[u1 A], %w[u2 B], %w[u3 C]], [%w[u2 B2], %w[u1 A], %w[u4 D]])
+
+      expect(diff).to include(added: [%w[u4 D]], removed: [%w[u3 C]], retitled: [%w[u2 B B2]], repeated: [])
+      expect(diff.fetch(:moved)).to eq([['u2', 1, 0], ['u1', 0, 1]])
+    end
+  end
+
   describe '.with_base_worktree' do
     it 'removes its own worktree when the block raises, leaving every other worktree entry', :aggregate_failures do
       list = -> { `git -C #{described_class::REPO_ROOT} worktree list --porcelain`.lines.grep(/\Aworktree /) }
@@ -130,6 +148,67 @@ RSpec.describe LanguageCheck do
 
       expect { described_class.with_base_worktree('HEAD') { raise 'forced' } }.to raise_error('forced')
       expect(list.call).to eq(before)
+    end
+  end
+
+  describe '.dirty?' do
+    before do
+      FileUtils.mkdir_p(File.join(pages_dir, 'lib'))
+      File.write(File.join(pages_dir, 'lib', 'a.rb'), "A = 1\n")
+      [%w[init -q], %w[add .], %w[-c user.name=t -c user.email=t@t commit -q -m init]].each do |args|
+        Open3.capture2e('git', '-C', pages_dir, *args)
+      end
+    end
+
+    it 'is clean for a clean checkout' do
+      expect(described_class.dirty?(pages_dir)).to be(false)
+    end
+
+    it 'counts a tracked edit' do
+      File.write(File.join(pages_dir, 'lib', 'a.rb'), "A = 2\n")
+
+      expect(described_class.dirty?(pages_dir)).to be(true)
+    end
+
+    it 'counts a new untracked lib file' do
+      File.write(File.join(pages_dir, 'lib', 'b.rb'), "B = 1\n")
+
+      expect(described_class.dirty?(pages_dir)).to be(true)
+    end
+
+    it 'ignores an unrelated untracked directory' do
+      FileUtils.mkdir_p(File.join(pages_dir, '.claude'))
+      File.write(File.join(pages_dir, '.claude', 'x.json'), '{}')
+
+      expect(described_class.dirty?(pages_dir)).to be(false)
+    end
+  end
+
+  describe '.run_worker' do
+    before { File.write(File.join(pages_dir, 'm.json'), '{"pages":{}}') }
+
+    it 'maps exit 2 to the worker line' do
+      allow(Open3).to receive(:capture3)
+        .and_return(['', "language-check: no such language\n", instance_double(Process::Status, exitstatus: 2)])
+
+      expect { described_class.run_worker('/tree', { code: 'en', pages: '/p' }, '/none', evidence: false) }
+        .to raise_error(described_class::Failure, 'no such language')
+    end
+
+    it 'maps another non-zero exit to "worker failed"' do
+      allow(Open3).to receive(:capture3)
+        .and_return(['', "boom\n", instance_double(Process::Status, exitstatus: 1, success?: false)])
+
+      expect { described_class.run_worker('/tree', { code: 'en', pages: '/p' }, '/none', evidence: false) }
+        .to raise_error(described_class::Failure, 'worker failed in /tree: boom')
+    end
+
+    it 'parses the measurement on success' do
+      allow(Open3).to receive(:capture3)
+        .and_return(['', '', instance_double(Process::Status, exitstatus: 0, success?: true)])
+
+      expect(described_class.run_worker('/tree', { code: 'en', pages: '/p' }, File.join(pages_dir, 'm.json'),
+                                        evidence: true)).to eq('pages' => {})
     end
   end
 end
