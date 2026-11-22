@@ -22,6 +22,16 @@ module Html2rss
       FEED_BODY_MARKERS = ['<rss', '<feed xmlns', '<feed ', '<rdf:rdf'].freeze
       # Charset from Content-Type or a leading <meta charset>.
       CHARSET_PARAMETER = /charset\s*=\s*["']?([\w.:-]+)/i
+      # WHATWG gbk/big5 label families: encodings tried after the one Ruby resolves for the label (if any), so a page
+      # that decoded before decodes identically and only previously scrubbed pages are rescued. gbk labels fall back
+      # to GB18030 (a superset); big5 labels to Big5-HKSCS. Labels Ruby does not know start from GBK or Big5.
+      CHARSET_FALLBACK_ENCODINGS = {
+        **%w[chinese csgb2312 csiso58gb231280 gbk gb_2312 gb_2312-80 iso-ir-58 x-gbk].to_h do |label|
+          [label, [Encoding::GBK, Encoding::GB18030].freeze]
+        end,
+        'gb2312' => [Encoding::GBK, Encoding::GB18030].freeze,
+        **%w[big5 cn-big5 csbig5 x-x-big5].to_h { |label| [label, [Encoding::Big5, Encoding::Big5_HKSCS].freeze] }
+      }.freeze
       # Bytes scanned for a meta charset hint (HTML spec looks at the first 1024).
       META_CHARSET_BYTES = 2048
       # The element that sets the document base URL: the first +<base>+ with an +href+ in tree order, unless the
@@ -161,20 +171,20 @@ module Html2rss
       end
 
       def transcode_html(bytes, charset)
-        encoding = html_encoding_for(charset)
-        return utf8_scrub(bytes) unless encoding
-
-        bytes.dup.force_encoding(encoding).encode(Encoding::UTF_8)
-      rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+        html_encodings_for(charset).each do |encoding|
+          return bytes.dup.force_encoding(encoding).encode(Encoding::UTF_8)
+        rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+          # try the next candidate
+        end
         utf8_scrub(bytes)
       end
 
-      def html_encoding_for(charset)
-        return if charset.nil? || utf8_charset?(charset)
+      def html_encodings_for(charset)
+        return [] if charset.nil? || utf8_charset?(charset)
 
-        Encoding.find(charset)
+        [Encoding.find(charset), *CHARSET_FALLBACK_ENCODINGS[charset.downcase]].compact
       rescue ArgumentError
-        nil
+        CHARSET_FALLBACK_ENCODINGS.fetch(charset.downcase, [])
       end
 
       def utf8_charset?(charset) = charset.to_s.downcase.gsub(/[\s_-]/, '') == 'utf8'
