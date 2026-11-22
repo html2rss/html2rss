@@ -105,7 +105,7 @@ RSpec.describe Html2rss::Vocabulary do
         expect(noise.call(marker, lang)).to be(true), "#{marker} #{lang.inspect}"
       end
       %w[独自 写真].product(%i[zh zh-Hant zh-Hans-CN]).each { |marker, lang| expect(noise.call(marker, lang)).to be(false) }
-      %w[快讯 獨家].each { expect(noise.call(_1, :zh)).to be(true) }
+      %w[速報 動画].each { expect(noise.call(_1, :zh)).to be(true) }
     end
   end
 

@@ -237,20 +237,14 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'reads kicker noise: a type marker, and keeps 独自 and 写真 as words', :aggregate_failures do
+    it 'reads the shared type markers, not 独自 and 写真, and no marker of its own', :aggregate_failures do
       title = Html2rss::Article::Title
       noise = ->(piece) { title.noise_piece?(piece, vocabulary: described_class[:zh]) }
 
-      %w[快讯 快訊 独家 獨家 视频 視頻 圖集 速報].each { expect(noise.call(_1)).to be(true), _1 }
-      %w[独自 写真 视频会议 直播 直播间].each { expect(noise.call(_1)).to be(false), _1 }
-      expect(title.compose('港口重新开放', kicker: '独家', vocabulary: described_class[:zh])).to eq('港口重新开放')
+      %w[速報 詳報 動画].each { expect(noise.call(_1)).to be(true), _1 }
+      %w[独自 写真 快讯 快訊 独家 獨家 视频 視頻 圖集 直播 直播间].each { expect(noise.call(_1)).to be(false), _1 }
+      expect(title.compose('港口重新开放', kicker: '独家', vocabulary: described_class[:zh])).to eq('独家: 港口重新开放')
       expect(title.compose('港口重新开放', kicker: '独自', vocabulary: described_class[:zh])).to eq('独自: 港口重新开放')
-    end
-
-    it 'reads a Chinese type marker as a marker on a Chinese page only', :aggregate_failures do
-      noise = ->(piece, lang) { Html2rss::Article::Title.noise_piece?(piece, vocabulary: described_class[lang]) }
-
-      [nil, :ja, :en].each { expect(noise.call('快讯', _1)).to be(false), _1.inspect }
     end
 
     it 'does not read 播客 inside a Han compound as a podcast word', :aggregate_failures do

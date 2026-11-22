@@ -3,7 +3,7 @@
 # rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
 
 RSpec.describe Html2rss::Vocabulary do
-  let(:languages) { described_class::LANGUAGES }
+  let(:languages) { described_class::ALL }
   let(:flags) { Regexp::IGNORECASE | Regexp::EXTENDED | Regexp::MULTILINE }
   let(:bare) { /(?<!\\)[[:space:]#]/ }
 
@@ -15,8 +15,8 @@ RSpec.describe Html2rss::Vocabulary do
     # piece and an element label exist in one language each, a clock suffix in German and Russian, the podcast
     # words are words of six languages and the unspaced (kana) ones exist in Japanese only. Russian lists a path
     # word only for the concepts whose Cyrillic segments occur in practice (+/видео/+, +/пресс-релизы/+,
-    # +/помощь/+); the others are read through the Latin words every language shares. Chinese is page-only and
-    # lists only the concepts read through a page scope (+utility+, +recommended+, +type_marker+).
+    # +/помощь/+); the others are read through the Latin words every language shares. A page-only language (see
+    # +PAGE_ONLY+, below) is no shared language and has its own rule.
     let(:none_cells) do
       all = %i[en de fr es it nl pl sv ja pt ru]
       cells = {
@@ -33,13 +33,28 @@ RSpec.describe Html2rss::Vocabulary do
         podcast_word: %i[de nl pl sv ja],
         podcast_unspaced: all - %i[ja]
       }
-      (described_class::CONCEPTS - %i[utility recommended type_marker]).to_h { [_1, [*cells[_1], :zh]] }
+      cells
+    end
+
+    # A page-only language declares terms only for the concepts a page scope reads (path words, the scoped
+    # patterns and the type markers), and no ambiguous term: it applies as a whole, on its own pages.
+    it 'has each page-only language declare only concepts that a page scope reads', :aggregate_failures do
+      read_by_scope = described_class::SCOPED_WORDS + described_class::SCOPED_PATTERNS + %i[type_marker]
+
+      described_class::PAGE_ONLY.each do |language|
+        declared = language.terms.select { |_concept, terms| terms.any? }.keys
+
+        expect(declared - read_by_scope).to be_empty, "#{language.code} declares #{declared - read_by_scope}"
+        expect(language.terms.keys).to match_array(described_class::CONCEPTS)
+        expect(language.ambiguous).to be_empty
+        expect(described_class::ALL).not_to include(language)
+      end
     end
 
     it 'lists the languages in a fixed order', :aggregate_failures do
-      expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru zh])
-      expect(described_class::ALL.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru])
+      expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru])
       expect(described_class::PAGE_ONLY).to eq([described_class::Zh])
+      expect(described_class::LANGUAGES).to eq(languages + described_class::PAGE_ONLY)
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
     end
@@ -238,15 +253,26 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'leaves out exactly the Chinese words among the type markers, and adds its own', :aggregate_failures do
-      expect(described_class::CHINESE_WORDS).to eq(Set['独自', '写真'])
-      expect(described_class::CHINESE_WORDS).to be_a(Set).and be_frozen
-      expect(described_class::CHINESE_WORDS - described_class::Ja.terms.fetch(:type_marker)).to be_empty
-      expect(chinese.type_markers)
-        .to eq((described_class.words(:type_marker) - described_class::CHINESE_WORDS) |
-               described_class::Zh.terms.fetch(:type_marker))
-      expect(chinese.type_markers).to include('快讯', '獨家', '速報')
-      expect(chinese.type_markers).not_to include('独自', '写真')
+    it 'leaves out exactly the plain words of Chinese among the shared type markers', :aggregate_failures do
+      plain = described_class::Zh.plain_words
+
+      expect(plain).to eq(Set['独自', '写真'])
+      expect(plain).to be_a(Set).and be_frozen
+      expect(plain - described_class::Ja.terms.fetch(:type_marker)).to be_empty
+      expect(described_class::Zh.terms.fetch(:type_marker)).to be_empty
+      expect(chinese.type_markers).to eq(described_class.words(:type_marker) - plain)
+      expect(chinese.type_markers).to include('速報', '詳報', '動画')
+    end
+
+    it 'takes the plain words from the page-only language, so another one keeps 独自 and 写真', :aggregate_failures do
+      other = described_class::Language.new(code: :xx, plain_words: Set['速報'].freeze,
+                                            terms: described_class::Zh.terms.merge(type_marker: %w[xx-tag]).freeze)
+      scope = described_class.build_scope(:xx, described_class::ALL, own: [other])
+
+      expect(scope.type_markers).to include('独自', '写真', 'xx-tag')
+      expect(scope.type_markers).not_to include('速報')
+      expect(described_class.build_scope(:yy, described_class::ALL, own: []).type_markers)
+        .to be(described_class.words(:type_marker))
     end
 
     it 'gives every other scope, all and ja included, the identical full marker set without Chinese terms',

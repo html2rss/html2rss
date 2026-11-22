@@ -72,15 +72,6 @@ module Html2rss
     # Every language that has a file, in a fixed order.
     LANGUAGES = (ALL + PAGE_ONLY).freeze
 
-    # Japanese title type markers that are also ordinary words of a Chinese page, so a Chinese page reads them as
-    # text, not as markers (see {Scope#type_markers}). Closed and audited per term; every other Han marker keeps
-    # its marker reading on a Chinese page:
-    # - +独自+ is "independent, own" (+独自开发+), the same character form in Simplified Chinese;
-    # - +写真+ is "portrait, photo shoot" (+写真集+), the same character form in Simplified Chinese.
-    # +速報+ and +詳報+ read as the same breaking/detailed-report tags in Traditional Chinese; +動画+, +中継+ and
-    # +生中継+ are no Chinese spelling (+动画+, +中继+).
-    CHINESE_WORDS = Set['独自', '写真'].freeze
-
     # A language tag: a primary subtag, then region/script subtags (+de+, +de-AT+, +zh_Hant_TW+).
     TAG = /\A([a-z]{2,3})(?:[-_][a-z0-9]{1,8})*\z/i
 
@@ -165,12 +156,14 @@ module Html2rss
 
       ##
       # @param own [Array<Language>] the {PAGE_ONLY} languages of the scope
-      # @return [Set<String>] the title type markers that apply: every language's, less the {CHINESE_WORDS} and plus
-      #   the own markers on a Chinese page; the shared +words(:type_marker)+ itself otherwise
+      # @return [Set<String>] the title type markers that apply: every language's, less the {Language#plain_words}
+      #   of the own languages and plus their own markers; the shared +words(:type_marker)+ itself without any
       def type_markers_for(own)
         return words(:type_marker) if own.empty?
 
-        (words(:type_marker) - CHINESE_WORDS).union(own.flat_map { _1.terms.fetch(:type_marker) }).freeze
+        plain = own.flat_map { _1.plain_words.to_a }
+        marked = own.flat_map { _1.terms.fetch(:type_marker) }
+        (words(:type_marker) - plain).union(marked).freeze
       end
     end
 

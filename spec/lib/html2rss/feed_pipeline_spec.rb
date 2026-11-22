@@ -702,6 +702,19 @@ RSpec.describe Html2rss::FeedPipeline do
                                                                           time_zone: 'Europe/Berlin',
                                                                           vocabulary: be(Html2rss::Vocabulary[nil]))
       end
+
+      it 'reads every selector page under the language of the first response', :aggregate_failures do
+        first = build_response.call(body: "<html lang=\"zh\"><body>#{html}</body></html>")
+        second = build_response.call(body: '<article><h1>Page two</h1></article>')
+        allow(session).to receive(:page_responses).and_return([first, second])
+        allow(Html2rss::Selectors).to receive(:new).and_call_original
+        described_class.new({}).extract(config: selector_config, response: first, request_session: session)
+
+        expect(Html2rss::Selectors).to have_received(:new)
+          .with(first, hash_including(vocabulary: be(Html2rss::Vocabulary[:zh])))
+        expect(Html2rss::Selectors).to have_received(:new)
+          .with(second, hash_including(vocabulary: be(Html2rss::Vocabulary[:zh])))
+      end
     end
 
     describe '#collect_articles' do

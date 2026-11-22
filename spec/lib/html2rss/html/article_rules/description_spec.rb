@@ -94,7 +94,7 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
         expect(described_class.keep?(chip, vocabulary: Html2rss::Vocabulary[lang])).to be(false), "#{chip} #{lang}"
       end
       %w[独自 写真].each { expect(described_class.keep?(_1, vocabulary: Html2rss::Vocabulary[:zh])).to be(true), _1 }
-      expect(described_class.keep?('快讯', vocabulary: Html2rss::Vocabulary[:zh])).to be(false)
+      expect(described_class.keep?('速報', vocabulary: Html2rss::Vocabulary[:zh])).to be(false)
     end
 
     it 'peels a 独自 or 写真 chip after a date only where it is a type chip', :aggregate_failures do
@@ -103,7 +103,7 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
 
       expect(described_class.date_core('2024-03-12 | 独自', vocabulary: ja)).to eq('2024-03-12')
       expect(described_class.date_core('2024-03-12 | 独自', vocabulary: zh)).to eq('2024-03-12 | 独自')
-      expect(described_class.date_core('2024-03-12 | 快讯', vocabulary: zh)).to eq('2024-03-12')
+      expect(described_class.date_core('2024-03-12 | 速報', vocabulary: zh)).to eq('2024-03-12')
     end
   end
 end
