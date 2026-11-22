@@ -37,6 +37,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'dry-validation'
   spec.add_dependency 'httpx', '~> 1.8'
   spec.add_dependency 'kramdown'
+  spec.add_dependency 'logger'
   spec.add_dependency 'mcp', '~> 1.2'
   spec.add_dependency 'mime-types', '> 3.0'
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
