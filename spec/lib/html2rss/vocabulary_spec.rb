@@ -184,6 +184,12 @@ RSpec.describe Html2rss::Vocabulary do
       expect(described_class['ja-JP-u-ca-japanese']).to be(described_class[:ja])
     end
 
+    it 'reduces a script-tagged language to its primary tag', :aggregate_failures do
+      expect(described_class['de-Latn']).to be(described_class[:de])
+      expect(described_class['ja-Jpan-JP']).to be(described_class[:ja])
+      expect(described_class['sv_Latn_SE']).to be(described_class[:sv])
+    end
+
     it 'maps nil, blank, malformed, unsupported and hostile values to the one all scope', :aggregate_failures do
       all = described_class[nil]
 

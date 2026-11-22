@@ -33,7 +33,7 @@
             "null",
             "string"
           ],
-          "pattern": "\\A[a-z]{2}(-[A-Z]{2})?\\z"
+          "pattern": "\\A[a-z]{2}(-[A-Z][a-z]{3})?(-[A-Z]{2})?\\z"
         },
         "ttl": {
           "type": [

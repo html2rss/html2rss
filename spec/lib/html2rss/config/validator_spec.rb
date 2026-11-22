@@ -43,6 +43,36 @@ RSpec.describe Html2rss::Config::Validator do
     end
   end
 
+  describe 'channel language' do
+    let(:config) { base.merge(channel: { url: 'https://example.com', language: }) }
+
+    %w[en en-US de zh-Hant zh-Hans zh-Hans-CN sr-Latn sr-Latn-RS].each do |tag|
+      context "with #{tag}" do
+        let(:language) { tag }
+
+        it('is accepted') { expect(result).to be_success }
+      end
+    end
+
+    %w[zh-hant zh-HANT ZH-Hant zh-Hant-cn zh-CN-Hans zh-Hant-Latn zh_Hant zh-Han zh-Hants zh- Hant zho zh-Hant-
+       zh-Hans-CN-x].each do |tag|
+      context "with #{tag.inspect}" do
+        let(:language) { tag }
+
+        it 'is rejected', :aggregate_failures do
+          expect(result).to be_failure
+          expect(result.errors.map(&:path)).to eq([%i[channel language]])
+        end
+      end
+    end
+
+    context 'with a trailing newline' do
+      let(:language) { "zh-Hant\n" }
+
+      it('is rejected') { expect(result).to be_failure }
+    end
+  end
+
   describe 'user-YAML edge rules' do
     {
       'relative channel url' => [{ channel: { url: '/relative' } }, [[%i[channel url], 'URL must be absolute']]],
