@@ -20,32 +20,43 @@ module Html2rss
         utility_label: %i[utility recommended],
         recommended: %i[recommended]
       }.freeze
-      private_constant :READINGS
 
-      # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
-      # +:utility_label+ reading is a short whole text: a utility term, at most one trailing word, wrapping
-      # punctuation, symbols or arrows and one bare count ("Contact us", "Comments (12)", "[Subscribe]").
-      matcher = lambda do |reading, alternatives|
-        alternatives = alternatives.reject(&:empty?)
-        return NEVER if alternatives.empty?
+      class << self
+        ##
+        # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
+        # +:utility_label+ reading is a short whole text: a utility term, at most one trailing word, wrapping
+        # punctuation, symbols or arrows and one bare count ("Contact us", "Comments (12)", "[Subscribe]").
+        # The one owner of how a label term is read, so a spec reads a single term exactly as a page does.
+        #
+        # @param reading [Symbol] a key of {READINGS}
+        # @param alternatives [Array<String>] regex alternatives (see {Vocabulary.compile})
+        # @return [Regexp]
+        def matcher(reading, alternatives)
+          alternatives = alternatives.reject(&:empty?)
+          return NEVER if alternatives.empty?
 
-        alternation = alternatives.join('|')
-        return /\A\s*(#{alternation})\b/iux unless reading == :utility_label
+          alternation = alternatives.join('|')
+          return /\A\s*(#{alternation})\b/iux unless reading == :utility_label
 
-        wrap = '[\s\p{P}\p{S}]*'
-        /\A#{wrap}(?:#{alternation})(?:\s+[\p{L}\p{M}]+)?#{wrap}(?:\d+#{wrap})?\z/iux
+          wrap = '[\s\p{P}\p{S}]*'
+          /\A#{wrap}(?:#{alternation})(?:\s+[\p{L}\p{M}]+)?#{wrap}(?:\d+#{wrap})?\z/iux
+        end
       end
 
       # Per reading, the matcher of the terms every page language applies (shared, compiled once) ...
       UNAMBIGUOUS = READINGS.to_h do |reading, concepts|
-        [reading, matcher.call(reading, concepts.map { Vocabulary.unambiguous_alternation(_1) })]
+        [reading, matcher(reading, concepts.map { Vocabulary.unambiguous_alternation(_1) })]
       end.freeze
-      # ... and per scope code, the matcher of the ambiguous terms of that scope (compiled once per scope).
-      AMBIGUOUS = Vocabulary::SCOPES.transform_values do |scope|
-        READINGS.to_h do |reading, concepts|
-          [reading, matcher.call(reading, concepts.map { scope.ambiguous_alternation(_1) })]
+      # ... and per scope code, the matcher of the ambiguous terms of that scope (compiled once per distinct
+      # alternatives: the Chinese scope shares the matchers of +:all+).
+      AMBIGUOUS = begin
+        built = {}
+        Vocabulary::SCOPES.transform_values do |scope|
+          built[scope.alternations] ||= READINGS.to_h do |reading, concepts|
+            [reading, matcher(reading, concepts.map { scope.ambiguous_alternation(_1) })]
+          end.freeze
         end.freeze
-      end.freeze
+      end
       private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS
 
       # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a
@@ -83,6 +94,16 @@ module Html2rss
       NEW_WINDOW_NOTICE = /
         \s*[(\[（【]\s*(?:#{Vocabulary.alternation(:new_window_notice)})\s*[)\]）】]\s*\z
       /ix
+
+      # Direction marks and embedding/isolate controls (LRM, RLM, ALM, LRE..RLO, LRI..PDI): they render nothing and
+      # change no letter, so a label ("\u200FContact\u200F") is read without them. Only the label text is
+      # read this way; extracted titles and descriptions keep them.
+      BIDI_MARKS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/
+      # Zero-width non-joiner and joiner. Inside a word they spell Persian, Urdu and Indic words, so a label
+      # holding one is trimmed only at its edges, up to the first and last {LABEL_CHAR}.
+      JOINER = /[\u200C\u200D]/
+      LABEL_CHAR = /[^\s\u200C\u200D]/
+      private_constant :BIDI_MARKS, :JOINER, :LABEL_CHAR
 
       # @param memoize [Boolean] remember normalized texts for this instance; opt in only for an instance
       #   scoped to one extraction, never for a shared constant
@@ -126,8 +147,9 @@ module Html2rss
         normalized.match?(UNAMBIGUOUS.fetch(reading)) || normalized.match?(@ambiguous.fetch(reading))
       end
 
-      # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, and without
-      # its trailing new-window notice ("(opens in new tab)").
+      # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, without bidi
+      # marks ({BIDI_MARKS}), without its trailing new-window notice ("(opens in new tab)") and without
+      # joiners at its edges ({JOINER}).
       def normalize(text)
         string = text.to_s
         return compute_normal(string) unless @normalized
@@ -135,7 +157,14 @@ module Html2rss
         @normalized[string] ||= compute_normal(string)
       end
 
-      def compute_normal(string) = string.unicode_normalize(:nfc).sub(NEW_WINDOW_NOTICE, '')
+      def compute_normal(string)
+        text = string.unicode_normalize(:nfc)
+        text = text.gsub(BIDI_MARKS, '') if text.match?(BIDI_MARKS)
+        text = text.sub(NEW_WINDOW_NOTICE, '')
+        text.match?(JOINER) ? trim_edges(text) : text
+      end
+
+      def trim_edges(text) = text[text.index(LABEL_CHAR)..text.rindex(LABEL_CHAR)]
     end
   end
 end

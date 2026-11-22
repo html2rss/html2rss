@@ -77,6 +77,37 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'a Chinese page' do
+    %i[utility_prefix utility path_vanity path_soft_utility path_chrome path_taxonomy path_section path_article]
+      .each do |concept|
+      it "applies every ambiguous #{concept} term exactly as the all scope does", :aggregate_failures do
+        flagged.fetch(concept).keys.product(%i[zh zh-Hant]).each do |term, lang|
+          expect(readers.fetch(concept).call(lang, term)).to eq(readers.fetch(concept).call(:all, term)), term
+          expect(readers.fetch(concept).call(lang, term)).to be(true), "#{term.inspect} for #{lang}"
+        end
+      end
+    end
+
+    it 'classifies an ambiguous Latin term as the all scope does, and a non-term likewise', :aggregate_failures do
+      ['Dela Cruz wins election', 'Plus membership', 'Comment', 'Sobre nosotros', 'Harbor ferry schedule']
+        .each do |label|
+        expect(text.call('zh-Hant').utility?(label)).to eq(text.call(nil).utility?(label)), label
+        expect(text.call('zh-Hans-CN').utility_prefix?(label)).to eq(text.call(nil).utility_prefix?(label)), label
+        expect(text.call(:zh).recommended?(label)).to eq(text.call(nil).recommended?(label)), label
+      end
+      expect(text.call(:zh).utility?('Dela Cruz wins election')).to be(true)
+    end
+
+    it 'reads the Han title markers as markers in every scope but its own', :aggregate_failures do
+      noise = ->(marker, lang) { Html2rss::Article::Title.noise_piece?(marker, vocabulary: described_class[lang]) }
+
+      [nil, :all, :ja, :en, :de, :sv, 'ja-JP', 'en-US'].product(%w[独自 写真]).each do |lang, marker|
+        expect(noise.call(marker, lang)).to be(true), "#{marker} #{lang.inspect}"
+      end
+      %w[独自 写真].each { expect(noise.call(_1, :zh)).to be(false) }
+    end
+  end
+
   describe 'premium' do
     it 'is an international subscription word: unflagged, and read in every language', :aggregate_failures do
       expect(described_class::ALL.flat_map { _1.ambiguous.values.flatten }).not_to include('premium')

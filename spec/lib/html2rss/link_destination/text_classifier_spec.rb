@@ -3,6 +3,48 @@
 RSpec.describe Html2rss::LinkDestination::TextClassifier do
   subject(:classifier) { described_class.new }
 
+  describe '.matcher' do
+    let(:alternation) { Html2rss::Vocabulary.compile(['contact', 'über', 'sign up']) }
+    let(:prefixed) do
+      ['Contact us', '  CONTACT', 'Über uns', 'sign   up now', 'contact',
+       'Contact us today for more details']
+    end
+    let(:not_prefixed) { ['Contactless', 'Please contact us', 'xüber', ''] }
+    let(:labels) { ['Contact', 'Contact us', '[Contact]', '→ Contact ←', 'Contact 12', 'Contact us (3)'] }
+    let(:not_labels) { ['Contact us today', 'Contactless', 'Please contact', 'Contact 12 13', 'Contact us 12 more'] }
+
+    it 'never matches without alternatives, empty ones included', :aggregate_failures do
+      [[], [''], ['', '']].product(%i[utility utility_label recommended utility_prefix]).each do |alternatives, reading|
+        expect(described_class.matcher(reading, alternatives).match?('contact')).to be(false),
+                                                                                    "#{reading} #{alternatives}"
+        expect(described_class.matcher(reading, alternatives).match?('')).to be(false)
+      end
+    end
+
+    %i[utility recommended utility_prefix].each do |reading|
+      it "reads #{reading} as the start of the text at a word boundary, in any case", :aggregate_failures do
+        pattern = described_class.matcher(reading, [alternation])
+
+        expect(prefixed.map { pattern.match?(_1) }).to all(be(true))
+        expect(not_prefixed.map { pattern.match?(_1) }).to all(be(false))
+      end
+    end
+
+    it 'reads the label reading as a short whole text', :aggregate_failures do
+      pattern = described_class.matcher(:utility_label, [alternation])
+
+      expect(labels.map { pattern.match?(_1) }).to all(be(true))
+      expect(not_labels.map { pattern.match?(_1) }).to all(be(false))
+    end
+
+    it 'joins several alternatives and reads each as written', :aggregate_failures do
+      pattern = described_class.matcher(:utility_label, %w[about contact])
+
+      expect(%w[About contact].map { pattern.match?(_1) }).to all(be(true))
+      expect(pattern.match?('abou')).to be(false)
+    end
+  end
+
   describe '#utility?' do
     [
       'About', 'About us', 'Contact', 'Comments', 'Comment', 'Log in', 'login', 'Member', 'Membership',
@@ -30,6 +72,58 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
 
     it 'treats nil as an empty label', :aggregate_failures do
       expect(classifier.utility?(nil)).to be(false)
+    end
+  end
+
+  describe 'invisible format marks' do
+    marks = {
+      'left-to-right mark' => "\u200E", 'right-to-left mark' => "\u200F", 'Arabic letter mark' => "\u061C",
+      'left-to-right embedding' => "\u202A", 'pop directional formatting' => "\u202C",
+      'right-to-left override' => "\u202E", 'left-to-right isolate' => "\u2066", 'pop directional isolate' => "\u2069"
+    }
+
+    marks.each do |name, mark|
+      it "reads a label wrapped in a #{name} as the label", :aggregate_failures do
+        expect(classifier.utility?("#{mark}Contact#{mark}")).to be(true)
+        expect(classifier.utility_chrome?("#{mark}Contact us#{mark}")).to be(true)
+        expect(classifier.utility_prefix?("#{mark}Newsletter signup")).to be(true)
+        expect(classifier.recommended?("#{mark}Recommended for you")).to be(true)
+        expect(classifier.read_more?("#{mark}Read more#{mark}")).to be(true)
+      end
+    end
+
+    it 'reads a mark inside the label and one before a new-window notice as no mark', :aggregate_failures do
+      expect(classifier.utility?("Con\u200Ftact")).to be(true)
+      expect(classifier.utility?("Contact\u200E (opens in new tab)")).to be(true)
+      expect(classifier.utility_chrome?("\u200F\u2067Contact\u2069 us\u200F")).to be(true)
+    end
+
+    it 'trims a joiner only at the edges of a label', :aggregate_failures do
+      expect(classifier.utility?("Contact\u200C")).to be(true)
+      expect(classifier.utility?("\u200D Contact \u200C")).to be(true)
+      expect(classifier.utility?("\u200C\u200FContact")).to be(true)
+      expect(classifier.read_more?("Read more\u200D")).to be(true)
+    end
+
+    it 'trims joiners at both edges of a whole label', :aggregate_failures do
+      expect(classifier.utility_chrome?("\u200D Contact us \u200C")).to be(true)
+      expect(classifier.utility_chrome?("\u200C\u200DContact us\u200D\u200C")).to be(true)
+    end
+
+    it 'keeps a joiner inside a word, where it carries meaning', :aggregate_failures do
+      expect(classifier.utility?("Con\u200Ctact")).to be(false)
+      expect(classifier.utility?("Con\u200Dtact")).to be(false)
+      expect(classifier.utility_chrome?("Contact u\u200Cs")).to be(false)
+    end
+
+    it 'does not read a mark as a label by itself', :aggregate_failures do
+      expect(classifier.utility?("\u200F")).to be(false)
+      expect(classifier.utility_chrome?("\u200C\u200D")).to be(false)
+    end
+
+    it 'leaves a plain headline a headline', :aggregate_failures do
+      expect(classifier.utility?("\u200FContactless payments\u200F")).to be(false)
+      expect(classifier.read_more?("\u200FRead more about the budget\u200F")).to be(false)
     end
   end
 

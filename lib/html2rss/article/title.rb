@@ -68,15 +68,33 @@ module Html2rss
       LEADING_SEPARATORS = /\A(?:[[:space:]]|#{SEPARATOR_MARK})+/
       # A leading Japanese bracket (+【…】+ or +＜…＞+) of one to thirty characters, with headline text after it.
       LEADING_BRACKET = /\A[【＜][[:space:]]*([^】＞]{1,30}?)[[:space:]]*[】＞][[:space:]]*(?=\S)/
-      # A bracket naming a content type (+【速報】+): noise as a kicker.
-      BRACKET_LABEL = /[【＜][[:space:]]*(?:#{MARKER_ALTERNATION})[[:space:]]*[】＞]/i
-      # Leading kicker noise, repeated: separators, separated clocks, labels.
-      KICKER_NOISE = /
-        \A(?:
-          [[:space:]] | #{SEPARATOR_MARK} | #{LABEL} | #{BRACKET_LABEL}
-          | #{CLOCK}(?:\s*(?:#{Vocabulary.alternation(:clock_suffix)}))?(?=[[:space:]]*(?:#{SEPARATOR_MARK}|\z))
-        )+
-      /x
+      Rules = Data.define(:markers, :kicker_noise)
+
+      # The page-language dependent reading of a kicker: the type markers that apply (lowercase) and the leading
+      # kicker noise built on them (separators, separated clocks, labels, a bracket naming a marker, repeated).
+      # One {Rules} per distinct marker set of {Vocabulary::SCOPES} is built at load, never per page. Labels and
+      # type labels read every marker whatever the page language: a type label (+記事の種類：独自+) is Japanese
+      # itself.
+      class Rules
+        # @param markers [Set<String>] the type markers that apply
+        # @return [Rules]
+        def self.build(markers)
+          bracket = /[【＜][[:space:]]*(?:#{Regexp.union(markers.to_a).source})[[:space:]]*[】＞]/i
+          new(markers:, kicker_noise: /
+            \A(?:
+              [[:space:]] | #{SEPARATOR_MARK} | #{LABEL} | #{bracket}
+              | #{CLOCK}(?:\s*(?:#{Vocabulary.alternation(:clock_suffix)}))?(?=[[:space:]]*(?:#{SEPARATOR_MARK}|\z))
+            )+
+          /x)
+        end
+      end
+
+      # The {Rules} of each page language scope, shared where the marker sets are equal.
+      RULES_BY_SCOPE = begin
+        built = {}
+        Vocabulary::SCOPES.transform_values { |scope| built[scope.type_markers] ||= Rules.build(scope.type_markers) }
+                          .freeze
+      end
       # Trailing stray separators (+Kicker :+, +Kicker -+, +Kicker ›+). A trailing +»+ closes a French
       # quote, so it stays.
       TRAILING_SEPARATORS = %r{(?:[[:space:]]|[:|•·–—]|(?<=[[:space:]])[-/>›→])+\z}
@@ -85,8 +103,8 @@ module Html2rss
       SPACED_COLON = /\A((?:[^[:space:]]+[[:space:]]+){0,7}?[^[:space:]]*[\p{L}"'“”’»›)\]])[[:space:]]+:[[:space:]]*/
       # A kicker that already ends a sentence (+Kicker?+) joins its headline with a space, not a colon.
       TERMINAL_PUNCTUATION = /[?!…‽]\z/
-      private_constant :MARKER_ALTERNATION, :LEADING_BRACKET, :BRACKET_LABEL, :LABEL, :LABEL_PIECE,
-                       :LEADING_SEPARATORS, :KICKER_NOISE, :TRAILING_SEPARATORS, :SPACED_COLON, :TERMINAL_PUNCTUATION
+      private_constant :MARKER_ALTERNATION, :LEADING_BRACKET, :LABEL, :LABEL_PIECE,
+                       :LEADING_SEPARATORS, :RULES_BY_SCOPE, :TRAILING_SEPARATORS, :SPACED_COLON, :TERMINAL_PUNCTUATION
 
       class << self
         ##
@@ -103,11 +121,14 @@ module Html2rss
         ##
         # @param headline [String, nil] headline text as extracted; kept verbatim apart from separators
         # @param kicker [String, nil] kicker / eyebrow text, when the source exposes one
+        # @param vocabulary [Vocabulary::Scope] the page language's scope: a Han marker that is an ordinary
+        #   word of that language (+独自+ on a Chinese page) is no type marker; every marker by default
         # @return [String, nil] +Kicker: Headline+, the headline, the kicker when the headline is blank,
         #   or nil when both are blank
-        def compose(headline, kicker: nil)
-          head, top = peel_bracket(trim(headline, LEADING_SEPARATORS), trim(kicker, KICKER_NOISE))
-          return head if top.nil? || noise_kicker?(top)
+        def compose(headline, kicker: nil, vocabulary: Vocabulary[nil])
+          rules = RULES_BY_SCOPE.fetch(vocabulary.code)
+          head, top = peel_bracket(trim(headline, LEADING_SEPARATORS), trim(kicker, rules.kicker_noise), rules.markers)
+          return head if top.nil? || rules.markers.include?(top.downcase)
           return top unless head
           return head if prefixed?(head, top)
 
@@ -147,10 +168,12 @@ module Html2rss
         # (+Conflict:+); {.compose} trims that colon. {Html::TitlePieces} drops noise kicker pieces.
         #
         # @param text [String, nil] visible text of one kicker child element
+        # @param vocabulary [Vocabulary::Scope] the page language's scope (see {.compose})
         # @return [Boolean]
-        def noise_piece?(text)
+        def noise_piece?(text, vocabulary: Vocabulary[nil])
           piece = collapse(text)
-          piece.nil? || piece.match?(LABEL_PIECE) || piece.match?(CLOCK_PIECE) || TYPE_MARKERS.include?(piece.downcase)
+          piece.nil? || piece.match?(LABEL_PIECE) || piece.match?(CLOCK_PIECE) ||
+            RULES_BY_SCOPE.fetch(vocabulary.code).markers.include?(piece.downcase)
         end
 
         private
@@ -164,15 +187,13 @@ module Html2rss
 
         # A leading bracket naming a content type leaves the headline; any other bracket text is the kicker
         # unless the source already gave one (then the headline stays whole).
-        def peel_bracket(head, top)
+        def peel_bracket(head, top, markers)
           return [head, top] unless (bracket = head&.match(LEADING_BRACKET))
-          return [bracket.post_match, top] if TYPE_MARKERS.include?(bracket[1].downcase)
+          return [bracket.post_match, top] if markers.include?(bracket[1].downcase)
           return [head, top] if top
 
           [bracket.post_match, bracket[1]]
         end
-
-        def noise_kicker?(kicker) = TYPE_MARKERS.include?(kicker.downcase)
 
         # Whether the headline already opens with the kicker as a whole word.
         def prefixed?(head, kicker)

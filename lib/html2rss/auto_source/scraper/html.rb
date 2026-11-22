@@ -84,7 +84,8 @@ module Html2rss
 
         def materialize(ranked)
           ranked.filter_map do |entry|
-            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class)
+            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class,
+                                                              vocabulary: link_resolver.vocabulary)
           end
         end
 

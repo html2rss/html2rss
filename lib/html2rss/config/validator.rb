@@ -11,8 +11,9 @@ module Html2rss
       URI_REGEXP = Url::URI_REGEXP
       # Allowed stylesheet MIME types.
       STYLESHEET_TYPES = FeedBuilder::Rss::Stylesheet::TYPES
-      # Optional language/region format (`en` or `en-US`).
-      LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
+      # Optional language tag: a two-letter language, then an optional script (`Hant`) and region (`CN`), each
+      # in its canonical case (`en`, `en-US`, `zh-Hant`, `zh-Hans-CN`, `sr-Latn`).
+      LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z][a-z]{3})?(-[A-Z]{2})?\z/
       # Baseline strategy-plan enum (:auto plus concrete RequestService strategies).
       BASE_STRATEGY_OPTIONS = Html2rss::FeedPipeline::StrategyPlan.accepted_names.freeze
       # Controlled vocabulary for catalog-only `directory.topics` (not RSS channel fields).

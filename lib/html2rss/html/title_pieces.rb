@@ -54,10 +54,11 @@ module Html2rss
       # @param root [Nokogiri::XML::Node, SST::Node] card root
       # @param source [Nokogiri::XML::Node, SST::Node, nil] headline source: the heading, else the anchor
       # @param anchor [Nokogiri::XML::Node, SST::Node, nil] the card's selected anchor
-      def initialize(root, source, anchor: nil)
+      # @param vocabulary [Vocabulary::Scope] the page language's scope, read for kicker type markers
+      def initialize(root, source, anchor: nil, vocabulary: Vocabulary[nil])
         @anchor = anchor
         @nodes = Nodes.for(root)
-        @kicker = Kicker.new(@nodes, root, source) { headline_piece(source) }
+        @kicker = Kicker.new(@nodes, root, source, vocabulary) { headline_piece(source) }
       end
 
       ##

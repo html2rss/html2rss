@@ -38,10 +38,13 @@ module Html2rss
     # @param scraper [Class, nil] scraper class that produced the article
     # @param media [Boolean, nil] whether the item is an audio/video object (not an article)
     # @param compose_title [Boolean] opt in to kicker joining and noise stripping; default keeps the title verbatim
-    # rubocop:disable-next Metrics/ParameterLists -- thirteen article inputs stay explicit
+    # @param vocabulary [Vocabulary::Scope] the page language's scope, read only by +compose_title+ (see
+    #   {Title.compose}); not stored
+    # rubocop:disable-next Metrics/ParameterLists -- fourteen article inputs stay explicit
     def initialize(id: nil, title: nil, kicker: nil, description: nil, url: nil, image: nil, author: nil, guid: nil,
-                   published_at: nil, enclosures: nil, categories: nil, scraper: nil, media: nil, compose_title: false)
-      title = compose_title ? Title.compose(title, kicker:) : Title.collapse(title)
+                   published_at: nil, enclosures: nil, categories: nil, scraper: nil, media: nil, compose_title: false,
+                   vocabulary: Vocabulary[nil])
+      title = compose_title ? Title.compose(title, kicker:, vocabulary:) : Title.collapse(title)
       image = first_image(enclosures) unless present?(image)
       @to_h = { id:, title:, description:, url:, image:, author:, guid:, published_at:,
                 enclosures:, categories:, scraper:, media: }.compact.transform_values { freeze_option(_1) }.freeze

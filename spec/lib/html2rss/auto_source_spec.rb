@@ -1089,6 +1089,32 @@ RSpec.describe Html2rss::AutoSource do
       expect(described_class::Corroboration).to have_received(:new).once.with(be(german))
     end
 
+    context 'with a Han type marker kicker on each card' do
+      let(:headline) { ->(id) { "政府が新しい港湾計画を発表した本日午後#{id}" } }
+      let(:titles_for) do
+        lambda do |lang, **options|
+          cards = %w[a b c].map do |id|
+            %(<article><span class="kicker">独自</span><h2><a href="/news/#{id}">#{headline.call(id)}</a></h2></article>)
+          end
+          page = %(<html lang="#{lang}"><body><main>#{cards.join}</main></body></html>)
+          described_class.new(Html2rss::RequestService::Response.new(body: page,
+                                                                     headers: { 'content-type' => 'text/html' }, url:),
+                              config, request_session:, **options).articles.map(&:title)
+        end
+      end
+
+      it 'reads the marker as kicker text on a Chinese page only', :aggregate_failures do
+        expect(titles_for.call('zh-Hant')).to eq(%w[a b c].map { "独自: #{headline.call(_1)}" })
+        expect(titles_for.call('zh-Hans-CN')).to eq(titles_for.call('zh-Hant'))
+        expect(titles_for.call('ja')).to eq(%w[a b c].map { headline.call(_1) })
+        expect(titles_for.call('')).to eq(titles_for.call('ja'))
+      end
+
+      it 'takes the scope its caller resolved, such as one from a channel override' do
+        expect(titles_for.call('ja', vocabulary: Html2rss::Vocabulary['zh'])).to eq(titles_for.call('zh'))
+      end
+    end
+
     it 'reads every ambiguous term when the page states no language', :aggregate_failures do
       described_class.new(Html2rss::RequestService::Response.new(body: '<html><body><main></main></body></html>',
                                                                  headers: { 'content-type' => 'text/html' }, url:),

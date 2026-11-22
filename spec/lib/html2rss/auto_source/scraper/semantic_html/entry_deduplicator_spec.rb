@@ -199,7 +199,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
       expect(deduplicator.article_for(ranked)).to be(article)
       expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
-        ranked, base_url: 'https://example.com', scraper: scraper_class
+        ranked, base_url: 'https://example.com', scraper: scraper_class, vocabulary: Html2rss::Vocabulary[nil]
+      )
+    end
+
+    it "extracts with the page language's vocabulary", :aggregate_failures do
+      resolver = Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary['zh-Hant'])
+      ranked = build_ranked.call
+      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
+
+      described_class.new('https://example.com', scraper: scraper_class, link_resolver: resolver).article_for(ranked)
+
+      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
+        ranked, base_url: 'https://example.com', scraper: scraper_class, vocabulary: resolver.vocabulary
       )
     end
 
