@@ -134,6 +134,12 @@ module Html2rss
         )\s*[)\]）】]\s*\z
       /ix
 
+      # @param memoize [Boolean] remember normalized texts for this instance; opt in only for an instance
+      #   scoped to one extraction, never for a shared constant
+      def initialize(memoize: false)
+        @normalized = {} if memoize
+      end
+
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text matches a utility label
       def utility?(text) = normalize(text).match?(UTILITY_PATTERN)
@@ -154,7 +160,14 @@ module Html2rss
 
       # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, and without
       # its trailing new-window notice ("(opens in new tab)").
-      def normalize(text) = text.to_s.unicode_normalize(:nfc).sub(NEW_WINDOW_NOTICE, '')
+      def normalize(text)
+        string = text.to_s
+        return compute_normal(string) unless @normalized
+
+        @normalized[string] ||= compute_normal(string)
+      end
+
+      def compute_normal(string) = string.unicode_normalize(:nfc).sub(NEW_WINDOW_NOTICE, '')
     end
   end
 end
