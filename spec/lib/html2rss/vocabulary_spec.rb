@@ -11,7 +11,8 @@ RSpec.describe Html2rss::Vocabulary do
     # Every (concept, language) cell that holds no term, and nothing else: a human-language concept has terms in
     # all ten languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese has
     # no lead-in either), +page_link+ is the English-only pattern (the other languages are read through
-    # +page_link_label+), and a clock suffix, a date piece and an element label exist in one language each.
+    # +page_link_label+), a clock suffix, a date piece and an element label exist in one language each, the
+    # podcast words are Latin-script words in five languages and the unspaced (kana) ones exist in Japanese only.
     let(:none_cells) do
       all = %i[en de fr es it nl pl sv ja pt]
       {
@@ -22,7 +23,9 @@ RSpec.describe Html2rss::Vocabulary do
         topic_lead: %i[ja],
         topic_preposition: %i[ja],
         page_link: all - %i[en],
-        page_link_label: %i[en]
+        page_link_label: %i[en],
+        podcast_word: %i[de nl pl sv ja],
+        podcast_unspaced: all - %i[ja]
       }
     end
 

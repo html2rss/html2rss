@@ -53,8 +53,6 @@ module Html2rss
           tables[table] ||= table
         end.freeze
       end
-      # The sets of the +:all+ scope: every ambiguous word applies.
-      SEGMENT_SETS = SEGMENT_SETS_BY_SCOPE.fetch(:all)
       # Routing shape: any digit-led slug or id (4+ digits), not a calendar year; see ArticleRules::UrlDate::YEAR.
       YEARISH_SEGMENT = /\A\d{4,}[\w-]*\z/
       # Hyphenated slug shape common to article permalinks.

@@ -326,32 +326,31 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
   end
 
   describe 'page language' do
-    def scoped(lang, *segments) = described_class.new(segments, vocabulary: Html2rss::Vocabulary[lang])
+    let(:scoped) { ->(lang, *segments) { described_class.new(segments, vocabulary: Html2rss::Vocabulary[lang]) } }
 
     it 'ignores an ambiguous path term outside its language and honours it in its own language and all',
        :aggregate_failures do
-      expect(scoped(:en, 'tema', 'cloud-security-updates').taxonomy_path?).to be(false)
-      expect(scoped(:de, 'tema', 'cloud-security-updates').taxonomy_path?).to be(false)
-      expect(scoped(:es, 'tema', 'cloud-security-updates').taxonomy_path?).to be(true)
-      expect(scoped(nil, 'tema', 'cloud-security-updates').taxonomy_path?).to be(true)
+      expect(scoped.call(:en, 'tema', 'cloud-security-updates').taxonomy_path?).to be(false)
+      expect(scoped.call(:de, 'tema', 'cloud-security-updates').taxonomy_path?).to be(false)
+      expect(scoped.call(:es, 'tema', 'cloud-security-updates').taxonomy_path?).to be(true)
+      expect(scoped.call(nil, 'tema', 'cloud-security-updates').taxonomy_path?).to be(true)
       expect(described_class.new(%w[tema cloud-security-updates]).taxonomy_path?).to be(true)
     end
 
     it 'carries the scope through the derived routes', :aggregate_failures do
-      expect(scoped(:en, 'tema').junk_path?).to be(false)
-      expect(scoped(:es, 'tema').junk_path?).to be(true)
-      expect(scoped(:fr, 'sobre').utility_path?).to be(false)
-      expect(scoped(:es, 'sobre').utility_path?).to be(true)
+      expect(scoped.call(:en, 'tema').junk_path?).to be(false)
+      expect(scoped.call(:es, 'tema').junk_path?).to be(true)
+      expect(scoped.call(:fr, 'sobre').utility_path?).to be(false)
+      expect(scoped.call(:es, 'sobre').utility_path?).to be(true)
     end
 
     it 'applies an unambiguous path term in every language', :aggregate_failures do
-      %i[en es ja].each { |lang| expect(scoped(lang, 'topics', 'x').taxonomy_path?).to be(true), lang.to_s }
+      %i[en es ja].each { |lang| expect(scoped.call(lang, 'topics', 'x').taxonomy_path?).to be(true), lang.to_s }
     end
 
     it 'shares one frozen table between scopes that add no ambiguous path word', :aggregate_failures do
       tables = Html2rss::Vocabulary::SCOPES.keys.to_h { [_1, described_class::SEGMENT_SETS_BY_SCOPE.fetch(_1)] }
 
-      expect(tables.fetch(:all)).to be(described_class::SEGMENT_SETS)
       expect(tables.fetch(:es)).not_to be(tables.fetch(:ja))
       expect(tables.fetch(:es).fetch(:vanity)).not_to be(tables.fetch(:ja).fetch(:vanity))
       expect(tables.values).to all(be_frozen)

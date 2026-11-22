@@ -19,18 +19,18 @@ module Html2rss
     module Discovery # rubocop:disable Metrics/ModuleLength -- discovery ordering + probe stay on one owner
       # Common feed path suffixes probed after head +rel=alternate+ hints.
       DEFAULT_PATHS = CandidateCatalog::FEED_PATHS
-      # Words marking a podcast page in its URL host, path or title; {AUDIO_HINT} adds audio file formats. The
-      # Latin-script words are unambiguous in their languages (+épisode+, +episodio+, +episódio+); words with a
-      # general meaning (German +Folge+, Swedish +avsnitt+, Polish +odcinek+, Dutch +aflevering+) are left out.
-      PODCAST_WORDS = %w[podcast episode épisode episodio episódio audio].freeze
-      # Japanese podcast words: katakana, written without spaces, so they carry no letter boundary.
-      PODCAST_KANA = %w[ポッドキャスト エピソード].freeze
-      # Word-ish podcast hint in a page's URL host, path or +<title>+ (plural allowed, case-insensitive).
-      PODCAST_PAGE_HINT = /(?<![[:alpha:]])(?:#{PODCAST_WORDS.join('|')})s?(?![[:alpha:]])|#{PODCAST_KANA.join('|')}/i
-      # Word-ish audio hint in an alternate's title or URL (Podlove-style per-format podcast feeds).
+      # Word-ish podcast hint in a page's URL host, path or +<title>+ (plural allowed, case-insensitive). The
+      # words are {Vocabulary}'s +podcast_word+ (Latin script, read with a letter boundary) and
+      # +podcast_unspaced+ (written without spaces, so no boundary).
+      PODCAST_PAGE_HINT = /
+        (?<![[:alpha:]])(?:#{Vocabulary.alternation(:podcast_word)})s?(?![[:alpha:]])
+        |#{Vocabulary.alternation(:podcast_unspaced)}
+      /ix
+      # Word-ish audio hint in an alternate's title or URL (Podlove-style per-format podcast feeds): the podcast
+      # words and audio file formats.
       AUDIO_HINT = /
-        (?<![[:alpha:]])(?:#{(PODCAST_WORDS + %w[mp3 m4a aac opus]).join('|')})s?(?![[:alpha:]])
-        |#{PODCAST_KANA.join('|')}
+        (?<![[:alpha:]])(?:#{Vocabulary.alternation(:podcast_word)}|mp3|m4a|aac|opus)s?(?![[:alpha:]])
+        |#{Vocabulary.alternation(:podcast_unspaced)}
       /ix
       # +og:type+ values (+music.song+, +video.episode+, ...) marking a podcast or media page.
       MEDIA_OG_TYPE = /\A\s*(?:music|video)\./i

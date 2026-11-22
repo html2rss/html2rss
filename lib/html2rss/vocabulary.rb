@@ -49,7 +49,7 @@ module Html2rss
     PATTERN_CONCEPTS = %i[
       utility_prefix utility recommended utility_cta read_more topic_lead topic_preposition read_more_suffix
       new_window_notice paid_label ad_word field_label type_label pager_label page_link page_link_label
-      clock_suffix date_piece element_label
+      clock_suffix date_piece element_label podcast_word podcast_unspaced
     ].freeze
 
     # Word concepts that honour {Language#ambiguous} (the path words; type markers read every language).

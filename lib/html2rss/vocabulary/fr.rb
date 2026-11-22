@@ -56,7 +56,9 @@ module Html2rss
         ],
         clock_suffix: NONE,
         date_piece: NONE,
-        element_label: NONE
+        element_label: NONE,
+        podcast_word: %w[épisode],
+        podcast_unspaced: NONE
       }.freeze,
       ambiguous: {
         path_taxonomy: %w[theme themes]

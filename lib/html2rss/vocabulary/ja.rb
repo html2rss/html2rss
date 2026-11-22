@@ -45,7 +45,9 @@ module Html2rss
         page_link_label: %w[前へ 次へ 前 次 前のページ 次のページ 前のページへ 次のページへ 前の記事 次の記事 古い記事 新しい記事],
         clock_suffix: NONE,
         date_piece: [/(?:\d{4}年)?\d{1,2}月\d{1,2}日/],
-        element_label: %w[PR]
+        element_label: %w[PR],
+        podcast_word: NONE,
+        podcast_unspaced: %w[ポッドキャスト エピソード]
       }.freeze,
       ambiguous: {
         path_taxonomy: %w[テーマ]

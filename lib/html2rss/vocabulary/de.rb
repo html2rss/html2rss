@@ -58,7 +58,9 @@ module Html2rss
         ],
         clock_suffix: %w[Uhr],
         date_piece: NONE,
-        element_label: NONE
+        element_label: NONE,
+        podcast_word: NONE,
+        podcast_unspaced: NONE
       }.freeze,
       ambiguous: {
         utility_prefix: %w[plus],
