@@ -297,7 +297,7 @@ RSpec.describe Html2rss::RequestService::Response do
       it('still decodes via Encoding.find') { expect(parsed_body.at_css('h1').text).to eq('Привет') }
     end
 
-    %w[UTF-7 UTF-16 UTF-32 ISO-2022-JP Emacs-Mule EUC-TW Windows-1258].each do |label|
+    %w[UTF-7 Emacs-Mule EUC-TW Windows-1258].each do |label|
       {
         'Content-Type charset' => [{ 'content-type' => "text/html; charset=#{label}" }, ''],
         'meta charset' => [{ 'content-type' => 'text/html' }, %(<meta charset="#{label}">)]
@@ -308,6 +308,27 @@ RSpec.describe Html2rss::RequestService::Response do
 
           it('falls back to the UTF-8 scrub') { expect(parsed_body.at_css('h1').text).to eq('Caffè') }
         end
+      end
+    end
+
+    %w[UTF-16 UTF-32 ISO-2022-JP].each do |label|
+      context "when a #{label}-labeled page holds invalid #{label} bytes (a UTF-8 body)" do
+        let(:body) { '<h1>Caffè</h1>' }
+        let(:headers) { { 'content-type' => "text/html; charset=#{label}" } }
+
+        it('falls back to the UTF-8 scrub') { expect(parsed_body.at_css('h1').text).to eq('Caffè') }
+      end
+    end
+
+    {
+      'BOM-prefixed UTF-16' => ['UTF-16', '<h1>Caffè</h1>', 'Caffè'],
+      'real ISO-2022-JP' => ['ISO-2022-JP', '<h1>日本語</h1>', '日本語']
+    }.each do |name, (label, html, expected)|
+      context "when #{name} bytes are labeled #{label}" do
+        let(:body) { html.encode(label).force_encoding(Encoding::UTF_8) }
+        let(:headers) { { 'content-type' => "text/html; charset=#{label}" } }
+
+        it('decodes the page') { expect(parsed_body.at_css('h1').text).to eq(expected) }
       end
     end
 
