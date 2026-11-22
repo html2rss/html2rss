@@ -53,6 +53,11 @@ module Html2rss
 
       ##
       # @param text [String, #to_s]
+      # @return [Boolean] true when the text is a short whole utility label, not a headline opening with one
+      def utility_label_text?(text) = @text_classifier.utility_label?(text)
+
+      ##
+      # @param text [String, #to_s]
       # @return [Boolean]
       def utility_prefix_text?(text) = @text_classifier.utility_prefix?(text)
 

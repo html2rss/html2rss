@@ -103,6 +103,10 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
       'utility chrome text is kept under a strong post suffix' =>
         ['/misc/press/big-news-story-here', 'Share', {}, false],
       'utility chrome text suppressed on weak routes off the heading' => ['/widget-xyz-detail', 'Share', {}, true],
+      'headline opening with a utility word on a non-content route is kept' =>
+        ['/widget-xyz-detail', 'Contact tracing app fails again in the capital', {}, false],
+      'short utility label with a trailing word on a weak route is noise' =>
+        ['/widget-xyz-detail', 'Contact us', {}, true],
       'non-utility text on a weak route is kept' => ['/widget-xyz-detail', 'Read the report', {}, false]
     }.each do |label, (href, text, options, expected)|
       it "classifies #{label}" do

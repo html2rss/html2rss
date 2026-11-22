@@ -16,23 +16,34 @@ module Html2rss
       READINGS = {
         utility_prefix: %i[utility_prefix],
         utility: %i[utility recommended],
+        utility_label: %i[utility recommended],
         recommended: %i[recommended]
       }.freeze
       private_constant :READINGS
 
-      # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any.
-      matcher = lambda do |alternatives|
+      # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
+      # +:utility_label+ reading is a short whole text: a utility term, at most one trailing word, wrapping
+      # punctuation, symbols or arrows and one bare count ("Contact us", "Comments (12)", "[Subscribe]").
+      matcher = lambda do |reading, alternatives|
         alternatives = alternatives.reject(&:empty?)
-        alternatives.empty? ? NEVER : /\A\s*(#{alternatives.join('|')})\b/iux
+        return NEVER if alternatives.empty?
+
+        alternation = alternatives.join('|')
+        return /\A\s*(#{alternation})\b/iux unless reading == :utility_label
+
+        wrap = '[\s\p{P}\p{S}]*'
+        /\A#{wrap}(?:#{alternation})(?:\s+[\p{L}\p{M}]+)?#{wrap}(?:\d+#{wrap})?\z/iux
       end
 
       # Per reading, the matcher of the terms every page language applies (shared, compiled once) ...
-      UNAMBIGUOUS = READINGS.transform_values do |concepts|
-        matcher.call(concepts.map { Vocabulary.unambiguous_alternation(_1) })
+      UNAMBIGUOUS = READINGS.to_h do |reading, concepts|
+        [reading, matcher.call(reading, concepts.map { Vocabulary.unambiguous_alternation(_1) })]
       end.freeze
       # ... and per scope code, the matcher of the ambiguous terms of that scope (compiled once per scope).
       AMBIGUOUS = Vocabulary::SCOPES.transform_values do |scope|
-        READINGS.transform_values { |concepts| matcher.call(concepts.map { scope.ambiguous_alternation(_1) }) }.freeze
+        READINGS.to_h do |reading, concepts|
+          [reading, matcher.call(reading, concepts.map { scope.ambiguous_alternation(_1) })]
+        end.freeze
       end.freeze
       private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS
 
@@ -71,6 +82,11 @@ module Html2rss
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text matches a utility label
       def utility?(text) = label?(:utility, text)
+
+      # @param text [String, #to_s] visible anchor text
+      # @return [Boolean] true when the whole text is a utility term with at most one more word, bare or with
+      #   a count; a headline that merely opens with a utility word is not
+      def utility_label?(text) = label?(:utility_label, text)
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text begins with a utility label

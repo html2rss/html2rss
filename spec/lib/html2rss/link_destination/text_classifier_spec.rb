@@ -33,6 +33,39 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     end
   end
 
+  describe '#utility_label?' do
+    [
+      'Contact', 'Contact us', 'About us', 'Subscribe now', 'Share this', 'Comments (12)', 'Login »',
+      '[Subscribe]', '(view all)', 'Über uns', 'ログイン', '→ Contact ←', 'Recommended for you'
+    ].each do |text|
+      it "matches the label #{text.inspect}" do
+        expect(classifier.utility_label?(text)).to be(true)
+      end
+    end
+
+    [
+      'Contact tracing app fails', 'Join the debate on tax', 'Plus de 100 morts', 'Aboutness', 'Read more', '',
+      'Share this story now', '(12)'
+    ].each do |text|
+      it "rejects the text #{text.inspect}" do
+        expect(classifier.utility_label?(text)).to be(false)
+      end
+    end
+
+    it 'reads an ambiguous term only in its own language scope', :aggregate_failures do
+      sv = described_class.new(vocabulary: Html2rss::Vocabulary[:sv])
+      en = described_class.new(vocabulary: Html2rss::Vocabulary[:en])
+
+      expect(sv.utility_label?('Dela Cruz')).to be(true)
+      expect(en.utility_label?('Dela Cruz')).to be(false)
+    end
+
+    it 'reads decomposed accents and treats nil as empty', :aggregate_failures do
+      expect(classifier.utility_label?("U\u0308ber uns")).to be(true)
+      expect(classifier.utility_label?(nil)).to be(false)
+    end
+  end
+
   describe '#utility_prefix?' do
     [
       'View all news', 'See all articles', 'Subscribe to our newsletter', 'Join the discussion',

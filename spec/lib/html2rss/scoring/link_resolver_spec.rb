@@ -174,6 +174,13 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     end
   end
 
+  describe '#utility_label_text?' do
+    it 'classifies short whole utility labels, not headlines opening with one', :aggregate_failures do
+      expect(resolver.utility_label_text?('Contact us')).to be(true)
+      expect(resolver.utility_label_text?('Contact tracing app fails')).to be(false)
+    end
+  end
+
   describe '#utility_prefix_text?' do
     it 'classifies utility prefixes, not general utility labels', :aggregate_failures do
       expect(resolver.utility_prefix_text?('Subscribe to newsletter')).to be(true)
