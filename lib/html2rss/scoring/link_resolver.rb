@@ -3,28 +3,32 @@
 module Html2rss
   module Scoring
     ##
-    # Resolves href strings into memoized LinkDestination::DestinationFacts for one page base URL.
+    # Resolves href strings into memoized LinkDestination::DestinationFacts for one page base URL and one
+    # page language ({Vocabulary::Scope}). The memo lives and dies with the page, so it never holds facts of
+    # another language.
     class LinkResolver
       # Captures the href portion before a fragment for memoization keys.
       HREF_BASE_PATTERN = /\A([^#]*)/
 
-      # Matches content-like tokens in class/id strings (from PathClassifier vocabulary).
+      # Matches content-like tokens in class/id strings (from {Vocabulary::CssTokens}).
       CONTENT_TOKEN_REGEXP = begin
-        words = LinkDestination::PathClassifier::SEGMENT_SETS.fetch(:content)
+        words = Vocabulary::CssTokens::CONTENT
         /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
       end.freeze
 
-      # Matches utility/junk tokens in class/id strings (from PathClassifier vocabulary).
+      # Matches utility/junk tokens in class/id strings (from {Vocabulary::CssTokens}).
       JUNK_TOKEN_REGEXP = begin
-        words = LinkDestination::PathClassifier::SEGMENT_SETS.fetch(:utility)
+        words = Vocabulary::CssTokens::JUNK
         /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
       end.freeze
 
       # @param base_url [String, Html2rss::Url]
-      def initialize(base_url)
+      # @param vocabulary [Vocabulary::Scope] the page language's scope; every ambiguous term by default
+      def initialize(base_url, vocabulary: Vocabulary[nil])
         @base_url = base_url
+        @vocabulary = vocabulary
         @by_href = {}
-        @text_classifier = LinkDestination::TextClassifier.new(memoize: true)
+        @text_classifier = LinkDestination::TextClassifier.new(memoize: true, vocabulary:)
       end
 
       # @return [LinkDestination::TextClassifier]
@@ -46,6 +50,12 @@ module Html2rss
       # @param text [String, #to_s]
       # @return [Boolean]
       def utility_text?(text) = @text_classifier.utility?(text)
+
+      ##
+      # @param text [String, #to_s]
+      # @return [Boolean] true when the text is a short whole utility label or a sentence-form call to action,
+      #   not a headline opening with a utility word
+      def utility_chrome_text?(text) = @text_classifier.utility_chrome?(text)
 
       ##
       # @param text [String, #to_s]
@@ -72,7 +82,7 @@ module Html2rss
 
       def build_facts(href)
         url = Html2rss::Url.from_relative(href, @base_url)
-        LinkDestination::DestinationFacts.build(url)
+        LinkDestination::DestinationFacts.build(url, vocabulary: @vocabulary)
       end
     end
   end

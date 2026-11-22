@@ -105,6 +105,38 @@ RSpec.describe Html2rss::PageRecon do
     )
   end
 
+  describe '.discover_segments' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- inherits the recon fixtures
+    let(:topics) do
+      items = Array.new(7) do |index|
+        %(<li><a href="/tema/cloud-security-update-#{index}">Cloud security update number #{index} for teams</a></li>)
+      end
+      "<!DOCTYPE html><html><body><main><ul>#{items.join}</ul></main></body></html>"
+    end
+    let(:sst) { Html2rss::SST::Normalizer.call(topics) }
+
+    it 'discovers segments in the scope it is given', :aggregate_failures do
+      found = ->(lang) { described_class.discover_segments(sst, 'https://example.com/', vocabulary: Html2rss::Vocabulary[lang]) }
+
+      expect(found.call(:en).size).to eq(7)
+      expect(found.call(nil).size).to eq(0)
+      expect(found.call(:es).size).to eq(0)
+    end
+  end
+
+  it 'resolves the page language once for its segment stats and article count', :aggregate_failures do
+    swedish = Html2rss::RequestService::Response.new(
+      body: list_response.body.sub('<html', '<html lang="sv"'), url: list_response.url,
+      headers: { 'content-type' => 'text/html' }, status: 200
+    )
+    allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_call_original
+    allow(Html2rss::Channel).to receive(:language_for).and_call_original
+    described_class.call(response: swedish, url: 'https://example.com/blog')
+
+    expect(Html2rss::Channel).to have_received(:language_for).once
+    expect(Html2rss::Scoring::LinkResolver).to have_received(:new)
+      .with(anything, vocabulary: be(Html2rss::Vocabulary[:sv])).at_least(:once)
+  end
+
   it 'omits sst and segment stats when the body normalizes to no document', :aggregate_failures do
     empty = Html2rss::RequestService::Response.new(
       body: '',

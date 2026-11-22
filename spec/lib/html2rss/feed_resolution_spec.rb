@@ -26,7 +26,8 @@ RSpec.describe Html2rss::FeedResolution do
       Html2rss::Config,
       url: entry_url,
       auto_source: { entry_resolution: { enabled: true, max_probes: 2 } },
-      selectors: nil
+      selectors: nil,
+      channel: {}
     )
   end
 

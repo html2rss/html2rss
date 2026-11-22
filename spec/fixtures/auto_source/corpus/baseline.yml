@@ -136,6 +136,14 @@ chrome_t1b_role_main_card_headers.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+cta_sentence_links_box.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 f3_recipe_tiles_with_people.html:
   junk: 0
   real: 4
@@ -244,6 +252,86 @@ kicker_heading_teaser.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_de.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_en.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_es.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_fr.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_it.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_ja.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_nl.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_pl.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_pt.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_sv.html:
+  junk: 0
+  real: 4
+  expected: 4
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0

@@ -2,7 +2,9 @@
 
 # rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
 RSpec.describe Html2rss::Scoring::ContainerAssessor do
-  subject(:assessor) { described_class.new }
+  subject(:assessor) { described_class.new(text_classifier:) }
+
+  let(:text_classifier) { Html2rss::LinkDestination::TextClassifier.new }
 
   let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com/') }
   let(:news_href) { '/news/2024/platform-launch-notes' }
@@ -21,7 +23,8 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
 
   describe '#call' do
     it 'uses injected token regexps instead of LinkResolver defaults', :aggregate_failures do
-      assessor = described_class.new(content_token_regexp: /custom-content/, junk_token_regexp: /custom-junk/)
+      assessor = described_class.new(text_classifier:, content_token_regexp: /custom-content/,
+                                     junk_token_regexp: /custom-junk/)
       content = assessor.call(build_node(class_names: %w[custom-content]), nil, destination_facts: nil)
       junk = assessor.call(build_node(class_names: %w[custom-junk]), nil, destination_facts: nil)
 

@@ -101,6 +101,34 @@ RSpec.describe Html2rss::Channel do
       end
     end
 
+    context 'with a content-language list' do
+      let(:headers) { { 'content-language' => 'de, en', 'content-type': 'text/html' } }
+
+      it 'extracts the first language' do
+        expect(instance.language).to eq('de')
+      end
+    end
+
+    context 'with a three-letter content-language tag' do
+      let(:headers) { { 'content-language' => 'jav', 'content-type': 'text/html' } }
+      let(:body) { '<html lang="fr"><body></body></html>' }
+
+      it 'does not reduce it to a two-letter tag and reads the root lang instead' do
+        expect(instance.language).to eq('fr')
+      end
+    end
+
+    %w[jav fry].each do |tag|
+      context "with the content-language tag #{tag} and no root lang" do
+        let(:headers) { { 'content-language' => tag, 'content-type': 'text/html' } }
+        let(:body) { '<html></html>' }
+
+        it 'extracts nil' do
+          expect(instance.language).to be_nil
+        end
+      end
+    end
+
     context 'without a language' do
       let(:body) { '<html></html>' }
 
@@ -111,11 +139,59 @@ RSpec.describe Html2rss::Channel do
 
     it_behaves_like 'returns overridden value', :language, :language, 'es'
 
-    context 'with lang attribute on a child element' do
-      let(:body) { '<html><body><div lang="de">Content</div></body></html>' }
+    context 'with a root lang and a different nested lang' do
+      let(:body) { '<html lang="de-AT"><body><blockquote lang="fr">Bonjour</blockquote></body></html>' }
 
-      it 'extracts the language from child element' do
-        expect(instance.language).to eq('de')
+      it 'keeps the root value as written' do
+        expect(instance.language).to eq('de-AT')
+      end
+    end
+
+    context 'without a root lang but with a nested lang' do
+      let(:body) { '<html><body><blockquote lang="fr">Bonjour</blockquote></body></html>' }
+
+      it 'extracts nil' do
+        expect(instance.language).to be_nil
+      end
+    end
+
+    context 'with a blank root lang' do
+      let(:body) { '<html lang="  "><body><div lang="fr">Bonjour</div></body></html>' }
+
+      it 'extracts nil' do
+        expect(instance.language).to be_nil
+      end
+    end
+
+    context 'when resolved on its own, as the heuristics scope by it' do
+      let(:body) { '<html lang="de-AT"><body></body></html>' }
+      let(:headers) { { 'content-language' => nil, 'content-type': 'text/html' } }
+
+      it 'reads the root lang as written, with no overrides', :aggregate_failures do
+        expect(described_class.language_for(response)).to eq('de-AT')
+        expect(described_class.language_for(response, {})).to eq('de-AT')
+        expect(described_class.language_for(response)).to eq(described_class.from_response(response).language)
+      end
+
+      it 'lets an override win, and ignores a nil one', :aggregate_failures do
+        expect(described_class.language_for(response, { language: 'sv' })).to eq('sv')
+        expect(described_class.language_for(response, { language: nil })).to eq('de-AT')
+      end
+
+      it 'reduces a content-language header to a String of two letters', :aggregate_failures do
+        headers = { 'content-language' => 'en-US', 'content-type': 'text/html' }
+        with_header = build_response.call(body:, headers:, url:)
+
+        expect(described_class.language_for(with_header)).to eq('en').and be_a(String)
+      end
+    end
+
+    context 'with a content-language header and a different root lang' do
+      let(:headers) { { 'content-language' => 'en-US', 'content-type': 'text/html' } }
+      let(:body) { '<html lang="fr"><body></body></html>' }
+
+      it 'prefers the header' do
+        expect(instance.language).to eq('en')
       end
     end
   end

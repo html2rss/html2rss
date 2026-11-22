@@ -33,6 +33,77 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     end
   end
 
+  describe '#utility_chrome?' do
+    [
+      'Contact', 'Contact us', 'About us', 'Subscribe now', 'Share this', 'Comments (12)', 'Login »', '[Subscribe]',
+      '(view all)', 'Über uns', 'ログイン', '→ Contact ←', 'Recommended for you', 'Subscribe to our newsletter',
+      'Share this article with friends', 'Share this story now', 'Subscribe', 'Log in to leave a comment',
+      'Contact us for more information', 'Join our community of readers', 'Sign up for the weekly digest',
+      '  Subscribe to updates', 'Abonnieren Sie unseren Newsletter', 'Mitglied werden und profitieren',
+      'Kommentare zum Artikel', "Abonnez-vous à notre lettre d'information", 'Abonnez vous à notre lettre',
+      "S'abonner à la lettre", 'S’abonner à la lettre', 'Contactez-nous pour plus d’informations',
+      'Suscríbete a nuestro boletín', 'Suscribete a nuestro boletin', 'Compartir este artículo con amigos',
+      'Iniciar sesión para comentar', 'Iscriviti alla newsletter', 'Iscriviti a Esempio',
+      'Condividi questo articolo', "Condividi l'articolo con gli amici", 'Unisciti alla nostra community',
+      'Abonneer je op onze nieuwsbrief', 'Deel dit artikel met vrienden', 'Log in om te reageren',
+      'Zapisz się do newslettera', 'Zapisz sie do newslettera', 'Zaloguj się, aby dodać komentarz',
+      'Udostępnij ten artykuł znajomym', 'Dołącz do naszej społeczności', 'Prenumerera på vårt nyhetsbrev',
+      'Prenumerera pa vart nyhetsbrev', 'Dela den här artikeln med vänner', 'Logga in för att kommentera',
+      'Kontakta oss för mer information', 'ニュースレターを購読する', 'コメントを投稿するにはログイン', 'ログインしてコメントを書く', 'お問い合わせはこちらから',
+      'Assine a nossa newsletter', 'Inscreva-se na newsletter', 'Compartilhe este artigo com amigos',
+      'Faça login para comentar', 'Faca login para comentar', 'Junte-se à nossa comunidade',
+      'Subscribe now to get updates', 'Log in or register to comment', 'Iscriviti ora alla nostra newsletter',
+      'Kommentare zum Artikel', 'Artikel teilen', 'Mitglied werden', 'Jetzt anmelden', "S'abonner à notre newsletter",
+      'Gå med i vår community', 'Compartir este artículo', 'Iniciar sesión para comentar',
+      'ニュースレターを購読', 'コメントを投稿します', 'お問い合わせはこちら', '会員登録はこちら。'
+    ].each do |text|
+      it "matches the utility chrome #{text.inspect}" do
+        expect(classifier.utility_chrome?(text)).to be(true)
+      end
+    end
+
+    [
+      'Contact tracing app fails', 'Join the debate on tax', 'Plus de 100 morts', 'Aboutness', 'Read more', '',
+      '(12)', 'Share prices fall', 'Plus Size Fashion Week', 'Subscribers rise again', 'Shared this week',
+      'Contact usage grows', 'Sign upgrades', 'Read: Subscribe to our newsletter', 'Kommentare zum Urteil',
+      'Mitglied werdender Verein', 'Logging in to leave a comment', 'Iscrivitions', 'Prenumeration på tidningen',
+      'ログインの手順', 'Kommentare zum Artikel 13: Was Urheber wissen müssen', 'Kommentare zum Artikel 5 Grundgesetz',
+      'Artikel teilen Meinungen: Reaktionen', "S'abonner à Netflix coûte plus cher", 'Gå med i Nato kan kosta Sverige',
+      'コメントを投稿した男性を逮捕', 'コメントを投稿した女性が死亡', 'ニュースレターを購読者に配信',
+      'この記事をシェアした投稿が拡散', 'メルマガに登録した人に当選', 'お問い合わせはこちらで受付開始'
+    ].each do |text|
+      it "rejects the text #{text.inspect}" do
+        expect(classifier.utility_chrome?(text)).to be(false)
+      end
+    end
+
+    it 'reads an ambiguous term only in its own language scope', :aggregate_failures do
+      sv = described_class.new(vocabulary: Html2rss::Vocabulary[:sv])
+      en = described_class.new(vocabulary: Html2rss::Vocabulary[:en])
+
+      expect(sv.utility_chrome?('Dela Cruz')).to be(true)
+      expect(en.utility_chrome?('Dela Cruz')).to be(false)
+    end
+
+    it 'reads decomposed accents and treats nil as empty', :aggregate_failures do
+      expect(classifier.utility_chrome?("U\u0308ber uns")).to be(true)
+      expect(classifier.utility_chrome?(nil)).to be(false)
+    end
+
+    it 'reads decomposed accents, non-string input and nil', :aggregate_failures do
+      expect(classifier.utility_chrome?("Suscri\u0301bete a nuestro boletin")).to be(true)
+      expect(classifier.utility_chrome?(:'subscribe to')).to be(true)
+      expect(classifier.utility_chrome?(nil)).to be(false)
+    end
+
+    it 'reads every language whatever the page language', :aggregate_failures do
+      en = described_class.new(vocabulary: Html2rss::Vocabulary[:en])
+
+      expect(en.utility_chrome?('Abonnieren Sie unseren Newsletter')).to be(true)
+      expect(en.utility_chrome?('ニュースレターを購読する')).to be(true)
+    end
+  end
+
   describe '#utility_prefix?' do
     [
       'View all news', 'See all articles', 'Subscribe to our newsletter', 'Join the discussion',
@@ -178,6 +249,37 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect(memoized.utility?(nil)).to be(false)
       expect { 2.times { memoized.utility?(first) } }.to raise_error(Encoding::CompatibilityError)
       expect(first).to have_received(:unicode_normalize).once
+    end
+  end
+
+  describe 'page language' do
+    let(:scoped) { ->(lang) { described_class.new(vocabulary: Html2rss::Vocabulary[lang]) } }
+
+    it 'reads an ambiguous term only in its own language or all', :aggregate_failures do
+      text = 'Dela Cruz wins election'
+
+      expect(scoped.call(:en).utility?(text)).to be(false)
+      expect(scoped.call(:sv).utility?(text)).to be(true)
+      expect(scoped.call(nil).utility?(text)).to be(true)
+      expect(described_class.new.utility?(text)).to be(true)
+    end
+
+    it 'reads an unambiguous term in every language', :aggregate_failures do
+      %i[en de sv ja].each do |lang|
+        expect(scoped.call(lang).utility?('Newsletter')).to be(true), lang.to_s
+        expect(scoped.call(lang).utility_prefix?('Subscribe now')).to be(true), lang.to_s
+      end
+    end
+
+    it 'scopes the prefix and the recommendation readings alike', :aggregate_failures do
+      expect(scoped.call(:fr).utility_prefix?('Plus de 100 morts')).to be(false)
+      expect(scoped.call(:en).utility_prefix?('Plus membership')).to be(true)
+      expect(scoped.call(:ja).recommended?('Recommended for you')).to be(true)
+      expect(scoped.call(:fr).recommended?('Recommended for you')).to be(true)
+    end
+
+    it 'leaves read-more labels in every language', :aggregate_failures do
+      %i[en de sv].each { |lang| expect(scoped.call(lang).read_more?('Lire la suite')).to be(true), lang.to_s }
     end
   end
 end

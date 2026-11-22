@@ -232,6 +232,7 @@ module Html2rss
         candidates = CandidateGenerator.call(
           entry_url:,
           response:,
+          vocabulary: Vocabulary[Channel.language_for(response, config.channel)],
           max: max_probes
         )
         return skip(:no_candidates) if candidates.empty?

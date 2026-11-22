@@ -112,11 +112,15 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
     # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
+    # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope, resolved once here and shared by
+    #   every classifier of this run; the page's own language ({Channel.language_for}) by default
     # @option opts [Integer] :limit max articles to keep; later tiers stop once this many survive Cleanup
     # @option opts [Hash] :scraper scraper configuration map
     # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
-    def initialize(response, opts = DEFAULT_CONFIG, request_session: nil)
+    def initialize(response, opts = DEFAULT_CONFIG, request_session: nil,
+                   vocabulary: Vocabulary[Channel.language_for(response)])
+      @vocabulary = vocabulary
       @parsed_body = response.parsed_body
       @body = response.body
       @url = response.url
@@ -170,7 +174,7 @@ module Html2rss
 
     private
 
-    attr_reader :url, :parsed_body, :body, :request_session, :captured_responses
+    attr_reader :url, :parsed_body, :body, :request_session, :captured_responses, :vocabulary
 
     # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
@@ -290,7 +294,7 @@ module Html2rss
     def cleanup_result(articles)
       return @cleanup_memo.last if @cleanup_memo&.first == articles.size
 
-      Cleanup.call(articles.dup, url:, corroboration:, page_links: -> { page_links },
+      Cleanup.call(articles.dup, url:, vocabulary:, corroboration:, page_links: -> { page_links },
                                  feed_url: @native_feed&.feed_url, **cleanup_options)
              .tap { @cleanup_memo = [articles.size, _1] }
     end
@@ -304,11 +308,11 @@ module Html2rss
     end
 
     def link_resolver
-      @link_resolver ||= Scoring::LinkResolver.new(url)
+      @link_resolver ||= Scoring::LinkResolver.new(url, vocabulary:)
     end
 
     def corroboration
-      @corroboration ||= Corroboration.new { page_links }
+      @corroboration ||= Corroboration.new(vocabulary) { page_links }
     end
 
     # Rendered links of the page, built once for the page check and sponsorship.

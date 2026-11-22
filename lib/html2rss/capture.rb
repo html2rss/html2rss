@@ -262,7 +262,7 @@ module Html2rss
       sst = SST::Normalizer.call(response.body)
       return [*default_selectors, SelectorCandidates.empty] unless sst
 
-      select_enhance_selectors(sst, articles)
+      select_enhance_selectors(sst, articles, Vocabulary[Channel.language_for(response)])
     end
 
     def hint_selectors
@@ -273,8 +273,8 @@ module Html2rss
       [{ items: { selector: Selectors::DEFAULT_ITEMS_SELECTOR, enhance: resolve_enhance } }, :default]
     end
 
-    def select_enhance_selectors(sst, articles)
-      evidence = collect_items_evidence(sst, articles)
+    def select_enhance_selectors(sst, articles, vocabulary)
+      evidence = collect_items_evidence(sst, articles, vocabulary)
       candidates = SelectorCandidates.call(items_evidence: evidence, min_matches: MIN_SELECTOR_MATCHES)
       top = candidates[:items].first
       return [*default_selectors, candidates] unless top
@@ -284,8 +284,8 @@ module Html2rss
       [{ items: }, strategy, candidates]
     end
 
-    def collect_items_evidence(sst, articles)
-      link_resolver = Scoring::LinkResolver.new(@url)
+    def collect_items_evidence(sst, articles, vocabulary)
+      link_resolver = Scoring::LinkResolver.new(@url, vocabulary:)
       enhance = resolve_enhance
 
       SEGMENT_STRATEGIES.flat_map do |strategy|

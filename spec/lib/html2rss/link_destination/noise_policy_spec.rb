@@ -103,11 +103,45 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
       'utility chrome text is kept under a strong post suffix' =>
         ['/misc/press/big-news-story-here', 'Share', {}, false],
       'utility chrome text suppressed on weak routes off the heading' => ['/widget-xyz-detail', 'Share', {}, true],
-      'non-utility text on a weak route is kept' => ['/widget-xyz-detail', 'Read the report', {}, false]
+      'headline opening with a utility word on a non-content route is kept' =>
+        ['/widget-xyz-detail', 'Contact tracing app fails again in the capital', {}, false],
+      'short utility label with a trailing word on a weak route is noise' =>
+        ['/widget-xyz-detail', 'Contact us', {}, true],
+      'non-utility text on a weak route is kept' => ['/widget-xyz-detail', 'Read the report', {}, false],
+      'call to action on a weak route is noise' =>
+        ['/widget-xyz-detail', 'Subscribe to our newsletter', {}, true],
+      'call to action under a content route is kept' =>
+        ['/news/2024/platform-launch-notes', 'Subscribe to our newsletter', {}, false],
+      'call to action under a strong post suffix is kept' =>
+        ['/misc/press/big-news-story-here', 'Subscribe to our newsletter', {}, false],
+      'call to action on a heading is kept' =>
+        ['/widget-xyz-detail', 'Subscribe to our newsletter', { heading_anchor: true }, false]
     }.each do |label, (href, text, options, expected)|
       it "classifies #{label}" do
         facts = link_resolver.destination_facts(href)
         expect(policy.noise_anchor?(text:, destination_facts: facts, **options)).to be(expected)
+      end
+    end
+
+    # Sentence-form calls to action are noise; headlines that merely open with the same word are kept.
+    [
+      'Subscribe to our newsletter', 'Share this article with friends', 'Log in to leave a comment',
+      'Contact us for more information', 'Join our community of readers', 'Abonnieren Sie unseren Newsletter',
+      'Mitglied werden und profitieren', 'Kommentare zum Artikel'
+    ].each do |text|
+      it "rejects the call to action #{text.inspect} on a weak route" do
+        facts = link_resolver.destination_facts('/widget-xyz-detail')
+        expect(policy.noise_anchor?(text:, destination_facts: facts)).to be(true)
+      end
+    end
+
+    [
+      'Contact tracing app fails', 'Join the debate on tax', 'Share prices fall', 'Plus Size Fashion Week',
+      'Plus de 100 morts'
+    ].each do |text|
+      it "keeps the headline #{text.inspect} on a weak route" do
+        facts = link_resolver.destination_facts('/widget-xyz-detail')
+        expect(policy.noise_anchor?(text:, destination_facts: facts)).to be(false)
       end
     end
 

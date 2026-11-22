@@ -39,6 +39,10 @@ module Html2rss
   # @!attribute [r] explicit
   #   @return [Boolean, nil] whether the content is declared explicit; nil when unstated
   class Channel # rubocop:disable Metrics/ClassLength -- Channel value object owns extract + freeze + Marshal
+    # No overrides: shared, so resolving a page's language allocates no default Hash.
+    NO_OVERRIDES = {}.freeze
+    private_constant :NO_OVERRIDES
+
     class << self
       ##
       # Materializes channel attributes from an HTTP response and optional overrides.
@@ -60,6 +64,25 @@ module Html2rss
           categories: feed&.categories || [],
           explicit: feed&.explicit
         )
+      end
+
+      ##
+      # The language of a page: the config override, else the +Content-Language+ header, else the document
+      # root's +lang+. The one resolution of the page language; {Vocabulary.[]} scopes the heuristics by it. A
+      # header's primary tag must be exactly two letters (+en-US+ is +en+, +de, en+ is +de+; +jav+ is not +ja+).
+      #
+      # @param response [Html2rss::RequestService::Response]
+      # @param overrides [Hash{Symbol => Object}] optional channel overrides (+:language+)
+      # @return [String, nil]
+      def language_for(response, overrides = NO_OVERRIDES)
+        return overrides[:language] if overrides[:language]
+
+        language_code = headers(response)['content-language'].to_s[/\A[a-z]{2}(?![a-z])/]
+        return language_code if language_code
+
+        return unless html_response?(response)
+
+        root_language(parsed_body(response))
       end
 
       private
@@ -118,16 +141,9 @@ module Html2rss
         min_ttl ? [calculated, min_ttl].max : calculated
       end
 
-      def language_for(response, overrides)
-        return overrides[:language] if overrides[:language]
-
-        if (language_code = headers(response)['content-language']&.match(/^([a-z]{2})/))
-          return language_code[0]
-        end
-
-        return unless html_response?(response)
-
-        parsed_body(response)['lang'] || parsed_body(response).at_css('[lang]')&.[]('lang')
+      def root_language(document)
+        lang = document.root&.[]('lang')
+        lang if lang&.match?(/\S/)
       end
 
       def meta_author(response)

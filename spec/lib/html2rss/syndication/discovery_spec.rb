@@ -173,6 +173,17 @@ RSpec.describe Html2rss::Syndication::Discovery do
       expect(unhinted.grep(described_class::PODCAST_PAGE_HINT)).to be_empty
     end
 
+    it 'matches the unambiguous podcast words of other languages, and leaves general words alone',
+       :aggregate_failures do
+      hinted = ['Épisode 4', '/episodios/', 'ÉPISODES', 'Episódio 2', 'ポッドキャスト一覧', '音声エピソード']
+      unhinted = ['Folge 3', 'Avsnitt', 'Odcinek', 'Aflevering', 'Episodically']
+
+      [described_class::PODCAST_PAGE_HINT, described_class::AUDIO_HINT].each do |hint|
+        expect(hinted.grep(hint)).to eq(hinted)
+        expect(unhinted.grep(hint)).to be_empty
+      end
+    end
+
     it 'matches audio hints word-ish and case-insensitively', :aggregate_failures do
       hinted = ['Podcast Feed', 'EPISODES', 'Audio', '/feed/opus/', '/podcast09/x.xml', '/aac.xml', '/podcasts/']
       unhinted = ['Audiobooks', 'Podcasting tips', '/feed/mp3x', 'aacounty', 'News feed']

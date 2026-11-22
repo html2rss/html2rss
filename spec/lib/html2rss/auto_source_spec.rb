@@ -387,9 +387,9 @@ RSpec.describe Html2rss::AutoSource do
           counts[:sst] += 1
           method.call(*args)
         end
-        allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_wrap_original do |method, *args|
+        allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_wrap_original do |method, *args, **kwargs|
           counts[:resolver] += 1
-          method.call(*args)
+          method.call(*args, **kwargs)
         end
       end
 
@@ -1049,6 +1049,52 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'with scalar JSON string' do
       it_behaves_like 'scalar JSON unsupported_surface', '"not-a-document"'
+    end
+  end
+
+  describe 'page language' do
+    let(:body) do
+      <<~HTML
+        <html lang="sv-SE"><body>
+          <main>
+            <article><h2><a href="/nyheter/forsta-storyn">Forsta storyn om hamnen</a></h2></article>
+            <article><h2><a href="/nyheter/andra-storyn">Andra storyn om hamnen</a></h2></article>
+            <article><h2><a href="/nyheter/tredje-storyn">Tredje storyn om hamnen</a></h2></article>
+          </main>
+        </body></html>
+      HTML
+    end
+    let(:swedish) { Html2rss::Vocabulary[:sv] }
+
+    before do
+      allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_call_original
+      allow(described_class::Cleanup).to receive(:call).and_call_original
+      allow(described_class::Corroboration).to receive(:new).and_call_original
+    end
+
+    it 'resolves the response language once and hands one scope to every classifier', :aggregate_failures do
+      auto_source.articles
+
+      expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(swedish))
+      expect(described_class::Cleanup).to have_received(:call).at_least(:once)
+                                                              .with(anything, hash_including(vocabulary: be(swedish)))
+      expect(described_class::Corroboration).to have_received(:new).once.with(be(swedish))
+    end
+
+    it 'takes the scope its caller resolved, such as one from a channel override', :aggregate_failures do
+      german = Html2rss::Vocabulary[:de]
+      described_class.new(response, config, request_session:, vocabulary: german).articles
+
+      expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(german))
+      expect(described_class::Corroboration).to have_received(:new).once.with(be(german))
+    end
+
+    it 'reads every ambiguous term when the page states no language', :aggregate_failures do
+      described_class.new(Html2rss::RequestService::Response.new(body: '<html><body><main></main></body></html>',
+                                                                 headers: { 'content-type' => 'text/html' }, url:),
+                          config, request_session:).articles
+
+      expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(Html2rss::Vocabulary[nil]))
     end
   end
 

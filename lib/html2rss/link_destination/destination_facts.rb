@@ -20,9 +20,10 @@ module Html2rss
     # Normalized URL plus reusable route-classification facts for one link.
     class DestinationFacts
       # @param url [Html2rss::Url] normalized destination URL
+      # @param vocabulary [Vocabulary::Scope] the page language's scope ({Vocabulary.[]})
       # @return [DestinationFacts] route facts for downstream link scoring
-      def self.build(url) # rubocop:disable Metrics/MethodLength
-        classifier = classifier_for(url)
+      def self.build(url, vocabulary:) # rubocop:disable Metrics/MethodLength
+        classifier = classifier_for(url, vocabulary)
 
         new(
           url:,
@@ -41,10 +42,11 @@ module Html2rss
       end
 
       # @param url [Html2rss::Url]
+      # @param vocabulary [Vocabulary::Scope]
       # @return [PathClassifier] path classifier that also sees the first host label (an obituary subdomain)
-      def self.classifier_for(url)
+      def self.classifier_for(url, vocabulary)
         PathClassifier.new(url.decoded_path_segments,
-                           host_label: url.host.to_s.split('.').first, query: !url.query.nil?)
+                           host_label: url.host.to_s.split('.').first, query: !url.query.nil?, vocabulary:)
       end
       private_class_method :classifier_for
     end

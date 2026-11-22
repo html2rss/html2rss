@@ -94,6 +94,7 @@ module Html2rss
 
         # @param articles [Array<Article>] extracted article candidates
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, for the destination rules
         # @param keep_different_domain [Boolean] when true, keep items whose URLs are on a
         #   different domain than +url+ (source-controlled off-domain links; default false)
         # @param feed_url [Html2rss::Url, nil] the native feed the page advertises and that was read
@@ -107,7 +108,7 @@ module Html2rss
         #   ({PageLinks#identity}), the placement params dropped from item URLs, and the sponsorship check
         # @return [Result] cleaned articles and frozen drop tallies
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
-        def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
+        def call(articles, url:, vocabulary:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
                  keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil,
                  feed_url: nil)
           Log.debug "Cleanup: start with #{articles.size} articles"
@@ -125,7 +126,7 @@ module Html2rss
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies, identity)
           reject_different_domain!(articles, url, feed_url, tallies) unless keep_different_domain
-          reject_excluded_destinations!(articles, tallies)
+          reject_excluded_destinations!(articles, tallies, vocabulary)
           reject_low_quality_titles!(articles, tallies)
 
           Log.debug "Cleanup: end with #{articles.size} articles"
@@ -324,14 +325,14 @@ module Html2rss
 
         # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).
         # PathClassifier owns route facts; Cleanup owns feed-item admission.
-        def reject_excluded_destinations!(articles, tallies)
+        def reject_excluded_destinations!(articles, tallies, vocabulary)
           tally_reject!(articles, tallies, 'excluded_destination') do |article|
-            excluded_destination?(article.url)
+            excluded_destination?(article.url, vocabulary)
           end
         end
 
-        def excluded_destination?(url)
-          facts = LinkDestination::DestinationFacts.build(url)
+        def excluded_destination?(url, vocabulary)
+          facts = LinkDestination::DestinationFacts.build(url, vocabulary:)
           return true if facts.high_confidence_junk_path || facts.high_confidence_utility_destination
 
           facts.utility_path && !facts.content_path && !facts.strong_post_suffix

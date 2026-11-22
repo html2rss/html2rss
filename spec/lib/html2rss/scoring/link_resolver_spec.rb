@@ -174,6 +174,15 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     end
   end
 
+  describe '#utility_chrome_text?' do
+    it 'classifies short whole utility labels and calls to action, not headlines opening with a utility word',
+       :aggregate_failures do
+      expect(resolver.utility_chrome_text?('Contact us')).to be(true)
+      expect(resolver.utility_chrome_text?('Subscribe to our newsletter')).to be(true)
+      expect(resolver.utility_chrome_text?('Contact tracing app fails')).to be(false)
+    end
+  end
+
   describe '#utility_prefix_text?' do
     it 'classifies utility prefixes, not general utility labels', :aggregate_failures do
       expect(resolver.utility_prefix_text?('Subscribe to newsletter')).to be(true)
@@ -197,6 +206,29 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
       expect(described_class::JUNK_TOKEN_REGEXP).to match('widget-promo')
       expect(described_class::CONTENT_TOKEN_REGEXP).not_to match('sidebar')
       expect(described_class::JUNK_TOKEN_REGEXP).not_to match('article-body')
+    end
+  end
+
+  describe '#initialize with a page language' do
+    it 'reads utility text and routes in the scope it was built with', :aggregate_failures do
+      swedish = described_class.new('https://example.com/', vocabulary: Html2rss::Vocabulary[:sv])
+      english = described_class.new('https://example.com/', vocabulary: Html2rss::Vocabulary[:en])
+
+      expect(swedish.utility_text?('Dela')).to be(true)
+      expect(english.utility_text?('Dela')).to be(false)
+      expect(resolver.utility_text?('Dela')).to be(true)
+      expect(english.destination_facts('/tema').taxonomy_path).to be(false)
+      expect(swedish.destination_facts('/tema').taxonomy_path).to be(true)
+      expect(described_class.new('https://example.com/', vocabulary: Html2rss::Vocabulary[:es])
+        .destination_facts('/tema').taxonomy_path).to be(true)
+    end
+
+    it 'keeps facts per resolver, so no scope sees another scope\'s memo', :aggregate_failures do
+      es = described_class.new('https://example.com/', vocabulary: Html2rss::Vocabulary[:es])
+      en = described_class.new('https://example.com/', vocabulary: Html2rss::Vocabulary[:en])
+
+      expect(es.destination_facts('/tema').taxonomy_path).to be(true)
+      expect(en.destination_facts('/tema').taxonomy_path).to be(false)
     end
   end
 end

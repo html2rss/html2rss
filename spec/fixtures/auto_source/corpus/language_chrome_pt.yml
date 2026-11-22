@@ -1,0 +1,7 @@
+---
+case: Four invented news cards with a read-more link each, page shortcuts and a labelled pager, in language "pt"; only the four headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/bridge-lights-repaired

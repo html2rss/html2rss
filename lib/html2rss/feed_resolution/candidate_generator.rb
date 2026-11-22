@@ -18,19 +18,22 @@ module Html2rss
       ##
       # @param entry_url [String, Html2rss::Url]
       # @param response [Html2rss::RequestService::Response]
+      # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope
       # @param max [Integer]
       # @return [Array<Html2rss::Url>]
-      def self.call(entry_url:, response:, max: DEFAULT_MAX)
-        new(entry_url:, response:, max:).call
+      def self.call(entry_url:, response:, vocabulary:, max: DEFAULT_MAX)
+        new(entry_url:, response:, vocabulary:, max:).call
       end
 
       ##
       # @param entry_url [String, Html2rss::Url]
       # @param response [Html2rss::RequestService::Response]
+      # @param vocabulary [Html2rss::Vocabulary::Scope]
       # @param max [Integer]
-      def initialize(entry_url:, response:, max: DEFAULT_MAX)
+      def initialize(entry_url:, response:, vocabulary:, max: DEFAULT_MAX)
         @entry_url = Html2rss::Url.from_absolute(entry_url)
         @response = response
+        @vocabulary = vocabulary
         @max = max
       end
 
@@ -42,7 +45,7 @@ module Html2rss
 
       private
 
-      attr_reader :entry_url, :response, :max
+      attr_reader :entry_url, :response, :vocabulary, :max
 
       def listing_cap = max > 1 ? max - 1 : 0
 
@@ -73,7 +76,7 @@ module Html2rss
         url = absolute_same_origin(anchor['href'])
         return unless url
 
-        facts = LinkDestination::DestinationFacts.build(url)
+        facts = LinkDestination::DestinationFacts.build(url, vocabulary:)
         rank = 0
         rank += 3 if facts.taxonomy_path
         rank += 1 if facts.content_path
@@ -86,7 +89,7 @@ module Html2rss
         sst = SST::Normalizer.call(parsed_html)
         return [] unless sst
 
-        link_resolver = Scoring::LinkResolver.new(entry_url)
+        link_resolver = Scoring::LinkResolver.new(entry_url, vocabulary:)
 
         SEGMENT_STRATEGIES.each do |strategy|
           urls = segment_urls_for(sst, strategy, link_resolver)
