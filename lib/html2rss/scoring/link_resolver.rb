@@ -53,13 +53,9 @@ module Html2rss
 
       ##
       # @param text [String, #to_s]
-      # @return [Boolean] true when the text is a short whole utility label, not a headline opening with one
-      def utility_label_text?(text) = @text_classifier.utility_label?(text)
-
-      ##
-      # @param text [String, #to_s]
-      # @return [Boolean] true when the text opens with a call-to-action phrase ("Subscribe to our newsletter")
-      def utility_cta_text?(text) = @text_classifier.utility_cta?(text)
+      # @return [Boolean] true when the text is a short whole utility label or a sentence-form call to action,
+      #   not a headline opening with a utility word
+      def utility_chrome_text?(text) = @text_classifier.utility_chrome?(text)
 
       ##
       # @param text [String, #to_s]

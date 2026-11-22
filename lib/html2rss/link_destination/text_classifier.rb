@@ -94,13 +94,13 @@ module Html2rss
       def utility?(text) = label?(:utility, text)
 
       # @param text [String, #to_s] visible anchor text
-      # @return [Boolean] true when the whole text is a utility term with at most one more word, bare or with
-      #   a count; a headline that merely opens with a utility word is not
-      def utility_label?(text) = label?(:utility_label, text)
-
-      # @param text [String, #to_s] visible anchor text
-      # @return [Boolean] true when text opens with a call-to-action phrase, whatever follows it
-      def utility_cta?(text) = normalize(text).match?(UTILITY_CTA)
+      # @return [Boolean] true when the text is utility chrome: a short whole label (a utility term with at most
+      #   one more word, bare or with a count) or a sentence-form call to action ("Subscribe to our newsletter");
+      #   a headline that merely opens with a utility word is neither. The text is normalized once.
+      def utility_chrome?(text)
+        normalized = normalize(text)
+        reading_match?(:utility_label, normalized) || normalized.match?(UTILITY_CTA)
+      end
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text begins with a utility label
@@ -116,9 +116,10 @@ module Html2rss
 
       private
 
+      def label?(reading, text) = reading_match?(reading, normalize(text))
+
       # An unambiguous term always applies; an ambiguous one only in the page's language scope.
-      def label?(reading, text)
-        normalized = normalize(text)
+      def reading_match?(reading, normalized)
         normalized.match?(UNAMBIGUOUS.fetch(reading)) || normalized.match?(@ambiguous.fetch(reading))
       end
 

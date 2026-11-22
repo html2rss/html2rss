@@ -174,18 +174,12 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     end
   end
 
-  describe '#utility_label_text?' do
-    it 'classifies short whole utility labels, not headlines opening with one', :aggregate_failures do
-      expect(resolver.utility_label_text?('Contact us')).to be(true)
-      expect(resolver.utility_label_text?('Contact tracing app fails')).to be(false)
-    end
-  end
-
-  describe '#utility_cta_text?' do
-    it 'classifies sentence-form calls to action, not headlines opening with a utility word',
+  describe '#utility_chrome_text?' do
+    it 'classifies short whole utility labels and calls to action, not headlines opening with a utility word',
        :aggregate_failures do
-      expect(resolver.utility_cta_text?('Subscribe to our newsletter')).to be(true)
-      expect(resolver.utility_cta_text?('Contact tracing app fails')).to be(false)
+      expect(resolver.utility_chrome_text?('Contact us')).to be(true)
+      expect(resolver.utility_chrome_text?('Subscribe to our newsletter')).to be(true)
+      expect(resolver.utility_chrome_text?('Contact tracing app fails')).to be(false)
     end
   end
 
