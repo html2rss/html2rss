@@ -230,6 +230,25 @@ RSpec.describe Html2rss::FeedPipeline do
         }
       end
 
+      let(:extractions) { [] }
+      let(:count_extractions) do
+        lambda do
+          allow(Html2rss::AutoSource).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+            original.call(*args, **kwargs).tap do |source|
+              allow(source).to receive(:articles).and_wrap_original do |articles|
+                extractions << source
+                articles.call
+              end
+            end
+          end
+        end
+      end
+      let(:auto_source_config) do
+        base_config.except(:selectors).merge(
+          strategy: :auto, auto_source: { entry_resolution: { enabled: false } }, request: { max_requests: 8 }
+        )
+      end
+
       before do
         allow(Html2rss::Log).to receive(:info)
         allow(Html2rss::Log).to receive(:warn)
@@ -277,6 +296,23 @@ RSpec.describe Html2rss::FeedPipeline do
 
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
+      end
+
+      it 'extracts an auto_source feed request once', :aggregate_failures do
+        stub_first_strategy_success.call(build_response.call(body: File.read('spec/fixtures/news_front_page.html')))
+        count_extractions.call
+
+        expect(described_class.new(auto_source_config).to_result.to_rss.items).not_to be_empty
+        expect(extractions.size).to eq(1)
+      end
+
+      it 'does not extract a selectors-only feed request with AutoSource', :aggregate_failures do
+        stub_first_strategy_success.call(item_response)
+        count_extractions.call
+
+        expect(described_class.new(config.merge(request: { max_requests: 8 })).to_result.to_rss.items.map(&:title))
+          .to eq(['bota'])
+        expect(extractions).to be_empty
       end
 
       it 'does not emit fallback info when first strategy succeeds' do
