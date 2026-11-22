@@ -1,0 +1,11 @@
+---
+case: Eight invented news cards whose short headlines carry a one-word kicker (breaking, exclusive, video, gallery in both scripts), in language "zh"; every card is an item, since stripping a kicker would leave a headline below the title floor.
+expected:
+- https://example.com/news/2026/11/story-1
+- https://example.com/news/2026/11/story-2
+- https://example.com/news/2026/11/story-3
+- https://example.com/news/2026/11/story-4
+- https://example.com/news/2026/11/story-5
+- https://example.com/news/2026/11/story-6
+- https://example.com/news/2026/11/story-7
+- https://example.com/news/2026/11/story-8

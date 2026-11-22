@@ -15,9 +15,10 @@ module Html2rss
         # @param base_url [String, Html2rss::Url] base url used to resolve relative links
         # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
         # @param time_zone [String] channel time zone for naive leftover dates
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
         # @return [Hash{Symbol => Object}] extracted article attributes
-        def call(article_tag, base_url:, selected_anchor: nil, time_zone: 'UTC')
-          new(article_tag, base_url:, selected_anchor:, time_zone:).call
+        def call(article_tag, base_url:, vocabulary:, selected_anchor: nil, time_zone: 'UTC')
+          new(article_tag, base_url:, selected_anchor:, time_zone:, vocabulary:).call
         end
       end
 
@@ -26,13 +27,15 @@ module Html2rss
       # @param base_url [String, Html2rss::Url] base url used to resolve relative links
       # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
       # @param time_zone [String] channel time zone for naive leftover dates
-      def initialize(article_tag, base_url:, selected_anchor: nil, time_zone: 'UTC')
+      # @param vocabulary [Vocabulary::Scope] the page language's scope
+      def initialize(article_tag, base_url:, vocabulary:, selected_anchor: nil, time_zone: 'UTC')
         raise InvalidError, 'article_tag is required' unless article_tag
 
         @article_tag = article_tag
         @base_url = base_url
         @selected_anchor = selected_anchor
         @time_zone = time_zone
+        @vocabulary = vocabulary
       end
 
       # @return [Hash{Symbol => Object}] extracted article attributes
@@ -44,14 +47,14 @@ module Html2rss
         {
           # Composed here, not passed as a +kicker:+ key: Selectors' enhance merges keys one by one,
           # so a separate kicker would prefix an explicitly selected title.
-          title: Article::Title.compose(title, kicker: title_pieces.kicker_text),
+          title: Article::Title.compose(title, kicker: title_pieces.kicker_text, vocabulary: @vocabulary),
           url: extract_url,
           image: extract_image,
-          description: ArticleRules::Description.from_lines(lines, title:),
+          description: ArticleRules::Description.from_lines(lines, vocabulary: @vocabulary, title:),
           id: generate_id,
           published_at:,
           enclosures: extract_enclosures,
-          categories: CategoryExtractor.call(source, title:)
+          categories: CategoryExtractor.call(source, vocabulary: @vocabulary, title:)
         }
       end
 
@@ -73,7 +76,10 @@ module Html2rss
       end
 
       # Kicker and headline text ({TitlePieces}) of this card.
-      def title_pieces = @title_pieces ||= TitlePieces.new(article_tag, headline_source, anchor: selected_anchor)
+      def title_pieces
+        @title_pieces ||= TitlePieces.new(article_tag, headline_source, anchor: selected_anchor,
+                                                                        vocabulary: @vocabulary)
+      end
 
       def first_text_title
         text_node = article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }
@@ -109,7 +115,7 @@ module Html2rss
         CardWalk.miss?(
           heading_or_anchor_item: heading_or_anchor_item?,
           published_at:,
-          description: ArticleRules::Description.from_lines(lines, title:)
+          description: ArticleRules::Description.from_lines(lines, vocabulary: @vocabulary, title:)
         )
       end
 

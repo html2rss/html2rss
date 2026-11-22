@@ -620,9 +620,28 @@ RSpec.describe Html2rss::Test do
       report
 
       expect(Html2rss::Test::EnhanceAudit).to have_received(:probe).with(
-        response:, selectors: config.selectors, time_zone: 'UTC'
+        response:, selectors: config.selectors, time_zone: 'UTC', vocabulary: Html2rss::Vocabulary[nil]
       )
       expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
+    end
+
+    context 'when the channel overrides the page language' do
+      let(:config) do
+        Html2rss::Config.from_hash(
+          valid_config.merge(
+            channel: valid_config[:channel].merge(language: 'zh-Hant'),
+            selectors: valid_config[:selectors].merge(items: { selector: 'article', enhance: })
+          )
+        )
+      end
+
+      it 'probes with the scope the feed reads', :aggregate_failures do
+        report
+
+        expect(Html2rss::Test::EnhanceAudit).to have_received(:probe).with(
+          hash_including(vocabulary: be(Html2rss::Vocabulary[:zh]))
+        )
+      end
     end
 
     context 'when enhance is disabled' do

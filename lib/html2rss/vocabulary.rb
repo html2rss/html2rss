@@ -64,14 +64,13 @@ module Html2rss
     # The languages, in a fixed order.
     ALL = [En, De, Fr, Es, It, Nl, Pl, Sv, Ja, Pt, Ru].freeze
 
-    # Japanese title type markers that are also ordinary words of a Chinese page, so a Chinese page reads them as
-    # text, not as markers (see {Scope#type_markers}). Closed and audited per term; every other Han marker keeps
-    # its marker reading on a Chinese page:
-    # - +独自+ is "independent, own" (+独自开发+), the same character form in Simplified Chinese;
-    # - +写真+ is "portrait, photo shoot" (+写真集+), the same character form in Simplified Chinese.
-    # +速報+ and +詳報+ read as the same breaking/detailed-report tags in Traditional Chinese; +動画+, +中継+ and
-    # +生中継+ are no Chinese spelling (+动画+, +中继+).
-    CHINESE_WORDS = Set['独自', '写真'].freeze
+    # Languages whose terms apply only on a page in that language: they are in no shared table, so +:all+, +ja+ and
+    # every other language read exactly what they read without them. A page scope of such a language is +:all+ plus
+    # its terms (a Han term has no word boundary, so it is read as a whole label only, see {TextClassifier}).
+    PAGE_ONLY = [Zh].freeze
+
+    # Every language that has a file, in a fixed order.
+    LANGUAGES = (ALL + PAGE_ONLY).freeze
 
     # A language tag: a primary subtag, then region/script subtags (+de+, +de-AT+, +zh_Hant_TW+).
     TAG = /\A([a-z]{2,3})(?:[-_][a-z0-9]{1,8})*\z/i
@@ -139,12 +138,32 @@ module Html2rss
       #
       # @param code [Symbol] the language code, or +:all+
       # @param languages [Array<Language>] the languages in scope
+      # @param own [Array<Language>] {PAGE_ONLY} languages whose terms apply on this page only
       # @return [Scope]
-      def build_scope(code, languages)
+      def build_scope(code, languages, own: [])
         words = SCOPED_WORDS.to_h { [_1, ambiguous_terms(languages, _1)] }
         alternations = SCOPED_PATTERNS.to_h { [_1, compile(ambiguous_terms(languages, _1))] }
         Scope.new(code:, ambiguous_words: words.freeze, alternations: alternations.freeze,
-                  type_markers: words(:type_marker))
+                  own_words: own_terms(own, SCOPED_WORDS), own_alternations: own_alternations(own),
+                  type_markers: type_markers_for(own))
+      end
+
+      private
+
+      def own_terms(own, concepts) = concepts.to_h { |c| [c, own.flat_map { _1.terms.fetch(c) }.freeze] }.freeze
+
+      def own_alternations(own) = own_terms(own, SCOPED_PATTERNS).transform_values { compile(_1) }.freeze
+
+      ##
+      # @param own [Array<Language>] the {PAGE_ONLY} languages of the scope
+      # @return [Set<String>] the title type markers that apply: every language's, less the {Language#plain_words}
+      #   of the own languages and plus their own markers; the shared +words(:type_marker)+ itself without any
+      def type_markers_for(own)
+        return words(:type_marker) if own.empty?
+
+        plain = own.flat_map { _1.plain_words.to_a }
+        marked = own.flat_map { _1.terms.fetch(:type_marker) }
+        (words(:type_marker) - plain).union(marked).freeze
       end
     end
 
@@ -163,14 +182,11 @@ module Html2rss
       [concept, compile(ALL.flat_map { _1.terms.fetch(concept) } - ambiguous_terms(ALL, concept))]
     end.freeze
 
-    # One shared, frozen scope per language in {ALL}, plus +:all+ (every ambiguous term applies) and +:zh+, the
-    # Chinese page: no language file, so it applies exactly what +:all+ applies (it shares its frozen tables) except
-    # the {CHINESE_WORDS} as type markers.
-    SCOPES = begin
-      every = build_scope(:all, ALL)
-      chinese = every.with(code: :zh, type_markers: (every.type_markers - CHINESE_WORDS).freeze)
-      ALL.to_h { [_1.code, build_scope(_1.code, [_1])] }.merge(all: every, zh: chinese).freeze
-    end
+    # One shared, frozen scope per language in {ALL}, plus +:all+ (every ambiguous term applies) and one per {PAGE_ONLY}
+    # language: +:all+ plus that language's own terms.
+    SCOPES = ALL.to_h { [_1.code, build_scope(_1.code, [_1])] }
+                .merge(all: build_scope(:all, ALL))
+                .merge(PAGE_ONLY.to_h { [_1.code, build_scope(_1.code, ALL, own: [_1])] }).freeze
     ALL_SCOPE = SCOPES.fetch(:all)
     # Every accepted primary tag, as a String or a Symbol, so the usual lookup allocates nothing.
     BY_TAG = SCOPES.except(:all).flat_map { |code, scope| [[code, scope], [code.name, scope]] }.to_h.freeze

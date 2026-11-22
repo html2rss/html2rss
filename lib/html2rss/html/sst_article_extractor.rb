@@ -58,7 +58,7 @@ module Html2rss
           kicker: title_pieces.kicker_text,
           url: extract_url,
           image: extract_image,
-          description: ArticleRules::Description.from_lines(lines, title:),
+          description: ArticleRules::Description.from_lines(lines, vocabulary: @vocabulary, title:),
           id: parse_id_from_dom,
           published_at:,
           enclosures: extract_enclosures,
@@ -158,7 +158,7 @@ module Html2rss
         CardWalk.miss?(
           heading_or_anchor_item: heading_or_anchor_item?,
           published_at:,
-          description: ArticleRules::Description.from_lines(lines, title:)
+          description: ArticleRules::Description.from_lines(lines, vocabulary: @vocabulary, title:)
         )
       end
 
@@ -267,7 +267,7 @@ module Html2rss
             element.attrs.raw.each do |name, value|
               next unless ArticleRules::Category.attr_name_match?(name)
 
-              ArticleRules::Category.add_text!(categories, value, title:)
+              ArticleRules::Category.add_text!(categories, value, vocabulary: @vocabulary, title:)
             end
           end
         end.to_a
@@ -286,7 +286,7 @@ module Html2rss
         return if category_text_container?(element)
 
         if element.link?
-          ArticleRules::Category.add_text!(categories, element.visible_text, title:)
+          ArticleRules::Category.add_text!(categories, element.visible_text, vocabulary: @vocabulary, title:)
           return
         end
 
@@ -296,9 +296,9 @@ module Html2rss
       def add_descendant_or_visible_category!(categories, element, title:)
         anchors = element.find_all(&:link?)
         if anchors.any?
-          anchors.each { |a| ArticleRules::Category.add_text!(categories, a.visible_text, title:) }
+          anchors.each { |a| ArticleRules::Category.add_text!(categories, a.visible_text, vocabulary: @vocabulary, title:) }
         else
-          ArticleRules::Category.add_split_text!(categories, element.visible_text, title:)
+          ArticleRules::Category.add_split_text!(categories, element.visible_text, vocabulary: @vocabulary, title:)
         end
       end
 

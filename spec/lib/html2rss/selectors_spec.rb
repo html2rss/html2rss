@@ -502,6 +502,24 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
+    context 'when the page language is Chinese' do
+      let(:body) do
+        <<~HTML
+          <html lang="zh-Hant"><body>
+            <article><a href="/a"><h1>港口重新開放</h1></a><p>写真</p><p>2024-03-12 | 独自</p></article>
+          </body></html>
+        HTML
+      end
+      let(:selectors) { { items: { selector: 'article', enhance: true }, url: { selector: 'a', extractor: 'href' } } }
+
+      it 'keeps a bare 写真 line as a word and reads a dated 独自 chip as a date', :aggregate_failures do
+        _baseline, enhanced, = instance.each_enhance_pair.first
+
+        expect(enhanced[:description]).to eq('写真')
+        expect(enhanced[:published_at]).to eq(DateTime.parse('2024-03-12T00:00:00Z'))
+      end
+    end
+
     context 'when extractor returns nil' do
       before do
         allow(Html2rss::Html::ArticleExtractor).to receive(:call).and_return(nil)

@@ -187,8 +187,13 @@ module Html2rss
         response,
         pagination_config: selectors.dig(:items, :pagination)
       )
-      engines = page_responses.lazy.map { |page| Selectors.new(page, selectors:, time_zone: config.time_zone) }
-      collect_selector_pages(engines)
+      collect_selector_pages(selector_engines(page_responses, selectors, config, response))
+    end
+
+    # One page language for every page: the first response's, as the channel and auto-source read it.
+    def selector_engines(page_responses, selectors, config, first_response)
+      vocabulary = Vocabulary[Channel.language_for(first_response, config.channel)]
+      page_responses.lazy.map { |page| Selectors.new(page, selectors:, time_zone: config.time_zone, vocabulary:) }
     end
 
     # Stops at the first empty page after articles were found; drop tallies sum over the pages read.

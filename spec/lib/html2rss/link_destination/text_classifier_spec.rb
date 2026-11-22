@@ -376,4 +376,24 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       %i[en de sv].each { |lang| expect(scoped.call(lang).read_more?('Lire la suite')).to be(true), lang.to_s }
     end
   end
+
+  describe 'terms of a page-only language' do
+    let(:zh) { described_class.new(vocabulary: Html2rss::Vocabulary[:zh]) }
+    let(:everything) { described_class.new }
+
+    it 'reads a whole label on a page in that language only, in every reading', :aggregate_failures do
+      expect(zh.utility_chrome?('关于我们')).to be(true)
+      expect(zh.utility?('登录')).to be(true)
+      expect([zh.utility_prefix?('登录'), zh.recommended?('相关阅读 (2)')]).to eq([false, true])
+      expect([everything.utility_chrome?('关于我们'), everything.recommended?('相关阅读')]).to eq([false, false])
+    end
+
+    it 'reads no trailing word and no opener', :aggregate_failures do
+      ['帮助 受灾群众重建家园', '评论 美国大选结果影响全球市场', '相关阅读：港口重新开放'].each do |headline|
+        expect(zh.utility_chrome?(headline)).to be(false), headline
+        expect(zh.utility?(headline)).to be(false), headline
+        expect(zh.recommended?(headline)).to be(false), headline
+      end
+    end
+  end
 end

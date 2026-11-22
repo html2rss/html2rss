@@ -9,16 +9,17 @@ RSpec.describe Html2rss::Vocabulary do
 
   describe '::ALL' do
     # Every (concept, language) cell that holds no term, and nothing else: a human-language concept has terms in
-    # all eleven languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese has
-    # no lead-in either; Russian has none because its bare "more" and "about" are ordinary headline openers),
+    # all eleven shared languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese
+    # has no lead-in either; Russian has none because its bare "more" and "about" are ordinary headline openers),
     # +page_link+ is the English-only pattern (the other languages are read through +page_link_label+), a date
     # piece and an element label exist in one language each, a clock suffix in German and Russian, the podcast
     # words are words of six languages and the unspaced (kana) ones exist in Japanese only. Russian lists a path
     # word only for the concepts whose Cyrillic segments occur in practice (+/видео/+, +/пресс-релизы/+,
-    # +/помощь/+); the others are read through the Latin words every language shares.
+    # +/помощь/+); the others are read through the Latin words every language shares. A page-only language (see
+    # +PAGE_ONLY+, below) is no shared language and has its own rule.
     let(:none_cells) do
       all = %i[en de fr es it nl pl sv ja pt ru]
-      {
+      cells = {
         path_section: %i[ru], path_article: %i[ru], path_profile: %i[ru], path_office: %i[ru],
         path_non_article: %i[ru], path_taxonomy: %i[ru], path_vanity: %i[ru], path_soft_utility: %i[ru],
         clock_suffix: all - %i[de ru],
@@ -32,10 +33,28 @@ RSpec.describe Html2rss::Vocabulary do
         podcast_word: %i[de nl pl sv ja],
         podcast_unspaced: all - %i[ja]
       }
+      cells
+    end
+
+    # A page-only language declares terms only for the concepts a page scope reads (path words, the scoped
+    # patterns and the type markers), and no ambiguous term: it applies as a whole, on its own pages.
+    it 'has each page-only language declare only concepts that a page scope reads', :aggregate_failures do
+      read_by_scope = described_class::SCOPED_WORDS + described_class::SCOPED_PATTERNS + %i[type_marker]
+
+      described_class::PAGE_ONLY.each do |language|
+        declared = language.terms.select { |_concept, terms| terms.any? }.keys
+
+        expect(declared - read_by_scope).to be_empty, "#{language.code} declares #{declared - read_by_scope}"
+        expect(language.terms.keys).to match_array(described_class::CONCEPTS)
+        expect(language.ambiguous).to be_empty
+        expect(described_class::ALL).not_to include(language)
+      end
     end
 
     it 'lists the languages in a fixed order', :aggregate_failures do
       expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru])
+      expect(described_class::PAGE_ONLY).to eq([described_class::Zh])
+      expect(described_class::LANGUAGES).to eq(languages + described_class::PAGE_ONLY)
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
     end
@@ -57,7 +76,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(languages.flat_map { _1.terms.values }.select(&:empty?)).to all(be(described_class::NONE))
     end
 
-    it 'has terms in all eleven languages for each of the other concepts', :aggregate_failures do
+    it 'has terms in every language for each of the other concepts', :aggregate_failures do
       (described_class::CONCEPTS - none_cells.keys).each do |concept|
         expect(languages.reject { _1.terms.fetch(concept).any? }).to be_empty, concept.to_s
       end
@@ -222,24 +241,79 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese).to be_frozen
     end
 
-    it 'shares the frozen ambiguous tables of the all scope: it differs only in type markers', :aggregate_failures do
-      expect(chinese.ambiguous_words).to be(everything.ambiguous_words)
-      expect(chinese.alternations).to be(everything.alternations)
+    it 'is the all scope plus its own terms, which no other scope has', :aggregate_failures do
+      expect(chinese.ambiguous_words).to eq(everything.ambiguous_words)
+      expect(chinese.alternations).to eq(everything.alternations)
+      expect(chinese.own_alternation(:utility)).to include('关于我们').and include('關於我們')
+      expect(chinese.own_alternation(:recommended)).to include('推荐阅读')
       expect(chinese.type_markers).to be_frozen
+      (described_class::SCOPES.values - [chinese]).each do |scope|
+        expect(scope.own_alternations.values).to all(eq('')), scope.code.to_s
+        expect(scope.own_words.values).to all(be_empty), scope.code.to_s
+      end
     end
 
-    it 'leaves out exactly the Chinese words among the type markers', :aggregate_failures do
-      expect(described_class::CHINESE_WORDS).to eq(Set['独自', '写真'])
-      expect(described_class::CHINESE_WORDS).to be_a(Set).and be_frozen
-      expect(described_class::CHINESE_WORDS - described_class::Ja.terms.fetch(:type_marker)).to be_empty
-      expect(chinese.type_markers).to eq(described_class.words(:type_marker) - described_class::CHINESE_WORDS)
+    it 'leaves out exactly the plain words of Chinese among the shared type markers', :aggregate_failures do
+      plain = described_class::Zh.plain_words
+
+      expect(plain).to eq(Set['独自', '写真'])
+      expect(plain).to be_a(Set).and be_frozen
+      expect(plain - described_class::Ja.terms.fetch(:type_marker)).to be_empty
+      expect(described_class::Zh.terms.fetch(:type_marker)).to be_empty
+      expect(chinese.type_markers).to eq(described_class.words(:type_marker) - plain)
+      expect(chinese.type_markers).to include('速報', '詳報', '動画')
     end
 
-    it 'gives every other scope the identical full marker set', :aggregate_failures do
+    it 'defaults a language to no ambiguous term and no plain word, both frozen', :aggregate_failures do
+      plain = described_class::Language.new(code: :xx, terms: {}.freeze)
+
+      expect([plain.ambiguous, plain.plain_words]).to all(be_empty.and(be_frozen))
+    end
+
+    it 'takes the plain words from the page-only language, so another one keeps 独自 and 写真', :aggregate_failures do
+      other = described_class::Language.new(code: :xx, plain_words: Set['速報'].freeze,
+                                            terms: described_class::Zh.terms.merge(type_marker: %w[xx-tag]).freeze)
+      scope = described_class.build_scope(:xx, described_class::ALL, own: [other])
+
+      expect(scope.type_markers).to include('独自', '写真', 'xx-tag')
+      expect(scope.type_markers).to be_frozen
+      expect(scope.type_markers).not_to include('速報')
+      expect(described_class.build_scope(:yy, described_class::ALL, own: []).type_markers)
+        .to be(described_class.words(:type_marker))
+    end
+
+    it 'gives every other scope, all and ja included, the identical full marker set without Chinese terms',
+       :aggregate_failures do
       others = described_class::SCOPES.values - [chinese]
 
       expect(others.map(&:type_markers)).to all(equal(described_class.words(:type_marker)))
       expect(described_class.words(:type_marker)).to include('独自', '写真', '速報', '動画')
+      expect(described_class.words(:type_marker)).not_to include('快讯', '獨家')
+      expect(described_class[:ja].type_markers).to be(described_class[nil].type_markers)
+    end
+
+    # The tables of every language but Chinese are what the eleven shared language files compile to: a Chinese term
+    # is in no shared table, so +all+, +ja+ and every other language read the same terms as before Chinese existed.
+    it 'adds no Chinese term to a shared table, to the all scope or to any other language scope', :aggregate_failures do
+      shared = described_class::ALL
+      terms = ->(concept) { shared.flat_map { _1.terms.fetch(concept) } }
+
+      (described_class::PATTERN_CONCEPTS - described_class::SCOPED_PATTERNS).each do |concept|
+        expect(described_class.alternation(concept)).to eq(described_class.compile(terms.call(concept))), concept.to_s
+      end
+      described_class::SCOPED_PATTERNS.each do |concept|
+        flagged = described_class.ambiguous_terms(shared, concept)
+
+        expect(described_class.unambiguous_alternation(concept))
+          .to eq(described_class.compile(terms.call(concept) - flagged)), concept.to_s
+        expect(everything.ambiguous_alternation(concept)).to eq(described_class.compile(flagged)), concept.to_s
+      end
+      (described_class::WORD_CONCEPTS - described_class::SCOPED_WORDS).each do |concept|
+        expect(described_class.words(concept)).to eq(Set.new(terms.call(concept))), concept.to_s
+      end
+      described_class::SCOPED_WORDS.each do |concept|
+        expect(everything.words(concept)).to eq(Set.new(terms.call(concept))), concept.to_s
+      end
     end
   end
 
@@ -352,10 +426,20 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'unions the shared Set with the ambiguous words, whatever they overlap', :aggregate_failures do
       overlapping = described_class::Scope.new(code: :xx, ambiguous_words: { path_taxonomy: %w[category tema] }.freeze,
-                                               alternations: {}.freeze,
+                                               alternations: {}.freeze, own_words: { path_taxonomy: [] }.freeze,
+                                               own_alternations: {}.freeze,
                                                type_markers: described_class.words(:type_marker))
 
       expect(overlapping.words(:path_taxonomy)).to eq(described_class.unambiguous_words(:path_taxonomy) | %w[tema])
+    end
+
+    it 'adds the own words of a page-only language to the shared Set', :aggregate_failures do
+      own = described_class::Scope.new(code: :xx, ambiguous_words: { path_taxonomy: %w[tema] }.freeze,
+                                       alternations: {}.freeze, own_words: { path_taxonomy: %w[ownword] }.freeze,
+                                       own_alternations: {}.freeze, type_markers: described_class.words(:type_marker))
+
+      expect(own.words(:path_taxonomy)).to eq(described_class.unambiguous_words(:path_taxonomy) | %w[tema ownword])
+      expect(own.words(:path_taxonomy)).to be_frozen
     end
 
     it 'reuses the identical shared Set where a scope adds no ambiguous word', :aggregate_failures do
@@ -380,7 +464,7 @@ RSpec.describe Html2rss::Vocabulary do
 
       expect(shared).to include('contact', 'subscribe')
       expect(shared).not_to include('dela', 'plus')
-      every = described_class.compile(languages.flat_map { _1.terms.fetch(:utility) }).split('|')
+      every = described_class.compile(described_class::ALL.flat_map { _1.terms.fetch(:utility) }).split('|')
 
       expect((shared + flagged).uniq).to match_array(every.uniq)
     end

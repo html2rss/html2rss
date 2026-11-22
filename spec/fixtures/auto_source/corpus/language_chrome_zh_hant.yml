@@ -1,0 +1,9 @@
+---
+case: Six invented news cards (two headlines open with a label word and a space), page shortcuts and a labelled pager, in language "zh-Hant"; only the six headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/bridge-lights-repaired
+- https://example.com/news/2026/11/community-recovery-volunteers
+- https://example.com/news/2026/11/missing-boat-search-day-three
