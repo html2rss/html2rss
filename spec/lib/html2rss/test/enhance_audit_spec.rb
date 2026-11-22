@@ -8,7 +8,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
     context 'with stubbed enhance pairs' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- shared stub wiring
       let(:selectors) { { items: { selector: 'li', enhance: true } } }
       let(:response) { instance_double(Html2rss::RequestService::Response) }
-      let(:engine) { instance_double(Html2rss::Selectors) }
+      let(:engine) { instance_double(Html2rss::Selectors, vocabulary: Html2rss::Vocabulary[nil]) }
       let(:plain_item) { Nokogiri::HTML.fragment('<li>x</li>').children.first }
       let(:pairs) { [] }
       let(:slice) { described_class.probe(response:, selectors:, time_zone:) }

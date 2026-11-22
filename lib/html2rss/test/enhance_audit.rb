@@ -41,7 +41,7 @@ module Html2rss
         selector_engine.each_enhance_pair(linked_only: true) do |baseline, enhanced, item|
           item_keys = keys_added(baseline, enhanced)
           merge_keys_added!(gains, item_keys)
-          append_item_warnings!(warnings, item:, enhanced:, item_keys:)
+          append_item_warnings!(warnings, item:, enhanced:, item_keys:, vocabulary: selector_engine.vocabulary)
         end
 
         finalize_gains!(gains)
@@ -142,7 +142,7 @@ module Html2rss
       end
       private_class_method :finalize_gains!
 
-      def self.append_item_warnings!(warnings, item:, enhanced:, item_keys:)
+      def self.append_item_warnings!(warnings, item:, enhanced:, item_keys:, vocabulary:)
         curator_added = item_keys.slice(*CURATOR_KEYS)
         return if curator_added.empty?
         return unless curator_added.key?(:description)
@@ -150,7 +150,7 @@ module Html2rss
         description = enhanced[:description].to_s.strip
         return if description.empty?
 
-        if category_only_description?(description, enhanced)
+        if category_only_description?(description, enhanced, vocabulary)
           warnings << :enhance_category_only_description
         elsif image_only_description?(description, item)
           warnings << :enhance_image_only_description
@@ -158,9 +158,9 @@ module Html2rss
       end
       private_class_method :append_item_warnings!
 
-      def self.category_only_description?(description, enhanced)
+      def self.category_only_description?(description, enhanced, vocabulary)
         normalized = description.downcase
-        return true if Html2rss::Article::Title::TYPE_MARKERS.include?(normalized)
+        return true if vocabulary.type_markers.include?(normalized)
 
         categories = Array(enhanced[:categories]).map { |category| category.to_s.strip }
         categories.any? { |category| category.casecmp?(description) }

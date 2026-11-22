@@ -187,7 +187,10 @@ module Html2rss
         response,
         pagination_config: selectors.dig(:items, :pagination)
       )
-      engines = page_responses.lazy.map { |page| Selectors.new(page, selectors:, time_zone: config.time_zone) }
+      engines = page_responses.lazy.map do |page|
+        Selectors.new(page, selectors:, time_zone: config.time_zone,
+                            vocabulary: Vocabulary[Channel.language_for(page, config.channel)])
+      end
       collect_selector_pages(engines)
     end
 

@@ -699,7 +699,8 @@ RSpec.describe Html2rss::FeedPipeline do
         described_class.new({}).extract(config: selector_config, response:, request_session: session)
 
         expect(Html2rss::Selectors).to have_received(:new).with(response, selectors: selector_config.selectors,
-                                                                          time_zone: 'Europe/Berlin')
+                                                                          time_zone: 'Europe/Berlin',
+                                                                          vocabulary: be(Html2rss::Vocabulary[nil]))
       end
     end
 
