@@ -6,8 +6,8 @@ module Html2rss
     # {PAGE_ONLY}: its terms apply on a page whose language resolves to +zh+, and nowhere else. Han text has no
     # word boundary and a headline may open with any label word, so a label term is read as a whole text only (no
     # trailing word, no headline opener, see {LinkDestination::TextClassifier}). Only the concepts read through a
-    # {Scope} are listed; the others stay +NONE+ until their readers take the page scope. A term whose precision is
-    # unclear is left out.
+    # {Scope} are listed (path words, label words, the call to action and read-more); the others stay +NONE+ until
+    # their readers take the page scope. A term whose precision is unclear is left out.
     Zh = Language.new(
       code: :zh,
       terms: {
@@ -23,8 +23,13 @@ module Html2rss
         path_media: NONE,
         path_deep_post_context: NONE,
         utility_prefix: NONE,
-        utility_cta: NONE,
-        read_more: NONE,
+        utility_cta: %w[
+          订阅电子报 訂閱電子報 订阅我们的电子报 訂閱我們的電子報 免费订阅 免費訂閱 立即订阅 立即訂閱 立即注册 立即註冊
+        ],
+        read_more: %w[
+          阅读全文 閱讀全文 阅读更多 閱讀更多 阅读原文 閱讀原文 点击阅读全文 點擊閱讀全文 继续阅读 繼續閱讀 查看全文
+          了解更多 瞭解更多
+        ],
         topic_lead: NONE,
         topic_preposition: NONE,
         read_more_suffix: NONE,

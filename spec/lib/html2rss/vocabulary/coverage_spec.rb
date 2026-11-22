@@ -219,6 +219,29 @@ RSpec.describe Html2rss::Vocabulary do
       %w[推荐阅读 推薦閱讀 相关阅读 相關閱讀 猜你喜欢 猜你喜歡].each { expect(zh.recommended?(_1)).to be(true), _1 }
     end
 
+    it 'reads Chinese read-more and call-to-action labels as whole labels, as chrome and junk', :aggregate_failures do
+      %w[阅读全文 閱讀全文 了解更多 瞭解更多 继续阅读 繼續閱讀 查看全文].each do |label|
+        expect([zh.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      %w[订阅电子报 訂閱我們的電子報 立即订阅 免費訂閱].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
+      ['→ 阅读全文 →', '[了解更多]'].each { expect(zh.read_more?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps a headline that opens with a read-more or call-to-action word a headline', :aggregate_failures do
+      %w[阅读全文的人数创新高 了解更多国家的经验 继续阅读文章会发现 立即订阅用户突破百万 免费订阅制即将结束
+         阅读全文需要付费吗].each do |headline|
+        expect([zh.read_more?(headline), zh.utility_chrome?(headline), junk_reason.call(headline)])
+          .to eq([false, false, nil]), headline
+      end
+    end
+
+    it 'reads those labels on a Chinese page only', :aggregate_failures do
+      [nil, :ja, :en, 'ja-JP'].each do |lang|
+        expect(text.call(lang).read_more?('阅读全文')).to be(false), lang.inspect
+        expect(text.call(lang).utility_chrome?('立即订阅')).to be(false), lang.inspect
+      end
+    end
+
     it 'reads a Chinese label on a Chinese page only', :aggregate_failures do
       labels.product([nil, :ja, :en, :de, 'ja-JP']).each do |label, lang|
         expect(text.call(lang).utility_chrome?(label)).to be(false), "#{label} #{lang.inspect}"
