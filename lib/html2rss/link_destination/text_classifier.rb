@@ -99,12 +99,11 @@ module Html2rss
       # change no letter, so a label ("\u200FContact\u200F") is read without them. Only the label text is
       # read this way; extracted titles and descriptions keep them.
       BIDI_MARKS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/
-      # Zero-width non-joiner and joiner (with the blanks around them) at either edge of a label. Inside a word
-      # they spell Persian, Urdu and Indic words, so only the edges are trimmed.
-      EDGE_JOINERS = /\A[\s\u200C\u200D]+|(?<![\s\u200C\u200D])[\s\u200C\u200D]+\z/
-      # Cheap test that {EDGE_JOINERS} has something to trim, so an ordinary label allocates nothing.
-      EDGE_JOINER_PROBE = /\A\s*[\u200C\u200D]|[\u200C\u200D]\s*\z/
-      private_constant :BIDI_MARKS, :EDGE_JOINERS, :EDGE_JOINER_PROBE
+      # Zero-width non-joiner and joiner. Inside a word they spell Persian, Urdu and Indic words, so a label
+      # holding one is trimmed only at its edges, up to the first and last {LABEL_CHAR}.
+      JOINER = /[\u200C\u200D]/
+      LABEL_CHAR = /[^\s\u200C\u200D]/
+      private_constant :BIDI_MARKS, :JOINER, :LABEL_CHAR
 
       # @param memoize [Boolean] remember normalized texts for this instance; opt in only for an instance
       #   scoped to one extraction, never for a shared constant
@@ -150,7 +149,7 @@ module Html2rss
 
       # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, without bidi
       # marks ({BIDI_MARKS}), without its trailing new-window notice ("(opens in new tab)") and without
-      # joiners at its edges ({EDGE_JOINERS}).
+      # joiners at its edges ({JOINER}).
       def normalize(text)
         string = text.to_s
         return compute_normal(string) unless @normalized
@@ -162,8 +161,10 @@ module Html2rss
         text = string.unicode_normalize(:nfc)
         text = text.gsub(BIDI_MARKS, '') if text.match?(BIDI_MARKS)
         text = text.sub(NEW_WINDOW_NOTICE, '')
-        text.match?(EDGE_JOINER_PROBE) ? text.gsub(EDGE_JOINERS, '') : text
+        text.match?(JOINER) ? trim_edges(text) : text
       end
+
+      def trim_edges(text) = text[text.index(LABEL_CHAR)..text.rindex(LABEL_CHAR)]
     end
   end
 end
