@@ -227,10 +227,7 @@ RSpec.describe Html2rss::FeedResolution do
     it 'extracts the resolved page through a session for it and records that hop', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       retry_response = retry_session.fetch_initial_response
       allow(session).to receive(:follow_up).and_return(retry_response)
-      allow(Html2rss::PageRecon).to receive(:assess).and_return(
-        Html2rss::PageRecon::Assessment.new(surface_category: :listing, articles_count: 0, admission_drops: {},
-                                            html_response: true)
-      )
+      allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:listing)
       allow(described_class).to receive(:call).and_return(applied_resolution)
       allow(pipeline).to receive(:extract).and_return(one_article_extraction)
 
@@ -288,10 +285,7 @@ RSpec.describe Html2rss::FeedResolution do
 
     it 'returns nil when policy rejects after the page is assessed', :aggregate_failures do
       articles = Array.new(3) { instance_double(Html2rss::Article, scraper: Html2rss::AutoSource::Scraper::Schema) }
-      assessment = Html2rss::PageRecon::Assessment.new(
-        surface_category: :listing, articles_count: 3, admission_drops: {}, html_response: true
-      )
-      allow(Html2rss::PageRecon).to receive(:assess).and_return(assessment)
+      allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:listing)
       allow(described_class).to receive(:call).and_return(applied_resolution)
       allow(pipeline).to receive(:extract).and_return(one_article_extraction)
 
@@ -300,7 +294,7 @@ RSpec.describe Html2rss::FeedResolution do
         articles:, scrape_target:, state:, budget:
       )
 
-      expect(Html2rss::PageRecon).to have_received(:assess).with(response:, url: entry_url)
+      expect(Html2rss::PageRecon).to have_received(:surface_category_for).with(response:, url: entry_url)
       expect(outcome).to be_nil
     end
 
@@ -314,10 +308,6 @@ RSpec.describe Html2rss::FeedResolution do
 
     it 'returns nil for a feed response' do
       feed = instance_double(Html2rss::RequestService::Response, feed_response?: true)
-      assessment = Html2rss::PageRecon::Assessment.new(
-        surface_category: :listing, articles_count: 0, admission_drops: {}, html_response: false
-      )
-      allow(Html2rss::PageRecon).to receive(:assess).and_return(assessment)
       allow(described_class).to receive(:call).and_return(applied_resolution)
       allow(pipeline).to receive(:extract).and_return(one_article_extraction)
 

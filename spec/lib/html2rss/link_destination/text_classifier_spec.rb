@@ -139,4 +139,45 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect(classifier.read_more?('(opens in new window)')).to be(false)
     end
   end
+
+  describe 'memoization' do
+    let(:first) { +'Read more (opens in new tab)' }
+    let(:second) { first.dup }
+
+    before { [first, second].each { |text| allow(text).to receive(:unicode_normalize).and_call_original } }
+
+    it 'normalizes repeated equal text once when opted in', :aggregate_failures do
+      memoized = described_class.new(memoize: true)
+
+      expect(Array.new(3) { memoized.read_more?(first) }).to all(be(true))
+      expect(memoized.utility?(second)).to be(false)
+      expect(first).to have_received(:unicode_normalize).once
+      expect(second).not_to have_received(:unicode_normalize)
+    end
+
+    it 'retains nothing by default, as the shared constants are built', :aggregate_failures do
+      shared = described_class.new
+
+      [first, second].each { |text| shared.read_more?(text) }
+      expect(first).to have_received(:unicode_normalize).once
+      expect(second).to have_received(:unicode_normalize).once
+    end
+
+    it 'keys on the string value, so mutating a caller string cannot alias an entry', :aggregate_failures do
+      memoized = described_class.new(memoize: true)
+      text = +'Read more'
+
+      expect(memoized.read_more?(text)).to be(true)
+      expect(memoized.read_more?(text.replace('Quarterly results'))).to be(false)
+    end
+
+    it 'treats nil as an empty label and does not cache a raising normalization', :aggregate_failures do
+      memoized = described_class.new(memoize: true)
+      allow(first).to receive(:unicode_normalize).and_raise(Encoding::CompatibilityError)
+
+      expect(memoized.utility?(nil)).to be(false)
+      expect { 2.times { memoized.utility?(first) } }.to raise_error(Encoding::CompatibilityError)
+      expect(first).to have_received(:unicode_normalize).once
+    end
+  end
 end

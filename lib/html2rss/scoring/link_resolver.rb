@@ -24,7 +24,7 @@ module Html2rss
       def initialize(base_url)
         @base_url = base_url
         @by_href = {}
-        @text_classifier = LinkDestination::TextClassifier.new
+        @text_classifier = LinkDestination::TextClassifier.new(memoize: true)
       end
 
       # @return [LinkDestination::TextClassifier]

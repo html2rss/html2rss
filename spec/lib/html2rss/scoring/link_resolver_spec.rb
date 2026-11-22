@@ -116,6 +116,17 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     it 'exposes a text classifier that answers utility questions' do
       expect(described_class.new('https://example.com/').text_classifier.utility?('Contact us')).to be(true)
     end
+
+    it 'normalizes repeated link text once per resolver', :aggregate_failures do
+      resolver = described_class.new('https://example.com/')
+      texts = Array.new(2) { +'Contact us' }
+      texts.each do |text|
+        allow(text).to receive(:unicode_normalize).and_call_original
+        resolver.utility_text?(text)
+      end
+      expect(texts.first).to have_received(:unicode_normalize).once
+      expect(texts.last).not_to have_received(:unicode_normalize)
+    end
   end
 
   describe '#destination_facts memoization and href extraction' do

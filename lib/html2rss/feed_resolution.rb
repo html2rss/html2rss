@@ -133,7 +133,7 @@ module Html2rss
       private
 
       attr_reader :pipeline, :config, :response, :session, :strategy, :resources, :articles,
-                  :scrape_target, :state, :budget, :assessment
+                  :scrape_target, :state, :budget, :surface_category
 
       def log_budget_exhausted
         Log.warn({
@@ -166,10 +166,8 @@ module Html2rss
         return false if response.feed_response?
         return false if budget.remaining_requests < MIN_BUDGET_REMAINING
 
-        @assessment = PageRecon.assess(response:, url: config.url)
-        Policy.resolve?(
-          config:, articles:, surface_category: assessment.surface_category
-        )
+        @surface_category = PageRecon.surface_category_for(response:, url: config.url)
+        Policy.resolve?(config:, articles:, surface_category:)
       end
 
       def run_tournament
@@ -179,7 +177,7 @@ module Html2rss
           session:,
           config:,
           articles:,
-          surface_category: assessment.surface_category
+          surface_category:
         )
       end
 
