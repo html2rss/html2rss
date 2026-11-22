@@ -1,0 +1,726 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Evidence report for adding (or changing) one vocabulary language. It never fetches anything: PAGES holds saved
+# pages plus a manifest.tsv of "<file><TAB><base url>" lines (the format of bin/compare-revisions).
+#
+# The head is the caller's checkout (never touched); BASE is built as a detached temporary worktree that is
+# removed on exit, success or failure. Each tree runs one worker process (that tree's lib/ and Gemfile), so
+# nothing is loaded twice in one process. The report goes to OUT/report.md (default tmp/language-check/CODE,
+# git-ignored: it holds page text and hostnames) and a short summary to stdout. A human judges the differences:
+# the exit status is 0 whenever the tool ran.
+#
+# 1. Feed changes: uncapped items per page, base vs head: added, removed, reordered, retitled. A page that
+#    raised in only one tree is a change; a page that raised in both is named, not compared.
+# 2. Link classification changes: unique anchor texts per page whose utility?, utility_chrome?, recommended?,
+#    read_more? or junk reason differs, read in CODE's vocabulary scope.
+# 3. Term evidence (head): hits of CODE's loose label terms and path words on the saved pages, and which
+#    matchers read them.
+# 4. Cost: allocations per page and per allocation site (ObjectSpace tracing), retained bytes after
+#    require 'html2rss' in fresh processes.
+#
+# Usage: mise exec -- bin/language-check --code CODE --pages DIR [--base REV] [--out DIR]
+#   (or make language-check CODE=ru PAGES=/abs/dir [BASE=origin/master] [OUT=/abs/dir])
+# Needs the gems the revisions' Gemfile.lock pins (set BUNDLE_PATH when the bundle is not under ./vendor/bundle).
+
+# The worker pins the revision's gems before anything else loads (json is a default gem).
+require 'bundler/setup' if ARGV.include?('--worker')
+require 'fileutils'
+require 'json'
+require 'open3'
+require 'optparse'
+require 'rbconfig'
+require 'tmpdir'
+require_relative '../spec/support/revision_comparison'
+
+# One report per language: workers measure a tree, the rest compares two measurements.
+module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare and report of one tool
+  # A failure of the tool itself (bad input, a tree that cannot run): one line, non-zero exit.
+  class Failure < StandardError; end
+
+  REPO_ROOT = File.expand_path('..', __dir__)
+  CODE_FORMAT = /\A[a-z]{2,3}\z/
+  UNCAPPED = 100_000
+  MEMORY_RUNS = 5
+  LONG_WORDS = 4
+  SAMPLES = 3
+  SUMMARY_LINES = 30
+  FAILED_EXIT = 2
+  LABEL_CONCEPTS = %i[utility utility_prefix recommended].freeze
+  # The TextClassifier reading each matcher belongs to, as the predicate a caller reads it through.
+  PREDICATES = { utility_prefix: 'utility_prefix?', utility: 'utility?', utility_label: 'utility_chrome?',
+                 recommended: 'recommended?' }.freeze
+  CHANGE_COLUMNS = %w[utility? utility_chrome? recommended? read_more? junk_reason].freeze
+  MEMORY_SNIPPET = "require 'bundler/setup'; require 'objspace'; require 'html2rss'; " \
+                   '3.times { GC.start }; puts ObjectSpace.memsize_of_all'
+
+  class << self # rubocop:disable Metrics/ClassLength -- the tool's whole measure/compare/run surface, one owner
+    # ----- inputs -----
+
+    # @param options [Hash] parsed command line
+    # @return [Array<RevisionComparison::Page>] the manifest pages, each file present
+    # @raise [Failure] with one line when CODE, PAGES or the manifest is missing or invalid
+    def validate!(options)
+      code = options[:code].to_s
+      raise Failure, 'CODE is required (a two or three letter language code, e.g. CODE=ru)' if code.empty?
+      unless code.match?(CODE_FORMAT)
+        raise Failure,
+              "CODE #{code.inspect} is not a language code (two or three lowercase letters)"
+      end
+
+      load_manifest(options[:pages])
+    end
+
+    # @param dir [String, nil] pages directory
+    # @return [Array<RevisionComparison::Page>]
+    def load_manifest(dir)
+      pages = parse_pages(manifest_path(dir))
+      missing = pages.find { !File.file?(File.join(dir, _1.file)) }
+      raise Failure, "manifest names a missing page: #{missing.file}" if missing
+
+      pages
+    end
+
+    # @param code [String] language code
+    # @return [Html2rss::Vocabulary::Language] the head's language; needs html2rss loaded
+    # @raise [Failure] when the head's vocabulary has no such language
+    def language(code)
+      Html2rss::Vocabulary::ALL.find { _1.code == code.to_sym } ||
+        raise(Failure, "unknown language #{code.inspect}: the vocabulary has " \
+                       "#{Html2rss::Vocabulary::ALL.map { _1.code.to_s }.join(', ')}")
+    end
+
+    # ----- worker: measure one tree -----
+
+    # Runs inside a tree, so that tree's lib/ is measured.
+    #
+    # @param pages [Array<RevisionComparison::Page>]
+    # @param dir [String] pages directory
+    # @param code [String] language code
+    # @param trace [Boolean] whether to tally allocation sites (slow)
+    # @param evidence [Boolean] whether to compute term evidence (head only; needs the language)
+    # @return [Hash] JSON-ready measurement: +pages+, +anchors+, +sites+ and +evidence+
+    def measure(pages, dir, code, trace: true, evidence: false)
+      lang = language(code) if evidence
+      facts = pages.to_h { |page| [page.file, anchor_facts(File.join(dir, page.file), page.url)] }
+      runs, sites = page_runs(pages, dir, trace:)
+      { 'pages' => runs, 'sites' => sites, 'anchors' => facts.transform_values { classify(_1[:texts], code) },
+        'invalid_utf8' => facts.reject do |_, fact|
+          fact[:valid]
+        end.keys, 'evidence' => (term_evidence(lang, facts) if evidence) }
+    end
+
+    # :nocov: the spawning half (a worker and five memory processes per tree) is exercised end to end by a real
+    # run, not by the suite: it takes about a minute.
+
+    # @param tree [String] revision tree root
+    # @return [Hash{String => String}] environment of a process running in the tree
+    def worker_env(tree)
+      env = { 'BUNDLE_GEMFILE' => File.join(tree, 'Gemfile') }
+      bundle = File.join(REPO_ROOT, 'vendor', 'bundle')
+      env['BUNDLE_PATH'] = bundle if !ENV.key?('BUNDLE_PATH') && Dir.exist?(bundle)
+      env
+    end
+
+    # ----- orchestration -----
+
+    # @param options [Hash] validated command line
+    # @param pages [Array<RevisionComparison::Page>]
+    # @return [String] the report directory
+    def run(options, pages)
+      base_sha = git('rev-parse', '--verify', '--quiet', "#{options.fetch(:base)}^{commit}",
+                     error: "unknown BASE revision #{options.fetch(:base).inspect}")
+      meta = head_meta(options.fetch(:code), pages).merge(base_sha:)
+      head = measure_tree(REPO_ROOT, options, evidence: true)
+      base = with_base_worktree(base_sha) { |tree| measure_tree(tree, options, evidence: false) }
+      write_report(options.fetch(:out), meta, base, head)
+    end
+
+    # @return [Hash] the head's SHA and whether its tracked files differ from it (results of a dirty tree are
+    #   not reproducible from the SHA)
+    def head_meta(code, pages)
+      dirty = !git('status', '--porcelain', '--untracked-files=no', error: 'git status failed').empty?
+      { code:, pages:, head_sha: git('rev-parse', 'HEAD', error: 'no HEAD commit'), dirty: }
+    end
+    # :nocov:
+
+    # Builds BASE as a detached worktree and removes exactly that worktree on exit, however the block ends.
+    # Nothing repo-global (no prune): another worktree of the developer is never touched.
+    #
+    # @param sha [String]
+    # @yieldparam tree [String] the worktree path
+    def with_base_worktree(sha)
+      Dir.mktmpdir('language-check-') do |tmp|
+        tree = File.join(tmp, 'base')
+        git('worktree', 'add', '--detach', '--quiet', tree, sha, error: "cannot build BASE #{sha[0, 10]}")
+        begin
+          yield tree
+        ensure
+          remove_worktree(tree)
+        end
+      end
+    end
+
+    # ----- comparison -----
+
+    # @param base [Array<Array(String, String)>] +[url, title]+ items in order
+    # @param head [Array<Array(String, String)>]
+    # @return [Hash{Symbol => Array}] +added+, +removed+, +moved+ (url, base rank, head rank among shared items)
+    #   and +retitled+ (url, base title, head title)
+    def feed_diff(base, head)
+      base_urls = base.map(&:first).uniq
+      head_urls = head.map(&:first).uniq
+      { added: head.reject { base_urls.include?(_1.first) }, removed: base.reject { head_urls.include?(_1.first) },
+        moved: moved_items(base_urls & head_urls, head_urls & base_urls),
+        retitled: retitled_items(base.to_h, head.to_h) }
+    end
+
+    # @return [Array<Array(String, Integer, Integer)>] url, base rank, head rank among the shared items
+    def moved_items(shared_base, shared_head)
+      shared_head.each_with_index.filter_map do |url, rank|
+        [url, shared_base.index(url), rank] if shared_base[rank] != url
+      end
+    end
+
+    # @return [Array<Array(String, String, String)>] url, base title, head title
+    def retitled_items(base, head)
+      head.filter_map { |url, title| [url, base[url], title] if base.key?(url) && base[url] != title }
+    end
+
+    # @param base [Hash{String => Array}] text => classification, of one page
+    # @param head [Hash{String => Array}]
+    # @return [Hash{String => Array}] text => +[base, head]+ for the anchors whose result differs
+    def anchor_diff(base, head)
+      head.filter_map { |text, result| [text, [base[text], result]] if base.key?(text) && base[text] != result }.to_h
+    end
+
+    # @param base [Hash] allocation sites of the base tree, +"Class\tfile#method" => count+
+    # @param head [Hash]
+    # @return [Hash{Symbol => Hash}] +added+, +removed+ (site => count) and +changed+ (site => +[base, head]+)
+    def site_diff(base, head)
+      {
+        added: head.except(*base.keys), removed: base.except(*head.keys),
+        changed: head.filter_map do |site, count|
+          [site, [base[site], count]] if base.key?(site) && base[site] != count
+        end.to_h
+      }
+    end
+
+    # @param runs [Array<Integer>] retained bytes, one per fresh process
+    # @return [Hash{Symbol => Numeric}] +mean+, +min+ and +max+
+    def stats(runs) = { mean: runs.sum.fdiv(runs.size), min: runs.min, max: runs.max }
+
+    private
+
+    def manifest_path(dir)
+      raise Failure, 'PAGES is required (an absolute directory of saved pages with manifest.tsv)' if dir.to_s.empty?
+      raise Failure, "PAGES #{dir} is not a directory" unless File.directory?(dir)
+
+      manifest = File.join(dir, RevisionComparison::MANIFEST)
+      raise Failure, "PAGES #{dir} has no #{RevisionComparison::MANIFEST}" unless File.file?(manifest)
+
+      manifest
+    end
+
+    def parse_pages(manifest)
+      RevisionComparison.parse_manifest(File.read(manifest))
+    rescue ArgumentError => error
+      raise Failure, error.message
+    end
+
+    def git(*, error:)
+      out, _, status = Open3.capture3('git', '-C', REPO_ROOT, *)
+      raise Failure, error unless status.success?
+
+      out.strip
+    end
+
+    def remove_worktree(tree)
+      _, err, status = Open3.capture3('git', '-C', REPO_ROOT, 'worktree', 'remove', '--force', tree)
+      $stderr.write("git worktree remove #{tree}: #{err}\n") unless status.success?
+    end
+
+    # One uncapped auto-source run: +[url, title]+ items, or the error that stopped it.
+    def run_page(page, dir)
+      { 'items' => articles(page, dir).map { [_1.url.to_s, _1.title.to_s] }, 'error' => nil }
+    rescue StandardError => error
+      { 'items' => [], 'error' => "#{error.class}: #{error.message}" }
+    end
+
+    def articles(page, dir)
+      response = AutoSourceCorpus.response(path: File.join(dir, page.file), url: page.url)
+      Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG.merge(limit: UNCAPPED)).articles
+    end
+
+    # A first pass for the items, then a warm second pass: objects allocated per page and, when tracing, per
+    # allocation site (class, file, method).
+    #
+    # @return [Array(Hash, Hash)] per page the run plus its +alloc+ count, and the site tally
+    def page_runs(pages, dir, trace:)
+      require 'objspace'
+      runs = pages.to_h { |page| [page.file, run_page(page, dir)] }
+      ObjectSpace.trace_object_allocations_start if trace
+      GC.disable if trace
+      pages.each { |page| runs.fetch(page.file)['alloc'] = count_allocations { run_page(page, dir) } }
+      [runs, trace ? tally_sites : {}]
+    ensure
+      GC.enable if trace
+    end
+
+    def count_allocations
+      before = GC.stat(:total_allocated_objects)
+      yield
+      GC.stat(:total_allocated_objects) - before
+    end
+
+    # The tree root (as the shell or the filesystem spells it) is dropped, so both trees' sites compare.
+    def tally_sites
+      ObjectSpace.trace_object_allocations_stop
+      roots = [Dir.pwd, File.realpath(Dir.pwd)]
+      tally = Hash.new(0)
+      ObjectSpace.each_object { |object| tally_site(tally, object, roots) }
+      tally
+    end
+
+    def tally_site(tally, object, roots)
+      file = ObjectSpace.allocation_sourcefile(object)
+      return unless file
+
+      site = roots.inject(file) { |path, root| path.delete_prefix(root) }
+      tally["#{object.class}\t#{site}##{ObjectSpace.allocation_method_id(object)}"] += 1
+    end
+
+    # Unique anchor texts and resolved path segments of one saved page.
+    def anchor_facts(path, base_url)
+      raw = File.read(path, encoding: Encoding::UTF_8)
+      doc = Nokogiri::HTML(raw.valid_encoding? ? raw : File.binread(path))
+      anchors = doc.css('a')
+      { valid: raw.valid_encoding?, texts: anchors.map { _1.text.gsub(/\s+/, ' ').strip }.reject(&:empty?).uniq,
+        paths: anchors.filter_map { segments(_1['href'], base_url) }.uniq }
+    end
+
+    def segments(href, base_url)
+      return if href.to_s.strip.empty?
+
+      Html2rss::Url.from_relative(href, base_url).decoded_path_segments.map(&:downcase)
+    rescue Html2rss::Error
+      nil
+    end
+
+    def classify(texts, code)
+      classifier = Html2rss::LinkDestination::TextClassifier.new(vocabulary: Html2rss::Vocabulary[code.to_sym])
+      texts.to_h do |text|
+        [text, [classifier.utility?(text), classifier.utility_chrome?(text), classifier.recommended?(text),
+                classifier.read_more?(text), Html2rss::AutoSource::Cleanup.junk_reason(text)&.to_s]]
+      end
+    end
+
+    # ----- term evidence -----
+
+    def term_evidence(language, facts)
+      texts = facts.flat_map { |_, fact| fact[:texts] }
+      segment_counts = facts.values.flat_map { _1[:paths].map(&:uniq) }.flatten.tally
+      { 'texts' => texts.size,
+        'labels' => LABEL_CONCEPTS.flat_map { |concept| label_evidence(language, concept, texts) },
+        'paths' => path_concepts.map { |concept| path_evidence(language, concept, segment_counts) } }
+    end
+
+    # Per term of a loose-label concept: the matchers (readings) that read it and the texts they hit.
+    def label_evidence(language, concept, texts)
+      readings = Html2rss::LinkDestination::TextClassifier::READINGS.select do |_, concepts|
+        concepts.include?(concept)
+      end.keys
+      language.terms.fetch(concept).map do |term|
+        matchers = readings.to_h { [_1, Html2rss::LinkDestination::TextClassifier.matcher(_1, [Html2rss::Vocabulary.compile([term])])] }
+        label_row(concept, term, texts, matchers)
+      end
+    end
+
+    def label_row(concept, term, texts, matchers)
+      hits = label_hits(texts, matchers)
+      long = hits.count { _1.first.split.size >= LONG_WORDS }
+      { 'concept' => concept.to_s, 'term' => term.is_a?(Regexp) ? term.source : term, 'hits' => hits.size,
+        'long' => long, 'readers' => hits.flat_map(&:last).uniq, 'samples' => hits.first(SAMPLES).map(&:first) }
+    end
+
+    def label_hits(texts, matchers)
+      texts.filter_map do |text|
+        readers = matchers.select { |_, matcher| matcher.match?(text) }.keys.map { PREDICATES.fetch(_1) }
+        [text, readers] unless readers.empty?
+      end
+    end
+
+    def path_concepts = Html2rss::Vocabulary::WORD_CONCEPTS.grep(/\Apath_/)
+
+    # Per term of a path concept: the pages' anchors whose path holds it, and the segment sets that read it.
+    def path_evidence(language, concept, segment_counts)
+      sets = Html2rss::LinkDestination::PathClassifier::SEGMENT_SETS_BY_SCOPE.fetch(:all)
+      terms = language.terms.fetch(concept).map do |term|
+        { 'term' => term, 'hits' => segment_counts.fetch(term.downcase, 0),
+          'readers' => sets.filter_map { |name, set| name.to_s if set.include?(term) } }
+      end
+      { 'concept' => concept.to_s, 'terms' => terms }
+    end
+
+    # ----- running a tree -----
+
+    # :nocov:
+    def measure_tree(tree, options, evidence:)
+      out = File.join(Dir.mktmpdir('language-check-run-'), 'measure.json')
+      measurement = run_worker(tree, options, out, evidence:)
+      { 'measure' => measurement, 'memory' => memory(tree) }
+    ensure
+      FileUtils.rm_rf(File.dirname(out)) if out
+    end
+
+    def run_worker(tree, options, out, evidence:)
+      _, err, status = Open3.capture3(worker_env(tree), *worker_command(options, out, evidence), chdir: tree)
+      line = err.lines.first.to_s.strip
+      raise Failure, line.delete_prefix('language-check: ') if status.exitstatus == FAILED_EXIT
+      raise Failure, "worker failed in #{tree}: #{line}" unless status.success?
+
+      JSON.parse(File.read(out))
+    end
+
+    def worker_command(options, out, evidence)
+      command = [RbConfig.ruby, File.expand_path(__FILE__), '--worker', out, '--code', options.fetch(:code),
+                 '--pages', options.fetch(:pages)]
+      evidence ? command << '--evidence' : command
+    end
+
+    # Retained bytes after require 'html2rss', one fresh process each.
+    def memory(tree)
+      Array.new(MEMORY_RUNS) do
+        out, err, status = Open3.capture3(worker_env(tree), RbConfig.ruby, '-e', MEMORY_SNIPPET, chdir: tree)
+        raise Failure, "memory run failed in #{tree}: #{err.lines.first.to_s.strip}" unless status.success?
+
+        out.to_i
+      end
+    end
+
+    # ----- report -----
+
+    def write_report(out, meta, base, head)
+      FileUtils.mkdir_p(out)
+      report = Report.new(meta, base, head)
+      File.write(File.join(out, 'report.md'), report.full)
+      puts report.summary(File.join(out, 'report.md'))
+      out
+    end
+    # :nocov:
+  end
+
+  ##
+  # The text of one comparison: +full+ for the report file, +summary+ for the terminal.
+  class Report # rubocop:disable Metrics/ClassLength -- one report, four sections
+    # @param meta [Hash] +code+, +pages+, +base_sha+, +head_sha+, +dirty+
+    # @param base [Hash] +measure+ and +memory+ of the base tree
+    # @param head [Hash] +measure+ and +memory+ of the head tree
+    def initialize(meta, base, head)
+      @meta = meta
+      @base = base.fetch('measure')
+      @head = head.fetch('measure')
+      @memory = { base: LanguageCheck.stats(base.fetch('memory')), head: LanguageCheck.stats(head.fetch('memory')) }
+      @files = meta.fetch(:pages).map(&:file)
+    end
+
+    # @return [String] the whole report
+    def full
+      [header, '', feed_section, '', anchor_section, '', evidence_section, '', cost_section].flatten.join("\n") << "\n"
+    end
+
+    # @param path [String] where the full report was written
+    # @return [String] at most {SUMMARY_LINES} lines
+    def summary(path)
+      lines = [header.first, *feed_summary, *anchor_summary, *evidence_summary, *cost_summary, "report: #{path}"]
+      lines.first(SUMMARY_LINES).join("\n")
+    end
+
+    private
+
+    def header
+      dirty = @meta.fetch(:dirty) ? 'dirty (tracked changes: not reproducible from the SHA)' : 'clean'
+      ["# language-check #{@meta.fetch(:code)}: #{@files.size} pages",
+       "base #{@meta.fetch(:base_sha)}  head #{@meta.fetch(:head_sha)} (#{dirty})"]
+    end
+
+    def run_of(measure, file) = measure.fetch('pages').fetch(file)
+
+    # ----- 1. feed -----
+
+    def feed_states
+      @feed_states ||= @files.to_h do |file|
+        base = run_of(@base, file)
+        head = run_of(@head, file)
+        [file, state_of(base, head)]
+      end
+    end
+
+    def state_of(base, head)
+      if base['error'].nil? && head['error'].nil?
+        return { kind: :compared,
+                 diff: LanguageCheck.feed_diff(base['items'], head['items']) }
+      end
+      return { kind: :both_errored, base: base['error'], head: head['error'] } if base['error'] && head['error']
+
+      { kind: :one_errored, base: base['error'], head: head['error'] }
+    end
+
+    def of_kind(kind) = feed_states.select { |_, state| state[:kind] == kind }
+
+    def feed_totals
+      diffs = of_kind(:compared).values.map { _1[:diff] }
+      totals = %i[added removed moved retitled].to_h { |key| [key, diffs.sum { _1[key].size }] }
+      totals.merge(error_change: of_kind(:one_errored).size)
+    end
+
+    def feed_changes = feed_totals.values.sum
+
+    def error_class(message) = message.nil? ? 'ok' : (message[/\A[\w:]+/] || 'error')
+
+    def error_lines(states)
+      states.map do |file, state|
+        "#{file}: base #{error_class(state[:base])}, head #{error_class(state[:head])}"
+      end
+    end
+
+    def feed_summary = [feed_totals_line, *problem_lines]
+
+    def feed_totals_line
+      totals = feed_totals
+      "feed: compared #{of_kind(:compared).size} of #{@files.size} pages, #{feed_changes} changes " \
+        "(added #{totals[:added]}, removed #{totals[:removed]}, reordered #{totals[:moved]}, " \
+        "retitled #{totals[:retitled]}, errored in one tree #{totals[:error_change]})"
+    end
+
+    def problem_lines
+      [*error_lines(of_kind(:one_errored)).map { "  CHANGE errored in one tree  #{_1}" },
+       *error_lines(of_kind(:both_errored)).map { "  not compared, errored in both  #{_1}" },
+       *invalid_utf8_lines]
+    end
+
+    # Saved pages are UTF-8 by contract; a page that is not reads as mojibake, so its "no change" proves nothing.
+    def invalid_utf8_lines
+      files = @head.fetch('invalid_utf8')
+      files.empty? ? [] : ["  WARNING not valid UTF-8, its items are mojibake in both trees: #{files.join(', ')}"]
+    end
+
+    def feed_section
+      ['## 1. Feed changes (uncapped items, base -> head)', '', *feed_summary.map { "- #{_1}" }, '',
+       *@files.flat_map { feed_page_lines(_1) }]
+    end
+
+    def feed_page_lines(file)
+      state = feed_states.fetch(file)
+      base = run_of(@base, file)
+      head = run_of(@head, file)
+      ["### #{file}  #{@meta.fetch(:pages).find { _1.file == file }.url}",
+       "items #{base['items'].size} -> #{head['items'].size}", *state_lines(state), '']
+    end
+
+    def state_lines(state)
+      return error_lines({ 'page' => state }) unless state[:kind] == :compared
+
+      lines = state[:diff].flat_map { |kind, rows| rows.map { "#{kind.to_s.ljust(8)} #{_1.join('  ')}" } }
+      lines.empty? ? ['no change'] : lines
+    end
+
+    # ----- 2. anchors -----
+
+    def anchor_changes
+      @anchor_changes ||= @files.to_h do |file|
+        [file, LanguageCheck.anchor_diff(@base.fetch('anchors').fetch(file), @head.fetch('anchors').fetch(file))]
+      end
+    end
+
+    def anchor_total = @head.fetch('anchors').values.sum(&:size)
+
+    def anchor_counts
+      anchor_changes.values.flat_map(&:values).each_with_object(Hash.new(0)) do |(from, to), counts|
+        CHANGE_COLUMNS.each_with_index { |name, index| counts[name] += 1 if from[index] != to[index] }
+      end
+    end
+
+    def anchor_summary
+      changed = anchor_changes.values.sum(&:size)
+      counts = CHANGE_COLUMNS.map { "#{_1} #{anchor_counts.fetch(_1, 0)}" }.join(', ')
+      ["anchors: #{changed} changed of #{anchor_total} (unique texts per page); #{counts}"]
+    end
+
+    def anchor_section
+      ['## 2. Link classification changes', '', *anchor_summary.map { "- #{_1}" }, '',
+       *anchor_changes.flat_map do |file, changes|
+         changes.map do |text, (from, to)|
+           anchor_line(file, text, from, to)
+         end
+       end]
+    end
+
+    def anchor_line(file, text, from, to)
+      cells = CHANGE_COLUMNS.each_with_index.filter_map do |name, index|
+        "#{name} #{from[index].inspect} -> #{to[index].inspect}" if from[index] != to[index]
+      end
+      "#{file}  #{text.inspect}  #{cells.join('; ')}"
+    end
+
+    # ----- 3. evidence -----
+
+    def evidence = @head.fetch('evidence')
+
+    def flagged_labels = evidence.fetch('labels').select { _1['hits'].positive? && (_1['long'] * 2) > _1['hits'] }
+
+    def silent_paths = evidence.fetch('paths').select { |entry| entry['terms'].sum { _1['hits'] }.zero? }
+
+    def evidence_summary
+      silent = silent_paths.map { _1['concept'] }
+      [label_summary, *flagged_labels.first(5).map { flag_line(_1) },
+       "  path concepts with zero hits: #{silent.empty? ? 'none' : silent.join(', ')}"]
+    end
+
+    def label_summary
+      labels = evidence.fetch('labels')
+      "evidence: #{labels.count { _1['hits'].positive? }} of #{labels.size} loose label terms hit; " \
+        "#{flagged_labels.size} mostly long texts (>= #{LONG_WORDS} words)"
+    end
+
+    def flag_line(row)
+      "  FLAG #{row['concept']} #{row['term'].inspect}: #{row['long']} of #{row['hits']} hits are long"
+    end
+
+    def evidence_section
+      ['## 3. Term evidence (head)', '', "#{evidence.fetch('texts')} unique anchor texts read.", '',
+       '### Loose label terms (a hit is a text the term reads)', '',
+       *evidence.fetch('labels').select { _1['hits'].positive? }.map { label_line(_1) }, '',
+       '### Path concepts (a hit is an anchor whose path holds the term)', '',
+       *evidence.fetch('paths').flat_map { path_lines(_1) }]
+    end
+
+    def label_line(row)
+      flag = flagged_labels.include?(row) ? 'FLAG mostly long texts  ' : ''
+      "#{flag}#{row['concept']} #{row['term'].inspect}: #{row['hits']} hits (#{row['long']} long), read by " \
+        "#{row['readers'].join(', ')}; e.g. #{row['samples'].map(&:inspect).join(', ')}"
+    end
+
+    def path_lines(entry)
+      hit = entry['terms'].select { _1['hits'].positive? }
+      return ["FLAG #{entry['concept']}: 0 hits over #{entry['terms'].size} terms"] if hit.empty?
+
+      lines = hit.map { |term| path_term_line(term) }
+      ["#{entry['concept']}: #{hit.sum { _1['hits'] }} hits of #{entry['terms'].size} terms", *lines]
+    end
+
+    def path_term_line(term) = "  #{term['term']}: #{term['hits']} (read by #{term['readers'].join(', ')})"
+
+    # ----- 4. cost -----
+
+    def alloc_total(measure) = @files.sum { run_of(measure, _1).fetch('alloc') }
+
+    def site_changes = @site_changes ||= LanguageCheck.site_diff(@base.fetch('sites'), @head.fetch('sites'))
+
+    def vocabulary_sites
+      site_changes.flat_map { |kind, sites| sites.keys.grep(%r{lib/html2rss/vocabulary}).map { [kind, _1] } }
+    end
+
+    def memory_delta = @memory[:head][:mean] - @memory[:base][:mean]
+
+    def memory_line(side)
+      stats = @memory.fetch(side)
+      "#{side} mean #{stats[:mean].round} min #{stats[:min]} max #{stats[:max]}"
+    end
+
+    def cost_summary
+      [allocation_line, vocabulary_line,
+       "  retained bytes after require: #{@memory[:base][:mean].round} -> #{@memory[:head][:mean].round} " \
+       "(delta #{format('%+.0f', memory_delta)} B = #{format('%+.1f', memory_delta / 1024)} KB)"]
+    end
+
+    def allocation_line
+      base = alloc_total(@base)
+      head = alloc_total(@head)
+      sizes = site_changes.transform_values(&:size)
+      "cost: allocations #{base} -> #{head} (#{format('%+d', head - base)}); " \
+        "sites added #{sizes[:added]}, removed #{sizes[:removed]}, changed #{sizes[:changed]}"
+    end
+
+    def vocabulary_line
+      sites = vocabulary_sites.map { |kind, site| "#{kind} #{site.split("\t").last}" }
+      "  vocabulary sites: #{sites.empty? ? 'none' : sites.join('; ')}"
+    end
+
+    def cost_section
+      ['## 4. Cost', '', *cost_summary.map { "- #{_1}" }, '', '### Allocations per page (base -> head)', '',
+       *@files.map { |file| "#{file}  #{run_of(@base, file)['alloc']} -> #{run_of(@head, file)['alloc']}" }, '',
+       '### Allocation sites (class, file#method; objects live after a warm pass)', '', *site_lines, '',
+       '### Retained bytes after require html2rss (fresh processes)', '', memory_line(:base), memory_line(:head),
+       "delta of means #{format('%+.0f', memory_delta)} bytes"]
+    end
+
+    def site_lines
+      rows = site_changes.flat_map { |kind, sites| sites.map { |site, count| [kind, site, *site_counts(kind, count)] } }
+      rows.sort_by { |_, _, from, to| -((to || 0) - (from || 0)).abs }.map { |row| site_line(*row) }
+    end
+
+    def site_counts(kind, count)
+      { added: [nil, count], removed: [count, nil], changed: count }.fetch(kind)
+    end
+
+    def site_line(kind, site, from, to)
+      mark = site.include?('lib/html2rss/vocabulary') ? '  <- vocabulary' : ''
+      "#{kind.to_s.ljust(7)} #{site.tr("\t", ' ')}  #{from.inspect} -> #{to.inspect}#{mark}"
+    end
+  end
+
+  # @param argv [Array<String>]
+  # @return [Hash] parsed options
+  def self.parse_options(argv)
+    options = { base: 'origin/master' }
+    OptionParser.new { declare_options(_1, options) }.parse!(argv)
+    options
+  rescue OptionParser::ParseError => error
+    raise Failure, error.message
+  end
+
+  # An empty value (make passes BASE= and OUT= when unset) keeps the default.
+  def self.declare_options(opts, options)
+    opts.banner = 'Usage: bin/language-check --code CODE --pages DIR [--base REV] [--out DIR]'
+    opts.on('--code CODE', 'language code, e.g. ru') { |v| options[:code] = v }
+    opts.on('--pages DIR', 'saved pages and manifest.tsv') { |v| options[:pages] = File.expand_path(v) unless v.empty? }
+    declare_report(opts, options)
+  end
+
+  def self.declare_report(opts, options)
+    opts.on('--base REV', 'base revision (default origin/master)') { |v| options[:base] = v unless v.empty? }
+    opts.on('--out DIR', 'report directory') { |v| options[:out] = File.expand_path(v) unless v.empty? }
+    declare_internal(opts, options)
+  end
+
+  def self.declare_internal(opts, options)
+    opts.on('--worker OUT', 'internal: measure this tree into OUT') { |out| options[:worker] = out }
+    opts.on('--evidence', 'internal: add term evidence') { options[:evidence] = true }
+  end
+
+  # @param argv [Array<String>]
+  def self.main(argv)
+    options = parse_options(argv)
+    pages = validate!(options)
+    options[:out] ||= File.join(REPO_ROOT, 'tmp', 'language-check', options.fetch(:code))
+    return worker(options, pages) if options[:worker]
+
+    run(options, pages)
+  rescue Failure => error
+    $stderr.write("language-check: #{error.message}\n") # not warn: RUBYOPT=-W0 silences it
+    exit(options&.fetch(:worker, nil) ? FAILED_EXIT : 1)
+  end
+
+  # :nocov:
+  # Worker mode (internal): runs inside a tree so that tree's lib/ is loaded.
+  def self.worker(options, pages)
+    ENV['LOG_LEVEL'] ||= 'error'
+    require 'html2rss'
+    File.write(options.fetch(:worker), JSON.generate(measure(pages, options.fetch(:pages), options.fetch(:code),
+                                                             evidence: options[:evidence] || false)))
+  end
+  # :nocov:
+end
+
+LanguageCheck.main(ARGV) if File.expand_path($PROGRAM_NAME) == File.expand_path(__FILE__)
