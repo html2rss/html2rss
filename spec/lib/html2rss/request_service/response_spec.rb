@@ -241,6 +241,43 @@ RSpec.describe Html2rss::RequestService::Response do
         end
       end
     end
+
+    {
+      'gb2312' => '镕', 'gbk' => '镕', 'x-gbk' => '镕', 'gb_2312-80' => '镕', 'GB2312' => '镕',
+      'big5' => '啫', 'x-big5' => '啫', 'cn-big5' => '啫', 'csbig5' => '啫', 'windows-950' => '啫', 'cp950' => '啫'
+    }.each do |label, char|
+      {
+        'Content-Type charset' => [{ 'content-type' => "text/html; charset=#{label}" }, ''],
+        'meta charset' => [{ 'content-type' => 'text/html' }, %(<meta charset="#{label}">)]
+      }.each do |source, (header_set, meta)|
+        context "when #{label} HTML via #{source} contains #{char}" do
+          let(:encoding) { char == '啫' ? 'Big5-HKSCS' : 'GB18030' }
+          let(:body) do
+            "<!DOCTYPE html><html><head>#{meta}</head><body><h1>中文#{char}</h1></body></html>"
+              .encode(encoding).force_encoding(Encoding::UTF_8)
+          end
+          let(:headers) { header_set }
+
+          it 'decodes the page fully', :aggregate_failures do
+            expect(parsed_body.at_css('h1').text).to eq("中文#{char}")
+          end
+        end
+      end
+    end
+
+    context 'when windows-1251 HTML is labeled' do
+      let(:body) { '<meta charset="windows-1251"><h1>Привет</h1>'.encode('Windows-1251').force_encoding(Encoding::UTF_8) }
+      let(:headers) { { 'content-type' => 'text/html' } }
+
+      it('still decodes via Encoding.find') { expect(parsed_body.at_css('h1').text).to eq('Привет') }
+    end
+
+    context 'when the charset label is unknown' do
+      let(:body) { '<h1>Caffè</h1>' }
+      let(:headers) { { 'content-type' => 'text/html; charset=x-nonsense' } }
+
+      it('falls back to UTF-8') { expect(parsed_body.at_css('h1').text).to eq('Caffè') }
+    end
   end
 
   describe '#initialize' do

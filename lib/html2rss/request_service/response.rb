@@ -22,6 +22,15 @@ module Html2rss
       FEED_BODY_MARKERS = ['<rss', '<feed xmlns', '<feed ', '<rdf:rdf'].freeze
       # Charset from Content-Type or a leading <meta charset>.
       CHARSET_PARAMETER = /charset\s*=\s*["']?([\w.:-]+)/i
+      # WHATWG label families decoded by a superset: gbk/gb2312 as GB18030, big5 (and CP950) as Big5-HKSCS.
+      CHARSET_LABEL_ENCODINGS = {
+        **%w[chinese csgb2312 csiso58gb231280 gb2312 gb_2312 gb_2312-80 gbk iso-ir-58 x-gbk gb18030].to_h do |label|
+          [label, Encoding::GB18030]
+        end,
+        **%w[big5 big5-hkscs cn-big5 csbig5 x-big5 x-x-big5 windows-950 cp950].to_h do |label|
+          [label, Encoding::Big5_HKSCS]
+        end
+      }.freeze
       # Bytes scanned for a meta charset hint (HTML spec looks at the first 1024).
       META_CHARSET_BYTES = 2048
       # The element that sets the document base URL: the first +<base>+ with an +href+ in tree order, unless the
@@ -172,7 +181,7 @@ module Html2rss
       def html_encoding_for(charset)
         return if charset.nil? || utf8_charset?(charset)
 
-        Encoding.find(charset)
+        CHARSET_LABEL_ENCODINGS.fetch(charset.downcase) { Encoding.find(charset) }
       rescue ArgumentError
         nil
       end
