@@ -62,7 +62,7 @@ module Html2rss
     CONCEPTS = (WORD_CONCEPTS + PATTERN_CONCEPTS).freeze
 
     # The languages, in a fixed order.
-    ALL = [En, De, Fr, Es, It, Nl, Pl, Sv, Ja, Pt].freeze
+    ALL = [En, De, Fr, Es, It, Nl, Pl, Sv, Ja, Pt, Ru].freeze
 
     # Japanese title type markers that are also ordinary words of a Chinese page, so a Chinese page reads them as
     # text, not as markers (see {Scope#type_markers}). Closed and audited per term; every other Han marker keeps

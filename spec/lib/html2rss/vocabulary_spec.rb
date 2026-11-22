@@ -9,18 +9,23 @@ RSpec.describe Html2rss::Vocabulary do
 
   describe '::ALL' do
     # Every (concept, language) cell that holds no term, and nothing else: a human-language concept has terms in
-    # all ten languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese has
-    # no lead-in either), +page_link+ is the English-only pattern (the other languages are read through
-    # +page_link_label+), a clock suffix, a date piece and an element label exist in one language each, the
-    # podcast words are Latin-script words in five languages and the unspaced (kana) ones exist in Japanese only.
+    # all eleven languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese has
+    # no lead-in either; Russian has none because its bare "more" and "about" are ordinary headline openers),
+    # +page_link+ is the English-only pattern (the other languages are read through +page_link_label+), a date
+    # piece and an element label exist in one language each, a clock suffix in German and Russian, the podcast
+    # words are words of six languages and the unspaced (kana) ones exist in Japanese only. Russian lists a path
+    # word only for the concepts whose Cyrillic segments occur in practice (+/видео/+, +/пресс-релизы/+,
+    # +/помощь/+); the others are read through the Latin words every language shares.
     let(:none_cells) do
-      all = %i[en de fr es it nl pl sv ja pt]
+      all = %i[en de fr es it nl pl sv ja pt ru]
       {
-        clock_suffix: all - %i[de],
+        path_section: %i[ru], path_article: %i[ru], path_profile: %i[ru], path_office: %i[ru],
+        path_non_article: %i[ru], path_taxonomy: %i[ru], path_vanity: %i[ru], path_soft_utility: %i[ru],
+        clock_suffix: all - %i[de ru],
         date_piece: all - %i[ja],
         element_label: all - %i[ja],
         read_more_suffix: all - %i[ja],
-        topic_lead: %i[ja],
+        topic_lead: %i[ja ru],
         topic_preposition: %i[ja],
         page_link: all - %i[en],
         page_link_label: %i[en],
@@ -30,7 +35,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'lists the languages in a fixed order', :aggregate_failures do
-      expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt])
+      expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru])
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
     end
@@ -52,7 +57,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(languages.flat_map { _1.terms.values }.select(&:empty?)).to all(be(described_class::NONE))
     end
 
-    it 'has terms in all ten languages for each of the other concepts', :aggregate_failures do
+    it 'has terms in all eleven languages for each of the other concepts', :aggregate_failures do
       (described_class::CONCEPTS - none_cells.keys).each do |concept|
         expect(languages.reject { _1.terms.fetch(concept).any? }).to be_empty, concept.to_s
       end
@@ -153,7 +158,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'keeps a concept only some languages use to those languages', :aggregate_failures do
-      expect(described_class.alternation(:clock_suffix)).to eq('Uhr')
+      expect(described_class.alternation(:clock_suffix)).to eq('Uhr|мск')
       expect(described_class.alternation(:element_label)).to eq('PR')
       expect(described_class.alternation(:date_piece)).to eq('(?:\d{4}年)?\d{1,2}月\d{1,2}日')
     end
@@ -170,7 +175,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
-      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt all zh])
+      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru all zh])
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
       expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
