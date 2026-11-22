@@ -2,11 +2,12 @@
 
 module Html2rss
   module Vocabulary
-    Scope = Data.define(:code, :ambiguous_words, :alternations, :type_markers)
+    Scope = Data.define(:code, :ambiguous_words, :alternations, :own_words, :own_alternations, :type_markers)
 
     # What one page language reads (see {Vocabulary.[]}): the unambiguous terms of every language plus the
     # ambiguous terms of this language, or of all of them for the +:all+ scope. One frozen instance per scope;
-    # it keeps only its own ambiguous terms, the unambiguous ones are shared. +type_markers+ is the set of title
+    # it keeps only its own ambiguous terms, the unambiguous ones are shared. A {Vocabulary::PAGE_ONLY} language adds
+    # its own terms, read as whole labels only (+own_words+, +own_alternations+). +type_markers+ is the set of title
     # type markers that apply: every language's markers, less (for a Chinese page) the Han ones that are ordinary
     # Chinese words; the shared +Vocabulary.words(:type_marker)+ itself when nothing is left out.
     class Scope
@@ -15,7 +16,7 @@ module Html2rss
       # @param concept [Symbol] a member of {Vocabulary::SCOPED_WORDS}
       # @return [Set<String>] the exact terms that apply; the shared unambiguous Set itself when none is added
       def words(concept)
-        extra = ambiguous_words.fetch(concept)
+        extra = ambiguous_words.fetch(concept) + own_words.fetch(concept)
         shared = Vocabulary.unambiguous_words(concept)
         extra.empty? ? shared : (shared | extra).freeze
       end
@@ -23,6 +24,10 @@ module Html2rss
       # @param concept [Symbol] a member of {Vocabulary::SCOPED_PATTERNS}
       # @return [String] regex alternatives of the ambiguous terms that apply, empty when none
       def ambiguous_alternation(concept) = alternations.fetch(concept)
+
+      # @param concept [Symbol] a member of {Vocabulary::SCOPED_PATTERNS}
+      # @return [String] regex alternatives of the terms only a page in this language applies, empty when none
+      def own_alternation(concept) = own_alternations.fetch(concept)
     end
   end
 end

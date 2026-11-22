@@ -62,7 +62,15 @@ module Html2rss
     CONCEPTS = (WORD_CONCEPTS + PATTERN_CONCEPTS).freeze
 
     # The languages, in a fixed order.
-    ALL = [En, De, Fr, Es, It, Nl, Pl, Sv, Ja, Pt, Ru, Zh].freeze
+    ALL = [En, De, Fr, Es, It, Nl, Pl, Sv, Ja, Pt, Ru].freeze
+
+    # Languages whose terms apply only on a page in that language: they are in no shared table, so +:all+, +ja+ and
+    # every other language read exactly what they read without them. A page scope of such a language is +:all+ plus
+    # its terms (a Han term has no word boundary, so it is read as a whole label only, see {TextClassifier}).
+    PAGE_ONLY = [Zh].freeze
+
+    # Every language that has a file, in a fixed order.
+    LANGUAGES = (ALL + PAGE_ONLY).freeze
 
     # Japanese title type markers that are also ordinary words of a Chinese page, so a Chinese page reads them as
     # text, not as markers (see {Scope#type_markers}). Closed and audited per term; every other Han marker keeps
@@ -139,22 +147,30 @@ module Html2rss
       #
       # @param code [Symbol] the language code, or +:all+
       # @param languages [Array<Language>] the languages in scope
+      # @param own [Array<Language>] {PAGE_ONLY} languages whose terms apply on this page only
       # @return [Scope]
-      def build_scope(code, languages)
+      def build_scope(code, languages, own: [])
         words = SCOPED_WORDS.to_h { [_1, ambiguous_terms(languages, _1)] }
         alternations = SCOPED_PATTERNS.to_h { [_1, compile(ambiguous_terms(languages, _1))] }
         Scope.new(code:, ambiguous_words: words.freeze, alternations: alternations.freeze,
-                  type_markers: type_markers_for(code))
+                  own_words: own_terms(own, SCOPED_WORDS), own_alternations: own_alternations(own),
+                  type_markers: type_markers_for(own))
       end
 
       private
 
+      def own_terms(own, concepts) = concepts.to_h { |c| [c, own.flat_map { _1.terms.fetch(c) }.freeze] }.freeze
+
+      def own_alternations(own) = own_terms(own, SCOPED_PATTERNS).transform_values { compile(_1) }.freeze
+
       ##
-      # @param code [Symbol] the language code, or +:all+
-      # @return [Set<String>] the title type markers that apply: every language's, less the {CHINESE_WORDS} on a
-      #   Chinese page; the shared +words(:type_marker)+ itself otherwise
-      def type_markers_for(code)
-        code == :zh ? (words(:type_marker) - CHINESE_WORDS).freeze : words(:type_marker)
+      # @param own [Array<Language>] the {PAGE_ONLY} languages of the scope
+      # @return [Set<String>] the title type markers that apply: every language's, less the {CHINESE_WORDS} and plus
+      #   the own markers on a Chinese page; the shared +words(:type_marker)+ itself otherwise
+      def type_markers_for(own)
+        return words(:type_marker) if own.empty?
+
+        (words(:type_marker) - CHINESE_WORDS).union(own.flat_map { _1.terms.fetch(:type_marker) }).freeze
       end
     end
 
@@ -173,8 +189,11 @@ module Html2rss
       [concept, compile(ALL.flat_map { _1.terms.fetch(concept) } - ambiguous_terms(ALL, concept))]
     end.freeze
 
-    # One shared, frozen scope per language in {ALL}, plus +:all+ (every ambiguous term applies).
-    SCOPES = ALL.to_h { [_1.code, build_scope(_1.code, [_1])] }.merge(all: build_scope(:all, ALL)).freeze
+    # One shared, frozen scope per language in {ALL}, plus +:all+ (every ambiguous term applies) and one per {PAGE_ONLY}
+    # language: +:all+ plus that language's own terms.
+    SCOPES = ALL.to_h { [_1.code, build_scope(_1.code, [_1])] }
+                .merge(all: build_scope(:all, ALL))
+                .merge(PAGE_ONLY.to_h { [_1.code, build_scope(_1.code, ALL, own: [_1])] }).freeze
     ALL_SCOPE = SCOPES.fetch(:all)
     # Every accepted primary tag, as a String or a Symbol, so the usual lookup allocates nothing.
     BY_TAG = SCOPES.except(:all).flat_map { |code, scope| [[code, scope], [code.name, scope]] }.to_h.freeze

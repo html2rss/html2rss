@@ -11,7 +11,7 @@ RSpec.describe Html2rss::Vocabulary do
       utility: {
         'plus' => %i[en de es it nl pl sv pt], 'comment' => %i[en], 'ueber' => %i[de], 'über' => %i[de],
         'teilen' => %i[de], 'sobre' => %i[es pt], 'dela' => %i[sv], 'delen' => %i[nl],
-        'comentário' => %i[pt], 'comentários' => %i[pt], '留言' => %i[zh]
+        'comentário' => %i[pt], 'comentários' => %i[pt]
       },
       path_vanity: { 'plus' => %i[en de es it nl pl sv pt] },
       path_soft_utility: { 'plus' => %i[en de es it nl pl sv pt] },
@@ -80,18 +80,22 @@ RSpec.describe Html2rss::Vocabulary do
   describe 'a Chinese page' do
     %i[utility_prefix utility path_vanity path_soft_utility path_chrome path_taxonomy path_section path_article]
       .each do |concept|
-      it "applies every ambiguous #{concept} term of Chinese, and no ambiguous term of another language",
-         :aggregate_failures do
-        flagged.fetch(concept).to_a.product(%i[zh zh-Hant zh-Hans-CN]).each do |(term, languages), lang|
-          expect(readers.fetch(concept).call(lang, term)).to be(languages.include?(:zh)), "#{term.inspect} #{lang}"
+      it "applies every ambiguous #{concept} term exactly as the all scope does", :aggregate_failures do
+        flagged.fetch(concept).keys.product(%i[zh zh-Hant]).each do |term, lang|
+          expect(readers.fetch(concept).call(lang, term)).to eq(readers.fetch(concept).call(:all, term)), term
+          expect(readers.fetch(concept).call(lang, term)).to be(true), "#{term.inspect} for #{lang}"
         end
       end
     end
 
-    it 'does not read an ambiguous Latin term, as a page in no listed language does not', :aggregate_failures do
-      expect(text.call(:zh).utility?('Dela Cruz wins election')).to be(false)
-      expect(text.call('zh-Hant').utility?('Dela Cruz wins election')).to be(false)
-      expect(text.call(nil).utility?('Dela Cruz wins election')).to be(true)
+    it 'classifies an ambiguous Latin term as the all scope does, and a non-term likewise', :aggregate_failures do
+      ['Dela Cruz wins election', 'Plus membership', 'Comment', 'Sobre nosotros', 'Harbor ferry schedule']
+        .each do |label|
+        expect(text.call('zh-Hant').utility?(label)).to eq(text.call(nil).utility?(label)), label
+        expect(text.call('zh-Hans-CN').utility_prefix?(label)).to eq(text.call(nil).utility_prefix?(label)), label
+        expect(text.call(:zh).recommended?(label)).to eq(text.call(nil).recommended?(label)), label
+      end
+      expect(text.call(:zh).utility?('Dela Cruz wins election')).to be(true)
     end
 
     it 'keeps the Japanese words 独自 and 写真 as title markers in every scope but its own', :aggregate_failures do

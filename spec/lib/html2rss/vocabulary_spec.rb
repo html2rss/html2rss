@@ -3,42 +3,43 @@
 # rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
 
 RSpec.describe Html2rss::Vocabulary do
-  let(:languages) { described_class::ALL }
+  let(:languages) { described_class::LANGUAGES }
   let(:flags) { Regexp::IGNORECASE | Regexp::EXTENDED | Regexp::MULTILINE }
   let(:bare) { /(?<!\\)[[:space:]#]/ }
 
   describe '::ALL' do
     # Every (concept, language) cell that holds no term, and nothing else: a human-language concept has terms in
-    # all twelve languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese has
-    # no lead-in either; Russian has none because its bare "more" and "about" are ordinary headline openers, and
-    # Chinese has neither),
+    # all eleven shared languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese
+    # has no lead-in either; Russian has none because its bare "more" and "about" are ordinary headline openers),
     # +page_link+ is the English-only pattern (the other languages are read through +page_link_label+), a date
     # piece and an element label exist in one language each, a clock suffix in German and Russian, the podcast
-    # words are words of six languages and the unspaced (kana, Han) ones exist in Japanese and Chinese only.
-    # Russian lists a path
+    # words are words of six languages and the unspaced (kana) ones exist in Japanese only. Russian lists a path
     # word only for the concepts whose Cyrillic segments occur in practice (+/видео/+, +/пресс-релизы/+,
-    # +/помощь/+); the others are read through the Latin words every language shares.
+    # +/помощь/+); the others are read through the Latin words every language shares. Chinese is page-only and
+    # lists only the concepts read through a page scope (+utility+, +recommended+, +type_marker+).
     let(:none_cells) do
-      all = %i[en de fr es it nl pl sv ja pt ru zh]
-      {
-        path_section: %i[ru zh], path_article: %i[ru zh], path_profile: %i[ru zh], path_office: %i[ru zh],
-        path_non_article: %i[ru zh], path_taxonomy: %i[ru zh], path_vanity: %i[ru zh], path_soft_utility: %i[ru zh],
-        path_chrome: %i[zh], path_media: %i[zh], path_deep_post_context: %i[zh],
+      all = %i[en de fr es it nl pl sv ja pt ru]
+      cells = {
+        path_section: %i[ru], path_article: %i[ru], path_profile: %i[ru], path_office: %i[ru],
+        path_non_article: %i[ru], path_taxonomy: %i[ru], path_vanity: %i[ru], path_soft_utility: %i[ru],
         clock_suffix: all - %i[de ru],
         date_piece: all - %i[ja],
         element_label: all - %i[ja],
         read_more_suffix: all - %i[ja],
-        topic_lead: %i[ja ru zh],
-        topic_preposition: %i[ja zh],
+        topic_lead: %i[ja ru],
+        topic_preposition: %i[ja],
         page_link: all - %i[en],
         page_link_label: %i[en],
-        podcast_word: %i[de nl pl sv ja zh],
-        podcast_unspaced: all - %i[ja zh]
+        podcast_word: %i[de nl pl sv ja],
+        podcast_unspaced: all - %i[ja]
       }
+      (described_class::CONCEPTS - %i[utility recommended type_marker]).to_h { [_1, [*cells[_1], :zh]] }
     end
 
     it 'lists the languages in a fixed order', :aggregate_failures do
       expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru zh])
+      expect(described_class::ALL.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru])
+      expect(described_class::PAGE_ONLY).to eq([described_class::Zh])
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
     end
@@ -60,7 +61,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(languages.flat_map { _1.terms.values }.select(&:empty?)).to all(be(described_class::NONE))
     end
 
-    it 'has terms in all twelve languages for each of the other concepts', :aggregate_failures do
+    it 'has terms in every language for each of the other concepts', :aggregate_failures do
       (described_class::CONCEPTS - none_cells.keys).each do |concept|
         expect(languages.reject { _1.terms.fetch(concept).any? }).to be_empty, concept.to_s
       end
@@ -178,7 +179,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
-      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru zh all])
+      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru all zh])
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
       expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
@@ -225,27 +226,61 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese).to be_frozen
     end
 
-    it 'applies only its own ambiguous terms, like every other language scope', :aggregate_failures do
-      expect(chinese.ambiguous_words).not_to be(everything.ambiguous_words)
-      expect(chinese.words(:path_taxonomy)).not_to include('thema')
+    it 'is the all scope plus its own terms, which no other scope has', :aggregate_failures do
+      expect(chinese.ambiguous_words).to eq(everything.ambiguous_words)
+      expect(chinese.alternations).to eq(everything.alternations)
+      expect(chinese.own_alternation(:utility)).to include('关于我们').and include('關於我們')
+      expect(chinese.own_alternation(:recommended)).to include('推荐阅读')
       expect(chinese.type_markers).to be_frozen
+      (described_class::SCOPES.values - [chinese]).each do |scope|
+        expect(scope.own_alternations.values).to all(eq('')), scope.code.to_s
+        expect(scope.own_words.values).to all(be_empty), scope.code.to_s
+      end
     end
 
-    it 'leaves out exactly the Chinese words among the type markers', :aggregate_failures do
+    it 'leaves out exactly the Chinese words among the type markers, and adds its own', :aggregate_failures do
       expect(described_class::CHINESE_WORDS).to eq(Set['独自', '写真'])
       expect(described_class::CHINESE_WORDS).to be_a(Set).and be_frozen
       expect(described_class::CHINESE_WORDS - described_class::Ja.terms.fetch(:type_marker)).to be_empty
-      expect(chinese.type_markers).to eq(described_class.words(:type_marker) - described_class::CHINESE_WORDS)
+      expect(chinese.type_markers)
+        .to eq((described_class.words(:type_marker) - described_class::CHINESE_WORDS) |
+               described_class::Zh.terms.fetch(:type_marker))
+      expect(chinese.type_markers).to include('快讯', '獨家', '速報')
+      expect(chinese.type_markers).not_to include('独自', '写真')
     end
 
-    it 'gives every other scope, all and ja included, the identical full marker set', :aggregate_failures do
+    it 'gives every other scope, all and ja included, the identical full marker set without Chinese terms',
+       :aggregate_failures do
       others = described_class::SCOPES.values - [chinese]
 
       expect(others.map(&:type_markers)).to all(equal(described_class.words(:type_marker)))
-      expect(described_class.words(:type_marker)).to include('独自', '写真', '速報', '動画', '快讯', '獨家')
-      expect(described_class[:ja].type_markers).to include('独自', '写真')
-      expect(described_class[nil].type_markers).to include('独自', '写真')
+      expect(described_class.words(:type_marker)).to include('独自', '写真', '速報', '動画')
+      expect(described_class.words(:type_marker)).not_to include('快讯', '獨家')
       expect(described_class[:ja].type_markers).to be(described_class[nil].type_markers)
+    end
+
+    # The tables of every language but Chinese are what the eleven shared language files compile to: a Chinese term
+    # is in no shared table, so +all+, +ja+ and every other language read the same terms as before Chinese existed.
+    it 'adds no Chinese term to a shared table, to the all scope or to any other language scope', :aggregate_failures do
+      shared = described_class::ALL
+      terms = ->(concept) { shared.flat_map { _1.terms.fetch(concept) } }
+
+      (described_class::PATTERN_CONCEPTS - described_class::SCOPED_PATTERNS).each do |concept|
+        expect(described_class.alternation(concept)).to eq(described_class.compile(terms.call(concept))), concept.to_s
+      end
+      described_class::SCOPED_PATTERNS.each do |concept|
+        flagged = described_class.ambiguous_terms(shared, concept)
+
+        expect(described_class.unambiguous_alternation(concept))
+          .to eq(described_class.compile(terms.call(concept) - flagged)), concept.to_s
+        expect(everything.ambiguous_alternation(concept)).to eq(described_class.compile(flagged)), concept.to_s
+      end
+      (described_class::WORD_CONCEPTS - described_class::SCOPED_WORDS).each do |concept|
+        expect(described_class.words(concept)).to eq(Set.new(terms.call(concept))), concept.to_s
+      end
+      described_class::SCOPED_WORDS.each do |concept|
+        expect(everything.words(concept)).to eq(Set.new(terms.call(concept))), concept.to_s
+      end
     end
   end
 
@@ -358,7 +393,8 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'unions the shared Set with the ambiguous words, whatever they overlap', :aggregate_failures do
       overlapping = described_class::Scope.new(code: :xx, ambiguous_words: { path_taxonomy: %w[category tema] }.freeze,
-                                               alternations: {}.freeze,
+                                               alternations: {}.freeze, own_words: { path_taxonomy: [] }.freeze,
+                                               own_alternations: {}.freeze,
                                                type_markers: described_class.words(:type_marker))
 
       expect(overlapping.words(:path_taxonomy)).to eq(described_class.unambiguous_words(:path_taxonomy) | %w[tema])
@@ -386,7 +422,7 @@ RSpec.describe Html2rss::Vocabulary do
 
       expect(shared).to include('contact', 'subscribe')
       expect(shared).not_to include('dela', 'plus')
-      every = described_class.compile(languages.flat_map { _1.terms.fetch(:utility) }).split('|')
+      every = described_class.compile(described_class::ALL.flat_map { _1.terms.fetch(:utility) }).split('|')
 
       expect((shared + flagged).uniq).to match_array(every.uniq)
     end

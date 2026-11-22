@@ -25,11 +25,12 @@ module Html2rss
       # @param response [Html2rss::RequestService::Response]
       # @param selectors [Hash{Symbol => Object}]
       # @param time_zone [String]
+      # @param vocabulary [Vocabulary::Scope] the page language's scope, as the feed resolves it
       # @return [AuditSlice, nil] nil when selectors are absent
-      def self.probe(response:, selectors:, time_zone:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- per-item probe loop
+      def self.probe(response:, selectors:, time_zone:, vocabulary:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- per-item probe loop
         return nil unless selectors&.dig(:items, :selector)
 
-        selector_engine = Selectors.new(response, selectors:, time_zone:)
+        selector_engine = Selectors.new(response, selectors:, time_zone:, vocabulary:)
         gains = {
           items_probed: 0,
           keys_added: zero_keys_added.dup,
@@ -41,7 +42,7 @@ module Html2rss
         selector_engine.each_enhance_pair(linked_only: true) do |baseline, enhanced, item|
           item_keys = keys_added(baseline, enhanced)
           merge_keys_added!(gains, item_keys)
-          append_item_warnings!(warnings, item:, enhanced:, item_keys:, vocabulary: selector_engine.vocabulary)
+          append_item_warnings!(warnings, item:, enhanced:, item_keys:, vocabulary:)
         end
 
         finalize_gains!(gains)
@@ -61,13 +62,14 @@ module Html2rss
       # @param response [Html2rss::RequestService::Response]
       # @param selectors [Hash{Symbol => Object}]
       # @param time_zone [String]
+      # @param vocabulary [Vocabulary::Scope] the page language's scope, as the feed resolves it
       # @return [Hash{Symbol => Object}, nil]
-      def self.compare(response:, selectors:, time_zone:) # rubocop:disable Metrics/MethodLength -- enhance off/on stats + delta
+      def self.compare(response:, selectors:, time_zone:, vocabulary:) # rubocop:disable Metrics/MethodLength -- enhance off/on stats + delta
         return nil unless selectors&.dig(:items, :selector)
 
-        off = extraction_stats(response, selectors, time_zone, enhance: false)
-        on = extraction_stats(response, selectors, time_zone, enhance: true)
-        delta_gains = probe(response:, selectors:, time_zone:)&.enhance_gains || empty_gains
+        off = extraction_stats(response, selectors, time_zone, vocabulary, enhance: false)
+        on = extraction_stats(response, selectors, time_zone, vocabulary, enhance: true)
+        delta_gains = probe(response:, selectors:, time_zone:, vocabulary:)&.enhance_gains || empty_gains
 
         {
           enhance_off: off,
@@ -96,9 +98,9 @@ module Html2rss
       end
       private_class_method :zero_keys_added
 
-      def self.extraction_stats(response, selectors, time_zone, enhance:)
+      def self.extraction_stats(response, selectors, time_zone, vocabulary, enhance:)
         merged = selectors_with_enhance(selectors, enhance:)
-        articles = Selectors.new(response, selectors: merged, time_zone:).articles
+        articles = Selectors.new(response, selectors: merged, time_zone:, vocabulary:).articles
         {
           item_count: articles.size,
           descriptions_filled: articles.count { |article| article.description.to_s.strip != '' }

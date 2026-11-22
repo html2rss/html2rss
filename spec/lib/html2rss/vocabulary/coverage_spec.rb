@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable RSpec/ExampleLength, RSpec/SpecFilePathFormat
+# rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers, RSpec/SpecFilePathFormat
 
 # Every language's path words are read by the concept's consumer on a page in that language, and the text
 # concepts the languages gained are read as labels.
@@ -197,6 +197,10 @@ RSpec.describe Html2rss::Vocabulary do
   end
 
   describe 'Chinese labels' do
+    let(:labels) do
+      %w[关于我们 關於我們 联系我们 聯絡我們 登录 登入 注册 註冊 订阅 訂閱 分享 搜索 搜尋 更多 查看更多 隐私政策
+         隱私權政策 评论 留言 帮助 幫助]
+    end
     let(:zh) { text.call(:zh) }
     # Every predicate that would drop a headline (see the Russian labels).
     let(:readers) do
@@ -207,51 +211,52 @@ RSpec.describe Html2rss::Vocabulary do
       }
     end
 
-    it 'reads Simplified and Traditional chrome labels', :aggregate_failures do
-      %w[关于我们 關於我們 联系我们 聯絡我們 登录 登入 注册 註冊 订阅 訂閱 分享 搜索 搜尋 更多 查看更多 隐私政策
-         隱私權政策 评论 留言].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
+    it 'reads Simplified and Traditional chrome labels as whole labels', :aggregate_failures do
+      labels.each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
+      ['登录 (3)', '[订阅]', '→ 更多 →', '更多 12'].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
       %w[推荐阅读 推薦閱讀 相关阅读 相關閱讀 猜你喜欢 猜你喜歡].each { expect(zh.recommended?(_1)).to be(true), _1 }
-      %w[阅读全文 閱讀全文 了解更多 瞭解更多 查看详情 查看詳情 详情 詳情].each do |label|
-        expect(zh.read_more?(label)).to be(true), label
-        expect(Html2rss::AutoSource::Cleanup.junk_reason(label)).to eq(:cta), label
-      end
-      %w[发表评论 發表留言 立即订阅 訂閱電子報].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
     end
 
-    it 'keeps ordinary headlines that begin with the same characters as headlines', :aggregate_failures do
-      %w[订阅量创新高，公司股价上涨 登录后发表评论的用户将获奖 评论员表示今年经济向好 注册制改革全面推进
-         更多人选择乘坐地铁 分享经济再度升温 搜索引擎公司发布新产品 關於我們的未來 联系我们的客服被投诉
-         推荐阅读量破亿 留言板上的故事 发表评论：官方回应 登入系統當機多地受影響 評論：選舉結果 直播间里的新规
-         视频会议成主流 独家：某公司将上市 独自开发的软件].each do |headline|
+    it 'reads a Chinese label on a Chinese page only', :aggregate_failures do
+      labels.product([nil, :ja, :en, :de, 'ja-JP']).each do |label, lang|
+        expect(text.call(lang).utility_chrome?(label)).to be(false), "#{label} #{lang.inspect}"
+        expect(text.call(lang).utility?(label)).to be(false), "#{label} #{lang.inspect}"
+      end
+      expect(text.call('zh-Hant').utility_chrome?('關於我們')).to be(true)
+    end
+
+    it 'keeps a headline that opens with a label word, with or without a space, a headline', :aggregate_failures do
+      ['帮助 受灾群众重建家园', '幫助 受災民眾重建家園', '搜索 失联渔船行动持续第三天', '评论 美国大选结果影响全球市场',
+       '更多 城市加入低碳行动计划', '分享 创业十年的失败经验', '注册 成功率 提升', '注册：新用户数量创新高',
+       '注册、登录功能全面升级', '订阅，正在改变媒体行业', '订阅量创新高，公司股价上涨',
+       '登录后发表评论的用户将获奖', '评论员表示今年经济向好', '注册制改革全面推进', '更多人选择乘坐地铁',
+       '分享经济再度升温', '搜索引擎公司发布新产品', '關於我們的未來 專家這樣說', '联系我们的客服被投诉',
+       '推荐阅读量破亿', '留言板上的故事', '发表评论：官方回应', '登入系統當機多地受影響', '評論：選舉結果',
+       '直播间里的新规', '视频会议成主流', '独家：某公司将上市', '独自开发的软件', '推荐阅读 书目发布'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
       end
     end
 
-    it 'applies the ambiguous 留言 only on a Chinese or unlabeled page, never a Japanese one', :aggregate_failures do
-      expect(text.call(:zh).utility?('留言')).to be(true)
-      expect(text.call(nil).utility?('留言')).to be(true)
-      expect(text.call(:ja).utility?('留言')).to be(false)
-    end
-
-    it 'reads kicker noise: a type marker, a field label, and keeps 独自 and 写真 as words', :aggregate_failures do
+    it 'reads kicker noise: a type marker, and keeps 独自 and 写真 as words', :aggregate_failures do
       title = Html2rss::Article::Title
       noise = ->(piece) { title.noise_piece?(piece, vocabulary: described_class[:zh]) }
 
-      %w[快讯 快訊 独家 獨家 视频 視頻 圖集 直播 速報].each { expect(noise.call(_1)).to be(true), _1 }
-      ['栏目：', '類別：', '文章类型：独家'].each { expect(noise.call(_1)).to be(true), _1 }
-      %w[独自 写真 视频会议].each { expect(noise.call(_1)).to be(false), _1 }
+      %w[快讯 快訊 独家 獨家 视频 視頻 圖集 速報].each { expect(noise.call(_1)).to be(true), _1 }
+      %w[独自 写真 视频会议 直播 直播间].each { expect(noise.call(_1)).to be(false), _1 }
       expect(title.compose('港口重新开放', kicker: '独家', vocabulary: described_class[:zh])).to eq('港口重新开放')
       expect(title.compose('港口重新开放', kicker: '独自', vocabulary: described_class[:zh])).to eq('独自: 港口重新开放')
     end
 
-    it 'reads a podcast word and a sponsorship label', :aggregate_failures do
-      kind = Html2rss::LinkDestination::Sponsorship::LabelText.method(:kind)
+    it 'reads a Chinese type marker as a marker on a Chinese page only', :aggregate_failures do
+      noise = ->(piece, lang) { Html2rss::Article::Title.noise_piece?(piece, vocabulary: described_class[lang]) }
+
+      [nil, :ja, :en].each { expect(noise.call('快讯', _1)).to be(false), _1.inspect }
+    end
+
+    it 'does not read 播客 inside a Han compound as a podcast word', :aggregate_failures do
       hint = Html2rss::Syndication::Discovery::PODCAST_PAGE_HINT
 
-      expect(hint.match?('港口播客')).to be(true)
-      %w[赞助内容 贊助內容 商业合作 業配文].each { expect(kind.call(_1)).to eq(:paid_label), _1 }
-      expect(kind.call('广告')).to eq(:label)
-      expect(kind.call('广告业务增长迅速')).to be_nil
+      %w[直播客户端 主播客串 转播客场 港口播客].each { expect(hint.match?(_1)).to be(false), _1 }
     end
   end
 
@@ -291,4 +296,4 @@ RSpec.describe Html2rss::Vocabulary do
   end
 end
 
-# rubocop:enable RSpec/ExampleLength, RSpec/SpecFilePathFormat
+# rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers, RSpec/SpecFilePathFormat

@@ -67,9 +67,6 @@ module Html2rss
       @compiled_item_fields = @rss_item_attributes.filter_map { @compiled_fields[_1] }
     end
 
-    # @return [Vocabulary::Scope] the page language's scope, read by enhance
-    attr_reader :vocabulary
-
     ##
     # Returns articles extracted from the response.
     # Reverses order if config specifies reverse ordering.

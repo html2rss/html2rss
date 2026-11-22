@@ -978,16 +978,16 @@ url_dated_cards.html:
   sst_built: true
 language_chrome_zh.html:
   junk: 0
-  real: 4
-  expected: 4
+  real: 6
+  expected: 6
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
 language_chrome_zh_hant.html:
   junk: 0
-  real: 4
-  expected: 4
+  real: 6
+  expected: 6
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0

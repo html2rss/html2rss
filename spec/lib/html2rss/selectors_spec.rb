@@ -515,7 +515,6 @@ RSpec.describe Html2rss::Selectors do
       it 'derives the page scope and keeps 独自 and 写真 as words in the enhanced description', :aggregate_failures do
         _baseline, enhanced, = instance.each_enhance_pair.first
 
-        expect(instance.vocabulary).to be(Html2rss::Vocabulary[:zh])
         expect(enhanced[:description]).to eq("写真\n2024-03-12 | 独自")
       end
     end
