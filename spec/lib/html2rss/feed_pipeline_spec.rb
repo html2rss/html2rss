@@ -715,6 +715,20 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(Html2rss::Selectors).to have_received(:new)
           .with(second, hash_including(vocabulary: be(Html2rss::Vocabulary[:zh])))
       end
+
+      it 'lets the channel language override the page language of every selector page', :aggregate_failures do
+        override = Html2rss::Config.from_hash(
+          { channel: { url: 'https://example.com/news', language: 'zh-Hant' }, strategy: :default,
+            selectors: { items: { selector: 'article' }, title: { selector: 'h1' }, url: { selector: 'a' } } }
+        )
+        first = build_response.call(body: html)
+        allow(session).to receive(:page_responses).and_return([first])
+        allow(Html2rss::Selectors).to receive(:new).and_call_original
+        described_class.new({}).extract(config: override, response: first, request_session: session)
+
+        expect(Html2rss::Selectors).to have_received(:new)
+          .with(first, hash_including(vocabulary: be(Html2rss::Vocabulary[:zh])))
+      end
     end
 
     describe '#collect_articles' do

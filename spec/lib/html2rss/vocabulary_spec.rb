@@ -264,12 +264,19 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese.type_markers).to include('速報', '詳報', '動画')
     end
 
+    it 'defaults a language to no ambiguous term and no plain word, both frozen', :aggregate_failures do
+      plain = described_class::Language.new(code: :xx, terms: {}.freeze)
+
+      expect([plain.ambiguous, plain.plain_words]).to all(be_empty.and(be_frozen))
+    end
+
     it 'takes the plain words from the page-only language, so another one keeps 独自 and 写真', :aggregate_failures do
       other = described_class::Language.new(code: :xx, plain_words: Set['速報'].freeze,
                                             terms: described_class::Zh.terms.merge(type_marker: %w[xx-tag]).freeze)
       scope = described_class.build_scope(:xx, described_class::ALL, own: [other])
 
       expect(scope.type_markers).to include('独自', '写真', 'xx-tag')
+      expect(scope.type_markers).to be_frozen
       expect(scope.type_markers).not_to include('速報')
       expect(described_class.build_scope(:yy, described_class::ALL, own: []).type_markers)
         .to be(described_class.words(:type_marker))
