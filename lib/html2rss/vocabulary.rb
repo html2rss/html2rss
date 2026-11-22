@@ -47,7 +47,7 @@ module Html2rss
     # +page_link_label+ holds the previous/next/older/newer words of the other languages, read as a whole label;
     # +page_link+ stays the English pattern, which accepts text after the word.
     PATTERN_CONCEPTS = %i[
-      utility_prefix utility recommended read_more topic_lead topic_preposition read_more_suffix
+      utility_prefix utility recommended utility_cta read_more topic_lead topic_preposition read_more_suffix
       new_window_notice paid_label ad_word field_label type_label pager_label page_link page_link_label
       clock_suffix date_piece element_label
     ].freeze

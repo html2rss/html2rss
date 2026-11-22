@@ -4,8 +4,9 @@ module Html2rss
   module LinkDestination
     # Classifies visible anchor text for utility, recommendation and read-more chrome. The terms are
     # {Vocabulary}'s (en, de, fr, es, it, nl, pl, sv, ja and pt); this owns how each concept is read: a whole
-    # text, a prefix, or a whole text with its topic. Utility and recommendation labels honour the page
-    # language ({Vocabulary::Scope}); read-more labels read every language.
+    # text, a prefix, a call-to-action opening, or a whole text with its topic. Utility and recommendation
+    # labels honour the page language ({Vocabulary::Scope}); call-to-action and read-more labels read every
+    # language.
     class TextClassifier
       # Never matches: the ambiguous matcher of a scope without ambiguous terms. Like every matcher here it is
       # fixed to UTF-8 (+/u+): a pure-ASCII regexp would be recompiled, and allocate, on each non-ASCII text.
@@ -47,6 +48,15 @@ module Html2rss
       end.freeze
       private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS
 
+      # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a
+      # multi-word imperative phrase at the start of the text. Every phrase holds enough words that it cannot
+      # open an ordinary headline, so none is scoped by page language. The word boundary after a Japanese term
+      # is the script change, which +\b+ does not see between two kana or kanji.
+      UTILITY_CTA = /
+        \A\s*(?:#{Vocabulary.alternation(:utility_cta)})(?:\b|(?<=[\p{Han}\p{Hiragana}\p{Katakana}]))
+      /iux
+      private_constant :UTILITY_CTA
+
       # Whole read-more labels that stand alone ("Continue reading", "Lire la suite", "続きを読む").
       READ_MORE_PHRASE = /#{Vocabulary.alternation(:read_more)}/ix
       # "More about X" lead-ins: a read-more phrase or a bare "more", then a topic preposition.
@@ -87,6 +97,10 @@ module Html2rss
       # @return [Boolean] true when the whole text is a utility term with at most one more word, bare or with
       #   a count; a headline that merely opens with a utility word is not
       def utility_label?(text) = label?(:utility_label, text)
+
+      # @param text [String, #to_s] visible anchor text
+      # @return [Boolean] true when text opens with a call-to-action phrase, whatever follows it
+      def utility_cta?(text) = normalize(text).match?(UTILITY_CTA)
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text begins with a utility label

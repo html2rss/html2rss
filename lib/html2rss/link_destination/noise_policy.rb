@@ -52,7 +52,7 @@ module Html2rss
 
       def utility_text_chrome?(text, destination_facts, heading_anchor:)
         return false if destination_facts.content_path
-        return false unless @link_resolver.utility_label_text?(text)
+        return false unless @link_resolver.utility_label_text?(text) || @link_resolver.utility_cta_text?(text)
 
         !heading_anchor && !destination_facts.strong_post_suffix
       end

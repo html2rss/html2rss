@@ -31,6 +31,12 @@ module Html2rss
           'boletín', 'plus'
         ],
         recommended: ['recomendado', 'recomendado para ti'],
+        utility_cta: [
+          'suscríbete a', 'suscribete a', 'suscríbase a', 'compartir este artículo', 'compartir este articulo',
+          'inicia sesión para', 'inicia sesion para', 'iniciar sesión para', 'iniciar sesion para',
+          'regístrate para', 'registrate para', 'contáctanos', 'contactanos', 'contacta con nosotros',
+          'únete a nuestra', 'unete a nuestra', 'deja un comentario', 'dejar un comentario'
+        ],
         read_more: [
           /leer\s+m(?:á|a)s/, 'seguir leyendo', 'continuar leyendo', /saber\s+m(?:á|a)s/,
           /m(?:á|a)s\s+informaci(?:ó|o)n/, /leer\s+(?:todo|el\s+art(?:í|i)culo\s+completo)/

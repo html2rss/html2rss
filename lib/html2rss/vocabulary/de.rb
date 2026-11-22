@@ -33,6 +33,11 @@ module Html2rss
           'newsletter', 'plus'
         ],
         recommended: ['empfohlen', 'empfohlen fuer dich', 'empfohlen für dich'],
+        utility_cta: [
+          'abonnieren sie', 'mitglied werden', 'werden sie mitglied', 'melden sie sich', 'jetzt anmelden',
+          'jetzt registrieren', 'kontaktieren sie uns', 'diesen artikel teilen', 'artikel teilen',
+          'kommentare zum artikel', 'kommentare zu diesem artikel', 'kommentar schreiben', 'folgen sie uns'
+        ],
         read_more: [
           'weiterlesen', 'weiter lesen', 'mehr lesen', 'mehr erfahren', 'mehr dazu', 'mehr zum thema',
           'lesen sie mehr', 'lesen sie weiter', /(?:den\s+)?(?:ganzen|gesamten|vollst(?:ä|a)ndigen)\s+artikel\s+lesen/

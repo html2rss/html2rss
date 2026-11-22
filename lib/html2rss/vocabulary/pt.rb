@@ -32,6 +32,13 @@ module Html2rss
           'cadastre-se', 'assinar', 'assine', 'newsletter', 'plus'
         ],
         recommended: ['recomendado', 'recomendado para você', 'recomendado para voce', 'recomendado para si'],
+        utility_cta: [
+          'assine a nossa', 'assine nossa', 'assine já', 'inscreva-se na', 'inscreva-se no', 'inscreva-se para',
+          'cadastre-se para', 'compartilhe este', 'compartilhe esta', 'partilhe este', 'partilhe esta',
+          'faça login para', 'faca login para', 'entre em contato', 'entre em contacto', 'fale conosco',
+          'junte-se a nós', 'junte-se a nos', 'junte-se à nossa', 'junte-se ao nosso', 'deixe um comentário',
+          'deixe um comentario'
+        ],
         read_more: [
           'leia mais', 'ler mais', 'continue lendo', 'continuar a ler', 'saiba mais', 'veja mais', 'ver mais',
           /mais\s+informa(?:ç|c)(?:õ|o)es/, /leia\s+a\s+mat(?:é|e)ria\s+completa/,

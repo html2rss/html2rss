@@ -41,6 +41,10 @@ module Html2rss
           'premium', 'pricing', 'see all', 'share', 'sign up', 'signup', 'subscribe', 'view all'
         ],
         recommended: ['recommended', 'recommended for you'],
+        utility_cta: [
+          'subscribe to', 'share this', 'log in to', 'login to', 'sign in to', 'sign up for', 'sign up to',
+          'contact us', 'join our', 'leave a comment', 'leave a reply', 'follow us on'
+        ],
         read_more: [
           'read more', 'read on', 'continue reading', 'keep reading', 'learn more', 'find out more',
           /read\s+(?:the\s+)?(?:full\s+|whole\s+)?(?:story|article)/, 'read the rest'

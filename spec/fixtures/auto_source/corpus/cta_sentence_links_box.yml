@@ -1,0 +1,7 @@
+---
+case: Four invented news cards and a call-to-action box of five sentence-form links (subscribe, share, log in, contact, join); only the four headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/bridge-lights-repaired

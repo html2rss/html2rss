@@ -29,6 +29,10 @@ module Html2rss
           'visa alla', 'se alla', 'nyhetsbrev', 'medlemskap', 'plus'
         ],
         recommended: ['rekommenderat', 'rekommenderat för dig', 'rekommenderat for dig'],
+        utility_cta: [
+          /prenumerera\s+p(?:å|a)/, 'dela den här artikeln', 'dela denna artikel', /logga\s+in\s+f(?:ö|o)r\s+att/,
+          'registrera dig för', 'kontakta oss', /g(?:å|a)\s+med\s+i/, 'skriv en kommentar', 'lämna en kommentar'
+        ],
         read_more: [
           /l(?:ä|a)s\s+mer/, /l(?:ä|a)s\s+vidare/, /forts(?:ä|a)tt\s+l(?:ä|a)sa/, 'mer information',
           /l(?:ä|a)s\s+hela\s+artikeln/

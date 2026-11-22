@@ -66,6 +66,59 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     end
   end
 
+  describe '#utility_cta?' do
+    [
+      'Subscribe to our newsletter', 'Share this article with friends', 'Log in to leave a comment',
+      'Contact us for more information', 'Join our community of readers', 'Sign up for the weekly digest',
+      '  Subscribe to updates', 'Abonnieren Sie unseren Newsletter', 'Mitglied werden und profitieren',
+      'Kommentare zum Artikel', "Abonnez-vous à notre lettre d'information", 'Abonnez vous à notre lettre',
+      "S'abonner à la lettre", 'S’abonner à la lettre', 'Contactez-nous pour plus d’informations',
+      'Suscríbete a nuestro boletín', 'Suscribete a nuestro boletin', 'Compartir este artículo con amigos',
+      'Iniciar sesión para comentar', 'Iscriviti alla newsletter', 'Iscriviti a Esempio', 'Condividi questo articolo',
+      "Condividi l'articolo con gli amici", 'Unisciti alla nostra community', 'Abonneer je op onze nieuwsbrief',
+      'Deel dit artikel met vrienden', 'Log in om te reageren', 'Zapisz się do newslettera',
+      'Zapisz sie do newslettera', 'Zaloguj się, aby dodać komentarz', 'Udostępnij ten artykuł znajomym',
+      'Dołącz do naszej społeczności', 'Prenumerera på vårt nyhetsbrev', 'Prenumerera pa vart nyhetsbrev',
+      'Dela den här artikeln med vänner', 'Logga in för att kommentera', 'Kontakta oss för mer information',
+      'ニュースレターを購読する', 'コメントを投稿するにはログイン', 'ログインしてコメントを書く', 'お問い合わせはこちらから',
+      'Assine a nossa newsletter', 'Inscreva-se na newsletter', 'Compartilhe este artigo com amigos',
+      'Faça login para comentar', 'Faca login para comentar', 'Junte-se à nossa comunidade'
+    ].each do |text|
+      it "matches the call to action #{text.inspect}" do
+        expect(classifier.utility_cta?(text)).to be(true)
+      end
+    end
+
+    [
+      'Contact tracing app fails', 'Join the debate on tax', 'Share prices fall', 'Plus Size Fashion Week',
+      'Plus de 100 morts', 'Subscribers rise again', 'Shared this week', 'Contact usage grows', 'Sign upgrades',
+      'Read: Subscribe to our newsletter', 'Kommentare zum Urteil', 'Mitglied werdender Verein',
+      'Logging in to leave a comment', 'Iscrivitions', 'Prenumeration på tidningen', 'ログインの手順', 'Subscribe', ''
+    ].each do |text|
+      it "rejects the text #{text.inspect}" do
+        expect(classifier.utility_cta?(text)).to be(false)
+      end
+    end
+
+    it 'reads decomposed accents, non-string input and nil', :aggregate_failures do
+      expect(classifier.utility_cta?("Suscri\u0301bete a nuestro boletin")).to be(true)
+      expect(classifier.utility_cta?(:'subscribe to')).to be(true)
+      expect(classifier.utility_cta?(nil)).to be(false)
+    end
+
+    it 'reads every language whatever the page language', :aggregate_failures do
+      en = described_class.new(vocabulary: Html2rss::Vocabulary[:en])
+
+      expect(en.utility_cta?('Abonnieren Sie unseren Newsletter')).to be(true)
+      expect(en.utility_cta?('ニュースレターを購読する')).to be(true)
+    end
+
+    it 'is not a short utility label', :aggregate_failures do
+      expect(classifier.utility_label?('Subscribe to our newsletter')).to be(false)
+      expect(classifier.utility_label?('Share this article with friends')).to be(false)
+    end
+  end
+
   describe '#utility_prefix?' do
     [
       'View all news', 'See all articles', 'Subscribe to our newsletter', 'Join the discussion',

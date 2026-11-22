@@ -27,6 +27,11 @@ module Html2rss
           'vedi tutto', 'abbonamento', 'plus'
         ],
         recommended: ['consigliato', 'consigliato per te'],
+        utility_cta: [
+          /iscriviti\s+(?:a|alla|al)/, /abbonati\s+(?:a|alla|al)/, 'condividi questo articolo',
+          /condividi\s+l['’]articolo/, 'accedi per', 'registrati per', 'contattaci',
+          /unisciti\s+(?:a|alla|al)/, 'lascia un commento'
+        ],
         read_more: [
           'leggi tutto', /leggi\s+di\s+pi(?:ù|u)/, /leggi\s+l['’]articolo/, 'continua a leggere',
           /scopri\s+di\s+pi(?:ù|u)/, 'maggiori informazioni', 'ulteriori informazioni',

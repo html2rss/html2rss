@@ -181,6 +181,14 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     end
   end
 
+  describe '#utility_cta_text?' do
+    it 'classifies sentence-form calls to action, not headlines opening with a utility word',
+       :aggregate_failures do
+      expect(resolver.utility_cta_text?('Subscribe to our newsletter')).to be(true)
+      expect(resolver.utility_cta_text?('Contact tracing app fails')).to be(false)
+    end
+  end
+
   describe '#utility_prefix_text?' do
     it 'classifies utility prefixes, not general utility labels', :aggregate_failures do
       expect(resolver.utility_prefix_text?('Subscribe to newsletter')).to be(true)

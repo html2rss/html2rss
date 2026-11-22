@@ -30,6 +30,11 @@ module Html2rss
           'udostępnij', 'udostepnij', 'subskrybuj', 'zobacz wszystko', 'dołącz', 'dolacz', 'plus'
         ],
         recommended: ['polecane', 'polecane dla ciebie'],
+        utility_cta: [
+          /zapisz\s+si(?:ę|e)\s+do/, /zaloguj\s+si(?:ę|e)[,\s]+(?:aby|by)/, /skontaktuj\s+si(?:ę|e)\s+z\s+nami/,
+          /udost(?:ę|e)pnij\s+ten\s+artyku(?:ł|l)/, /do(?:ł|l)(?:ą|a)cz\s+do\s+(?:nas|naszej|naszego)/,
+          'zostaw komentarz', 'dodaj komentarz', 'subskrybuj nasz'
+        ],
         read_more: [
           /czytaj\s+wi(?:ę|e)cej/, 'czytaj dalej', /dowiedz\s+si(?:ę|e)\s+wi(?:ę|e)cej/,
           /wi(?:ę|e)cej\s+informacji/, /czytaj\s+ca(?:ł|l)o(?:ś|s)(?:ć|c)/, /zobacz\s+wi(?:ę|e)cej/

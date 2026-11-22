@@ -29,6 +29,10 @@ module Html2rss
           'bekijk alles', 'nieuwsbrief', 'lid worden', 'lidmaatschap', 'plus'
         ],
         recommended: ['aanbevolen', 'aanbevolen voor jou'],
+        utility_cta: [
+          'abonneer je op', 'abonneer u op', 'deel dit artikel', 'log in om', 'meld je aan', 'neem contact op',
+          'word lid', 'word nu lid', 'laat een reactie achter', 'schrijf je in voor'
+        ],
         read_more: [
           'lees meer', 'lees verder', 'verder lezen', 'meer lezen', 'meer informatie', 'meer weten',
           /lees\s+(?:het\s+)?(?:hele|volledige)\s+artikel/

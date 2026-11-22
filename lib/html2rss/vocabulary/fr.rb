@@ -30,6 +30,11 @@ module Html2rss
           /s['’]abonner/, 'newsletter'
         ],
         recommended: ['recommande', 'recommandé', 'recommande pour vous', 'recommandé pour vous'],
+        utility_cta: [
+          /abonnez[-\s]vous/, /s['’]abonner\s+(?:à|a)/, 'partager cet article', /connectez[-\s]vous\s+pour/,
+          /inscrivez[-\s]vous/, /contactez[-\s]nous/, 'rejoignez notre', 'laisser un commentaire',
+          /suivez[-\s]nous/
+        ],
         read_more: [
           'lire la suite', 'lire plus', /lire\s+l['’]article(?:\s+complet)?/, 'en savoir plus',
           'pour en savoir plus', /plus\s+d['’]infos?/, /plus\s+d['’]informations?/
