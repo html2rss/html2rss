@@ -11,19 +11,19 @@ module Html2rss
         path_profile: %w[journalisten],
         path_office: %w[redactie],
         path_non_article: %w[spellen quizzen horoscoop overlijdensberichten],
-        path_taxonomy: NONE,
-        path_vanity: NONE,
-        path_soft_utility: NONE,
+        path_taxonomy: %w[thema],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus],
         path_chrome: NONE,
         path_media: NONE,
         path_deep_post_context: NONE,
         type_marker: ['liveblog', 'fotogalerij', 'persbericht', 'volledige aflevering'],
         utility_prefix: [
-          'bekijk alles', 'alles bekijken', 'al het nieuws', 'abonneren', 'nieuwsbrief', 'lid worden'
+          'bekijk alles', 'alles bekijken', 'al het nieuws', 'abonneren', 'nieuwsbrief', 'lid worden', 'plus'
         ],
         utility: [
           'over ons', 'contact', 'reacties', 'inloggen', 'aanmelden', 'delen', 'abonneren', 'registreren',
-          'bekijk alles', 'nieuwsbrief', 'lid worden', 'lidmaatschap'
+          'bekijk alles', 'nieuwsbrief', 'lid worden', 'lidmaatschap', 'plus'
         ],
         recommended: ['aanbevolen', 'aanbevolen voor jou'],
         read_more: [
@@ -43,6 +43,13 @@ module Html2rss
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE
+      }.freeze,
+      ambiguous: {
+        utility_prefix: %w[plus],
+        utility: %w[delen plus],
+        path_taxonomy: %w[thema],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus]
       }.freeze
     )
   end

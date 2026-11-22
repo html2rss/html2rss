@@ -1,10 +1,20 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::LinkDestination::DestinationFacts do
+  let(:vocabulary) { Html2rss::Vocabulary[nil] }
+
   describe '.build' do
-    subject(:facts) { described_class.build(url) }
+    subject(:facts) { described_class.build(url, vocabulary:) }
 
     let(:url) { Html2rss::Url.from_absolute('https://example.com/news/2026/platform-launch-notes') }
+
+    it 'reads the route in the scope it is given', :aggregate_failures do
+      topic = Html2rss::Url.from_absolute('https://example.com/tema/cloud-security-updates')
+
+      expect(described_class.build(topic, vocabulary: Html2rss::Vocabulary[:es]).taxonomy_path).to be(true)
+      expect(described_class.build(topic, vocabulary: Html2rss::Vocabulary[:en]).taxonomy_path).to be(false)
+      expect(described_class.build(topic, vocabulary: Html2rss::Vocabulary[nil]).taxonomy_path).to be(true)
+    end
 
     it 'keeps the normalized url and its string form', :aggregate_failures do
       expect(facts.url).to be(url)
@@ -118,12 +128,13 @@ RSpec.describe Html2rss::LinkDestination::DestinationFacts do
       'https://example.com/redaktion/in-eigener-sache' => false
     }.each do |address, junk|
       it "classifies #{address} as junk=#{junk} from its percent-encoded path" do
-        expect(described_class.build(Html2rss::Url.from_absolute(address)).high_confidence_junk_path).to be(junk)
+        expect(described_class.build(Html2rss::Url.from_absolute(address),
+                                     vocabulary:).high_confidence_junk_path).to be(junk)
       end
     end
 
     it 'exposes decoded NFC segments', :aggregate_failures do
-      facts = described_class.build(Html2rss::Url.from_absolute('https://example.com/dödsannonser/x'))
+      facts = described_class.build(Html2rss::Url.from_absolute('https://example.com/dödsannonser/x'), vocabulary:)
 
       expect(facts.url.path_segments.first).to include('%')
       expect(facts.segments.first).to eq('dödsannonser'.unicode_normalize(:nfc))
@@ -148,7 +159,8 @@ RSpec.describe Html2rss::LinkDestination::DestinationFacts do
 
     buildable.each do |label, address|
       it "labels #{address[0, 90]} as article=#{label == '1'}" do
-        expect(article_verdict?(described_class.build(Html2rss::Url.from_absolute(address)))).to eq(label == '1')
+        expect(article_verdict?(described_class.build(Html2rss::Url.from_absolute(address),
+                                                      vocabulary:))).to eq(label == '1')
       end
     end
 
@@ -169,7 +181,7 @@ RSpec.describe Html2rss::LinkDestination::DestinationFacts do
       wiki/Some_Long_Wiki_Page_Title_Here.html
     ].each do |path|
       it "does not admit /#{path} as an article", :aggregate_failures do
-        facts = described_class.build(Html2rss::Url.from_absolute("https://example.com/#{path}"))
+        facts = described_class.build(Html2rss::Url.from_absolute("https://example.com/#{path}"), vocabulary:)
 
         expect(facts.strong_post_suffix).to be(false)
         expect(facts.content_path).to be(false)

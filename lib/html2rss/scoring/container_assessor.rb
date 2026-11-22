@@ -10,10 +10,10 @@ module Html2rss
       # Letter/digit runs ({WordCount.runs}) beyond the title that make a container descriptive.
       DESCRIPTIVE_RUNS = 8
 
-      # @param text_classifier [LinkDestination::TextClassifier]
+      # @param text_classifier [LinkDestination::TextClassifier] the page's, so titles read in its language
       # @param content_token_regexp [Regexp]
       # @param junk_token_regexp [Regexp]
-      def initialize(text_classifier: LinkDestination::TextClassifier.new,
+      def initialize(text_classifier:,
                      content_token_regexp: LinkResolver::CONTENT_TOKEN_REGEXP,
                      junk_token_regexp: LinkResolver::JUNK_TOKEN_REGEXP)
         @text_classifier = text_classifier

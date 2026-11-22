@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
+
 RSpec.describe Html2rss::Vocabulary do
   let(:languages) { described_class::ALL }
   let(:flags) { Regexp::IGNORECASE | Regexp::EXTENDED | Regexp::MULTILINE }
@@ -19,10 +21,13 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'holds only Portuguese pager nouns for pt' do
+    it 'holds for pt only a pager noun and the words Spanish shares with it' do
       pt = languages.last.terms.reject { |_concept, terms| terms.equal?(described_class::NONE) }
 
-      expect(pt.keys).to eq([:pager_label])
+      expect(pt.keys).to match_array(
+        %i[path_section path_article path_taxonomy path_vanity path_soft_utility path_chrome utility_prefix utility
+           pager_label]
+      )
     end
   end
 
@@ -52,19 +57,20 @@ RSpec.describe Html2rss::Vocabulary do
 
   describe '.words' do
     it 'unions the exact terms of all languages into a frozen set', :aggregate_failures do
-      words = described_class.words(:path_vanity)
+      words = described_class.words(:type_marker)
 
       expect(words).to be_a(Set).and be_frozen
-      expect(words).to include('join', 'abonnieren', 'suscribirse', 's-abonner')
+      expect(words).to include('live blog', 'liveticker', 'en directo', '速報')
     end
 
     it 'keeps accented and unaccented forms as distinct words', :aggregate_failures do
-      expect(described_class.words(:path_office)).to include('redacción', 'redaccion')
-      expect(described_class.words(:type_marker)).to include('en directo', 'live blog', '速報')
+      expect(described_class[nil].words(:path_office)).to include('redacción', 'redaccion')
+      expect(described_class.words(:type_marker)).to include('vídeo', 'video')
     end
 
-    it 'rejects a pattern concept and an unknown concept', :aggregate_failures do
+    it 'rejects a pattern concept, a scoped concept and an unknown concept', :aggregate_failures do
       expect { described_class.words(:utility) }.to raise_error(KeyError)
+      expect { described_class.words(:path_office) }.to raise_error(KeyError)
       expect { described_class.words(:nothing) }.to raise_error(KeyError)
     end
   end
@@ -96,10 +102,10 @@ RSpec.describe Html2rss::Vocabulary do
 
   describe '.alternation' do
     it 'compiles a literal with each space matching any whitespace run', :aggregate_failures do
-      alternation = described_class.alternation(:recommended)
+      alternation = described_class.alternation(:type_label)
 
       expect(alternation).to be_frozen
-      expect(alternation.split('|')).to include('recommended\s+for\s+you', 'recommandé\s+pour\s+vous')
+      expect(alternation.split('|')).to include('article\s+type', 'content\s+type')
     end
 
     it 'takes a fragment as written' do
@@ -116,9 +122,185 @@ RSpec.describe Html2rss::Vocabulary do
       expect(described_class.alternation(:date_piece)).to eq('(?:\d{4}年)?\d{1,2}月\d{1,2}日')
     end
 
-    it 'rejects a word concept and an unknown concept', :aggregate_failures do
+    it 'rejects a word concept, a scoped concept and an unknown concept', :aggregate_failures do
       expect { described_class.alternation(:path_media) }.to raise_error(KeyError)
+      expect { described_class.alternation(:utility) }.to raise_error(KeyError)
       expect { described_class.alternation(:nothing) }.to raise_error(KeyError)
     end
   end
+
+  describe '.[]' do
+    let(:scopes) { described_class::SCOPES.values }
+
+    it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
+       :aggregate_failures do
+      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt all])
+      expect(scopes).to all(be_frozen)
+      expect(scopes.map { described_class[_1.code] }).to eq(scopes)
+      expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
+      expect(described_class['de']).to be(described_class[:de])
+    end
+
+    it 'reduces a regional tag to its primary tag, case-insensitively', :aggregate_failures do
+      expect(described_class['de-AT']).to be(described_class[:de])
+      expect(described_class['DE_at']).to be(described_class[:de])
+      expect(described_class[' Sv-FI ']).to be(described_class[:sv])
+      expect(described_class['ja-JP-u-ca-japanese']).to be(described_class[:ja])
+    end
+
+    it 'maps nil, blank, malformed, unsupported and hostile values to the one all scope', :aggregate_failures do
+      all = described_class[nil]
+
+      expect(all.code).to eq(:all)
+      [:all, '', '   ', 'x', 'deutsch', 'de@evil', 'xx', 'tlh', "de\nfr", '../de', 'de-' * 40, 12, [], {}, Object.new,
+       :'', :xx].each do |value|
+        expect(described_class[value]).to be(all), value.inspect
+      end
+    end
+
+    it 'keeps the table closed: a lookup never adds an entry', :aggregate_failures do
+      expect { %w[zz qq-QQ nonsense].each { described_class[_1] } }
+        .not_to(change { [described_class::SCOPES.size, described_class::SCOPES.keys] })
+      expect(described_class::SCOPES).to be_frozen
+    end
+  end
+
+  describe 'ambiguous terms' do
+    let(:scoped) { described_class::SCOPED_WORDS + described_class::SCOPED_PATTERNS }
+
+    it 'are listed only for a scoped concept, and are terms of that concept', :aggregate_failures do
+      languages.each do |language|
+        expect(language.ambiguous.keys - scoped).to be_empty, "#{language.code} flags an unscoped concept"
+        language.ambiguous.each do |concept, terms|
+          expect(language.terms.fetch(concept)).to include(*terms), "#{language.code} #{concept}"
+          expect(terms).to eq(terms.uniq)
+        end
+      end
+    end
+
+    it 'carry one consistent flag for a term every language that lists it', :aggregate_failures do
+      scoped.each do |concept|
+        listed = languages.flat_map { |language| language.terms.fetch(concept).map { [_1, language] } }
+        listed.group_by(&:first).each do |term, pairs|
+          flags = pairs.map { |_, language| language.ambiguous.fetch(concept, described_class::NONE).include?(term) }
+          expect(flags.uniq.size).to eq(1), "#{concept} #{term.inspect} is flagged in only some languages"
+        end
+      end
+    end
+
+    it 'default to none for a language that declares none' do
+      expect(described_class::Language.new(code: :xx, terms: {}).ambiguous).to eq({}).and be_frozen
+    end
+  end
+
+  describe '.ambiguous_terms' do
+    let(:one) { described_class::Language.new(code: :xx, terms: {}, ambiguous: { utility: ['dela', /s['’]x/] }.freeze) }
+    let(:two) { described_class::Language.new(code: :yy, terms: {}, ambiguous: { utility: %w[dela zed] }.freeze) }
+
+    it 'joins the flagged terms of the languages in order, without repeats', :aggregate_failures do
+      terms = described_class.ambiguous_terms([one, two], :utility)
+
+      expect(terms).to eq(['dela', /s['’]x/, 'zed'])
+      expect(terms).to be_frozen
+    end
+
+    it 'is empty for a concept no language flags', :aggregate_failures do
+      expect(described_class.ambiguous_terms([one, two], :path_media)).to eq([])
+      expect(described_class.ambiguous_terms([], :utility)).to eq([])
+    end
+  end
+
+  describe '.build_scope' do
+    let(:one) do
+      described_class::Language.new(code: :xx, terms: {},
+                                    ambiguous: { utility: ['dela', /s['’]x/], path_vanity: %w[plus] }.freeze)
+    end
+    let(:two) { described_class::Language.new(code: :yy, terms: {}, ambiguous: { utility: %w[dela zed] }.freeze) }
+    let(:scope) { described_class.build_scope(:both, [one, two]) }
+
+    it 'keeps its code and every scoped concept, frozen', :aggregate_failures do
+      expect(scope).to be_frozen.and have_attributes(code: :both)
+      expect(scope.ambiguous_words.keys).to eq(described_class::SCOPED_WORDS)
+      expect(scope.alternations.keys).to eq(described_class::SCOPED_PATTERNS)
+      expect([scope.ambiguous_words, scope.alternations]).to all(be_frozen)
+    end
+
+    it 'holds the ambiguous words and alternatives of its languages only', :aggregate_failures do
+      expect(scope.ambiguous_words.fetch(:path_vanity)).to eq(%w[plus])
+      expect(scope.ambiguous_words.fetch(:path_media)).to eq([])
+      expect(scope.ambiguous_alternation(:utility)).to eq('dela|s[\'’]x|zed')
+      expect(scope.ambiguous_alternation(:recommended)).to eq('')
+    end
+  end
+
+  describe '.[] allocation' do
+    it 'allocates nothing for nil, an exact tag or a symbol (the least of several runs, to shed GC.stat noise)',
+       :aggregate_failures do
+      [nil, 'de', :de].each do |lang|
+        deltas = Array.new(5) do
+          before = GC.stat(:total_allocated_objects)
+          described_class[lang]
+          GC.stat(:total_allocated_objects) - before
+        end
+
+        expect(deltas.min).to eq(0), lang.inspect
+      end
+    end
+  end
+
+  describe 'scope' do
+    it 'applies an unambiguous term in every scope and an ambiguous one in its own language and all',
+       :aggregate_failures do
+      en = described_class[:en]
+
+      expect(described_class[nil].words(:path_vanity)).to include('plus', 'subscribe')
+      expect(en.words(:path_vanity)).to include('plus', 'subscribe')
+      expect(described_class[:fr].words(:path_vanity)).to include('subscribe')
+      expect(described_class[:fr].words(:path_vanity)).not_to include('plus')
+      expect(described_class[nil].words(:path_vanity)).to include('plus', 'subscribe')
+    end
+
+    it 'builds a frozen Set where a scope adds an ambiguous word', :aggregate_failures do
+      words = described_class[:es].words(:path_taxonomy)
+
+      expect(words).to be_frozen.and include('tema', 'category')
+      expect(described_class[:es].words(:path_taxonomy)).not_to be(words)
+    end
+
+    it 'unions the shared Set with the ambiguous words, whatever they overlap', :aggregate_failures do
+      overlapping = described_class::Scope.new(code: :xx, ambiguous_words: { path_taxonomy: %w[category tema] }.freeze,
+                                               alternations: {}.freeze)
+
+      expect(overlapping.words(:path_taxonomy)).to eq(described_class.unambiguous_words(:path_taxonomy) | %w[tema])
+    end
+
+    it 'reuses the identical shared Set where a scope adds no ambiguous word', :aggregate_failures do
+      shared = described_class.unambiguous_words(:path_taxonomy)
+
+      expect(described_class[:ja].words(:path_taxonomy)).to be(shared)
+      expect(described_class[:pl].words(:path_taxonomy)).to be(shared)
+      expect(described_class[:de].words(:path_taxonomy)).not_to be(shared)
+      expect(described_class::SCOPES.values.map { _1.words(:path_office) }.uniq(&:object_id).size).to eq(1)
+    end
+
+    it 'holds the ambiguous alternatives of its own language only', :aggregate_failures do
+      expect(described_class[:sv].ambiguous_alternation(:utility)).to eq('dela|plus')
+      expect(described_class[:en].ambiguous_alternation(:utility)).not_to include('dela')
+      expect(described_class[:all].ambiguous_alternation(:utility).split('|')).to include('dela', 'sobre', 'plus')
+      expect(described_class[:ja].ambiguous_alternation(:utility)).to eq('')
+    end
+
+    it 'splits the all-language terms into the shared and the ambiguous parts', :aggregate_failures do
+      shared = described_class.unambiguous_alternation(:utility).split('|')
+      flagged = described_class[:all].ambiguous_alternation(:utility).split('|')
+
+      expect(shared).to include('contact', 'subscribe')
+      expect(shared).not_to include('dela', 'plus')
+      every = described_class.compile(languages.flat_map { _1.terms.fetch(:utility) }).split('|')
+
+      expect((shared + flagged).uniq).to match_array(every.uniq)
+    end
+  end
 end
+
+# rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers

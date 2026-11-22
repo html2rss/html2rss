@@ -12,8 +12,8 @@ module Html2rss
         path_office: %w[redaccion redacción],
         path_non_article: %w[juegos crucigrama crucigramas horoscopo horoscopos esquelas obituarios envivo],
         path_taxonomy: %w[categoria categorias etiqueta etiquetas tema temas],
-        path_vanity: %w[suscribirse boletin],
-        path_soft_utility: NONE,
+        path_vanity: %w[suscribirse boletin plus],
+        path_soft_utility: %w[plus],
         path_chrome: %w[
           autores archivos sobre-nosotros sobre quienes-somos buscar busqueda ayuda entrar ingresar registrarse
           registro cuenta suscribirse boletin privacidad condiciones
@@ -23,12 +23,12 @@ module Html2rss
         type_marker: ['vídeo', 'galería', 'en directo', 'nota de prensa', 'episodio completo'],
         utility_prefix: [
           'ver todos', 'ver todo', 'todas las noticias', 'suscribirse', 'boletin', 'boletín', 'comentarios feed',
-          'unirse'
+          'unirse', 'plus'
         ],
         utility: [
           'sobre', 'sobre nosotros', 'contacto', 'comentario', 'comentarios', 'unirse', 'iniciar sesion', 'login',
           'miembro', 'membresia', 'membresía', 'ver todo', 'compartir', 'registrarse', 'suscribirse', 'boletin',
-          'boletín'
+          'boletín', 'plus'
         ],
         recommended: ['recomendado', 'recomendado para ti'],
         read_more: [
@@ -48,6 +48,16 @@ module Html2rss
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE
+      }.freeze,
+      ambiguous: {
+        utility_prefix: %w[plus],
+        utility: %w[sobre plus],
+        path_chrome: %w[sobre],
+        path_taxonomy: %w[tema temas],
+        path_section: %w[entradas],
+        path_article: %w[entrada],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus]
       }.freeze
     )
   end

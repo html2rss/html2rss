@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers
+
 RSpec.describe Html2rss::AutoSource::Cleanup do
   let(:url) { Html2rss::Url.from_absolute('http://example.com') }
+  let(:vocabulary) { Html2rss::Vocabulary[nil] }
   let(:articles) do
     [
       instance_double(Html2rss::Article,
@@ -66,7 +69,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
   end
 
   describe '.call' do
-    subject(:result) { described_class.call(articles, url:, keep_different_domain:) }
+    subject(:result) { described_class.call(articles, vocabulary:, url:, keep_different_domain:) }
 
     let(:cleaned) { result.articles }
     let(:keep_different_domain) { false }
@@ -86,7 +89,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     it 'logs article counts before and after cleanup', :aggregate_failures do
       allow(Html2rss::Log).to receive(:debug)
       start_count = articles.size
-      described_class.call(articles, url:)
+      described_class.call(articles, vocabulary:, url:)
 
       expect(Html2rss::Log).to have_received(:debug).with("Cleanup: start with #{start_count} articles")
       expect(Html2rss::Log).to have_received(:debug).with("Cleanup: end with #{articles.size} articles")
@@ -175,7 +178,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- verdict stub + two scraper cohorts
     context 'with a corroboration page check' do
-      subject(:result) { described_class.call(articles, url:, corroboration:) }
+      subject(:result) { described_class.call(articles, vocabulary:, url:, corroboration:) }
 
       let(:corroboration) { instance_double(Html2rss::AutoSource::Corroboration) }
       let(:structured) { Html2rss::AutoSource::Scraper::JsonState }
@@ -218,7 +221,11 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- page links stub + scraper articles
     context 'with sponsored items on the page' do
-      subject(:result) { described_class.call(articles, url:, keep_sponsored:, page_links: -> { page_links }) }
+      subject(:result) do
+        described_class.call(articles, vocabulary:, url:, keep_sponsored:, page_links: lambda {
+          page_links
+        })
+      end
 
       let(:keep_sponsored) { false }
       let(:page_links) { instance_double(Html2rss::AutoSource::PageLinks) }
@@ -247,7 +254,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
       it 'admits sponsored items unchanged when keep_sponsored is on, without reading the page',
          :aggregate_failures do
-        kept = described_class.call(articles, url:, keep_sponsored: true, page_links: -> { page_links })
+        kept = described_class.call(articles, vocabulary:, url:, keep_sponsored: true, page_links: -> { page_links })
 
         expect(kept.articles.map { _1.url.path }).to eq(%w[/story-one /paid-one /paid-two /paid-feed])
         expect(kept.drop_tallies).to be_empty
@@ -255,18 +262,18 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
 
       it 'drops sponsored items when keep_sponsored is omitted' do
-        omitted = described_class.call(articles, url:, page_links: -> { page_links })
+        omitted = described_class.call(articles, vocabulary:, url:, page_links: -> { page_links })
         expect(omitted.drop_tallies).to eq('sponsored' => 3)
       end
 
       it 'admits every item without page links' do
-        expect(described_class.call(articles, url:).articles.size).to eq(4)
+        expect(described_class.call(articles, vocabulary:, url:).articles.size).to eq(4)
       end
     end
 
     # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- corroboration stub + two scraper articles
     context 'when a corroborated item differs from its rendered anchor by scheme or tracking params' do
-      subject(:result) { described_class.call(articles, url:, corroboration:) }
+      subject(:result) { described_class.call(articles, vocabulary:, url:, corroboration:) }
 
       let(:corroboration) { instance_double(Html2rss::AutoSource::Corroboration, verdict: :keep) }
       let(:structured) { Html2rss::AutoSource::Scraper::JsonState }
@@ -295,7 +302,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- real page links + article factory
     context 'when the page places stories with a placement param' do
-      subject(:result) { described_class.call(articles, url:, page_links: -> { page_links }) }
+      subject(:result) { described_class.call(articles, vocabulary:, url:, page_links: -> { page_links }) }
 
       let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
       let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com/news/') }
@@ -329,18 +336,21 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       it 'drops a read-more copy of a story linked under another value', :aggregate_failures do
         read_more = article_at['/news/b?pos=top', 'Read more']
 
-        expect(described_class.call([*articles, read_more], url:, page_links: -> { page_links }).drop_tallies)
+        expect(described_class.call([*articles, read_more], vocabulary:, url:, page_links: lambda {
+          page_links
+        }).drop_tallies)
           .to eq('duplicate_url' => 2)
       end
 
       it 'rejects the page itself under any placement value', :aggregate_failures do
-        self_link = described_class.call([article_at['/news/?pos=top'], *articles], url:, page_links: -> { page_links })
+        page = [article_at['/news/?pos=top'], *articles]
+        self_link = described_class.call(page, vocabulary:, url:, page_links: -> { page_links })
 
         expect(self_link.drop_tallies).to eq('duplicate_url' => 1, 'self_link' => 1)
       end
 
       it 'keeps every param significant without page links' do
-        expect(described_class.call(articles, url:).articles.size).to eq(5)
+        expect(described_class.call(articles, vocabulary:, url:).articles.size).to eq(5)
       end
     end
 
@@ -389,7 +399,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
          https://example.com/news?fbclid=1#top].each do |href|
         it "rejects #{href} as self_link", :aggregate_failures do
           other = article_at['https://example.com/story-two']
-          result = described_class.call([article_at[href], other], url:)
+          result = described_class.call([article_at[href], other], vocabulary:, url:)
 
           expect(result.articles).to eq([other])
           expect(result.drop_tallies).to include('self_link' => 1)
@@ -399,7 +409,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       it 'keeps a variant with a meaningful query param' do
         kept = article_at['https://example.com/news?id=1']
 
-        expect(described_class.call([kept], url:).articles).to eq([kept])
+        expect(described_class.call([kept], vocabulary:, url:).articles).to eq([kept])
       end
     end
 
@@ -411,7 +421,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       off_domain = Html2rss::Url.from_absolute('https://other.example/article3')
       article = instance_double(Html2rss::Article, valid?: true, url: off_domain, title: 'Different Domain Article')
 
-      expect(described_class.call([article], url:).articles).to be_empty
+      expect(described_class.call([article], vocabulary:, url:).articles).to be_empty
     end
 
     context 'when keep_different_domain is false' do
@@ -421,7 +431,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     end
 
     context 'with a followed native feed on another domain' do
-      subject(:result) { described_class.call(articles, url:, feed_url:) }
+      subject(:result) { described_class.call(articles, vocabulary:, url:, feed_url:) }
 
       let(:url) { Html2rss::Url.from_absolute('https://example.com/show') }
       let(:feed_url) { Html2rss::Url.from_absolute('https://feeds.example.net/show.xml') }
@@ -443,7 +453,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     context 'with followed-feed items that are files on a third domain' do
       subject(:result) do
-        described_class.call(articles, url: Html2rss::Url.from_absolute('https://example.com/show'),
+        described_class.call(articles, vocabulary:, url: Html2rss::Url.from_absolute('https://example.com/show'),
                                        feed_url: Html2rss::Url.from_absolute('https://feeds.example.net/show.xml'))
       end
 
@@ -600,7 +610,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         it "keeps=#{example[:reason].nil?} for #{example[:title].inspect}", :aggregate_failures do
           article = instance_double(Html2rss::Article, valid?: true, title: example[:title],
                                                        url: Html2rss::Url.from_absolute("http://example.com/t#{index}"))
-          call_result = described_class.call([article], url:)
+          call_result = described_class.call([article], vocabulary:, url:)
           expect(call_result.articles.map(&:title).include?(example[:title])).to eq(example[:reason].nil?)
           next if example[:reason].nil?
 
@@ -613,7 +623,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
 
       it 'drops untitled page-derived items as blank_title', :aggregate_failures do
-        call_result = described_class.call(untitled, url:)
+        call_result = described_class.call(untitled, vocabulary:, url:)
         expect(call_result.articles).to be_empty
         expect(call_result.drop_tallies['blank_title']).to eq(3)
       end
@@ -625,7 +635,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
           Html2rss::Article.new(id:, description: 'A short microblog post body', scraper: source,
                                 url: Html2rss::Url.from_absolute("http://example.com/#{id}"))
         end
-        call_result = described_class.call([feed_post, card], url:)
+        call_result = described_class.call([feed_post, card], vocabulary:, url:)
         expect(call_result.articles).to eq([feed_post])
         expect(call_result.drop_tallies).to eq('blank_title' => 1)
       end
@@ -799,7 +809,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     end
 
     it 'keeps content paths and non-utility paths but drops high-confidence utility routes', :aggregate_failures do
-      kept = described_class.call(articles, url: base).articles.map { _1.url.path }
+      kept = described_class.call(articles, vocabulary:, url: base).articles.map { _1.url.path }
 
       expect(kept).to eq(%w[/news/login /store/item-slug-name-here /video/some-title-goes-here-now
                             /news/newsletters /press/newsletters/some-article-slug])
@@ -831,3 +841,5 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     end
   end
 end
+
+# rubocop:enable RSpec/MultipleMemoizedHelpers

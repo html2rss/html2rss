@@ -4,12 +4,13 @@
 
 RSpec.describe Html2rss::AutoSource::Corroboration do
   subject(:corroboration) do
-    described_class.new do
+    described_class.new(vocabulary) do
       builds << true
       page_links
     end
   end
 
+  let(:vocabulary) { Html2rss::Vocabulary[nil] }
   let(:builds) { [] }
   let(:sparse) { false }
   let(:placements) { {} }

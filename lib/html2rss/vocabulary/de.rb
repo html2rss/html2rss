@@ -15,8 +15,8 @@ module Html2rss
           todesanzeigen
         ],
         path_taxonomy: %w[kategorie kategorien schlagwort schlagworte thema themen],
-        path_vanity: %w[abonnieren abo],
-        path_soft_utility: NONE,
+        path_vanity: %w[abonnieren abo plus],
+        path_soft_utility: %w[plus],
         path_chrome: %w[
           autor autoren archiv ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
           konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
@@ -25,12 +25,12 @@ module Html2rss
         path_deep_post_context: %w[presse pressemitteilungen],
         type_marker: ['bildergalerie', 'fotostrecke', 'liveticker', 'pressemitteilung', 'ganze folge'],
         utility_prefix: [
-          'alle anzeigen', 'alle news', 'abonnieren', 'newsletter', 'kommentar feed', 'mitmachen'
+          'alle anzeigen', 'alle news', 'abonnieren', 'newsletter', 'kommentar feed', 'mitmachen', 'plus'
         ],
         utility: [
           'ueber', 'über', 'ueber uns', 'über uns', 'kontakt', 'kommentar', 'kommentare', 'mitmachen', 'anmelden',
           'login', 'mitglied', 'mitgliedschaft', 'alle anzeigen', 'teilen', 'registrieren', 'abonnieren',
-          'newsletter'
+          'newsletter', 'plus'
         ],
         recommended: ['empfohlen', 'empfohlen fuer dich', 'empfohlen für dich'],
         read_more: [
@@ -50,6 +50,14 @@ module Html2rss
         clock_suffix: %w[Uhr],
         date_piece: NONE,
         element_label: NONE
+      }.freeze,
+      ambiguous: {
+        utility_prefix: %w[plus],
+        utility: %w[ueber über teilen plus],
+        path_chrome: %w[ueber],
+        path_taxonomy: %w[thema themen],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus]
       }.freeze
     )
   end

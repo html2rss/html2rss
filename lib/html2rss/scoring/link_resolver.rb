@@ -3,7 +3,9 @@
 module Html2rss
   module Scoring
     ##
-    # Resolves href strings into memoized LinkDestination::DestinationFacts for one page base URL.
+    # Resolves href strings into memoized LinkDestination::DestinationFacts for one page base URL and one
+    # page language ({Vocabulary::Scope}). The memo lives and dies with the page, so it never holds facts of
+    # another language.
     class LinkResolver
       # Captures the href portion before a fragment for memoization keys.
       HREF_BASE_PATTERN = /\A([^#]*)/
@@ -21,10 +23,12 @@ module Html2rss
       end.freeze
 
       # @param base_url [String, Html2rss::Url]
-      def initialize(base_url)
+      # @param vocabulary [Vocabulary::Scope] the page language's scope; every ambiguous term by default
+      def initialize(base_url, vocabulary: Vocabulary[nil])
         @base_url = base_url
+        @vocabulary = vocabulary
         @by_href = {}
-        @text_classifier = LinkDestination::TextClassifier.new(memoize: true)
+        @text_classifier = LinkDestination::TextClassifier.new(memoize: true, vocabulary:)
       end
 
       # @return [LinkDestination::TextClassifier]
@@ -72,7 +76,7 @@ module Html2rss
 
       def build_facts(href)
         url = Html2rss::Url.from_relative(href, @base_url)
-        LinkDestination::DestinationFacts.build(url)
+        LinkDestination::DestinationFacts.build(url, vocabulary: @vocabulary)
       end
     end
   end

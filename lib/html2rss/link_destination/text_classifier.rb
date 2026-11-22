@@ -4,14 +4,37 @@ module Html2rss
   module LinkDestination
     # Classifies visible anchor text for utility, recommendation and read-more chrome. The terms are
     # {Vocabulary}'s (en, de, fr, es, it, nl, pl, sv and ja); this owns how each concept is read: a whole
-    # text, a prefix, or a whole text with its topic.
+    # text, a prefix, or a whole text with its topic. Utility and recommendation labels honour the page
+    # language ({Vocabulary::Scope}); read-more labels read every language.
     class TextClassifier
-      # Prefix labels that usually identify navigation or subscription links.
-      UTILITY_PREFIX_PATTERN = /\A\s*(#{Vocabulary.alternation(:utility_prefix)})\b/ix
-      # Short labels that usually identify non-article navigation links, recommendation labels included.
-      UTILITY_PATTERN = /\A\s*(#{Vocabulary.alternation(:utility)}|#{Vocabulary.alternation(:recommended)})\b/ix
-      # Labels for recommendation chrome rather than source articles.
-      RECOMMENDED_PATTERN = /\A\s*(#{Vocabulary.alternation(:recommended)})\b/ix
+      # Never matches: the ambiguous matcher of a scope without ambiguous terms. Like every matcher here it is
+      # fixed to UTF-8 (+/u+): a pure-ASCII regexp would be recompiled, and allocate, on each non-ASCII text.
+      NEVER = /(?!)/u
+
+      # The three label readings, as the alternatives of each scoped concept: a prefix, a whole text, a
+      # recommendation. A utility label is a utility word or a recommendation label.
+      READINGS = {
+        utility_prefix: %i[utility_prefix],
+        utility: %i[utility recommended],
+        recommended: %i[recommended]
+      }.freeze
+      private_constant :READINGS
+
+      # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any.
+      matcher = lambda do |alternatives|
+        alternatives = alternatives.reject(&:empty?)
+        alternatives.empty? ? NEVER : /\A\s*(#{alternatives.join('|')})\b/iux
+      end
+
+      # Per reading, the matcher of the terms every page language applies (shared, compiled once) ...
+      UNAMBIGUOUS = READINGS.transform_values do |concepts|
+        matcher.call(concepts.map { Vocabulary.unambiguous_alternation(_1) })
+      end.freeze
+      # ... and per scope code, the matcher of the ambiguous terms of that scope (compiled once per scope).
+      AMBIGUOUS = Vocabulary::SCOPES.transform_values do |scope|
+        READINGS.transform_values { |concepts| matcher.call(concepts.map { scope.ambiguous_alternation(_1) }) }.freeze
+      end.freeze
+      private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS
 
       # Whole read-more labels that stand alone ("Continue reading", "Lire la suite", "続きを読む").
       READ_MORE_PHRASE = /#{Vocabulary.alternation(:read_more)}/ix
@@ -39,27 +62,35 @@ module Html2rss
 
       # @param memoize [Boolean] remember normalized texts for this instance; opt in only for an instance
       #   scoped to one extraction, never for a shared constant
-      def initialize(memoize: false)
+      # @param vocabulary [Vocabulary::Scope] the page language's scope; every ambiguous term by default
+      def initialize(memoize: false, vocabulary: Vocabulary[nil])
         @normalized = {} if memoize
+        @ambiguous = AMBIGUOUS.fetch(vocabulary.code)
       end
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text matches a utility label
-      def utility?(text) = normalize(text).match?(UTILITY_PATTERN)
+      def utility?(text) = label?(:utility, text)
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text begins with a utility label
-      def utility_prefix?(text) = normalize(text).match?(UTILITY_PREFIX_PATTERN)
+      def utility_prefix?(text) = label?(:utility_prefix, text)
 
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text identifies recommendation chrome
-      def recommended?(text) = normalize(text).match?(RECOMMENDED_PATTERN)
+      def recommended?(text) = label?(:recommended, text)
 
       # @param text [String, #to_s] visible anchor text or extracted title
       # @return [Boolean] true when the whole text is a read-more label, bare or with its topic
       def read_more?(text) = normalize(text).match?(READ_MORE_PATTERN)
 
       private
+
+      # An unambiguous term always applies; an ambiguous one only in the page's language scope.
+      def label?(reading, text)
+        normalized = normalize(text)
+        normalized.match?(UNAMBIGUOUS.fetch(reading)) || normalized.match?(@ambiguous.fetch(reading))
+      end
 
       # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, and without
       # its trailing new-window notice ("(opens in new tab)").

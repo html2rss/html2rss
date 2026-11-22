@@ -11,19 +11,19 @@ module Html2rss
         path_profile: %w[skribent skribenter forfattare författare],
         path_office: NONE,
         path_non_article: %w[spel dodsannonser dödsannonser],
-        path_taxonomy: NONE,
-        path_vanity: NONE,
-        path_soft_utility: NONE,
+        path_taxonomy: %w[tema],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus],
         path_chrome: NONE,
         path_media: NONE,
         path_deep_post_context: NONE,
         type_marker: [
           'bildspel', 'direkt', 'direktsändning', 'liverapport', 'livesändning', 'pressmeddelande', 'hela avsnittet'
         ],
-        utility_prefix: ['visa alla', 'se alla', 'alla nyheter', 'prenumerera', 'nyhetsbrev', 'bli medlem'],
+        utility_prefix: ['visa alla', 'se alla', 'alla nyheter', 'prenumerera', 'nyhetsbrev', 'bli medlem', 'plus'],
         utility: [
           'om oss', 'kontakt', 'kommentarer', 'logga in', 'bli medlem', 'dela', 'prenumerera', 'registrera dig',
-          'visa alla', 'se alla', 'nyhetsbrev', 'medlemskap'
+          'visa alla', 'se alla', 'nyhetsbrev', 'medlemskap', 'plus'
         ],
         recommended: ['rekommenderat', 'rekommenderat för dig', 'rekommenderat for dig'],
         read_more: [
@@ -43,6 +43,13 @@ module Html2rss
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE
+      }.freeze,
+      ambiguous: {
+        utility_prefix: %w[plus],
+        utility: %w[dela plus],
+        path_taxonomy: %w[tema],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus]
       }.freeze
     )
   end

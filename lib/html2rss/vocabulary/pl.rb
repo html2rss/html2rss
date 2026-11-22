@@ -12,19 +12,19 @@ module Html2rss
         path_office: %w[redakcja],
         path_non_article: %w[gry kviz horoskopy nekrolog nekrologi nazywo],
         path_taxonomy: NONE,
-        path_vanity: NONE,
-        path_soft_utility: NONE,
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus],
         path_chrome: NONE,
         path_media: NONE,
         path_deep_post_context: NONE,
         type_marker: ['wideo', 'galeria', 'na żywo', 'relacja na żywo', 'komunikat prasowy', 'cały odcinek'],
         utility_prefix: [
           'zobacz wszystko', 'wszystkie wiadomości', 'wszystkie wiadomosci', 'subskrybuj', 'newsletter',
-          'dołącz', 'dolacz'
+          'dołącz', 'dolacz', 'plus'
         ],
         utility: [
           'o nas', 'kontakt', 'komentarze', 'zaloguj się', 'zaloguj sie', 'zarejestruj się', 'zarejestruj sie',
-          'udostępnij', 'udostepnij', 'subskrybuj', 'zobacz wszystko', 'dołącz', 'dolacz'
+          'udostępnij', 'udostepnij', 'subskrybuj', 'zobacz wszystko', 'dołącz', 'dolacz', 'plus'
         ],
         recommended: ['polecane', 'polecane dla ciebie'],
         read_more: [
@@ -48,6 +48,12 @@ module Html2rss
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE
+      }.freeze,
+      ambiguous: {
+        utility_prefix: %w[plus],
+        utility: %w[plus],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus]
       }.freeze
     )
   end

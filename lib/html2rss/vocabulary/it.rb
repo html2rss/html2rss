@@ -11,9 +11,9 @@ module Html2rss
         path_profile: %w[autore autori giornalista giornalisti],
         path_office: %w[redazione],
         path_non_article: %w[giochi oroscopo oroscopi necrologio necrologi indiretta],
-        path_taxonomy: NONE,
-        path_vanity: NONE,
-        path_soft_utility: NONE,
+        path_taxonomy: %w[tema],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus],
         path_chrome: NONE,
         path_media: NONE,
         path_deep_post_context: NONE,
@@ -21,10 +21,10 @@ module Html2rss
           'diretta', 'in diretta', 'diretta streaming', 'fotogallery', 'galleria', 'comunicato stampa',
           'puntata completa'
         ],
-        utility_prefix: ['vedi tutto', 'vedi tutti', 'tutte le notizie', 'abbonati', 'newsletter', 'iscriviti'],
+        utility_prefix: ['vedi tutto', 'vedi tutti', 'tutte le notizie', 'abbonati', 'newsletter', 'iscriviti', 'plus'],
         utility: [
           'chi siamo', 'contatti', 'commenti', 'accedi', 'iscriviti', 'condividi', 'abbonati', 'registrati',
-          'vedi tutto', 'abbonamento'
+          'vedi tutto', 'abbonamento', 'plus'
         ],
         recommended: ['consigliato', 'consigliato per te'],
         read_more: [
@@ -48,6 +48,13 @@ module Html2rss
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE
+      }.freeze,
+      ambiguous: {
+        utility_prefix: %w[plus],
+        utility: %w[plus],
+        path_taxonomy: %w[tema],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus]
       }.freeze
     )
   end

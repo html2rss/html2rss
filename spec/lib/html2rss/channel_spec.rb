@@ -135,6 +135,29 @@ RSpec.describe Html2rss::Channel do
       end
     end
 
+    context 'when resolved on its own, as the heuristics scope by it' do
+      let(:body) { '<html lang="de-AT"><body></body></html>' }
+      let(:headers) { { 'content-language' => nil, 'content-type': 'text/html' } }
+
+      it 'reads the root lang as written, with no overrides', :aggregate_failures do
+        expect(described_class.language_for(response)).to eq('de-AT')
+        expect(described_class.language_for(response, {})).to eq('de-AT')
+        expect(described_class.language_for(response)).to eq(described_class.from_response(response).language)
+      end
+
+      it 'lets an override win, and ignores a nil one', :aggregate_failures do
+        expect(described_class.language_for(response, { language: 'sv' })).to eq('sv')
+        expect(described_class.language_for(response, { language: nil })).to eq('de-AT')
+      end
+
+      it 'reduces a content-language header to a String of two letters', :aggregate_failures do
+        headers = { 'content-language' => 'en-US', 'content-type': 'text/html' }
+        with_header = build_response.call(body:, headers:, url:)
+
+        expect(described_class.language_for(with_header)).to eq('en').and be_a(String)
+      end
+    end
+
     context 'with a content-language header and a different root lang' do
       let(:headers) { { 'content-language' => 'en-US', 'content-type': 'text/html' } }
       let(:body) { '<html lang="fr"><body></body></html>' }

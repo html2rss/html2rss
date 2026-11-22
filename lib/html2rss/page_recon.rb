@@ -154,9 +154,10 @@ module Html2rss
     ##
     # @param sst [Html2rss::SST::Document]
     # @param url [String, Html2rss::Url]
+    # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope
     # @return [Array]
-    def self.discover_segments(sst, url)
-      link_resolver = Scoring::LinkResolver.new(url)
+    def self.discover_segments(sst, url, vocabulary:)
+      link_resolver = Scoring::LinkResolver.new(url, vocabulary:)
       AutoSource::Segmenter.call(sst, base_url: url, strategy: :list, link_resolver:)
     end
 
@@ -247,7 +248,7 @@ module Html2rss
     def cheap_articles
       return [0, {}] unless response.html_response?
 
-      source = AutoSource.new(response, AutoSource::DEFAULT_CONFIG.merge(limit: 10))
+      source = AutoSource.new(response, AutoSource::DEFAULT_CONFIG.merge(limit: 10), vocabulary:)
       [source.articles.size, source.admission_drops]
     end
 
@@ -264,12 +265,15 @@ module Html2rss
       ]
     end
 
+    # The page language's scope, resolved once per recon and shared by every classifier it runs.
+    def vocabulary = @vocabulary ||= Vocabulary[Channel.language_for(response)]
+
     def sst_document
       Html2rss::SST::Normalizer.call(response.body)
     end
 
     def segment_stats(sst, page_url)
-      segments = self.class.discover_segments(sst, page_url)
+      segments = self.class.discover_segments(sst, page_url, vocabulary:)
       return { found: 0 } if segments.empty?
 
       {

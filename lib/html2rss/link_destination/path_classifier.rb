@@ -6,45 +6,55 @@ module Html2rss
     class PathClassifier # rubocop:disable Metrics/ClassLength
       attr_reader :segments
 
-      # Soft utility segments excluded from high-confidence junk (still utility_path).
-      SOFT_UTILITY = Vocabulary.words(:path_soft_utility)
-
-      # Segment groups used to classify article, taxonomy, utility, and vanity routes. The words are
-      # {Vocabulary}'s; this owns how they combine.
+      # Segment groups used to classify article, taxonomy, utility, and vanity routes, from one scope's words
+      # ({Vocabulary::Scope#words}); this owns how they combine.
       # Utility = taxonomy ∪ chrome ∪ soft utility (do not re-list taxonomy tokens).
-      SEGMENT_SETS = begin
+      #
+      # @param scope [Vocabulary::Scope]
+      # @return [Hash{Symbol => Set<String>}]
+      def self.segment_sets(scope) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+        soft = scope.words(:path_soft_utility) # excluded from high-confidence junk (still utility_path)
         # Listing words: a path ending in one is a section index, not an article.
-        section = Vocabulary.words(:path_section)
-        content = (section | Vocabulary.words(:path_article)).freeze
+        section = scope.words(:path_section)
         # People pages. `team` and `people` are left out on purpose: they name sports teams and
         # newsmakers in article paths. The words are unambiguous byline/staff words.
-        profile = Vocabulary.words(:path_profile)
+        profile = scope.words(:path_profile)
         # Editorial-office and contributor words: their child pages are often editorial notes with a
         # three-word slug, so only a one- or two-word name slug marks a profile.
-        office = Vocabulary.words(:path_office)
-        # Destinations that are never articles: games, horoscopes, quizzes, obituaries, livestreams, players.
-        non_article = Vocabulary.words(:path_non_article)
-        taxonomy = Vocabulary.words(:path_taxonomy)
-        vanity = Vocabulary.words(:path_vanity)
-        chrome = (Vocabulary.words(:path_chrome) | Vocabulary::NonTranslated::PATH).freeze
-        # Audio and video destinations: players, podcast episodes and recorded briefings, not text articles.
-        media = Vocabulary.words(:path_media)
-        utility = (taxonomy | chrome | SOFT_UTILITY).freeze
+        office = scope.words(:path_office)
+        taxonomy = scope.words(:path_taxonomy)
+        utility = taxonomy | scope.words(:path_chrome) | Vocabulary::NonTranslated::PATH | soft
         {
-          content:,
+          content: section | scope.words(:path_article),
           section:,
           utility:,
-          high_confidence_junk: (utility - SOFT_UTILITY).freeze,
+          high_confidence_junk: utility - soft,
           taxonomy:,
-          non_article:,
+          # Destinations that are never articles: games, horoscopes, quizzes, obituaries, livestreams, players.
+          non_article: scope.words(:path_non_article),
           profile:,
           office:,
-          people_index: (profile | office).freeze,
-          vanity:,
-          media:,
-          deep_post_context: Vocabulary.words(:path_deep_post_context)
-        }.freeze
+          people_index: profile | office,
+          vanity: scope.words(:path_vanity),
+          # Audio and video destinations: players, podcast episodes and recorded briefings, not text articles.
+          media: scope.words(:path_media),
+          deep_post_context: scope.words(:path_deep_post_context)
+        }
       end
+      private_class_method :segment_sets
+
+      # The sets of every scope, frozen and interned by content: a scope that adds no ambiguous word to a
+      # set (or to any set) holds the identical shared object, so only what differs is retained.
+      SEGMENT_SETS_BY_SCOPE = begin
+        sets = {}
+        tables = {}
+        Vocabulary::SCOPES.transform_values do |scope|
+          table = segment_sets(scope).transform_values { |set| sets[set.freeze] ||= set }.freeze
+          tables[table] ||= table
+        end.freeze
+      end
+      # The sets of the +:all+ scope: every ambiguous word applies.
+      SEGMENT_SETS = SEGMENT_SETS_BY_SCOPE.fetch(:all)
       # Routing shape: any digit-led slug or id (4+ digits), not a calendar year; see ArticleRules::UrlDate::YEAR.
       YEARISH_SEGMENT = /\A\d{4,}[\w-]*\z/
       # Hyphenated slug shape common to article permalinks.
@@ -79,8 +89,10 @@ module Html2rss
       # @param segments [Array<String>] normalized URL path segments
       # @param host_label [String, nil] first host label (e.g. an obituary subdomain)
       # @param query [Boolean] whether the URL carries a query string (`/blog?p=12` selects one post)
-      def initialize(segments, host_label: nil, query: false)
+      # @param vocabulary [Vocabulary::Scope] the page language's scope; every ambiguous word by default
+      def initialize(segments, host_label: nil, query: false, vocabulary: Vocabulary[nil])
         @segments = segments
+        @sets = SEGMENT_SETS_BY_SCOPE.fetch(vocabulary.code)
         @query = query
         @host_label = host_label.to_s.downcase
         @lexicon = segments.map { ::Html2rss::Html::Probe.fold(_1) }.freeze
@@ -89,27 +101,27 @@ module Html2rss
       # @return [Boolean] true when the route has article-like path evidence
       def content_path?
         @content_path ||= !leading_high_confidence_junk? &&
-                          (SEGMENT_SETS[:content].intersect?(@lexicon) || yearish_content_context?)
+                          (@sets[:content].intersect?(@lexicon) || yearish_content_context?)
       end
 
       # @return [Boolean] true when the route includes utility/navigation evidence
       def utility_path?
-        @utility_path ||= SEGMENT_SETS[:utility].intersect?(@lexicon)
+        @utility_path ||= @sets[:utility].intersect?(@lexicon)
       end
 
       # @return [Boolean] true when the route points at conversion or account chrome
       def vanity_path?
-        @vanity_path ||= SEGMENT_SETS[:vanity].intersect?(@lexicon)
+        @vanity_path ||= @sets[:vanity].intersect?(@lexicon)
       end
 
       # @return [Boolean] true when a path segment names an audio or video destination
       def media_path?
-        @media_path ||= SEGMENT_SETS[:media].intersect?(@lexicon)
+        @media_path ||= @sets[:media].intersect?(@lexicon)
       end
 
       # @return [Boolean] true when the route points at taxonomy/listing chrome
       def taxonomy_path?
-        @taxonomy_path ||= SEGMENT_SETS[:taxonomy].intersect?(@lexicon)
+        @taxonomy_path ||= @sets[:taxonomy].intersect?(@lexicon)
       end
 
       # @return [Boolean] true when the route is too shallow to strongly indicate an article
@@ -133,7 +145,7 @@ module Html2rss
 
       # @return [Boolean] true when the route is shallow and names a soft vanity segment
       def shallow_vanity_route?
-        shallow? && @lexicon.any? { |folded| SEGMENT_SETS.fetch(:vanity).include?(folded) }
+        shallow? && @lexicon.any? { |folded| @sets.fetch(:vanity).include?(folded) }
       end
 
       # @return [Boolean] true when the leading segments are all utility chrome
@@ -174,7 +186,7 @@ module Html2rss
 
       def non_article_word?(word)
         joined = word.delete('-_')
-        SEGMENT_SETS[:non_article].include?(joined) || joined.match?(PLAYER_SEGMENT)
+        @sets[:non_article].include?(joined) || joined.match?(PLAYER_SEGMENT)
       end
 
       def media_file_route?
@@ -185,18 +197,18 @@ module Html2rss
       def profile_route?
         return false if segments.empty?
 
-        SEGMENT_SETS[:people_index].include?(@lexicon.last) || profile_page?
+        @sets[:people_index].include?(@lexicon.last) || profile_page?
       end
 
       def profile_page?
         return false if segments.size < 2
 
-        NAME_SLUG_BY_OWNER.any? { |set, slug| SEGMENT_SETS[set].include?(@lexicon[-2]) && segments.last.match?(slug) }
+        NAME_SLUG_BY_OWNER.any? { |set, slug| @sets[set].include?(@lexicon[-2]) && segments.last.match?(slug) }
       end
 
       # A path ending in a section word (no slug) lists articles instead of being one.
       def section_index?
-        !@query && segments.any? && SEGMENT_SETS[:section].include?(@lexicon.last)
+        !@query && segments.any? && @sets[:section].include?(@lexicon.last)
       end
 
       def leading_high_confidence_junk?
@@ -233,7 +245,7 @@ module Html2rss
       end
 
       def high_confidence_junk_at?(index)
-        SEGMENT_SETS.fetch(:high_confidence_junk).include?(@lexicon[index]) ||
+        @sets.fetch(:high_confidence_junk).include?(@lexicon[index]) ||
           host_shaped_segment?(segments[index])
       end
 
@@ -244,8 +256,8 @@ module Html2rss
       def trusted_post_context?(limit)
         return false if leading_high_confidence_junk?
 
-        content = SEGMENT_SETS.fetch(:content)
-        context = SEGMENT_SETS.fetch(:deep_post_context)
+        content = @sets.fetch(:content)
+        context = @sets.fetch(:deep_post_context)
         segments.zip(@lexicon).first(limit.clamp(0..)).any? do |segment, folded|
           content.include?(folded) || segment.match?(YEARISH_SEGMENT) || context.include?(folded)
         end
@@ -257,7 +269,7 @@ module Html2rss
         return false if segments.size < 2 || leading_high_confidence_junk? || non_article_word_present?
 
         last = segments.last
-        utility = SEGMENT_SETS.fetch(:utility) # vanity words are a subset of utility
+        utility = @sets.fetch(:utility) # vanity words are a subset of utility
         last.match?(DOCUMENT_SLUG_SEGMENT) && last.split(/[-_.]/).none? { utility.include?(_1.downcase) }
       end
 

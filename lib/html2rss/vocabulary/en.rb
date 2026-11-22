@@ -16,7 +16,7 @@ module Html2rss
           games sudoku crossword crosswords quiz quizzes horoscope horoscopes obituary obituaries
           livestream livestreams player
         ],
-        path_taxonomy: %w[category categories tag tags topic topics],
+        path_taxonomy: %w[category categories tag tags theme themes topic topics],
         path_vanity: %w[join membership plus premium pricing plans subscribe signup],
         path_soft_utility: %w[
           for-you join member members membership newsletter newsletters plans plus premium pricing recommended
@@ -61,6 +61,14 @@ module Html2rss
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE
+      }.freeze,
+      ambiguous: {
+        utility_prefix: %w[plus],
+        utility: %w[comment plus],
+        path_chrome: %w[comment],
+        path_taxonomy: %w[theme themes],
+        path_vanity: %w[plus],
+        path_soft_utility: %w[plus]
       }.freeze
     )
   end

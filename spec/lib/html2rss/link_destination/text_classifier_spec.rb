@@ -180,4 +180,35 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect(first).to have_received(:unicode_normalize).once
     end
   end
+
+  describe 'page language' do
+    let(:scoped) { ->(lang) { described_class.new(vocabulary: Html2rss::Vocabulary[lang]) } }
+
+    it 'reads an ambiguous term only in its own language or all', :aggregate_failures do
+      text = 'Dela Cruz wins election'
+
+      expect(scoped.call(:en).utility?(text)).to be(false)
+      expect(scoped.call(:sv).utility?(text)).to be(true)
+      expect(scoped.call(nil).utility?(text)).to be(true)
+      expect(described_class.new.utility?(text)).to be(true)
+    end
+
+    it 'reads an unambiguous term in every language', :aggregate_failures do
+      %i[en de sv ja].each do |lang|
+        expect(scoped.call(lang).utility?('Newsletter')).to be(true), lang.to_s
+        expect(scoped.call(lang).utility_prefix?('Subscribe now')).to be(true), lang.to_s
+      end
+    end
+
+    it 'scopes the prefix and the recommendation readings alike', :aggregate_failures do
+      expect(scoped.call(:fr).utility_prefix?('Plus de 100 morts')).to be(false)
+      expect(scoped.call(:en).utility_prefix?('Plus membership')).to be(true)
+      expect(scoped.call(:ja).recommended?('Recommended for you')).to be(true)
+      expect(scoped.call(:fr).recommended?('Recommended for you')).to be(true)
+    end
+
+    it 'leaves read-more labels in every language', :aggregate_failures do
+      %i[en de sv].each { |lang| expect(scoped.call(lang).read_more?('Lire la suite')).to be(true), lang.to_s }
+    end
+  end
 end

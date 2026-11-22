@@ -25,8 +25,10 @@ module Html2rss
       MIN_COHORT_SIZE = 3
 
       ##
+      # @param vocabulary [Vocabulary::Scope] the page language's scope, for the URL shape of each item
       # @yieldreturn [PageLinks] the page's links; called at most once, on the first checked item
-      def initialize(&page_links)
+      def initialize(vocabulary, &page_links)
+        @vocabulary = vocabulary
         @page_links_source = page_links
         @cohesion = {}.compare_by_identity
         @rendered = {}.compare_by_identity
@@ -135,7 +137,7 @@ module Html2rss
       # ending in a post slug (+/harbor-ferry-route-returns+) is a root-level permalink, not a
       # section root.
       def url_shape(url)
-        facts = LinkDestination::DestinationFacts.build(url)
+        facts = LinkDestination::DestinationFacts.build(url, vocabulary: @vocabulary)
         return 1 if facts.content_path || facts.strong_post_suffix
         return 0 unless facts.shallow
 

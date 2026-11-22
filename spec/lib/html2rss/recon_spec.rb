@@ -29,6 +29,7 @@ RSpec.describe Html2rss::Recon do
       json_response?: false,
       feed_response?: false,
       captured_responses: [],
+      headers: {},
       content_type: 'text/html',
       parsed_body: Nokogiri::HTML(html_body)
     )
@@ -209,6 +210,7 @@ RSpec.describe Html2rss::Recon do
           json_response?: false,
           feed_response?: false,
           captured_responses: [],
+          headers: {},
           content_type: 'text/html',
           parsed_body: Nokogiri::HTML(html_body)
         )

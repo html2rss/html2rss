@@ -49,6 +49,9 @@ module Html2rss
         clock_suffix: NONE,
         date_piece: NONE,
         element_label: NONE
+      }.freeze,
+      ambiguous: {
+        path_taxonomy: %w[theme themes]
       }.freeze
     )
   end

@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
+
 require 'spec_helper'
 
 RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
   let(:entry_url) { 'https://example.com/' }
+  let(:vocabulary) { Html2rss::Vocabulary[nil] }
   let(:html) do
     <<~HTML
       <!DOCTYPE html>
@@ -31,15 +34,26 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
   end
 
   it 'keeps one feed slot and listing nav without feed-path starvation', :aggregate_failures do
-    urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
+    urls = described_class.call(entry_url:, response:, vocabulary:, max: 5).map(&:to_s)
 
     expect(urls.grep(%r{/feed(?:\.xml)?\z|/rss(?:\.xml)?\z})).to eq(['https://example.com/feed.xml'])
     expect(urls).to include('https://example.com/blog').and have_attributes(size: be <= 5)
     expect(urls).not_to include('https://example.com/')
   end
 
+  it 'ranks links by the scope it was given', :aggregate_failures do
+    allow(Html2rss::LinkDestination::DestinationFacts).to receive(:build).and_call_original
+    scope = Html2rss::Vocabulary[:sv]
+    described_class.call(entry_url:, response:, vocabulary: scope, max: 5)
+
+    expect(Html2rss::LinkDestination::DestinationFacts).to have_received(:build)
+      .with(anything, vocabulary: be(scope)).at_least(:once)
+    expect(Html2rss::LinkDestination::DestinationFacts).not_to have_received(:build)
+      .with(anything, vocabulary: be(vocabulary))
+  end
+
   it 'returns only the feed slot when max is 1' do
-    urls = described_class.call(entry_url:, response:, max: 1).map(&:to_s)
+    urls = described_class.call(entry_url:, response:, vocabulary:, max: 1).map(&:to_s)
 
     expect(urls).to eq(['https://example.com/feed.xml'])
   end
@@ -56,7 +70,7 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     end
 
     it 'fills the feed slot with the first same-domain candidate' do
-      expect(described_class.call(entry_url:, response:, max: 1).map(&:to_s)).to eq(['https://example.com/feed.xml'])
+      expect(described_class.call(entry_url:, response:, vocabulary:, max: 1).map(&:to_s)).to eq(['https://example.com/feed.xml'])
     end
   end
 
@@ -66,7 +80,7 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     end
 
     it 'falls back to the first same-domain path guess' do
-      expect(described_class.call(entry_url:, response:, max: 1).map(&:to_s)).to eq(['https://example.com/feed'])
+      expect(described_class.call(entry_url:, response:, vocabulary:, max: 1).map(&:to_s)).to eq(['https://example.com/feed'])
     end
   end
 
@@ -109,7 +123,7 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
       status: 200
     )
 
-    urls = described_class.call(entry_url:, response:, max: 8).map(&:to_s)
+    urls = described_class.call(entry_url:, response:, vocabulary:, max: 8).map(&:to_s)
 
     expect(urls).to include(
       'https://example.com/posts/alpha-release',
@@ -129,7 +143,7 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     end
 
     it 'offers only listing paths without a feed slot or nav seeds' do
-      urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
+      urls = described_class.call(entry_url:, response:, vocabulary:, max: 5).map(&:to_s)
 
       expect(urls).to eq(%w[https://example.com/news https://example.com/blog
                             https://example.com/releases https://example.com/changelog])
@@ -158,7 +172,7 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     end
 
     it 'orders destinations by rank, drops unranked and foreign links, and dedupes', :aggregate_failures do
-      urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
+      urls = described_class.call(entry_url:, response:, vocabulary:, max: 5).map(&:to_s)
 
       expect(urls).to eq(%w[https://example.com/feed https://example.com/category/tech
                             https://example.com/stories/launch-party https://example.com/news
@@ -166,27 +180,29 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     end
 
     it 'caps listing seeds at max minus the feed slot' do
-      urls = described_class.call(entry_url:, response:, max: 3).map(&:to_s)
+      urls = described_class.call(entry_url:, response:, vocabulary:, max: 3).map(&:to_s)
 
       expect(urls).to eq(%w[https://example.com/feed https://example.com/category/tech
                             https://example.com/stories/launch-party])
     end
 
     it 'defaults the candidate budget to DEFAULT_MAX when max is omitted', :aggregate_failures do
-      expected = described_class.call(entry_url:, response:, max: 5)
+      expected = described_class.call(entry_url:, response:, vocabulary:, max: 5)
 
-      expect(described_class.call(entry_url:, response:)).to eq(expected)
-      expect(described_class.new(entry_url:, response:).call).to eq(expected)
+      expect(described_class.call(entry_url:, response:, vocabulary:)).to eq(expected)
+      expect(described_class.new(entry_url:, response:, vocabulary:).call).to eq(expected)
     end
 
     context 'when the entry page is itself linked with a fragment' do
       let(:entry_url) { 'https://example.com/category/tech' }
 
       it 'does not offer the entry document as a candidate' do
-        urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
+        urls = described_class.call(entry_url:, response:, vocabulary:, max: 5).map(&:to_s)
 
         expect(urls.grep(%r{category/tech(#|\z)})).to be_empty
       end
     end
   end
 end
+
+# rubocop:enable RSpec/ExampleLength

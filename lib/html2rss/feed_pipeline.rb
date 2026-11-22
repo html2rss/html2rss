@@ -210,7 +210,8 @@ module Html2rss
       return [[], {}, nil] unless (auto_source = config.auto_source)
       return syndication_articles(response) if response.feed_response?
 
-      source = AutoSource.new(response, auto_source, request_session:)
+      vocabulary = Vocabulary[Channel.language_for(response, config.channel)]
+      source = AutoSource.new(response, auto_source, request_session:, vocabulary:)
       [source.articles, source.admission_drops, source.feed_channel]
     end
 
