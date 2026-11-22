@@ -84,6 +84,17 @@ module Html2rss
         \s*[(\[（【]\s*(?:#{Vocabulary.alternation(:new_window_notice)})\s*[)\]）】]\s*\z
       /ix
 
+      # Direction marks and embedding/isolate controls (LRM, RLM, ALM, LRE..RLO, LRI..PDI): they render nothing and
+      # change no letter, so a label ("\u200FContact\u200F") is read without them. Only the label text is
+      # read this way; extracted titles and descriptions keep them.
+      BIDI_MARKS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/
+      # Zero-width non-joiner and joiner (with the blanks around them) at either edge of a label. Inside a word
+      # they spell Persian, Urdu and Indic words, so only the edges are trimmed.
+      EDGE_JOINERS = /\A[\s\u200C\u200D]+|(?<![\s\u200C\u200D])[\s\u200C\u200D]+\z/
+      # Cheap test that {EDGE_JOINERS} has something to trim, so an ordinary label allocates nothing.
+      EDGE_JOINER_PROBE = /\A\s*[\u200C\u200D]|[\u200C\u200D]\s*\z/
+      private_constant :BIDI_MARKS, :EDGE_JOINERS, :EDGE_JOINER_PROBE
+
       # @param memoize [Boolean] remember normalized texts for this instance; opt in only for an instance
       #   scoped to one extraction, never for a shared constant
       # @param vocabulary [Vocabulary::Scope] the page language's scope; every ambiguous term by default
@@ -126,8 +137,9 @@ module Html2rss
         normalized.match?(UNAMBIGUOUS.fetch(reading)) || normalized.match?(@ambiguous.fetch(reading))
       end
 
-      # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, and without
-      # its trailing new-window notice ("(opens in new tab)").
+      # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, without bidi
+      # marks ({BIDI_MARKS}), without its trailing new-window notice ("(opens in new tab)") and without
+      # joiners at its edges ({EDGE_JOINERS}).
       def normalize(text)
         string = text.to_s
         return compute_normal(string) unless @normalized
@@ -135,7 +147,12 @@ module Html2rss
         @normalized[string] ||= compute_normal(string)
       end
 
-      def compute_normal(string) = string.unicode_normalize(:nfc).sub(NEW_WINDOW_NOTICE, '')
+      def compute_normal(string)
+        text = string.unicode_normalize(:nfc)
+        text = text.gsub(BIDI_MARKS, '') if text.match?(BIDI_MARKS)
+        text = text.sub(NEW_WINDOW_NOTICE, '')
+        text.match?(EDGE_JOINER_PROBE) ? text.gsub(EDGE_JOINERS, '') : text
+      end
     end
   end
 end

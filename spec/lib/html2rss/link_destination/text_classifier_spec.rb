@@ -33,6 +33,58 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     end
   end
 
+  describe 'invisible format marks' do
+    marks = {
+      'left-to-right mark' => "\u200E", 'right-to-left mark' => "\u200F", 'Arabic letter mark' => "\u061C",
+      'left-to-right embedding' => "\u202A", 'pop directional formatting' => "\u202C",
+      'right-to-left override' => "\u202E", 'left-to-right isolate' => "\u2066", 'pop directional isolate' => "\u2069"
+    }
+
+    marks.each do |name, mark|
+      it "reads a label wrapped in a #{name} as the label", :aggregate_failures do
+        expect(classifier.utility?("#{mark}Contact#{mark}")).to be(true)
+        expect(classifier.utility_chrome?("#{mark}Contact us#{mark}")).to be(true)
+        expect(classifier.utility_prefix?("#{mark}Newsletter signup")).to be(true)
+        expect(classifier.recommended?("#{mark}Recommended for you")).to be(true)
+        expect(classifier.read_more?("#{mark}Read more#{mark}")).to be(true)
+      end
+    end
+
+    it 'reads a mark inside the label and one before a new-window notice as no mark', :aggregate_failures do
+      expect(classifier.utility?("Con\u200Ftact")).to be(true)
+      expect(classifier.utility?("Contact\u200E (opens in new tab)")).to be(true)
+      expect(classifier.utility_chrome?("\u200F\u2067Contact\u2069 us\u200F")).to be(true)
+    end
+
+    it 'trims a joiner only at the edges of a label', :aggregate_failures do
+      expect(classifier.utility?("Contact\u200C")).to be(true)
+      expect(classifier.utility?("\u200D Contact \u200C")).to be(true)
+      expect(classifier.utility?("\u200C\u200FContact")).to be(true)
+      expect(classifier.read_more?("Read more\u200D")).to be(true)
+    end
+
+    it 'trims joiners at both edges of a whole label', :aggregate_failures do
+      expect(classifier.utility_chrome?("\u200D Contact us \u200C")).to be(true)
+      expect(classifier.utility_chrome?("\u200C\u200DContact us\u200D\u200C")).to be(true)
+    end
+
+    it 'keeps a joiner inside a word, where it carries meaning', :aggregate_failures do
+      expect(classifier.utility?("Con\u200Ctact")).to be(false)
+      expect(classifier.utility?("Con\u200Dtact")).to be(false)
+      expect(classifier.utility_chrome?("Contact u\u200Cs")).to be(false)
+    end
+
+    it 'does not read a mark as a label by itself', :aggregate_failures do
+      expect(classifier.utility?("\u200F")).to be(false)
+      expect(classifier.utility_chrome?("\u200C\u200D")).to be(false)
+    end
+
+    it 'leaves a plain headline a headline', :aggregate_failures do
+      expect(classifier.utility?("\u200FContactless payments\u200F")).to be(false)
+      expect(classifier.read_more?("\u200FRead more about the budget\u200F")).to be(false)
+    end
+  end
+
   describe '#utility_chrome?' do
     [
       'Contact', 'Contact us', 'About us', 'Subscribe now', 'Share this', 'Comments (12)', 'Login »', '[Subscribe]',
