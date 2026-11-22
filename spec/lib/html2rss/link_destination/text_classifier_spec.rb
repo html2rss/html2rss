@@ -396,4 +396,63 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       end
     end
   end
+
+  describe 'a page-only language declaring every page pattern' do
+    let(:scope) do
+      terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
+      terms[:path_section] = %w[sectie-xx]
+      terms[:utility_cta] = %w[abonneer-xx]
+      terms[:read_more] = %w[lees-xx]
+      terms[:topic_lead] = %w[meer-xx]
+      terms[:topic_preposition] = %w[over-xx]
+      terms[:read_more_suffix] = [/-vervolg-xx/]
+      terms[:new_window_notice] = [/nieuw-xx/]
+      language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
+      Html2rss::Vocabulary.build_scope(:xx, Html2rss::Vocabulary::ALL, own: [language])
+    end
+    let(:readings) do
+      described_class::PageReadings.build(Html2rss::Vocabulary::PAGE_PATTERNS.to_h { [_1, scope.own_alternation(_1)] })
+    end
+    let(:shared) { described_class::PageReadings.build(Html2rss::Vocabulary::PAGE_PATTERNS.to_h { [_1, ''] }) }
+
+    let(:read) do
+      { own_cta: %w[Abonneer-xx], new_window: ['Haven (nieuw-xx)'],
+        read_more: ['Lees-xx', 'Meer-xx over-xx "Haven"', 'Haven-vervolg-xx', 'Read more'] }
+    end
+    let(:unread) { { own_cta: ['Abonneer-xx op ons nieuws'], read_more: ['Lees-xx de haven opent weer'] } }
+
+    it 'reads every page pattern through the same scope, with no special case per concept', :aggregate_failures do
+      read.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(true)) }
+      unread.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(false)) }
+      expect(scope.words(:path_section)).to include('sectie-xx')
+    end
+
+    it 'adds nothing to a scope without own terms, which keeps the one shared matcher', :aggregate_failures do
+      expect(shared.fetch(:read_more).match?('Lees-xx')).to be(false)
+      expect(shared.fetch(:own_cta).match?('Abonneer-xx')).to be(false)
+      %i[ja de all].each { expect(described_class::PageReadings::BY_SCOPE.fetch(_1)).to be(described_class::PageReadings::BY_SCOPE.fetch(:en)) }
+    end
+
+    it 'leaves the shared alternations exactly the terms of the shared languages', :aggregate_failures do
+      Html2rss::Vocabulary::PAGE_PATTERNS.each do |concept|
+        terms = Html2rss::Vocabulary::ALL.flat_map { _1.terms.fetch(concept) }
+
+        expect(Html2rss::Vocabulary.alternation(concept)).to eq(Html2rss::Vocabulary.compile(terms)), concept.to_s
+      end
+    end
+
+    it 'gives no shared scope an own term', :aggregate_failures do
+      (Html2rss::Vocabulary::ALL.map(&:code) + %i[all]).each do |code|
+        own = Html2rss::Vocabulary::PAGE_PATTERNS.map { Html2rss::Vocabulary::SCOPES.fetch(code).own_alternation(_1) }
+
+        expect(own).to all(eq('')), code.to_s
+      end
+    end
+  end
+
+  describe 'the shared classifier of a scope' do
+    it 'is one classifier per scope, each reading its own page language' do
+      expect(described_class.for(Html2rss::Vocabulary[:zh])).not_to be(described_class.for(Html2rss::Vocabulary[:all]))
+    end
+  end
 end

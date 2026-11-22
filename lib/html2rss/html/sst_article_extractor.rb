@@ -93,10 +93,10 @@ module Html2rss
       # @return [String, nil]
       def title_from_in_card_sources
         candidates = title_candidates
-        clean = candidates.find { |text| AutoSource::Cleanup.junk_reason(text).nil? }
+        clean = candidates.find { |text| AutoSource::Cleanup.junk_reason(text, vocabulary: @vocabulary).nil? }
         return clean if clean
 
-        candidates.find { |text| AutoSource::Cleanup.junk_reason(text) != :credit }
+        candidates.find { |text| AutoSource::Cleanup.junk_reason(text, vocabulary: @vocabulary) != :credit }
       end
 
       # @return [Array<String>] ordered in-card title candidates (heading → anchor)

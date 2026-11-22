@@ -309,7 +309,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     article = described_class.call(segment_for(html), base_url: 'https://example.com')
 
     expect(article.title).to eq('story-has-edit-branch')
-    expect(Html2rss::AutoSource::Cleanup.junk_reason(article.title)).to eq(:slug)
+    expect(Html2rss::AutoSource::Cleanup.junk_reason(article.title,
+                                                     vocabulary: Html2rss::Vocabulary[:all])).to eq(:slug)
   end
 
   it 'prefers real anchor text when the heading is credit-shaped', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

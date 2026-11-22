@@ -58,6 +58,12 @@ module Html2rss
     # Pattern concepts that honour {Language#ambiguous}.
     SCOPED_PATTERNS = %i[utility_prefix utility recommended].freeze
 
+    # Pattern concepts a {PAGE_ONLY} language may declare besides {SCOPED_PATTERNS}: the call-to-action, read-more
+    # and new-window readers of {LinkDestination::TextClassifier}, which read a scope's own terms as whole labels.
+    # A page-only language declaring any other pattern concept would have a dead term, so the conformance spec
+    # rejects it; a later pull request moves the remaining readers here.
+    PAGE_PATTERNS = %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice].freeze
+
     # Every concept each language in {ALL} declares.
     CONCEPTS = (WORD_CONCEPTS + PATTERN_CONCEPTS).freeze
 
@@ -152,7 +158,9 @@ module Html2rss
 
       def own_terms(own, concepts) = concepts.to_h { |c| [c, own.flat_map { _1.terms.fetch(c) }.freeze] }.freeze
 
-      def own_alternations(own) = own_terms(own, SCOPED_PATTERNS).transform_values { compile(_1) }.freeze
+      def own_alternations(own)
+        own_terms(own, SCOPED_PATTERNS + PAGE_PATTERNS).transform_values { compile(_1) }.freeze
+      end
 
       ##
       # @param own [Array<Language>] the {PAGE_ONLY} languages of the scope

@@ -23,6 +23,13 @@ module Html2rss
 
       class << self
         ##
+        # The shared, non-memoizing classifier of a page language's scope: nothing is built per call.
+        #
+        # @param vocabulary [Vocabulary::Scope] the page language's scope ({Vocabulary.[]})
+        # @return [TextClassifier]
+        def for(vocabulary) = SHARED.fetch(vocabulary.code)
+
+        ##
         # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
         # +:utility_label+ reading is a short whole text: a utility term, at most one trailing word, wrapping
         # punctuation, symbols or arrows and one bare count ("Contact us", "Comments (12)", "[Subscribe]").
@@ -77,42 +84,6 @@ module Html2rss
       end.freeze
       private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
 
-      # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a
-      # multi-word imperative phrase at the start of the text, read in every language. An infinitive or noun
-      # form stays a headline opener ("Kommentare zum Artikel 13: ..."), so the vocabulary lists it only with a
-      # chrome object or as the whole label. A Latin term ends at a word boundary. A Japanese term has none
-      # between two kana or kanji, so it ends at whitespace, punctuation, a symbol or the end of the text
-      # ("コメントを投稿した男性を逮捕" is a headline).
-      UTILITY_CTA = /
-        \A\s*(?:#{Vocabulary.alternation(:utility_cta)})
-        (?:(?<![\p{Han}\p{Hiragana}\p{Katakana}])\b|(?<=[\p{Han}\p{Hiragana}\p{Katakana}])(?=[\s\p{P}\p{S}]|\z))
-      /iux
-      private_constant :UTILITY_CTA
-
-      # Whole read-more labels that stand alone ("Continue reading", "Lire la suite", "続きを読む").
-      READ_MORE_PHRASE = /#{Vocabulary.alternation(:read_more)}/ix
-      # "More about X" lead-ins: a read-more phrase or a bare "more", then a topic preposition.
-      READ_MORE_TOPIC_LEAD = /
-        (?:#{READ_MORE_PHRASE.source}|#{Vocabulary.alternation(:topic_lead)})
-        \s+(?:#{Vocabulary.alternation(:topic_preposition)})
-      /ix
-      # A read-more label as a whole text, optionally wrapped in punctuation or arrows. The topic after a
-      # lead-in counts only when quoted ("More about «X»", „X“, "X", 'X', 「X」), so a headline that merely
-      # opens with one ("Mehr über die Zukunft der Rente") stays a headline; Japanese topic forms put the
-      # topic first.
-      READ_MORE_PATTERN = /
-        \A[\s\p{P}\p{S}]*(?:
-          (?:#{READ_MORE_PHRASE.source})|
-          (?:#{READ_MORE_TOPIC_LEAD.source})\s*[«„"“”'‘’‹「].+[»"“”'’›」]|
-          \S{1,40}(?:#{Vocabulary.alternation(:read_more_suffix)})
-        )[\s\p{P}\p{S}]*\z
-      /ix
-
-      # Visible new-window notice that trails a link label, in parentheses or brackets.
-      NEW_WINDOW_NOTICE = /
-        \s*[(\[（【]\s*(?:#{Vocabulary.alternation(:new_window_notice)})\s*[)\]）】]\s*\z
-      /ix
-
       # Direction marks and embedding/isolate controls (LRM, RLM, ALM, LRE..RLO, LRI..PDI): they render nothing and
       # change no letter, so a label ("\u200FContact\u200F") is read without them. Only the label text is
       # read this way; extracted titles and descriptions keep them.
@@ -130,6 +101,7 @@ module Html2rss
         @normalized = {} if memoize
         @ambiguous = AMBIGUOUS.fetch(vocabulary.code)
         @own = OWN.fetch(vocabulary.code)
+        @page = PageReadings::BY_SCOPE.fetch(vocabulary.code)
       end
 
       # @param text [String, #to_s] visible anchor text
@@ -142,7 +114,8 @@ module Html2rss
       #   a headline that merely opens with a utility word is neither. The text is normalized once.
       def utility_chrome?(text)
         normalized = normalize(text)
-        reading_match?(:utility_label, normalized) || normalized.match?(UTILITY_CTA)
+        reading_match?(:utility_label, normalized) ||
+          normalized.match?(@page.fetch(:cta)) || normalized.match?(@page.fetch(:own_cta))
       end
 
       # @param text [String, #to_s] visible anchor text
@@ -155,7 +128,7 @@ module Html2rss
 
       # @param text [String, #to_s] visible anchor text or extracted title
       # @return [Boolean] true when the whole text is a read-more label, bare or with its topic
-      def read_more?(text) = normalize(text).match?(READ_MORE_PATTERN)
+      def read_more?(text) = normalize(text).match?(@page.fetch(:read_more))
 
       private
 
@@ -181,11 +154,15 @@ module Html2rss
       def compute_normal(string)
         text = string.unicode_normalize(:nfc)
         text = text.gsub(BIDI_MARKS, '') if text.match?(BIDI_MARKS)
-        text = text.sub(NEW_WINDOW_NOTICE, '')
+        text = text.sub(@page.fetch(:new_window), '')
         text.match?(JOINER) ? trim_edges(text) : text
       end
 
       def trim_edges(text) = text[text.index(LABEL_CHAR)..text.rindex(LABEL_CHAR)]
+
+      # One classifier per scope, built after the class body so every constant it reads exists.
+      SHARED = Vocabulary::SCOPES.transform_values { new(vocabulary: _1) }.freeze
+      private_constant :SHARED
     end
   end
 end

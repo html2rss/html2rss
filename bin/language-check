@@ -368,11 +368,21 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     end
 
     def classify(texts, code)
-      classifier = Html2rss::LinkDestination::TextClassifier.new(vocabulary: Html2rss::Vocabulary[code.to_sym])
+      scope = Html2rss::Vocabulary[code.to_sym]
+      classifier = Html2rss::LinkDestination::TextClassifier.new(vocabulary: scope)
+      junk = junk_reader(scope)
       texts.to_h do |text|
         [text, [classifier.utility?(text), classifier.utility_chrome?(text), classifier.recommended?(text),
-                classifier.read_more?(text), Html2rss::AutoSource::Cleanup.junk_reason(text)&.to_s]]
+                classifier.read_more?(text), junk.call(text)&.to_s]]
       end
+    end
+
+    # The same tool measures BASE and head: a revision whose +Cleanup.junk_reason+ takes no scope is read without one.
+    def junk_reader(scope)
+      reader = Html2rss::AutoSource::Cleanup.method(:junk_reason)
+      return ->(text) { reader.call(text, vocabulary: scope) } if reader.parameters.any? { _1.last == :vocabulary }
+
+      ->(text) { reader.call(text) }
     end
 
     # ----- term evidence -----

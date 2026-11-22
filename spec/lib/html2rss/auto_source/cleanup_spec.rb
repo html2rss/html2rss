@@ -603,7 +603,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         { title: 'AFP', reason: :credit }
       ].each_with_index do |example, index|
         it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
-          expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
+          expect(described_class.junk_reason(example[:title],
+                                             vocabulary: Html2rss::Vocabulary[:all])).to eq(example[:reason])
         end
 
         # rubocop:disable-next RSpec/ExampleLength -- keep + reason tally contract
@@ -619,7 +620,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
 
       it 'has no junk reason for a missing title' do
-        expect(described_class.junk_reason(nil)).to be_nil
+        expect(described_class.junk_reason(nil, vocabulary: Html2rss::Vocabulary[:all])).to be_nil
       end
 
       it 'drops untitled page-derived items as blank_title', :aggregate_failures do
@@ -730,7 +731,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       { title: 'Harbor ferry route returns', reason: nil }
     ].each do |example|
       it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
-        expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
+        expect(described_class.junk_reason(example[:title],
+                                           vocabulary: Html2rss::Vocabulary[:all])).to eq(example[:reason])
       end
     end
 
@@ -782,16 +784,17 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
   describe '.junk_reason' do
     it 'returns nil for a missing or blank title', :aggregate_failures do
-      expect(described_class.junk_reason(nil)).to be_nil
-      expect(described_class.junk_reason("   \t ")).to be_nil
+      expect(described_class.junk_reason(nil, vocabulary: Html2rss::Vocabulary[:all])).to be_nil
+      expect(described_class.junk_reason("   \t ", vocabulary: Html2rss::Vocabulary[:all])).to be_nil
     end
 
     it 'normalizes whitespace before matching' do
-      expect(described_class.junk_reason("  Read \n more  ")).to eq(:cta)
+      expect(described_class.junk_reason("  Read \n more  ", vocabulary: Html2rss::Vocabulary[:all])).to eq(:cta)
     end
 
     it 'returns nil for an acceptable title' do
-      expect(described_class.junk_reason('A Perfectly Normal Headline')).to be_nil
+      expect(described_class.junk_reason('A Perfectly Normal Headline',
+                                         vocabulary: Html2rss::Vocabulary[:all])).to be_nil
     end
   end
 

@@ -85,6 +85,7 @@ RSpec.describe Html2rss::Vocabulary do
   end
 
   describe 'Russian labels' do
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:ru]) } }
     let(:ru) { text.call(:ru) }
     # Every predicate that would drop a headline: a label read as a whole text or a prefix, a recommendation, a
     # read-more phrase, and Cleanup's junk reason.
@@ -92,7 +93,7 @@ RSpec.describe Html2rss::Vocabulary do
       {
         utility: ->(label) { ru.utility?(label) }, chrome: ->(label) { ru.utility_chrome?(label) },
         prefix: ->(label) { ru.utility_prefix?(label) }, recommended: ->(label) { ru.recommended?(label) },
-        read_more: ->(label) { ru.read_more?(label) }, junk: ->(label) { !Html2rss::AutoSource::Cleanup.junk_reason(label).nil? }
+        read_more: ->(label) { ru.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
       }
     end
 
@@ -119,7 +120,7 @@ RSpec.describe Html2rss::Vocabulary do
        'Подробности', 'Узнать больше', 'Подробнее на тему «Налоги»', 'Читать далее (открывается в новой вкладке)',
        'Читать далее (откроется в новом окне)'].each do |label|
         expect(ru.read_more?(label)).to be(true), label
-        expect(Html2rss::AutoSource::Cleanup.junk_reason(label)).to eq(:cta), label
+        expect(junk_reason.call(label)).to eq(:cta), label
       end
     end
 
@@ -202,12 +203,13 @@ RSpec.describe Html2rss::Vocabulary do
          隱私權政策 评论 留言 帮助 幫助]
     end
     let(:zh) { text.call(:zh) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:zh]) } }
     # Every predicate that would drop a headline (see the Russian labels).
     let(:readers) do
       {
         utility: ->(label) { zh.utility?(label) }, chrome: ->(label) { zh.utility_chrome?(label) },
         prefix: ->(label) { zh.utility_prefix?(label) }, recommended: ->(label) { zh.recommended?(label) },
-        read_more: ->(label) { zh.read_more?(label) }, junk: ->(label) { !Html2rss::AutoSource::Cleanup.junk_reason(label).nil? }
+        read_more: ->(label) { zh.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
       }
     end
 
