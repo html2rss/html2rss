@@ -378,7 +378,6 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss::Test).to have_received(:call).with(
           hash_including(strategy: 'default'),
-          nil,
           hash_including(min_items: 1, strategy: nil)
         )
       end

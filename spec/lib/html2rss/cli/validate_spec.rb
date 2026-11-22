@@ -31,25 +31,10 @@ RSpec.describe Html2rss::CLI::Validate do
 
     it 'reports ok lines for multiple valid files' do
       allow(Html2rss).to receive(:validate).and_return(success)
-      files = ['spec/fixtures/single.test.yml', 'spec/fixtures/feeds.test.yml']
+      files = ['spec/fixtures/single.test.yml', 'spec/fixtures/notitle.test.yml']
 
       expect { described_class.run(files, params: {}, quiet: false) }
         .to output(%r{ok   spec/fixtures/single\.test\.yml}).to_stdout
-    end
-
-    it 'validates a named feed file' do
-      allow(Html2rss).to receive(:validate)
-        .with('spec/fixtures/feeds.test.yml', 'notitle', params: {})
-        .and_return(success)
-
-      expect { described_class.run(%w[spec/fixtures/feeds.test.yml notitle], params: {}, quiet: false) }
-        .to output("Configuration is valid\n").to_stdout
-    end
-
-    it 'raises when the second argument looks like a missing config file' do
-      expect do
-        described_class.run(%w[spec/fixtures/single.test.yml missing.yml], params: {}, quiet: false)
-      end.to raise_error(Thor::Error, 'No such file: missing.yml')
     end
 
     it 'reads config from stdin when file is "-"' do

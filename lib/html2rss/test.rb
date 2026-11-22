@@ -158,7 +158,6 @@ module Html2rss
     # Tests a configuration by validating schema and executing live feed extraction.
     #
     # @param config_input [Hash, String] config hash, YAML string, or file path
-    # @param feed_name [String, nil] optional feed name for multi-feed files
     # @param min_items [Integer] minimum extracted items required to pass
     # @param params [Hash] optional dynamic feed parameters
     # @param strategy [Symbol, nil] optional strategy override
@@ -166,9 +165,9 @@ module Html2rss
     # @param compare_enhance [Boolean] diagnostic enhance off vs on comparison on cached HTML
     # @param sample_limit [Integer] maximum number of {Result#items} (default 3)
     # @return [Html2rss::Test::Result]
-    def self.call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists
+    def self.call(config_input, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists
                   strict_quality: false, compare_enhance: false, sample_limit: 3)
-      raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
+      raw_config, validation = Config.resolve_and_validate(config_input, params:)
       return validation_failure_result(validation, raw_config) unless validation.success?
 
       config = build_test_config(raw_config, strategy, params)

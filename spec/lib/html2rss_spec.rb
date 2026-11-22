@@ -3,31 +3,21 @@
 require 'nokogiri'
 
 RSpec.describe Html2rss do
-  let(:config_file) { File.join(%w[spec fixtures feeds.test.yml]) }
+  let(:config_file) { File.join(%w[spec fixtures nuxt-releases.test.yml]) }
   let(:name) { 'releases_page' }
 
   it 'has a version number' do
     expect(Html2rss::VERSION).not_to be_nil
   end
 
-  it 'config_from_yaml_file loads a single-feed file without a feed name' do
-    expect(described_class.config_from_yaml_file('spec/fixtures/single.test.yml')).to be_a(Hash)
-  end
-
-  describe '.config_from_yaml_file(file, feed_name = nil)' do
-    subject(:feed) do
-      described_class.config_from_yaml_file(config_file, name)
+  describe '.config_from_yaml_file' do
+    it 'loads a single-feed YAML file' do
+      expect(described_class.config_from_yaml_file(config_file)).to be_a(Hash)
     end
 
-    context 'with known name' do
-      it { expect(feed).to be_a(Hash) }
-    end
-
-    context 'with unknown name' do
-      it 'raises InvalidConfig' do
-        expect { described_class.config_from_yaml_file(config_file, 'unknown') }
-          .to raise_error(Html2rss::Config::InvalidConfig)
-      end
+    it 'rejects a top-level feeds: map' do
+      expect { described_class.config_from_yaml_file(File.join(%w[spec fixtures feeds_key_rejected.test.yml])) }
+        .to raise_error(Html2rss::Config::InvalidConfig, /feeds:/)
     end
   end
 
@@ -102,7 +92,7 @@ RSpec.describe Html2rss do
       subject(:xml) { Nokogiri.XML(feed_return.to_s) }
 
       let(:config) do
-        described_class.config_from_yaml_file(config_file, name)
+        described_class.config_from_yaml_file(config_file)
       end
       let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
 
@@ -185,7 +175,7 @@ RSpec.describe Html2rss do
     context 'with config having selectors and is json response' do
       subject(:feed) do
         VCR.use_cassette(name) do
-          config = described_class.config_from_yaml_file(config_file, name)
+          config = described_class.config_from_yaml_file(File.join(%w[spec fixtures json.test.yml]))
           described_class.feed(config)
         end
       end
@@ -349,7 +339,7 @@ RSpec.describe Html2rss do
     context 'with config without title selector' do
       subject(:feed) do
         VCR.use_cassette(name) do
-          config = described_class.config_from_yaml_file(config_file, name)
+          config = described_class.config_from_yaml_file(File.join(%w[spec fixtures notitle.test.yml]))
           described_class.feed(config)
         end
       end
@@ -452,7 +442,7 @@ RSpec.describe Html2rss do
 
     context 'with config being a Hash' do
       let(:config) do
-        described_class.config_from_yaml_file(config_file, name)
+        described_class.config_from_yaml_file(config_file)
       end
       let(:feed_return) { VCR.use_cassette(name) { described_class.json_feed(config) } }
       let(:first_item) { feed_return[:items].first }
@@ -666,26 +656,26 @@ RSpec.describe Html2rss do
 
       [-1, 1.5, '2', nil].each { |limit| expect { described_class.test('x.yml', sample_limit: limit) }.to raise_error(Html2rss::InvalidOption, /\Asample_limit must be/) }
       described_class.test('x.yml', sample_limit: 0)
-      expect(Html2rss::Test).to have_received(:call).with('x.yml', nil, hash_including(sample_limit: 0)).once
+      expect(Html2rss::Test).to have_received(:call).with('x.yml', hash_including(sample_limit: 0)).once
     end
 
     it 'delegates to Test.call' do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Test).to receive(:call).with(
-        'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
-                           sample_limit: 3
+        'config.yml', min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
+                      sample_limit: 3
       )
       described_class.test('config.yml')
       expect(Html2rss::Test).to have_received(:call).with(
-        'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
-                           sample_limit: 3
+        'config.yml', min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
+                      sample_limit: 3
       )
     end
 
-    it 'forwards the feed name and strategy' do # rubocop:disable RSpec/ExampleLength
+    it 'forwards the strategy' do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Test).to receive(:call)
-      described_class.test('config.yml', 'named', strategy: :default)
+      described_class.test('config.yml', strategy: :default)
       expect(Html2rss::Test).to have_received(:call).with(
-        'config.yml', 'named',
+        'config.yml',
         min_items: 1, params: {}, strategy: :default, strict_quality: false, compare_enhance: false, sample_limit: 3
       )
     end
@@ -802,10 +792,6 @@ RSpec.describe Html2rss do
     it 'validates hash config' do
       config = { channel: { url: 'https://example.com' }, selectors: { items: { selector: 'div' } } }
       expect(described_class.validate(config)).to be_success
-    end
-
-    it 'forwards a feed name from a multi-feed file' do
-      expect(described_class.validate('spec/fixtures/feeds.test.yml', 'releases_page')).to be_success
     end
 
     it 'forwards dynamic params' do

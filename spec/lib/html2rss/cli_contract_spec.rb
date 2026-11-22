@@ -62,7 +62,7 @@ RSpec.describe Html2rss::CLI do
           }
         },
         'test' => {
-          usage: 'test [CONFIG_INPUT] [feed_name]',
+          usage: 'test [CONFIG_INPUT]',
           description: 'Validate schema AND execute live extraction (fails on 0 items)',
           options: {
             params: { type: :hash, default: {}, enum: nil, aliases: [], description: nil },
@@ -81,7 +81,7 @@ RSpec.describe Html2rss::CLI do
           }
         },
         'apply' => {
-          usage: 'apply [CONFIG_INPUT] [feed_name]', description: 'Print RSS built from YAML config to stdout',
+          usage: 'apply [CONFIG_INPUT]', description: 'Print RSS built from YAML config to stdout',
           options: {
             strategy: { type: :string, default: nil, enum: strategies, aliases: [], description: strategy_desc },
             max_redirects: { type: :numeric, default: nil, enum: nil, aliases: [],

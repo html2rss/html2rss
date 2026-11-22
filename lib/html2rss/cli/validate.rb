@@ -12,12 +12,6 @@ module Html2rss
       # @return [void]
       # @raise [Thor::Error]
       def self.run(files, params:, quiet:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        if files.size == 2 && File.file?(files[0].to_s) && !File.exist?(files[1].to_s)
-          raise Thor::Error, "No such file: #{files[1]}" if path_like_config?(files[1])
-
-          return run_named_feed(files[0], files[1], params:, quiet:)
-        end
-
         target_files = resolve_files(files)
         failed = []
 
@@ -57,13 +51,6 @@ module Html2rss
       class << self
         private
 
-        def run_named_feed(file, feed_name, params:, quiet:)
-          result = Html2rss.validate(file, feed_name, params:)
-          raise Thor::Error, format_failure(result) unless result.success?
-
-          puts 'Configuration is valid' unless quiet
-        end
-
         def validate_file(file, params:)
           if file == '-'
             Html2rss.validate($stdin.read, params:)
@@ -74,15 +61,6 @@ module Html2rss
 
         def format_failure(report)
           "Invalid configuration: #{report}"
-        end
-
-        def path_like_config?(arg)
-          path = arg.to_s
-          return true if path.start_with?('-')
-          return true if path.end_with?('.yml', '.yaml')
-          return true if path.include?('/') || path.include?('*')
-
-          false
         end
       end
     end

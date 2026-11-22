@@ -25,19 +25,19 @@ RSpec.describe Html2rss::CLI, '#test' do
     run_test.call(['cfg: 1'])
 
     expect(Html2rss).to have_received(:test).with(
-      'cfg: 1', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false
+      'cfg: 1', min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false
     )
   end
 
-  it 'forwards the feed name, params, strategy and flags' do
+  it 'forwards params, strategy and flags' do
     run_test.call(
-      ['cfg: 1', 'feed'],
+      ['cfg: 1'],
       { params: { 'a' => 'b' }, strategy: 'botasaurus', min_items: 3, strict_quality: true, compare_enhance: true }
     )
 
     expect(Html2rss).to have_received(:test).with(
-      'cfg: 1', 'feed', min_items: 3, params: { 'a' => 'b' }, strategy: 'botasaurus', strict_quality: true,
-                        compare_enhance: true
+      'cfg: 1', min_items: 3, params: { 'a' => 'b' }, strategy: 'botasaurus', strict_quality: true,
+                compare_enhance: true
     )
   end
 
@@ -48,7 +48,7 @@ RSpec.describe Html2rss::CLI, '#test' do
         File.write(path, 'from: file')
 
         expect { run_test.call([path]) }.to output(/Schema valid\S* \(#{Regexp.escape(path)}\)/).to_stdout
-        expect(Html2rss).to have_received(:test).with('from: file', nil, hash_including(min_items: 1))
+        expect(Html2rss).to have_received(:test).with('from: file', hash_including(min_items: 1))
       end
     end
 
@@ -114,7 +114,7 @@ RSpec.describe Html2rss::CLI, '#test' do
 
         expect(terminal.string.scan('Schema valid')).to eq(['Schema valid'] * 2)
         expect(terminal.string.scan('(stdin)').size).to eq(2)
-        expect(Html2rss).to have_received(:test).with('x: 1', nil, hash_including(min_items: 1)).twice
+        expect(Html2rss).to have_received(:test).with('x: 1', hash_including(min_items: 1)).twice
       end
     end
   end

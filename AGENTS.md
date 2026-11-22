@@ -43,10 +43,10 @@ User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share seven verbs 
 
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec via `mise exec -- ...` or Make targets (`make quick` for changed-file lint and targeted specs; `make ready` for pre-merge checks).
 - When changing config options in `lib/html2rss/selectors/config.rb` or `lib/html2rss/config/validator.rb`, update `lib/html2rss/config/schema.rb` (`Html2rss::Config::Schema`) and run `make schema` to sync `schema/html2rss-config.schema.json`.
-- Catalog metadata on `directory` (`title`, `summary`, `topics`) is validated in `DirectoryConfig`. When changing rules, run `make schema` and coordinate `html2rss-configs` validation plus `Html2rss::Configs::Catalog`.
+- Catalog metadata on `directory` (`title`, `summary`, `topics`) and feed identity on `registry` (`id`, `aliases`) are validated in `DirectoryConfig`. When changing rules, run `make schema` and coordinate `html2rss-configs` validation plus `Html2rss::Configs::Catalog`.
 - Keep YARD lint clean without baseline/todo suppression files. `docs/` is generated YARD HTML only (`make docs` / `make clean`); never commit source markdown there.
 - `CHANGELOG.md` is the 0.19.x archive; release notes are GitHub Releases (release-drafter).
-- Keep living module guides at `lib/html2rss/{auto_source,capture,feed_pipeline,mcp,selectors}/README.md`, wired via `{include:file:lib/.../README.md}` on the owning class. Never add them to `.yardopts --files` (all `README.md` extra files emit `file.README.html` and clobber the gem README).
+- Keep living module guides at `lib/html2rss/{auto_source,capture,feed_pipeline,mcp,registry,selectors}/README.md`, wired via `{include:file:lib/.../README.md}` on the owning class. Never add them to `.yardopts --files` (all `README.md` extra files emit `file.README.html` and clobber the gem README).
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.
 
 ## Agent Efficiency

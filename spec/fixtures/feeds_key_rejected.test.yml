@@ -1,0 +1,9 @@
+---
+# Rejection corpus: top-level feeds: maps are not supported.
+feeds:
+  example:
+    channel:
+      url: https://example.com/
+    selectors:
+      items:
+        selector: 'article'

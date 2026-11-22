@@ -36,14 +36,14 @@ RSpec.describe Html2rss::CLI, '#apply' do
 
   it 'turns a config-load failure into a Thor::Error instead of a backtrace', :aggregate_failures do
     allow(Html2rss).to receive(:config_from_yaml_file)
-      .and_raise(Html2rss::Config::InvalidConfig, "Feed 'nope' not found under `feeds` key.")
+      .and_raise(Html2rss::Config::InvalidConfig, 'File is not a config')
 
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'feed.yml')
       File.write(path, 'x')
 
-      expect { run_apply.call([path, 'nope']) }
-        .to raise_error(Thor::Error, "Feed 'nope' not found under `feeds` key.")
+      expect { run_apply.call([path]) }
+        .to raise_error(Thor::Error, 'File is not a config')
     end
   end
 
@@ -53,15 +53,15 @@ RSpec.describe Html2rss::CLI, '#apply' do
     expect { run_apply.call(['x.yml']) }.to raise_error(Thor::Error, 'YAML must be a String')
   end
 
-  it 'reads an existing file through the file loader with the feed name' do
+  it 'reads an existing file through the file loader' do
     allow(Html2rss).to receive(:config_from_yaml_file).and_return(yaml_config)
 
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'feed.yml')
       File.write(path, 'x')
-      run_apply.call([path, 'named'])
+      run_apply.call([path])
 
-      expect(Html2rss).to have_received(:config_from_yaml_file).with(path, 'named')
+      expect(Html2rss).to have_received(:config_from_yaml_file).with(path)
     end
   end
 
