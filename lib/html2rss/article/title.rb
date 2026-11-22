@@ -44,20 +44,9 @@ module Html2rss
       }ix
       # A whole piece that is only a Japanese calendar date (+11月12日+), optionally with a year and a clock time
       # (+11月12日 16:42+).
-      DATE_PIECE = /\A(?:\d{4}年)?\d{1,2}月\d{1,2}日(?:\s+#{CLOCK})?\z/
+      DATE_PIECE = /\A(?:#{Vocabulary.alternation(:date_piece)})(?:\s+#{CLOCK})?\z/
       # Content-type markers (lowercase). Description drops them as whole leftover lines.
-      TYPE_MARKERS = Set[
-        'news', 'news article', 'press release', 'video', 'audio', 'podcast', 'gallery', 'live', 'live blog',
-        'full episode', 'bildergalerie', 'fotostrecke', 'liveticker', 'pressemitteilung', 'ganze folge',
-        'vidéo', 'diaporama', 'en direct', 'communiqué de presse', 'épisode complet',
-        'vídeo', 'galería', 'en directo', 'nota de prensa', 'episodio completo',
-        'diretta', 'in diretta', 'diretta streaming', 'fotogallery', 'galleria', 'comunicato stampa',
-        'puntata completa',
-        'liveblog', 'fotogalerij', 'persbericht', 'volledige aflevering',
-        'wideo', 'galeria', 'na żywo', 'relacja na żywo', 'komunikat prasowy', 'cały odcinek',
-        'bildspel', 'direkt', 'direktsändning', 'liverapport', 'livesändning', 'pressmeddelande', 'hela avsnittet',
-        '速報', '詳報', '独自', '動画', '写真', '中継', '生中継', 'ライブ', 'プレスリリース'
-      ].freeze
+      TYPE_MARKERS = Vocabulary.words(:type_marker)
       # The markers as one alternation, longest first so +live blog+ wins over +live+.
       MARKER_ALTERNATION = Regexp.union(TYPE_MARKERS.sort_by { -_1.length }).source
       # One separator between a kicker and its headline: +: | • · – — - / > » › →+, each only when
@@ -69,16 +58,8 @@ module Html2rss
       # an accented variant is an alternation, not a class: with +/i+, Ruby on Linux does not fold an
       # uppercase accented letter (+Ä+) against a class that also holds its ASCII base (+[äa]+).
       LABEL = /
-        (?:section|category|topic|rubrik|ressort|kategorie|thema|rubrique|cat(?:é|e)gorie|th(?:è|e)me|secci(?:ó|o)n
-          |categor(?:í|i)a|tema|sezione|categoria|argomento|rubrica|sectie|categorie|onderwerp|rubriek
-          |sekcja|kategoria|temat|dzia(?:ł|l)|sektion|kategori|(?:ä|a)mne
-          |article|artikel|art(?:í|i)culo|articolo|artyku(?:ł|l)
-          |セクション|カテゴリー?|ジャンル|分類|記事)\s*[:：]
-        | (?:article\s+type|content\s+type|artikeltyp|beitragstyp|inhaltstyp|type\s+d['’]article
-            |type\s+de\s+contenu|tipo\s+de\s+art(?:í|i)culo|tipo\s+de\s+contenido
-            |tipo\s+di\s+articolo|tipo\s+di\s+contenuto|artikeltype|inhoudstype|soort\s+artikel
-            |typ\s+artyku(?:ł|l)u|typ\s+tre(?:ś|s)ci|rodzaj\s+tre(?:ś|s)ci|innehållstyp
-            |記事の種類|記事タイプ|コンテンツの種類)\s*[:：]
+        (?:#{Vocabulary.alternation(:field_label)})\s*[:：]
+        | (?:#{Vocabulary.alternation(:type_label)})\s*[:：]
           (?:\s*(?:#{MARKER_ALTERNATION})(?![[:alnum:]]))?
       /ix
       # A whole piece that is only a label: a screen-reader label element, never headline text.
@@ -93,7 +74,7 @@ module Html2rss
       KICKER_NOISE = /
         \A(?:
           [[:space:]] | #{SEPARATOR_MARK} | #{LABEL} | #{BRACKET_LABEL}
-          | #{CLOCK}(?:\s*Uhr)?(?=[[:space:]]*(?:#{SEPARATOR_MARK}|\z))
+          | #{CLOCK}(?:\s*(?:#{Vocabulary.alternation(:clock_suffix)}))?(?=[[:space:]]*(?:#{SEPARATOR_MARK}|\z))
         )+
       /x
       # Trailing stray separators (+Kicker :+, +Kicker -+, +Kicker ›+). A trailing +»+ closes a French

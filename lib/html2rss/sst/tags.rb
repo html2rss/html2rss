@@ -41,8 +41,7 @@ module Html2rss
       # A nav or list labelled (aria-label) or classed as pagination is chrome in any scope.
       PAGER_NAMES = Set['nav', 'ul', 'ol'].freeze
       # Pagination nouns ("Results pagination", "paginación"), never +paginated+.
-      PAGER_LABEL = /\bpagina(?:tion|tie|ción|cion|zione|cja|ção|cao)(?!\p{L})|\bpaginering\b|\bpaginierung\b|
-                     \bpager\b|\bpaging\b|\bpage\snavigation\b/ix
+      PAGER_LABEL = /\b(?:#{Vocabulary.alternation(:pager_label)})/ix
       # nav: a class-token part (+pagination+, +gsc-pagination+, +pager__list+), not +paginated-list+.
       PAGER_CLASS = /(?:\A|\s|[-_])(?:pagination|pager|paging)(?:\z|\s|[-_])/i
       # ul/ol: only a whole class token (+infinite-pager+ or +js-pagination-container+ is a feed list).
@@ -52,7 +51,7 @@ module Html2rss
       PAGER_LINK_XPATH = PAGER_RELS.map { "contains(concat(' ', normalize-space(@rel), ' '), ' #{_1} ')" }
                                    .join(' or ').then { ".//a[#{_1}]" }.freeze
       # Page-navigation link shapes: a page number, an arrow, prev/next wording, or a page query/path.
-      PAGE_LINK_TEXT = /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:prev(?:ious)?|next|older|newer|first|last)\b.*)\z/im
+      PAGE_LINK_TEXT = /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:#{Vocabulary.alternation(:page_link)})\b.*)\z/im
       PAGE_LINK_HREF = %r{[?&](?:page|paged|pg|p)=\d+|/page/\d+}i
       private_constant :PAGE_CHROME, :ALWAYS_CHROME, :UTILITY_LANDMARK, :SECTIONING, :CHROME_ROLES,
                        :PAGE_CHROME_ROLES, :UTILITY_ROLES, :PAGER_NAMES, :PAGER_LABEL, :PAGER_CLASS,

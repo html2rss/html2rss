@@ -7,93 +7,28 @@ module Html2rss
       attr_reader :segments
 
       # Soft utility segments excluded from high-confidence junk (still utility_path).
-      SOFT_UTILITY = Set[
-        'for-you', 'join', 'member', 'members', 'membership', 'newsletter', 'newsletters',
-        'plans', 'plus', 'premium', 'pricing', 'recommended'
-      ].freeze
+      SOFT_UTILITY = Vocabulary.words(:path_soft_utility)
 
-      # Segment groups used to classify article, taxonomy, utility, and vanity routes.
+      # Segment groups used to classify article, taxonomy, utility, and vanity routes. The words are
+      # {Vocabulary}'s; this owns how they combine.
       # Utility = taxonomy ∪ chrome ∪ soft utility (do not re-list taxonomy tokens).
       SEGMENT_SETS = begin
         # Listing words: a path ending in one is a section index, not an article.
-        section = Set[
-          'articles', 'blog', 'blogs', 'changelogs', 'insights', 'launches', 'news', 'posts', 'releases',
-          'stories', 'updates', 'nachrichten', 'neuigkeiten', 'aktuelles', 'beitraege', 'articulos', 'noticias',
-          'entradas', 'publicaciones', 'actualites', 'nouvelles', 'teasers', 'cards',
-          'aktualnosci', 'aktualności', 'wiadomosci', 'wiadomości', 'artykuly', 'artykuły', 'wpisy', 'notizie',
-          'articoli', 'novita', 'novità', 'aggiornamenti', 'nieuws', 'nieuwsberichten', 'artikelen', 'berichten',
-          'nyheter', 'artiklar', 'ニュース', '記事', 'お知らせ', 'ブログ'
-        ].freeze
-        content = (section | Set[
-          'article', 'changelog', 'insight', 'launch', 'post', 'release', 'story', 'update', 'artikel', 'beitrag',
-          'articulo', 'noticia', 'entrada', 'publicacion', 'actualite', 'nouvelle', 'teaser', 'card',
-          'artykul', 'artykuł', 'wpis', 'notizia', 'articolo', 'bericht', 'nyhet', 'inlagg', 'inlägg'
-        ]).freeze
+        section = Vocabulary.words(:path_section)
+        content = (section | Vocabulary.words(:path_article)).freeze
         # People pages. `team` and `people` are left out on purpose: they name sports teams and
-        # newsmakers in article paths. The words below are unambiguous byline/staff words.
-        profile = Set[
-          'author', 'authors', 'staff', 'journalist', 'journalists', 'players',
-          'autor', 'autoren', 'redakteure', 'autores', 'periodista',
-          'periodistas', 'auteur', 'auteurs', 'journaliste', 'journalistes',
-          'autore', 'autori', 'giornalista', 'giornalisti', 'journalisten',
-          'autorzy', 'dziennikarz', 'dziennikarze', 'skribent', 'skribenter', 'forfattare',
-          'författare', '著者', '執筆者', '記者', 'ライター'
-        ].freeze
+        # newsmakers in article paths. The words are unambiguous byline/staff words.
+        profile = Vocabulary.words(:path_profile)
         # Editorial-office and contributor words: their child pages are often editorial notes with a
         # three-word slug, so only a one- or two-word name slug marks a profile.
-        office = Set[
-          'contributor', 'contributors', 'redaktion', 'redaccion', 'redacción', 'redaction', 'rédaction',
-          'redazione', 'redactie', 'redakcja', '編集部'
-        ].freeze
+        office = Vocabulary.words(:path_office)
         # Destinations that are never articles: games, horoscopes, quizzes, obituaries, livestreams, players.
-        non_article = Set[
-          'games', 'spiele', 'juegos', 'jeux', 'giochi', 'spellen', 'spel', 'gry', 'ゲーム',
-          'sudoku', 'crossword', 'crosswords', 'kreuzwortraetsel', 'kreuzworträtsel', 'crucigrama', 'crucigramas',
-          'quiz', 'quizzes', 'quizze', 'quizzen', 'kviz', 'クイズ',
-          'horoscope', 'horoscopes', 'horoskop', 'horoskope', 'horoscopo', 'horoscopos', 'oroscopo', 'oroscopi',
-          'horoscoop', 'horoskopy', '星座占い', '占い',
-          'obituary', 'obituaries', 'nachruf', 'nachrufe', 'traueranzeigen', 'todesanzeigen', 'necrologie',
-          'nécrologie', 'necrologio', 'necrologi', 'esquelas', 'obituarios', 'overlijdensberichten', 'nekrolog',
-          'nekrologi', 'dodsannonser', 'dödsannonser', '訃報', 'おくやみ',
-          'livestream', 'livestreams', 'endirect', 'envivo', 'indiretta', 'nazywo', 'ライブ配信',
-          'player'
-        ].freeze
-        taxonomy = Set[
-          'category', 'categories', 'tag', 'tags', 'topic', 'topics',
-          'kategorie', 'kategorien', 'schlagwort', 'schlagworte', 'thema', 'themen',
-          'categoria', 'categorias', 'etiqueta', 'etiquetas', 'tema', 'temas',
-          'categorie', 'etiquette', 'etiquettes', 'sujet', 'sujets', 'theme', 'themes'
-        ].freeze
-        vanity = Set[
-          'join', 'membership', 'plus', 'premium', 'pricing', 'plans', 'subscribe', 'signup',
-          'abonnieren', 'abo', 'suscribirse', 'boletin', 's-abonner', 'saboner'
-        ].freeze
-        chrome = Set[
-          'about', 'account', 'archive', 'archives', 'author', 'authors', 'comment', 'comments',
-          'contact', 'feedback', 'help', 'login', 'logout', 'notification', 'notifications',
-          'preference', 'preferences', 'profile', 'register', 'search', 'settings', 'share',
-          'signup', 'subscribe', 'feed', 'feeds', 'comment-feed', 'comments-feed', 'privacy',
-          'terms', 'cookie', 'cookies', 'user', 'users', 'autor', 'autoren', 'archiv', 'ueber-uns',
-          'ueber', 'ueberuns', 'profil', 'kontakt', 'impressum', 'suche', 'hilfe', 'anmelden',
-          'registrieren', 'konto', 'registrierung', 'anmeldung', 'abonnieren', 'abo', 'datenschutz',
-          'nutzungsbedingungen', 'agb', 'autores', 'archivos', 'sobre-nosotros', 'sobre',
-          'quienes-somos', 'buscar', 'busqueda', 'ayuda', 'entrar', 'ingresar', 'registrarse',
-          'registro', 'cuenta', 'suscribirse', 'boletin', 'privacidad', 'condiciones', 'auteur',
-          'auteurs', 'a-propos', 'apropos', 'recherche', 'rechercher', 'aide', 'connexion',
-          's-inscrire', 'sinscrire', 'inscription', 'compte', 's-abonner', 'saboner',
-          'lettre-information', 'confidentialite', 'mentions-legales', 'cgu', 'menu', 'sidebar',
-          'widget', 'social', 'modal', 'popup', 'banner', 'promo', 'ad', 'ads', 'related',
-          'recommendation', 'recommendations', 'pagination', 'pager', 'dating', 'jobs', 'job',
-          'career', 'careers', 'deals', 'deal', 'shopping', 'shop', 'trading', 'broker',
-          'versicherung', 'tierversicherung', 'insurance', 'vergleich', 'comparison',
-          'partnerboerse', 'singleboerse', 'krypto', 'crypto', 'casinos', 'casino',
-          'kreditkarten', 'kreditkarte', 'kredit', 'echtgeld', 'vpn', 'kaufberater',
-          'leasing'
-        ].freeze
+        non_article = Vocabulary.words(:path_non_article)
+        taxonomy = Vocabulary.words(:path_taxonomy)
+        vanity = Vocabulary.words(:path_vanity)
+        chrome = (Vocabulary.words(:path_chrome) | Vocabulary::NonTranslated::PATH).freeze
         # Audio and video destinations: players, podcast episodes and recorded briefings, not text articles.
-        media = Set[
-          'video', 'videos', 'vidéo', 'vidéos', 'vídeo', 'vídeos', 'podcast', 'podcasts', 'audio', 'audios'
-        ].freeze
+        media = Vocabulary.words(:path_media)
         utility = (taxonomy | chrome | SOFT_UTILITY).freeze
         {
           content:,
@@ -107,7 +42,7 @@ module Html2rss
           people_index: (profile | office).freeze,
           vanity:,
           media:,
-          deep_post_context: Set['press', 'newsroom', 'presse', 'pressemitteilungen', 'prensa'].freeze
+          deep_post_context: Vocabulary.words(:path_deep_post_context)
         }.freeze
       end
       # Routing shape: any digit-led slug or id (4+ digits), not a calendar year; see ArticleRules::UrlDate::YEAR.
