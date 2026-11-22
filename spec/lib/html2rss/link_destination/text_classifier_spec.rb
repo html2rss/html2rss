@@ -51,7 +51,11 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       'Prenumerera pa vart nyhetsbrev', 'Dela den här artikeln med vänner', 'Logga in för att kommentera',
       'Kontakta oss för mer information', 'ニュースレターを購読する', 'コメントを投稿するにはログイン', 'ログインしてコメントを書く', 'お問い合わせはこちらから',
       'Assine a nossa newsletter', 'Inscreva-se na newsletter', 'Compartilhe este artigo com amigos',
-      'Faça login para comentar', 'Faca login para comentar', 'Junte-se à nossa comunidade'
+      'Faça login para comentar', 'Faca login para comentar', 'Junte-se à nossa comunidade',
+      'Subscribe now to get updates', 'Log in or register to comment', 'Iscriviti ora alla nostra newsletter',
+      'Kommentare zum Artikel', 'Artikel teilen', 'Mitglied werden', 'Jetzt anmelden', "S'abonner à notre newsletter",
+      'Gå med i vår community', 'Compartir este artículo', 'Iniciar sesión para comentar',
+      'ニュースレターを購読', 'コメントを投稿します', 'お問い合わせはこちら', '会員登録はこちら。'
     ].each do |text|
       it "matches the utility chrome #{text.inspect}" do
         expect(classifier.utility_chrome?(text)).to be(true)
@@ -63,7 +67,10 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       '(12)', 'Share prices fall', 'Plus Size Fashion Week', 'Subscribers rise again', 'Shared this week',
       'Contact usage grows', 'Sign upgrades', 'Read: Subscribe to our newsletter', 'Kommentare zum Urteil',
       'Mitglied werdender Verein', 'Logging in to leave a comment', 'Iscrivitions', 'Prenumeration på tidningen',
-      'ログインの手順'
+      'ログインの手順', 'Kommentare zum Artikel 13: Was Urheber wissen müssen', 'Kommentare zum Artikel 5 Grundgesetz',
+      'Artikel teilen Meinungen: Reaktionen', "S'abonner à Netflix coûte plus cher", 'Gå med i Nato kan kosta Sverige',
+      'コメントを投稿した男性を逮捕', 'コメントを投稿した女性が死亡', 'ニュースレターを購読者に配信',
+      'この記事をシェアした投稿が拡散', 'メルマガに登録した人に当選', 'お問い合わせはこちらで受付開始'
     ].each do |text|
       it "rejects the text #{text.inspect}" do
         expect(classifier.utility_chrome?(text)).to be(false)

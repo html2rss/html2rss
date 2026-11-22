@@ -28,7 +28,7 @@ module Html2rss
         ],
         recommended: ['consigliato', 'consigliato per te'],
         utility_cta: [
-          /iscriviti\s+(?:a|alla|al)/, /abbonati\s+(?:a|alla|al)/, 'condividi questo articolo',
+          /iscriviti\s+(?:ora\s+)?(?:a|alla|al)/, /abbonati\s+(?:a|alla|al)/, 'condividi questo articolo',
           /condividi\s+l['’]articolo/, 'accedi per', 'registrati per', 'contattaci',
           /unisciti\s+(?:a|alla|al)/, 'lascia un commento'
         ],

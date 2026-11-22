@@ -32,10 +32,12 @@ module Html2rss
         ],
         recommended: ['recomendado', 'recomendado para ti'],
         utility_cta: [
-          'suscríbete a', 'suscribete a', 'suscríbase a', 'compartir este artículo', 'compartir este articulo',
-          'inicia sesión para', 'inicia sesion para', 'iniciar sesión para', 'iniciar sesion para',
+          'suscríbete a', 'suscribete a', 'suscríbase a',
+          /compartir\s+este\s+art(?:í|i)culo(?=[\s\p{P}\p{S}]*\z|\s+con\s)/,
+          'inicia sesión para', 'inicia sesion para',
+          /iniciar\s+sesi(?:ó|o)n\s+para\s+(?:comentar|ver|leer|acceder|continuar|seguir)/,
           'regístrate para', 'registrate para', 'contáctanos', 'contactanos', 'contacta con nosotros',
-          'únete a nuestra', 'unete a nuestra', 'deja un comentario', 'dejar un comentario'
+          'únete a nuestra', 'unete a nuestra', 'deja un comentario', /dejar\s+un\s+comentario(?=[\s\p{P}\p{S}]*\z)/
         ],
         read_more: [
           /leer\s+m(?:á|a)s/, 'seguir leyendo', 'continuar leyendo', /saber\s+m(?:á|a)s/,

@@ -49,11 +49,14 @@ module Html2rss
       private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS
 
       # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a
-      # multi-word imperative phrase at the start of the text. Every phrase holds enough words that it cannot
-      # open an ordinary headline, so none is scoped by page language. The word boundary after a Japanese term
-      # is the script change, which +\b+ does not see between two kana or kanji.
+      # multi-word imperative phrase at the start of the text, read in every language. An infinitive or noun
+      # form stays a headline opener ("Kommentare zum Artikel 13: ..."), so the vocabulary lists it only with a
+      # chrome object or as the whole label. A Latin term ends at a word boundary. A Japanese term has none
+      # between two kana or kanji, so it ends at whitespace, punctuation, a symbol or the end of the text
+      # ("コメントを投稿した男性を逮捕" is a headline).
       UTILITY_CTA = /
-        \A\s*(?:#{Vocabulary.alternation(:utility_cta)})(?:\b|(?<=[\p{Han}\p{Hiragana}\p{Katakana}]))
+        \A\s*(?:#{Vocabulary.alternation(:utility_cta)})
+        (?:(?<![\p{Han}\p{Hiragana}\p{Katakana}])\b|(?<=[\p{Han}\p{Hiragana}\p{Katakana}])(?=[\s\p{P}\p{S}]|\z))
       /iux
       private_constant :UTILITY_CTA
 

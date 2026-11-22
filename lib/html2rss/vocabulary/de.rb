@@ -34,9 +34,13 @@ module Html2rss
         ],
         recommended: ['empfohlen', 'empfohlen fuer dich', 'empfohlen für dich'],
         utility_cta: [
-          'abonnieren sie', 'mitglied werden', 'werden sie mitglied', 'melden sie sich', 'jetzt anmelden',
-          'jetzt registrieren', 'kontaktieren sie uns', 'diesen artikel teilen', 'artikel teilen',
-          'kommentare zum artikel', 'kommentare zu diesem artikel', 'kommentar schreiben', 'folgen sie uns'
+          'abonnieren sie', 'werden sie mitglied', 'melden sie sich', 'kontaktieren sie uns', 'folgen sie uns',
+          # Infinitive and noun forms open headlines ("Kommentare zum Artikel 13: ..."): a whole label only.
+          /mitglied\s+werden(?=[\s\p{P}\p{S}]*\z|\s+und\b)/,
+          /jetzt\s+(?:anmelden|registrieren)(?=[\s\p{P}\p{S}]*\z)/,
+          /(?:diesen\s+)?artikel\s+teilen(?=[\s\p{P}\p{S}]*\z)/,
+          /kommentare\s+(?:zum|zu\s+diesem)\s+artikel(?=[\s\p{P}\p{S}]*\z)/,
+          /kommentar\s+schreiben(?=[\s\p{P}\p{S}]*\z)/
         ],
         read_more: [
           'weiterlesen', 'weiter lesen', 'mehr lesen', 'mehr erfahren', 'mehr dazu', 'mehr zum thema',

@@ -42,7 +42,8 @@ module Html2rss
         ],
         recommended: ['recommended', 'recommended for you'],
         utility_cta: [
-          'subscribe to', 'share this', 'log in to', 'login to', 'sign in to', 'sign up for', 'sign up to',
+          /subscribe\s+(?:now\s+)?to/, 'share this', 'log in to', 'login to', 'sign in to',
+          /(?:log|sign)\s+in\s+or\s+(?:register|sign\s+up)/, 'sign up for', 'sign up to',
           'contact us', 'join our', 'leave a comment', 'leave a reply', 'follow us on'
         ],
         read_more: [

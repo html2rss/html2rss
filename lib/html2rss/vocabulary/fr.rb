@@ -31,8 +31,10 @@ module Html2rss
         ],
         recommended: ['recommande', 'recommandé', 'recommande pour vous', 'recommandé pour vous'],
         utility_cta: [
-          /abonnez[-\s]vous/, /s['’]abonner\s+(?:à|a)/, 'partager cet article', /connectez[-\s]vous\s+pour/,
-          /inscrivez[-\s]vous/, /contactez[-\s]nous/, 'rejoignez notre', 'laisser un commentaire',
+          /abonnez[-\s]vous/, /s['’]abonner\s+(?:à|a)\s+(?:notre|nos|la\s+(?:newsletter|lettre)|l['’]infolettre)/,
+          /partager\s+cet\s+article(?=[\s\p{P}\p{S}]*\z)/, /connectez[-\s]vous\s+pour/,
+          /inscrivez[-\s]vous/, /contactez[-\s]nous/, 'rejoignez notre',
+          /laisser\s+un\s+commentaire(?=[\s\p{P}\p{S}]*\z)/,
           /suivez[-\s]nous/
         ],
         read_more: [
