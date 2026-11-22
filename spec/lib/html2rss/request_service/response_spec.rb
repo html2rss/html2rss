@@ -297,6 +297,20 @@ RSpec.describe Html2rss::RequestService::Response do
       it('still decodes via Encoding.find') { expect(parsed_body.at_css('h1').text).to eq('Привет') }
     end
 
+    %w[UTF-7 UTF-16 UTF-32 ISO-2022-JP Emacs-Mule EUC-TW Windows-1258].each do |label|
+      {
+        'Content-Type charset' => [{ 'content-type' => "text/html; charset=#{label}" }, ''],
+        'meta charset' => [{ 'content-type' => 'text/html' }, %(<meta charset="#{label}">)]
+      }.each do |source, (header_set, meta)|
+        context "when a #{label} page (no converter) is labeled via #{source}" do
+          let(:body) { "#{meta}<h1>Caffè</h1>" }
+          let(:headers) { header_set }
+
+          it('falls back to the UTF-8 scrub') { expect(parsed_body.at_css('h1').text).to eq('Caffè') }
+        end
+      end
+    end
+
     context 'when the charset label is unknown' do
       let(:body) { '<h1>Caffè</h1>' }
       let(:headers) { { 'content-type' => 'text/html; charset=x-nonsense' } }
