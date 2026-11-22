@@ -400,6 +400,15 @@ RSpec.describe Html2rss::Vocabulary do
       expect(overlapping.words(:path_taxonomy)).to eq(described_class.unambiguous_words(:path_taxonomy) | %w[tema])
     end
 
+    it 'adds the own words of a page-only language to the shared Set', :aggregate_failures do
+      own = described_class::Scope.new(code: :xx, ambiguous_words: { path_taxonomy: %w[tema] }.freeze,
+                                       alternations: {}.freeze, own_words: { path_taxonomy: %w[ownword] }.freeze,
+                                       own_alternations: {}.freeze, type_markers: described_class.words(:type_marker))
+
+      expect(own.words(:path_taxonomy)).to eq(described_class.unambiguous_words(:path_taxonomy) | %w[tema ownword])
+      expect(own.words(:path_taxonomy)).to be_frozen
+    end
+
     it 'reuses the identical shared Set where a scope adds no ambiguous word', :aggregate_failures do
       shared = described_class.unambiguous_words(:path_vanity)
 
