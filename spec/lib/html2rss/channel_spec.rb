@@ -101,6 +101,24 @@ RSpec.describe Html2rss::Channel do
       end
     end
 
+    { 'DE' => 'de', 'ZH-tw' => 'zh', 'En-US' => 'en' }.each do |tag, expected|
+      context "with the mixed-case content-language tag #{tag}" do
+        let(:headers) { { 'content-language' => tag, 'content-type': 'text/html' } }
+
+        it 'extracts the lowercase language' do
+          expect(instance.language).to eq(expected)
+        end
+      end
+    end
+
+    context 'with a differently cased content-language header name' do
+      let(:headers) { { 'content-type': 'text/html', 'Content-Language' => 'de' } }
+
+      it 'extracts the language' do
+        expect(instance.language).to eq('de')
+      end
+    end
+
     context 'with a content-language list' do
       let(:headers) { { 'content-language' => 'de, en', 'content-type': 'text/html' } }
 
