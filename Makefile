@@ -9,7 +9,7 @@ SHELL_SCRIPTS = \
 	bin/ready \
 	bin/setup
 
-.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline perf-baseline-selectors perf-baseline-feed perf-check corpus-baseline compare-revisions mutant-test mutant
+.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline perf-baseline-selectors perf-baseline-feed perf-check corpus-baseline compare-revisions language-check mutant-test mutant
 
 help: ## Show available commands
 	@echo "Available commands:"
@@ -27,6 +27,7 @@ help: ## Show available commands
 	@echo "  make perf-check- Gate allocations against the recorded budgets"
 	@echo "  make corpus-baseline - Re-record the auto-source corpus ratchet baseline"
 	@echo "  make compare-revisions BASE=<rev> HEAD=<rev> PAGES=<dir> [LIMIT=<n>] - Compare auto-source on saved pages"
+	@echo "  make language-check CODE=<code> PAGES=<dir> [BASE=<rev>] [OUT=<dir>] - Evidence report for a vocabulary language on saved pages"
 	@echo "  make ready   - Run the local PR readiness checks"
 	@echo "  make mutant-test - Run the suite through mutant's test runner"
 	@echo "  make mutant  - Run mutation analysis for SUBJECT"
@@ -87,6 +88,14 @@ corpus-baseline: ## Re-record the auto-source corpus ratchet baseline
 
 compare-revisions: ## Compare auto-source on saved pages across two revisions (BASE, HEAD, PAGES, optional LIMIT)
 	$(RUBY_RUNNER)bin/compare-revisions $(BASE) $(HEAD) --pages $(PAGES) $(if $(LIMIT),--limit $(LIMIT))
+
+# The values travel as environment variables, never spliced into the shell command, so a quote in one is data.
+language-check: export LC_CODE := $(CODE)
+language-check: export LC_PAGES := $(PAGES)
+language-check: export LC_BASE := $(BASE)
+language-check: export LC_OUT := $(OUT)
+language-check: ## Evidence report for a vocabulary language on saved pages (CODE, PAGES, optional BASE, OUT)
+	$(RUBY_RUNNER)bin/language-check --code "$$LC_CODE" --pages "$$LC_PAGES" --base "$$LC_BASE" --out "$$LC_OUT"
 
 ready: ## Run the local PR readiness checks
 	bin/ready
