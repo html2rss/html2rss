@@ -2,16 +2,12 @@
 
 module Html2rss
   module Registry
+    CatalogEntry = Data.define(:id, :path, :directory, :channel, :parameters)
+
     ##
     # Domain catalog entry for a registry-sourced feed config.
     # Wire fields (+source+, +registry+) are stamped by html2rss-web Index at the API edge.
-    CatalogEntry = Data.define(
-      :id,
-      :path,
-      :directory,
-      :channel,
-      :parameters
-    ) do
+    class CatalogEntry
       ##
       # @return [Hash{Symbol => Object}]
       def to_h = super.compact

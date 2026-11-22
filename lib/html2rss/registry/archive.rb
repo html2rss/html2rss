@@ -4,7 +4,6 @@ require 'stringio'
 require 'rubygems/package'
 require 'zlib'
 require 'fileutils'
-require 'forwardable'
 
 module Html2rss
   module Registry
@@ -36,7 +35,7 @@ module Html2rss
           return packed if io.nil?
 
           io.write(packed.string)
-          io.rewind if io.respond_to?(:rewind)
+          io.rewind
           io
         end
 
@@ -75,7 +74,7 @@ module Html2rss
         end
 
         def with_tar_reader(io, &)
-          io.rewind if io.respond_to?(:rewind)
+          io.rewind
           reader_io = gzip?(io) ? Zlib::GzipReader.new(io) : io
           Gem::Package::TarReader.new(reader_io, &)
         ensure
@@ -83,9 +82,9 @@ module Html2rss
         end
 
         def gzip?(io)
-          io.rewind if io.respond_to?(:rewind)
+          io.rewind
           magic = io.read(2)
-          io.rewind if io.respond_to?(:rewind)
+          io.rewind
           magic == "\x1F\x8B".b
         end
 
@@ -135,10 +134,6 @@ module Html2rss
 
       # IO wrapper enforcing a byte limit while reading archive input.
       class CountingIO
-        extend Forwardable
-
-        def_delegators :@io, :pos, :seek, :eof?, :close
-
         # @param io [IO]
         # @param limit [Integer]
         # @param label [String]
@@ -165,6 +160,18 @@ module Html2rss
           @bytes = 0
           @io.rewind
         end
+
+        # @return [Integer]
+        def pos = @io.pos
+
+        # @return [Integer]
+        def seek(...) = @io.seek(...)
+
+        # @return [Boolean]
+        def eof? = @io.eof?
+
+        # @return [void]
+        def close = @io.close
 
         private
 

@@ -81,7 +81,7 @@ module Html2rss
         result = Config.validate(config)
         return if result.success?
 
-        message = result.errors(full: true).map(&:text).join('; ')
+        message = result.issues.join('; ')
         raise InvalidConfig, "Invalid config #{relative_path}: #{message}"
       end
       private_class_method :load_path_configs!, :index_by_entry_id!, :register_entry_id!,

@@ -662,12 +662,12 @@ RSpec.describe Html2rss do
     it 'delegates to Test.call' do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Test).to receive(:call).with(
         'config.yml', min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
-                           sample_limit: 3
+                      sample_limit: 3
       )
       described_class.test('config.yml')
       expect(Html2rss::Test).to have_received(:call).with(
         'config.yml', min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
-                           sample_limit: 3
+                      sample_limit: 3
       )
     end
 

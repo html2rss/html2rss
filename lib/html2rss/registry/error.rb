@@ -16,5 +16,8 @@ module Html2rss
 
     # Raised when a bundled config fails schema validation.
     class InvalidConfig < Error; end
+
+    # Raised when a manifest cannot be signed with the given inputs.
+    class SigningError < Error; end
   end
 end

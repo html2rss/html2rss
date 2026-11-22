@@ -19,7 +19,7 @@ module Html2rss
       # @return [String] path to the written signature file
       def sign!(manifest, key_pem:, bundle_dir: nil, signature_path: nil)
         target = signature_path || File.join(bundle_dir, Manifest::SIGNATURE_FILE)
-        raise ArgumentError, 'bundle_dir or signature_path is required' if target.nil?
+        raise SigningError, 'bundle_dir or signature_path is required' if target.nil?
 
         private_key = OpenSSL::PKey.read(key_pem)
         ensure_ed25519!(private_key)
@@ -35,7 +35,7 @@ module Html2rss
       def ensure_ed25519!(key)
         return if Verifier.ed25519_key?(key)
 
-        raise ArgumentError, 'Signing key must be Ed25519'
+        raise SigningError, 'Signing key must be Ed25519'
       end
 
       private_class_method :ensure_ed25519!

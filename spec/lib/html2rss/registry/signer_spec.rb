@@ -20,7 +20,7 @@ RSpec.describe Html2rss::Registry::Signer do
 
       expect do
         described_class.sign!(manifest, key_pem: rsa_pem, signature_path: '/tmp/manifest.sig')
-      end.to raise_error(ArgumentError, /Ed25519/)
+      end.to raise_error(Html2rss::Registry::SigningError, /Ed25519/)
     end
   end
 end

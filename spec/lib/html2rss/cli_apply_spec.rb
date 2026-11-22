@@ -36,14 +36,14 @@ RSpec.describe Html2rss::CLI, '#apply' do
 
   it 'turns a config-load failure into a Thor::Error instead of a backtrace', :aggregate_failures do
     allow(Html2rss).to receive(:config_from_yaml_file)
-      .and_raise(Html2rss::Config::InvalidConfig, "File is not a config")
+      .and_raise(Html2rss::Config::InvalidConfig, 'File is not a config')
 
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'feed.yml')
       File.write(path, 'x')
 
       expect { run_apply.call([path]) }
-        .to raise_error(Thor::Error, "File is not a config")
+        .to raise_error(Thor::Error, 'File is not a config')
     end
   end
 

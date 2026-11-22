@@ -37,7 +37,7 @@ RSpec.describe Html2rss::CLI, '#test' do
 
     expect(Html2rss).to have_received(:test).with(
       'cfg: 1', min_items: 3, params: { 'a' => 'b' }, strategy: 'botasaurus', strict_quality: true,
-                        compare_enhance: true
+                compare_enhance: true
     )
   end
 
