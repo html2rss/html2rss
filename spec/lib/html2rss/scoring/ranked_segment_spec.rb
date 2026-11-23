@@ -18,10 +18,9 @@ RSpec.describe Html2rss::Scoring::RankedSegment do
     expect(ranked.position).to eq(4)
   end
 
-  it 'exposes the composite, quality, and junk scores', :aggregate_failures do
+  it 'exposes the composite and quality scores', :aggregate_failures do
     expect(ranked.final_score).to eq(12.5)
     expect(ranked.quality_score).to eq(40.0)
-    expect(ranked.junk_score).to eq(27.5)
   end
 
   it 'returns no primary link when the segment has none' do

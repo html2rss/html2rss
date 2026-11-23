@@ -25,8 +25,8 @@ RSpec.describe Html2rss::RequestService::Budget do
     end
 
     it 'decrements the remaining request budget', :aggregate_failures do
-      expect { budget.consume! }.to change(budget, :remaining).from(2).to(1)
-      expect { budget.consume! }.to change(budget, :remaining).from(1).to(0)
+      expect { budget.consume! }.to change(budget, :remaining_requests).from(2).to(1)
+      expect { budget.consume! }.to change(budget, :remaining_requests).from(1).to(0)
     end
 
     it 'synchronizes consumption with the mutex' do
@@ -113,14 +113,6 @@ RSpec.describe Html2rss::RequestService::Budget do
       budget = described_class.new(max_requests: 2)
 
       expect(budget.effective_timeout_seconds(fallback: 0.5)).to eq(0.5)
-    end
-  end
-
-  describe '#effective_timeout_ms' do
-    it 'converts the effective timeout to integer milliseconds for browser protocol APIs' do
-      budget = described_class.new(max_requests: 2)
-
-      expect(budget.effective_timeout_ms(fallback: 12.5)).to be(12_500)
     end
   end
 end

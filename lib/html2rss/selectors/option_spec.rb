@@ -8,7 +8,7 @@ module Html2rss
     # One config-facing option on an extractor or post-processor strategy.
     #
     # Strategies own an +OPTIONS+ Array of these. This type is also the
-    # introspection SoT (+for+ / +expectation_for+); {SchemaExport} maps Ruby
+    # introspection SoT (+for+); {SchemaExport} maps Ruby
     # types to JSON Schema only.
     class OptionSpec
       # Raised when an extractor/post-processor +OPTIONS+ declares a type with no JSON Schema mapping.
@@ -96,19 +96,6 @@ module Html2rss
         # @return [Array<OptionSpec>]
         def for(klass)
           klass::OPTIONS
-        end
-
-        ##
-        # Ruby-typed expectation for a leaf under a selector / post-process parent.
-        #
-        # @param parent [Hash] selector or post-process step hash
-        # @param leaf [Symbol] option key under +parent+
-        # @return [Hash{Symbol => Object}, nil] +{ type:, required: }+ with Ruby +type+
-        def expectation_for(parent:, leaf:)
-          option = option_for(parent, leaf)
-          return unless option
-
-          { type: option.type, required: option.required }
         end
 
         ##

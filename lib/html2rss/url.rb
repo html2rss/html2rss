@@ -18,9 +18,8 @@ module Html2rss
   #   url = Url.sanitize('https://example.com/  ')
   #   url.to_s # => "https://example.com/"
   #
-  # @example Getting titleized versions
+  # @example Getting the channel title
   #   url = Url.from_relative('/foo-bar/baz.txt', 'https://example.com')
-  #   url.titleized # => "Foo Bar Baz"
   #   url.channel_titleized # => "example.com: Foo Bar Baz"
   # rubocop:disable-next Metrics/ClassLength -- value object owns resolve/sanitize/titleize/identity
   class Url
@@ -354,24 +353,6 @@ module Html2rss
     end
 
     ##
-    # Returns a titleized representation of the URL path.
-    # Converts the path to a human-readable title by cleaning and capitalizing words.
-    # Removes file extensions and special characters, then capitalizes each word.
-    #
-    # @return [String] the titleized path, or empty string if path is empty
-    # @example Basic titleization
-    #   url = Url.from_absolute('https://example.com/foo-bar/baz.txt')
-    #   url.titleized # => "Foo Bar Baz"
-    # @example With URL encoding
-    #   url = Url.from_absolute('https://example.com/hello%20world/article.html')
-    #   url.titleized # => "Hello World Article"
-    def titleized
-      nicer_path = CGI.unescapeURIComponent(path).gsub(/[^a-zA-Z0-9.]/, ' ').split
-      nicer_path.map!(&:capitalize)
-      File.basename(nicer_path.join(' '), '.*')
-    end
-
-    ##
     # Returns a titleized representation of the URL with prefixed host.
     # Creates a channel title by combining host and path information.
     # Useful for RSS channel titles that need to identify the source.
@@ -428,15 +409,6 @@ module Html2rss
     #
     # @return [String] the debug representation
     def inspect = "#<#{self.class}:#{object_id} @uri=#{@uri.inspect}>"
-
-    ##
-    # Resolves +relative_uri+ against this URL's already-parsed Addressable URI.
-    #
-    # @param relative_uri [Addressable::URI]
-    # @return [Url]
-    def join_uri(relative_uri)
-      self.class.new(@uri.join(relative_uri).normalize)
-    end
 
     ##
     # "Same article" key: {#article_location} and the sorted query params minus {TRACKING_PARAM}

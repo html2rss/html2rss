@@ -31,14 +31,12 @@ module Html2rss
           @remaining_requests -= 1
         end
       end
-      alias consume_request! consume!
 
       ##
       # @return [Integer] HTTP request slots still available
       def remaining_requests
         @mutex.synchronize { @remaining_requests }
       end
-      alias remaining remaining_requests
 
       ##
       # @return [Float, nil] the remaining timeout in seconds, or nil if not tracked
@@ -69,14 +67,6 @@ module Html2rss
         raise RequestTimedOut, 'Request timed out' if timeout <= 0
 
         timeout.to_f
-      end
-
-      ##
-      # @param fallback [Numeric] policy total timeout when remaining is untracked
-      # @return [Integer] milliseconds available for this attempt
-      # @raise [RequestTimedOut] when no time remains
-      def effective_timeout_ms(fallback:)
-        (effective_timeout_seconds(fallback:) * 1000).to_i
       end
     end
   end

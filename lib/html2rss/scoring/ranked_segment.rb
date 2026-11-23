@@ -24,10 +24,6 @@ module Html2rss
       def quality_score = score.quality
 
       ##
-      # @return [Float]
-      def junk_score = score.junk
-
-      ##
       # @return [Integer]
       def position = segment.position
     end

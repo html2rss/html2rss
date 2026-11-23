@@ -14,17 +14,8 @@ module Html2rss
               when Array
                 return true if array_of_articles?(document)
 
-                document.any? { traversable_candidate?(_1) }
+                document.any? { candidate_array?(_1) }
               when Hash then document.each_value.any? { candidate_array?(_1) }
-              else false
-              end
-            end
-
-            # @param value [Hash, Array, Object] candidate nested value
-            # @return [Boolean] whether nested value should be traversed for article candidates
-            def traversable_candidate?(value)
-              case value
-              when Array, Hash then candidate_array?(value)
               else false
               end
             end

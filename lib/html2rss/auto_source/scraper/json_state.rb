@@ -28,12 +28,6 @@ module Html2rss
             DocumentScanner.json_documents(parsed_body).any? { CandidateDetector.candidate_array?(_1) }
           end
 
-          # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
-          # @return [Array<Hash, Array>] parsed JSON documents discovered in the response body
-          def json_documents(parsed_body)
-            DocumentScanner.json_documents(parsed_body)
-          end
-
           # Walks a JSON document tree and yields normalized article hashes.
           # Shared with {XhrArticles} so XHR-captured JSON reuses one discovery algorithm.
           #
@@ -92,7 +86,7 @@ module Html2rss
         attr_reader :url
 
         def json_documents
-          self.class.json_documents(parsed_body)
+          DocumentScanner.json_documents(parsed_body)
         end
       end
     end

@@ -10,16 +10,6 @@ module Html2rss
       # Minimum composite score retained by {#rank_top} (precision floor).
       SCORE_FLOOR = 0.0
 
-      FEATURE_IDS = Set[
-        :title_runs_ge3, :title_runs_ge7, :path_length_gt6, :content_path,
-        :publish_marker, :descriptive_context, :article_container, :content_tokens,
-        :non_content_utility_path, :utility_prefix_title_short, :shallow, :weak_container,
-        :recommended_title_non_content, :high_confidence_junk_path, :junk_tokens,
-        :heading_anchor, :heading_text_match, :meaningful_text, :content_like_destination,
-        :cluster_size, :cluster_avg_words, :cluster_heading, :cluster_time, :cluster_date
-      ].freeze
-      private_constant :FEATURE_IDS
-
       # Quality feature triples: [feature_id, predicate, weight].
       QUALITY_RULES = [
         [:title_runs_ge3, ->(o) { o.title_runs >= 3 }, 40],
@@ -42,18 +32,6 @@ module Html2rss
         [:high_confidence_junk_path, lambda(&:high_confidence_junk_path), 5],
         [:junk_tokens, lambda(&:junk_tokens), 15]
       ].freeze
-
-      ##
-      # @param id [Symbol]
-      # @return [Symbol]
-      # @raise [InvalidOption] when id is not in the closed set
-      def self.assert_feature_id!(id)
-        raise InvalidOption, "unknown feature: #{id.inspect}" unless FEATURE_IDS.include?(id)
-
-        id
-      end
-
-      (QUALITY_RULES + JUNK_RULES).each { |feature_id, _, _| assert_feature_id!(feature_id) }
 
       # @param link_resolver [LinkResolver]
       def initialize(link_resolver:)

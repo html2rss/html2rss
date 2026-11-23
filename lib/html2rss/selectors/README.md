@@ -52,7 +52,7 @@ Selectors (orchestrator)
 
 ## OptionSpec vs SchemaExport
 
-- **`OptionSpec`** — introspection & validation SoT (`for(klass)`, `expectation_for`, `valid_type?`, `error_message`, `json_type`) with **Ruby-typed** `type:` / `required:`. Strategies own `OPTIONS: [OptionSpec, …]`.
+- **`OptionSpec`** — introspection & validation SoT (`for(klass)`, `valid_type?`, `error_message`, `json_type`) with **Ruby-typed** `type:` / `required:`. Strategies own `OPTIONS: [OptionSpec, …]`.
 - **`SchemaExport`** — JSON Schema adapter only (`for_extractor`, `for_post_processor`), consuming `OptionSpec#json_type`. `Config::IssueMapper` maps Ruby expectations → JSON via `OptionSpec.json_type_for` so ValidationIssue `expected` wire shape stays stable.
 
 ## Constraints
