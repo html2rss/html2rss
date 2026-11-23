@@ -21,21 +21,21 @@ module Html2rss
           (?:(?<![\p{Han}\p{Hiragana}\p{Katakana}])\b|(?<=[\p{Han}\p{Hiragana}\p{Katakana}])(?=[\s\p{P}\p{S}]|\z))
         /iux
 
-        # The concepts of the read-more matcher: whole read-more labels that stand alone ("Continue reading",
-        # "Lire la suite", "続きを読む"); "More about X" lead-ins (a read-more phrase or a bare "more", then a topic
-        # preposition); a read-more label as a whole text, optionally wrapped in punctuation or arrows. The topic
-        # after a lead-in counts only when quoted ("More about «X»", „X“, "X", 'X', 「X」), so a headline that
-        # merely opens with one ("Mehr über die Zukunft der Rente") stays a headline; Japanese topic forms put
-        # the topic first.
-        READ_MORE_CONCEPTS = %i[read_more topic_lead topic_preposition read_more_suffix].freeze
-
         # Visible new-window notice that trails a link label, in parentheses or brackets.
         NEW_WINDOW = ->(alternation) { /\s*[(\[（【]\s*(?:#{alternation})\s*[)\]）】]\s*\z/ix }
 
-        READ_MORE = lambda do |phrase, lead, preposition, suffix|
+        # The read-more matcher: whole read-more labels that stand alone ("Continue reading", "Lire la suite",
+        # "続きを読む"); "More about X" lead-ins (a read-more phrase or a bare "more", then a topic preposition); a
+        # read-more label as a whole text, optionally wrapped in punctuation or arrows. The topic after a lead-in
+        # counts only when quoted ("More about «X»", „X“, "X", 'X', 「X」), so a headline that merely opens with one
+        # ("Mehr über die Zukunft der Rente") stays a headline; Japanese topic forms put the topic first.
+        #
+        # The own read-more terms (+standalone+) are whole labels only: the topic lead-in reads the shared +phrase+, so
+        # a Chinese label never opens a quoted-topic form ("阅读全文 about “气候”" is a headline).
+        READ_MORE = lambda do |standalone, phrase, lead, preposition, suffix|
           /
             \A[\s\p{P}\p{S}]*(?:
-              (?:#{phrase})|
+              (?:#{standalone})|
               (?:(?:#{phrase}|#{lead})\s+(?:#{preposition}))\s*[«„"“”'‘’‹「].+[»"“”'’›」]|
               \S{1,40}(?:#{suffix})
             )[\s\p{P}\p{S}]*\z
@@ -52,7 +52,8 @@ module Html2rss
             {
               cta: UTILITY_CTA,
               own_cta: TextClassifier.whole_label([own.fetch(:utility_cta)]),
-              read_more: READ_MORE.call(*READ_MORE_CONCEPTS.map(&union)),
+              read_more: READ_MORE.call(union.call(:read_more), Vocabulary.alternation(:read_more),
+                                        *%i[topic_lead topic_preposition read_more_suffix].map(&union)),
               new_window: NEW_WINDOW.call(union.call(:new_window_notice))
             }.freeze
           end
@@ -66,7 +67,7 @@ module Html2rss
             built[own] ||= build(own)
           end.freeze
         end
-        private_constant :UTILITY_CTA, :READ_MORE_CONCEPTS, :NEW_WINDOW, :READ_MORE
+        private_constant :UTILITY_CTA, :NEW_WINDOW, :READ_MORE
       end
     end
   end

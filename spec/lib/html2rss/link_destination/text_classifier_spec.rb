@@ -290,6 +290,22 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     it 'treats nil as an empty label', :aggregate_failures do
       expect(classifier.read_more?(nil)).to be(false)
     end
+
+    it 'reads a Chinese label as a standalone label only, never as a topic lead-in', :aggregate_failures do
+      zh = described_class.for(Html2rss::Vocabulary[:zh])
+
+      ['阅读全文 about “气候”', '了解更多 über „Klima“', '了解更多 about «气候»'].each do |text|
+        expect(zh.read_more?(text)).to be(false), text
+      end
+      expect(['阅读全文', '了解更多', 'More about «Climate»', 'Mehr über „Klima“'].map { zh.read_more?(_1) }).to all(be(true))
+    end
+
+    it 'reads the shared topic lead-ins on every scope as before', :aggregate_failures do
+      topics = ['More about «Harbor ferry»', 'Mehr über „Hafen“', 'Lire la suite de «Port»', 'Mehr über die Rente']
+      reads = %i[all en de ja zh].map { |lang| topics.map { described_class.for(Html2rss::Vocabulary[lang]).read_more?(_1) } }
+
+      expect(reads.uniq).to eq([[true, true, true, false]])
+    end
   end
 
   describe 'new-window notices' do

@@ -55,10 +55,6 @@ module Html2rss
       private_constant :JUNK_TITLE_RULES
 
       # Owner of the read-more vocabulary ("Read more", "More about X" in nine languages): a +:cta+ title.
-      # The page-less reader: {.audit_feed_items} reads a finished feed, which carries no page language, so its
-      # titles are read with every language's terms (the all scope), never a page-only language's.
-      AUDIT_VOCABULARY = Vocabulary[:all]
-      private_constant :AUDIT_VOCABULARY
 
       # Minimum present-title length before short-title warnings.
       MIN_TITLE_LENGTH = 4
@@ -151,13 +147,15 @@ module Html2rss
         end
 
         # @param items [Array<Html2rss::Article, RSS::Rss::Channel::Item>]
+        # @param vocabulary [Vocabulary::Scope] the scope of the page the feed was built from, so a page-only
+        #   language's read-more titles count as junk like the feed's own cleanup
         # @return [AuditResult]
-        def audit_feed_items(items)
+        def audit_feed_items(items, vocabulary:)
           articles = items.map { |item| feed_item_as_article(item) }
           metrics = initial_audit_metrics(articles.size)
           violations = Hash.new(0)
           warnings = audit_url_diversity(articles, metrics, violations)
-          audit_item_titles(articles, metrics, violations)
+          audit_item_titles(articles, metrics, violations, vocabulary)
           warnings = finalize_audit_warnings(warnings, metrics)
           log_audit(metrics, warnings, violations)
           AuditResult.new(warnings:, metrics: metrics.freeze, violations: violations.freeze)
@@ -184,13 +182,13 @@ module Html2rss
           [:duplicate_urls]
         end
 
-        def audit_item_titles(items, metrics, violations)
+        def audit_item_titles(items, metrics, violations, vocabulary)
           items.each do |item|
             title = normalize_title(item.title)
             next if title.empty?
 
             audit_short_title(title, metrics, violations)
-            audit_title_quality(title, metrics, violations)
+            audit_title_quality(title, metrics, violations, vocabulary)
           end
         end
 
@@ -201,8 +199,8 @@ module Html2rss
           violations[:short_title] += 1
         end
 
-        def audit_title_quality(title, metrics, violations)
-          reason = junk_reason(title, vocabulary: AUDIT_VOCABULARY)
+        def audit_title_quality(title, metrics, violations, vocabulary)
+          reason = junk_reason(title, vocabulary:)
           if reason
             metrics[:junk_title_count] += 1
             violations[reason] += 1

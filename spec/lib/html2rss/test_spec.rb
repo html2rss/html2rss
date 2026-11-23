@@ -642,6 +642,17 @@ RSpec.describe Html2rss::Test do
           hash_including(vocabulary: be(Html2rss::Vocabulary[:zh]))
         )
       end
+
+      it 'counts a Chinese read-more item title as junk, as the feed itself reads it', :aggregate_failures do
+        read_more = instance_double(RSS::Rss::Channel::Item, title: '了解更多', link: 'https://example.com/news/3',
+                                                             pubDate: nil)
+        result = described_class.quality_report_for(
+          fake_rss_items + [read_more], channel_url:, config:, feed_result:, pipeline_outcome:,
+                                        probe_native_feed: false
+        )
+
+        expect(result.metrics[:junk_title_count]).to eq(1)
+      end
     end
 
     context 'when enhance is disabled' do
