@@ -34,23 +34,25 @@ module Html2rss
 
           ##
           # @param lines [Array<String>, nil]
+          # @param vocabulary [Vocabulary::Scope] the page language's scope, read for type chips
           # @param title [String, nil]
           # @return [String, nil]
-          def from_lines(lines, title: nil)
-            kept = Array(lines).select { |line| keep?(line, title:) }
+          def from_lines(lines, vocabulary:, title: nil)
+            kept = Array(lines).select { |line| keep?(line, vocabulary:, title:) }
             kept.empty? ? nil : kept.join("\n")
           end
 
           ##
           # @param line [String, nil]
+          # @param vocabulary [Vocabulary::Scope] the page language's scope, read for type chips
           # @param title [String, nil]
           # @param type_chips [Boolean] whether whole-line type chips are leftover chrome
           # @return [Boolean]
-          def keep?(line, title: nil, type_chips: true)
+          def keep?(line, vocabulary:, title: nil, type_chips: true)
             normalized = normalize(line)
             return false if normalized.empty?
 
-            !chrome?(normalized, title:, type_chips:)
+            !chrome?(normalized, vocabulary, title:, type_chips:)
           end
 
           ##
@@ -91,13 +93,15 @@ module Html2rss
             nil
           end
 
+          # A chip beside a date is peeled whatever the page language: a word that is no marker on a Chinese page
+          # (+独自+) is still a type chip once a date stands next to it.
           def type_chip?(text) = Article::Title::TYPE_MARKERS.include?(text.downcase)
 
           def clock_zone?(text) = Article::Title.clock_piece?(text)
 
-          def chrome?(normalized, title:, type_chips:)
+          def chrome?(normalized, vocabulary, title:, type_chips:)
             key = normalized.downcase
-            TEXT_CLASSIFIER.read_more?(normalized) || (type_chips && Article::Title::TYPE_MARKERS.include?(key)) ||
+            TEXT_CLASSIFIER.read_more?(normalized) || (type_chips && vocabulary.type_markers.include?(key)) ||
               SECTION_NAMES.include?(key) || normalized.end_with?(':') ||
               date_shaped?(normalized) || title_echo?(key, title)
           end

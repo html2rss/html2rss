@@ -287,10 +287,17 @@ module Html2rss
       EnhanceAudit.compare(
         response: pipeline_outcome.response,
         selectors: config.selectors,
-        time_zone: config.time_zone
+        time_zone: config.time_zone,
+        vocabulary: enhance_vocabulary(config, pipeline_outcome)
       )
     end
     private_class_method :build_enhance_compare
+
+    # The page scope the feed itself reads, so the audit agrees with it under a +channel.language+ override.
+    def self.enhance_vocabulary(config, pipeline_outcome)
+      Vocabulary[Channel.language_for(pipeline_outcome.response, config.channel)]
+    end
+    private_class_method :enhance_vocabulary
 
     def self.merge_enhance_audit(report, config, pipeline_outcome) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- warning merge + metrics
       return report unless enhance_enabled?(config)
@@ -298,7 +305,8 @@ module Html2rss
       slice = EnhanceAudit.probe(
         response: pipeline_outcome.response,
         selectors: config.selectors,
-        time_zone: config.time_zone
+        time_zone: config.time_zone,
+        vocabulary: enhance_vocabulary(config, pipeline_outcome)
       )
       return report unless slice
 

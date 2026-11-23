@@ -304,7 +304,7 @@ RSpec.describe Html2rss::Article::Title do
          described_class.compose("【#{marker}】見出し", vocabulary: zh)]
       end
 
-      (described_class::TYPE_MARKERS - Html2rss::Vocabulary::CHINESE_WORDS).each do |marker|
+      (described_class::TYPE_MARKERS - Html2rss::Vocabulary::Zh.plain_words).each do |marker|
         expect(readings.call(marker)).to eq([true, '見出しの本文', '見出し']), marker
       end
     end
