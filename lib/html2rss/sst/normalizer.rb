@@ -11,7 +11,7 @@ module Html2rss
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
-      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links (see {#child_nodes}).
+      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links (see {#kept_children}).
       STRIPPED_TAGS = Set['script', 'style', 'noscript', 'iframe', 'svg', 'template'].freeze
 
       # Kept when MAX_NODES forces semantic-tag-only degrade.
@@ -57,6 +57,9 @@ module Html2rss
       # Typed Attrs fields excluded from the leftover raw hash.
       TYPED_ATTR_NAMES = Set['href', 'src', 'id', 'class', 'datetime', 'itemprop', 'style', 'srcset', 'type'].freeze
 
+      # Shared, frozen empty text slot.
+      EMPTY_TEXT = ''
+
       class << self
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
@@ -95,6 +98,8 @@ module Html2rss
         @parents = {}.compare_by_identity
         @depths = {}.compare_by_identity
         @scopes = {}.compare_by_identity
+        @class_tokens = {}
+        @tag_paths = Hash.new { |paths, path| paths[path] = {} }
       end
 
       ##
@@ -150,32 +155,26 @@ module Html2rss
         node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
       end
 
-      # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
       def normalize_element(nk_node, depth:, path:, scope:)
         return unless nk_node.element?
 
         tag = Html::Probe.tag(nk_node)
-        return unless (nk_children = child_nodes(nk_node, tag))
+        return unless (kept = kept_children(nk_node, tag))
 
-        if @node_count >= MAX_NODES && !@degraded
-          @degraded = true
-          Log.warn({
-            event_name: 'sst.normalizer.max_nodes',
-            max_nodes: MAX_NODES,
-            message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
-          }.to_json)
-        end
-
+        degrade_when_full
         return if @degraded && !SEMANTIC_DEGRADE_TAGS.include?(tag)
 
         @node_count += 1
-        tag_path = "#{path}/#{tag}"
+        tag_path = (@tag_paths[path][tag] ||= "#{path}/#{tag}")
         attrs = extract_attrs(nk_node)
-        scope_here = Tags.chrome_scope(nk_node, scope, @vocabulary)
+        scope_here = Tags.chrome_scope(nk_node, scope, @vocabulary, tag)
 
-        children, lead, tails = normalize_children(nk_children, depth:, path: tag_path, scope: scope_here)
+        tails = [EMPTY_TEXT]
+        children = normalize_children(kept, tails, depth:, path: tag_path, scope: scope_here)
+        own_text = join_text(tails.shift, tails)
 
-        node = Node.build(name: tag, attrs:, own_text: [lead, *tails].join, children:, tag_path:, tails:)
+        node = Node.build(name: tag, attrs:, own_text:, children:, tag_path:, tails:)
         @depths[node] = depth
         @scopes[node] = scope_here
         children.each { |child| @parents[child] = node }
@@ -183,12 +182,26 @@ module Html2rss
         node
       end
 
-      # The Nokogiri children to normalize, or nil for a stripped tag. A +noscript+ is kept only for the
+      def degrade_when_full
+        return unless @node_count >= MAX_NODES && !@degraded
+
+        @degraded = true
+        Log.warn({
+          event_name: 'sst.normalizer.max_nodes',
+          max_nodes: MAX_NODES,
+          message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
+        }.to_json)
+      end
+
+      # The node whose children to normalize, or nil for a stripped tag. A +noscript+ is kept only for the
       # file links inside it ({Html::ArticleRules::Enclosure.file_link?}), as its only children, so a
       # card's no-script download link still names its enclosure; its text stays invisible
-      # ({Tags::INVISIBLE_NAMES}) and a +noscript+ without one is stripped.
-      def child_nodes(nk_node, tag)
-        return nk_node.children unless STRIPPED_TAGS.include?(tag)
+      # ({Tags::INVISIBLE_NAMES}) and a +noscript+ without one is stripped; its file links come back as an
+      # Array standing in for its children.
+      #
+      # @return [Nokogiri::XML::Node, Array<Nokogiri::XML::Node>, nil]
+      def kept_children(nk_node, tag)
+        return nk_node unless STRIPPED_TAGS.include?(tag)
         return unless tag == 'noscript'
 
         links = nk_node.xpath('.//a[@href]').select { Html::ArticleRules::Enclosure.file_link?(_1['href']) }
@@ -196,42 +209,81 @@ module Html2rss
       end
 
       def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength
+        attr_nodes = nk_node.attribute_nodes
+        return Attrs.empty if attr_nodes.empty?
+
         Attrs.build(
           href: nk_node['href'],
           src: nk_node['src'],
           id: nk_node['id'],
-          class_names: nk_node['class'].to_s.split(/\s+/).reject(&:empty?),
+          class_names: class_tokens(nk_node['class']),
           datetime: nk_node['datetime'],
           itemprop: nk_node['itemprop'],
           style: nk_node['style'],
           srcset: nk_node['srcset'],
           type: nk_node['type'],
-          raw: raw_attrs(nk_node)
+          raw: raw_attrs(attr_nodes)
         )
       end
 
-      def raw_attrs(nk_node)
-        nk_node.attribute_nodes.each_with_object({}) do |attr, raw|
-          name = attr.name.to_s
-          next if TYPED_ATTR_NAMES.include?(name)
-          next unless name.match?(RAW_ATTR_KEEP)
+      # Repeated card classes share one token list, frozen by {Attrs.build}. The cache lives and dies with this
+      # normalizer and holds one entry per distinct class attribute of its kept nodes.
+      #
+      # @return [Array<String>, nil] tokens, +nil+ without a class attribute
+      def class_tokens(class_attr)
+        return unless class_attr
 
-          raw[name] = attr.value.to_s
+        @class_tokens[class_attr] ||= class_attr.split
+      end
+
+      # @return [Hash{String => String}, nil] kept attributes, +nil+ when none
+      def raw_attrs(attr_nodes)
+        raw = nil
+        attr_nodes.each do |attr|
+          name = attr.name
+          next if TYPED_ATTR_NAMES.include?(name)
+
+          (raw ||= {})[name] = attr.value if name.match?(RAW_ATTR_KEEP)
         end
+        raw
       end
 
       # Walks child nodes once, keeping direct text in the slot of the preceding kept child
-      # (slot 0 is the lead text) so text order survives the element-only tree.
-      def normalize_children(nk_children, depth:, path:, scope:)
+      # (slot 0 is the lead text) so text order survives the element-only tree. The caller owns +slots+.
+      def normalize_children(kept, slots, depth:, path:, scope:)
         children = []
-        slots = [+'']
-        nk_children.each do |child|
-          next slots.last << child.text if child.text?
+        each_child(kept) do |child|
+          next append_text(slots, child.text) if child.text?
 
           node = normalize_element(child, depth: depth + 1, path:, scope:)
-          (children << node) && (slots << +'') if node
+          (children << node) && (slots << EMPTY_TEXT) if node
         end
-        [children, slots.first, slots.drop(1)]
+        children
+      end
+
+      # Sibling walk: +children+ would build a NodeSet per element.
+      def each_child(kept)
+        return kept.each { yield _1 } if kept.is_a?(Array)
+
+        child = kept.child
+        while child
+          yield child
+          child = child.next_sibling
+        end
+      end
+
+      # Direct text lands in the last slot; an empty slot takes the fresh string, so no slot is pre-allocated.
+      def append_text(slots, text)
+        last = slots.last
+        last.empty? ? (slots[-1] = text) : last << text
+      end
+
+      # The node's own text: the lead and tails in document order. Appends to +lead+, which the caller
+      # no longer reads, unless it is the shared empty slot.
+      def join_text(lead, tails)
+        return lead if tails.all?(&:empty?)
+
+        tails.each_with_object(+lead) { |tail, text| text << tail }
       end
     end
   end

@@ -41,6 +41,13 @@ RSpec.describe Html2rss::SST::Node do
       expect { described_class.build(name: '  ') }.to raise_error(Html2rss::SST::InvalidError, 'name is required')
     end
 
+    it 'rejects every blank name that String#strip would empty', :aggregate_failures do
+      ['', nil, " \t\r\n\f\v", "\0", " \0 "].each do |name|
+        expect { described_class.build(name:) }.to raise_error(Html2rss::SST::InvalidError, 'name is required')
+      end
+      expect(described_class.build(name: "\0a").name).to be(:"\x00a")
+    end
+
     it 'defaults missing attrs, children and text to empty values', :aggregate_failures do
       node = described_class.build(name: :span)
 
@@ -48,6 +55,27 @@ RSpec.describe Html2rss::SST::Node do
       expect(node.children).to eq([])
       expect(node.own_text).to eq('')
       expect(node.tag_path).to eq('')
+    end
+
+    it 'freezes Array tails in place, taking ownership of them', :aggregate_failures do
+      tails = ['one', +'two']
+
+      expect(described_class.build(name: :p, tails:).tails).to be(tails)
+      expect(tails).to be_frozen.and all(be_frozen)
+    end
+
+    it 'coerces tails that are not Strings', :aggregate_failures do
+      expect(described_class.build(name: :p, tails: [:one, 2]).tails).to eq(%w[one 2]).and be_frozen
+      expect(described_class.build(name: :p, tails: ['one', :two]).tails).to eq(%w[one two]).and all(be_frozen)
+      expect(described_class.build(name: :p, tails: 'one').tails).to eq(%w[one])
+      expect(described_class.build(name: :p, tails: nil).tails).to eq([])
+    end
+
+    it 'freezes own text and tag path and keeps the tag path', :aggregate_failures do
+      node = described_class.build(name: :p, own_text: +'text', tag_path: +'/html/p')
+
+      expect(node.own_text).to eq('text').and be_frozen
+      expect(node.tag_path).to eq('/html/p').and be_frozen
     end
 
     it 'rejects attrs that are not typed and children that are not nodes', :aggregate_failures do

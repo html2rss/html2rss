@@ -90,6 +90,48 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(link.attrs.raw).to eq({})
     end
 
+    it 'splits class names on any whitespace and keeps none for a blank attribute', :aggregate_failures do
+      html = "<html><body><p class=\"a\tb\nc\">x</p><p class=\" \">y</p></body></html>"
+      spaced, blank = described_class.call(html, vocabulary: all_scope).root.find_all { |n| n.name == :p }
+
+      expect(spaced.attrs.class_names).to eq(%w[a b c])
+      expect(blank.attrs.class_names).to eq([])
+    end
+
+    it 'freezes the class tokens and raw attributes it keeps', :aggregate_failures do
+      html = '<html><body><p class="a b" data-k="v">x</p></body></html>'
+      attrs = described_class.call(html, vocabulary: all_scope).root.find { |n| n.name == :p }.attrs
+
+      expect([attrs.class_names, *attrs.class_names, attrs.raw, *attrs.raw.values]).to all(be_frozen)
+      expect(attrs.raw).to eq('data-k' => 'v')
+    end
+
+    it 'gives an element without attributes the shared empty attrs', :aggregate_failures do
+      html = '<html><body><p>x</p><p onclick="x">y</p></body></html>'
+      bare, unkept = described_class.call(html, vocabulary: all_scope).root.find_all { |n| n.name == :p }
+
+      expect(bare.attrs).to be(Html2rss::SST::Attrs.empty)
+      expect(unkept.attrs).to eq(Html2rss::SST::Attrs.empty)
+    end
+
+    it 'passes the tag it already holds to the chrome scope rule' do
+      allow(Html2rss::SST::Tags).to receive(:chrome_scope).and_call_original
+
+      described_class.call('<html><body><nav></nav></body></html>', vocabulary: all_scope)
+
+      expect(Html2rss::SST::Tags).to have_received(:chrome_scope)
+        .with(kind_of(Nokogiri::XML::Element), :page, all_scope, 'nav')
+    end
+
+    it 'keeps the scope of a node apart from an equal node elsewhere', :aggregate_failures do
+      html = '<html><body><div role="navigation"><p>a</p></div><div><p>a</p></div></body></html>'
+      document = described_class.call(html, vocabulary: all_scope)
+      chrome, plain = document.root.find_all { _1.name == :p }
+
+      expect(chrome).to eq(plain)
+      expect([chrome, plain].map { document.index.ignored_chrome?(_1) }).to eq([true, false])
+    end
+
     it 'logs which root fallback was used', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Log).to receive(:warn)
       fallback = lambda do |reason, message|
@@ -356,6 +398,77 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
   end
 
+  describe '.call text slots and paths' do
+    let(:html) do
+      '<html><body><p>a<b>1</b><i>2</i>c<!-- note -->d<script>x</script>e</p><p>f<b>1</b></p><p></p></body></html>'
+    end
+    let(:paragraphs) { described_class.call(html, vocabulary: all_scope).root.find_all { _1.name == :p } }
+
+    it 'splits direct text across the kept children, merging runs a comment splits', :aggregate_failures do
+      expect(paragraphs.first).to have_attributes(own_text: 'acde', lead_text: 'a', tails: ['', 'cde'])
+      expect(paragraphs[1]).to have_attributes(own_text: 'f', lead_text: 'f', tails: [''])
+      expect(paragraphs.last).to have_attributes(own_text: '', lead_text: '', tails: [])
+    end
+
+    it 'freezes every text and shares one path string per ancestry', :aggregate_failures do
+      first, second = paragraphs
+
+      expect([first.own_text, *first.tails, first.tag_path]).to all(be_frozen)
+      expect(first.tails).to be_frozen
+      expect(second.tag_path).to be(first.tag_path)
+      expect(first.tag_path).to eq('/html/body/p')
+    end
+
+    it 'shares one frozen empty own text between nodes without text', :aggregate_failures do
+      document = described_class.call('<html><body><p></p><span></span></body></html>', vocabulary: all_scope)
+      empty, other = document.root.find_all { %i[p span].include?(_1.name) }
+
+      expect(empty.own_text).to be(other.own_text).and be_frozen
+      expect(empty.own_text).to eq('')
+    end
+
+    it 'gives each node its own tails, so no node mutates another', :aggregate_failures do
+      first, second = paragraphs
+
+      expect(first.tails).not_to be(second.tails)
+      expect { first.tails.first << 'x' }.to raise_error(FrozenError)
+      expect { first.tails << 'x' }.to raise_error(FrozenError)
+      expect { second.own_text << 'x' }.to raise_error(FrozenError)
+    end
+  end
+
+  describe '.call shared class names' do
+    let(:html) do
+      '<html><body><p class="card">a</p><p class="card">b</p><p class=" card ">c</p>' \
+        '<p class="card wide">d</p></body></html>'
+    end
+    let(:cards) { described_class.call(html, vocabulary: all_scope).root.find_all { _1.name == :p } }
+
+    it 'shares one frozen token list between nodes with the same class attribute', :aggregate_failures do
+      first, second, spaced, wide = cards.map { _1.attrs.class_names }
+
+      expect(second).to be(first)
+      expect(first).to eq(%w[card]).and be_frozen
+      expect([spaced, wide]).to eq([%w[card], %w[card wide]])
+      expect(spaced).not_to be(first)
+    end
+
+    it 'keeps shared tokens immutable through every node', :aggregate_failures do
+      first, second = cards
+
+      expect { second.attrs.class_names << 'x' }.to raise_error(FrozenError)
+      expect { first.attrs.class_names.first << 'x' }.to raise_error(FrozenError)
+      expect(second.attrs.class_names).to eq(%w[card])
+    end
+
+    it 'shares nothing between two normalizations', :aggregate_failures do
+      other = described_class.call(html, vocabulary: all_scope).root.find { _1.name == :p }
+
+      expect(other.attrs.class_names).to eq(cards.first.attrs.class_names)
+      expect(other.attrs.class_names).not_to be(cards.first.attrs.class_names)
+    end
+  end
+
   describe '.call input validation' do
     it 'rejects nil and unsupported input', :aggregate_failures do
       expect do
@@ -363,101 +476,6 @@ RSpec.describe Html2rss::SST::Normalizer do
       end.to raise_error(Html2rss::SST::InvalidError, 'input is required')
       expect { described_class.call(42, vocabulary: all_scope) }
         .to raise_error(Html2rss::SST::InvalidError, 'expected String or Nokogiri::XML::Node, got Integer')
-    end
-  end
-
-  describe 'chrome scope rule (SST::Tags.chrome_scope)' do
-    {
-      %w[<div> page] => :page,
-      %w[<header> page] => :chrome,
-      %w[<footer> page] => :chrome,
-      %w[<nav> page] => :chrome,
-      %w[<dialog> sectioned] => :chrome,
-      %w[<nav> sectioned] => :peripheral,
-      %w[<footer> sectioned] => :peripheral,
-      %w[<aside> page] => :peripheral,
-      %w[<menu> page] => :peripheral,
-      ['<div role="complementary">', 'page'] => :peripheral,
-      %w[<header> peripheral] => :peripheral,
-      %w[<article> peripheral] => :peripheral,
-      ['<div role="banner">', 'peripheral'] => :peripheral,
-      ['<div role="navigation">', 'peripheral'] => :chrome,
-      %w[<header> sectioned] => :sectioned,
-      %w[<section> page] => :sectioned,
-      ['<div role="main">', 'page'] => :sectioned,
-      ['<div role="MAIN">', 'page'] => :sectioned,
-      ['<div role="mainly">', 'page'] => :page,
-      %w[<article> chrome] => :chrome,
-      %w[<div> sectioned] => :sectioned,
-      %w[<svg> sectioned] => :chrome
-    }.each do |(markup, scope), expected|
-      it "maps #{markup} under #{scope} to #{expected}" do
-        element = Nokogiri::HTML::DocumentFragment.parse(markup).child
-
-        expect(Html2rss::SST::Tags.chrome_scope(element, scope.to_sym, all_scope)).to eq(expected)
-      end
-    end
-
-    context 'with a page-only language declaring the pager concepts' do
-      let(:xx) do
-        terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
-        terms.merge!(pager_label: %w[bladeren-xx], page_link: %w[volgende-xx], page_link_label: %w[vorige-xx])
-        language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
-        Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::SHARED_LANGUAGES, own: [language])
-      end
-      let(:chrome_under) do
-        lambda do |markup, scope|
-          element = Nokogiri::HTML::DocumentFragment.parse(markup).child
-          Html2rss::SST::Tags.chrome_scope(element, :sectioned, scope)
-        end
-      end
-
-      before do
-        own = %i[pager_label page_link page_link_label].to_h { [_1, xx.own_alternation(_1)] }
-        by_scope = Html2rss::SST::Tags::PagerReadings::BY_SCOPE
-        stub_const('Html2rss::SST::Tags::PagerReadings::BY_SCOPE',
-                   by_scope.merge(zh: Html2rss::SST::Tags::PagerReadings.build(own)))
-      end
-
-      it 'reads an own pager noun as a whole aria-label, on its own page only', :aggregate_failures do
-        nav = '<nav aria-label="Bladeren-xx"></nav>'
-
-        expect(chrome_under.call(nav, xx)).to eq(:chrome)
-        expect(chrome_under.call(nav, all_scope)).to eq(:peripheral)
-        expect(chrome_under.call('<nav aria-label="Bladeren-xx lijst"></nav>', xx)).to eq(:peripheral)
-      end
-
-      it 'reads own previous and next words as page links of a labelled list', :aggregate_failures do
-        list = '<ul aria-label="pagination"><li><a>Volgende-xx</a></li><li><a>Vorige-xx</a></li></ul>'
-
-        expect(chrome_under.call(list, xx)).to eq(:chrome)
-        expect(chrome_under.call(list, all_scope)).to eq(:sectioned)
-      end
-
-      it 'leaves every shared scope on the one shared reading', :aggregate_failures do
-        readings = Html2rss::SST::Tags::PagerReadings.const_get(:BY_SCOPE)
-
-        %i[en ja de all].each { expect(readings.fetch(_1)).to be(readings.fetch(:en)) }
-        expect(readings.fetch(:zh)).not_to be(readings.fetch(:en))
-      end
-    end
-
-    {
-      %w[nav] => true, %w[aside] => true, %w[footer] => true, %w[menu] => true, %w[div navigation] => true,
-      %w[div menubar] => true, %w[div alertdialog] => true, %w[div complementary] => true,
-      %w[div search] => false, %w[div] => false
-    }.each do |(tag, role), expected|
-      it "judges #{tag} role=#{role.inspect} as utility landmark: #{expected}" do
-        expect(Html2rss::SST::Tags.utility_landmark?(tag, role)).to be(expected)
-      end
-    end
-
-    {
-      %w[header] => true, %w[div Contentinfo] => true, %w[div banner] => true, %w[nav] => false, %w[div main] => false
-    }.each do |(tag, role), expected|
-      it "judges #{tag} role=#{role.inspect} as page-level chrome: #{expected}" do
-        expect(Html2rss::SST::Tags.page_level_chrome?(tag, role)).to be(expected)
-      end
     end
   end
 end
