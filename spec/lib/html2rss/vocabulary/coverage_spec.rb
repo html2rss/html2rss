@@ -345,7 +345,8 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
       %w[вхід увійти реєстрація пошук підписка підписатися поділитися закрити меню коментарі контакти].push(
-        'про нас', 'про компанію', 'карта сайту', 'політика конфіденційності', 'умови використання', 'Вхід (3)', '[Пошук]'
+        'про нас', 'про компанію', 'карта сайту', 'політика конфіденційності', 'умови використання',
+        'Вхід (3)', '[Пошук]'
       ).each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
       ['читайте також', 'Читайте також', 'схожі матеріали', 'рекомендовані матеріали', 'вас також може зацікавити']
         .each { expect(uk.recommended?(_1)).to be(true), _1 }
@@ -363,7 +364,8 @@ RSpec.describe Html2rss::Vocabulary do
       ['Читати далі', 'докладніше', 'Детальніше', 'дізнатися більше'].each do |label|
         expect([uk.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
       end
-      ['підписатися на розсилку', 'Поділіться', 'залишити коментар'].each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
+      ['підписатися на розсилку', 'Поділіться', 'залишити коментар']
+        .each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
     end
 
     it 'keeps a headline that opens with a label noun a headline', :aggregate_failures do
