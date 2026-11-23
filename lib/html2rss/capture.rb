@@ -259,10 +259,11 @@ module Html2rss
       return [{}, nil, SelectorCandidates.empty] unless response.html_response?
       return [*default_selectors, SelectorCandidates.empty] if articles.empty?
 
-      sst = SST::Normalizer.call(response.body)
+      vocabulary = Vocabulary[Channel.language_for(response)]
+      sst = SST::Normalizer.call(response.body, vocabulary:)
       return [*default_selectors, SelectorCandidates.empty] unless sst
 
-      select_enhance_selectors(sst, articles, Vocabulary[Channel.language_for(response)])
+      select_enhance_selectors(sst, articles, vocabulary)
     end
 
     def hint_selectors
@@ -295,12 +296,12 @@ module Html2rss
         matched = match_segments_to_articles(segments, articles)
         next [] if matched.size < MIN_SELECTOR_MATCHES
 
-        items_evidence_for(matched, strategy:, enhance:)
+        items_evidence_for(matched, strategy:, enhance:, vocabulary:)
       end
     end
 
-    def items_evidence_for(matched, strategy:, enhance:)
-      roots = lift_heading_link_roots(matched.map { |pair| pair[:segment].root_node })
+    def items_evidence_for(matched, strategy:, enhance:, vocabulary:)
+      roots = lift_heading_link_roots(matched.map { |pair| pair[:segment].root_node }, vocabulary)
       selector_variants_for(roots).map do |kind, selector|
         { selector:, enhance:, strategy:, kind:, match_count: matched.size, roots: }
       end
@@ -338,24 +339,24 @@ module Html2rss
       article_url.to_s.end_with?(resolved.path.to_s)
     end
 
-    def lift_heading_link_roots(roots)
+    def lift_heading_link_roots(roots, vocabulary)
       enclosed = enclosed_root_counts(roots)
-      roots.map { |root| lift_heading_link_root(root, enclosed) }
+      roots.map { |root| lift_heading_link_root(root, enclosed, vocabulary) }
     end
 
-    def lift_heading_link_root(root, enclosed)
+    def lift_heading_link_root(root, enclosed, vocabulary)
       return root unless heading_or_inner_title_link?(root)
 
       index = SST::Index.for_node(root)
       return root unless index
 
-      walk_usable_card(root, index, enclosed)
+      walk_usable_card(root, index, enclosed, vocabulary)
     end
 
-    def walk_usable_card(root, index, enclosed)
+    def walk_usable_card(root, index, enclosed, vocabulary)
       candidate = root
       parent = index.parent_of(root)
-      while Html::Navigator.usable_card_parent?(parent)
+      while Html::Navigator.usable_card_parent?(parent, vocabulary:)
         break if contains_other_root?(parent, enclosed)
 
         candidate = parent

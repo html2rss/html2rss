@@ -73,12 +73,12 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads sponsorship labels and a section label', :aggregate_failures do
-      kind = Html2rss::LinkDestination::Sponsorship::LabelText.method(:kind)
+      kind = ->(text) { Html2rss::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
 
       expect(kind.call('Conteúdo patrocinado por Marca')).to eq(:paid_label)
       expect(kind.call('Publieditorial')).to eq(:paid_label)
       expect(kind.call('Publicidade')).to eq(:label)
-      title = Html2rss::Article::Title.compose('Porto reabre', kicker: 'Seção: Transportes')
+      title = Html2rss::Article::Title.compose('Porto reabre', kicker: 'Seção: Transportes', vocabulary: all_scope)
 
       expect(title).to eq('Transportes: Porto reabre')
     end
@@ -153,7 +153,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads sponsorship labels with the ё and е spellings, and an ad word as a whole text', :aggregate_failures do
-      kind = Html2rss::LinkDestination::Sponsorship::LabelText.method(:kind)
+      kind = ->(text) { Html2rss::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
 
       ['На правах рекламы', 'Партнёрский материал', 'ПАРТНЕРСКИЙ МАТЕРИАЛ', 'Партнёрские материалы',
        'Материал партнера', 'Материал партнёра', 'Спонсорский материал', 'Рекламный материал'].each do |label|
@@ -171,9 +171,10 @@ RSpec.describe Html2rss::Vocabulary do
         expect(noise.call(piece)).to be(true), piece
       end
       expect(noise.call('Тема дня')).to be(false)
-      expect(title.compose('Порт открыт после ремонта', kicker: 'Раздел: Транспорт'))
+      expect(title.compose('Порт открыт после ремонта', kicker: 'Раздел: Транспорт', vocabulary: all_scope))
         .to eq('Транспорт: Порт открыт после ремонта')
-      expect(title.compose('Порт открыт после ремонта', kicker: '10:30 мск')).to eq('Порт открыт после ремонта')
+      expect(title.compose('Порт открыт после ремонта', kicker: '10:30 мск',
+                                                        vocabulary: all_scope)).to eq('Порт открыт после ремонта')
     end
 
     it 'reads a Cyrillic podcast word with a letter boundary, in any case', :aggregate_failures do
@@ -403,7 +404,7 @@ RSpec.describe Html2rss::Vocabulary do
     let(:pager) do
       lambda do |label|
         element = Nokogiri::HTML("<html><body><nav aria-label=\"#{label}\"></nav></body></html>").at('nav')
-        Html2rss::SST::Tags.chrome_scope(element, :sectioned) == :chrome
+        Html2rss::SST::Tags.chrome_scope(element, :sectioned, all_scope) == :chrome
       end
     end
 
@@ -427,7 +428,7 @@ RSpec.describe Html2rss::Vocabulary do
       }.each do |label, chrome|
         link = %(<a href="/a">#{label}</a>)
         markup = %(<html><body><main><ul class="pagination"><li>#{link}</li></ul></main></body></html>)
-        doc = Html2rss::SST::Normalizer.call(markup)
+        doc = Html2rss::SST::Normalizer.call(markup, vocabulary: all_scope)
 
         expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :main }.children.first)).to be(chrome), label
       end

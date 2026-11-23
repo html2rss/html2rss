@@ -11,7 +11,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     let(:leftover_fields) do
       lambda do |html, item_selector: 'article'|
         wrapped = html.match?(/<html/i) ? html : "<html><body>#{html}</body></html>"
-        doc = Html2rss::SST::Normalizer.call(wrapped)
+        doc = Html2rss::SST::Normalizer.call(wrapped, vocabulary: all_scope)
         root = item_selector.split.reduce(doc.root) do |node, tag|
           node&.find { |candidate| candidate.name == tag.to_sym }
         end
@@ -239,7 +239,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
 
   it 'accepts a RankedSegment' do # rubocop:disable RSpec/ExampleLength
     html = '<div><h3><a href="/news/card">Linked card text here</a></h3><p>More words.</p></div>'
-    doc = Html2rss::SST::Normalizer.call(html)
+    doc = Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)
     root = doc.root.find { |n| n.name == :div }
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :cluster,
                                                   position: 0)
@@ -258,7 +258,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
 
   it 'emits no article for a card without a primary link (no page#fragment URL)' do
     html = '<div id="notice"><h3>Water main maintenance</h3><p>Crews work overnight.</p></div>'
-    root = Html2rss::SST::Normalizer.call(html).root.find { |n| n.name == :div }
+    root = Html2rss::SST::Normalizer.call(html, vocabulary: all_scope).root.find { |n| n.name == :div }
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :cluster, position: 0)
 
     expect(described_class.call(segment, base_url: 'https://example.com')).to be_nil

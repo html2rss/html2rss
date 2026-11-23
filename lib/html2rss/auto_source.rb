@@ -304,7 +304,7 @@ module Html2rss
     def page_document
       return @page_document if defined?(@page_document)
 
-      @page_document = (SST::Normalizer.call(parsed_body) unless json_response?)
+      @page_document = (SST::Normalizer.call(parsed_body, vocabulary: @vocabulary) unless json_response?)
     end
 
     def link_resolver
@@ -317,7 +317,7 @@ module Html2rss
 
     # Rendered links of the page, built once for the page check and sponsorship.
     def page_links
-      @page_links ||= PageLinks.build(page_document, link_resolver:)
+      @page_links ||= PageLinks.build(page_document, link_resolver:, vocabulary: @vocabulary)
     end
 
     def admitted_articles(articles)
