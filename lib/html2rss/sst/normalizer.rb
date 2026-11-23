@@ -11,7 +11,7 @@ module Html2rss
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
-      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links (see {#child_nodes}).
+      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links (see {#kept_children}).
       STRIPPED_TAGS = Set['script', 'style', 'noscript', 'iframe', 'svg', 'template'].freeze
 
       # Kept when MAX_NODES forces semantic-tag-only degrade.
@@ -159,7 +159,7 @@ module Html2rss
         return unless nk_node.element?
 
         tag = Html::Probe.tag(nk_node)
-        return unless (nk_children = child_nodes(nk_node, tag))
+        return unless (kept = kept_children(nk_node, tag))
 
         degrade_when_full
         return if @degraded && !SEMANTIC_DEGRADE_TAGS.include?(tag)
@@ -170,7 +170,7 @@ module Html2rss
         scope_here = Tags.chrome_scope(nk_node, scope, @vocabulary, tag)
 
         tails = [EMPTY_TEXT]
-        children = normalize_children(nk_children, tails, depth:, path: tag_path, scope: scope_here)
+        children = normalize_children(kept, tails, depth:, path: tag_path, scope: scope_here)
         own_text = join_text(tails.shift, tails)
 
         node = Node.build(name: tag, attrs:, own_text:, children:, tag_path:, tails:)
@@ -192,12 +192,15 @@ module Html2rss
         }.to_json)
       end
 
-      # The Nokogiri children to normalize, or nil for a stripped tag. A +noscript+ is kept only for the
+      # The node whose children to normalize, or nil for a stripped tag. A +noscript+ is kept only for the
       # file links inside it ({Html::ArticleRules::Enclosure.file_link?}), as its only children, so a
       # card's no-script download link still names its enclosure; its text stays invisible
-      # ({Tags::INVISIBLE_NAMES}) and a +noscript+ without one is stripped.
-      def child_nodes(nk_node, tag)
-        return nk_node.children unless STRIPPED_TAGS.include?(tag)
+      # ({Tags::INVISIBLE_NAMES}) and a +noscript+ without one is stripped; its file links come back as an
+      # Array standing in for its children.
+      #
+      # @return [Nokogiri::XML::Node, Array<Nokogiri::XML::Node>, nil]
+      def kept_children(nk_node, tag)
+        return nk_node unless STRIPPED_TAGS.include?(tag)
         return unless tag == 'noscript'
 
         links = nk_node.xpath('.//a[@href]').select { Html::ArticleRules::Enclosure.file_link?(_1['href']) }
@@ -236,15 +239,26 @@ module Html2rss
 
       # Walks child nodes once, keeping direct text in the slot of the preceding kept child
       # (slot 0 is the lead text) so text order survives the element-only tree. The caller owns +slots+.
-      def normalize_children(nk_children, slots, depth:, path:, scope:)
+      def normalize_children(kept, slots, depth:, path:, scope:)
         children = []
-        nk_children.each do |child|
+        each_child(kept) do |child|
           next append_text(slots, child.text) if child.text?
 
           node = normalize_element(child, depth: depth + 1, path:, scope:)
           (children << node) && (slots << EMPTY_TEXT) if node
         end
         children
+      end
+
+      # Sibling walk: +children+ would build a NodeSet per element.
+      def each_child(kept)
+        return kept.each { yield _1 } if kept.is_a?(Array)
+
+        child = kept.child
+        while child
+          yield child
+          child = child.next_sibling
+        end
       end
 
       # Direct text lands in the last slot; an empty slot takes the fresh string, so no slot is pre-allocated.
