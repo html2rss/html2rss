@@ -72,13 +72,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
 
   describe '#extractable?' do
     it 'delegates to articles? for the parsed body' do
-      expect(described_class.new(parsed_body, url: page_url, vocabulary: all_scope)).to be_extractable
+      expect(described_class.new(parsed_body, url: page_url)).to be_extractable
     end
 
     it 'is false for a body without feed hints' do
       doc = Nokogiri::HTML('<html><body><p>No feeds</p></body></html>')
 
-      expect(described_class.new(doc, url: page_url, vocabulary: all_scope)).not_to be_extractable
+      expect(described_class.new(doc, url: page_url)).not_to be_extractable
     end
   end
 
@@ -88,8 +88,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
     it 'forwards the parsed body and an absolute Url to discovery', :aggregate_failures do
       allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response).and_return(nil)
 
-      described_class.new(parsed_body, url: 'https://example.com/blog/', request_session: session,
-                                       vocabulary: all_scope).to_a
+      described_class.new(parsed_body, url: 'https://example.com/blog/', request_session: session).to_a
 
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_response).with(
         hash_including(page_url: Html2rss::Url.from_absolute('https://example.com/blog/'), parsed_body:)
@@ -99,7 +98,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
 
   describe '#fetch_feed' do
     let(:session) { instance_double(Html2rss::RequestSession) }
-    let(:scraper) { described_class.new(parsed_body, url: page_url, request_session: session, vocabulary: all_scope) }
+    let(:scraper) { described_class.new(parsed_body, url: page_url, request_session: session) }
     let(:feed_response) do
       Html2rss::RequestService::Response.new(
         body: '<?xml version="1.0"?><rss version="2.0"><channel><title>Show</title>' \
@@ -115,7 +114,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       expect(scraper.to_a).to eq([])
       expect(scraper.feed_url).to be_nil
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_response).with(
-        page_url:, request_session: session, vocabulary: all_scope, parsed_body:, max_probes: 1
+        page_url:, request_session: session, parsed_body:, max_probes: 1
       )
     end
 
@@ -148,7 +147,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
     it 'does not run discovery without a request session', :aggregate_failures do
       allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response)
 
-      expect(described_class.new(parsed_body, url: page_url, vocabulary: all_scope).to_a).to eq([])
+      expect(described_class.new(parsed_body, url: page_url).to_a).to eq([])
       expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_response)
     end
   end
@@ -174,7 +173,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
 
     it 'holds what the followed feed states once its items are read', :aggregate_failures do
       allow(session).to receive(:follow_up).and_return(feed_response)
-      scraper = described_class.new(parsed_body, url: page_url, request_session: session, vocabulary: all_scope)
+      scraper = described_class.new(parsed_body, url: page_url, request_session: session)
 
       expect(scraper.channel).to be_nil
       scraper.to_a
@@ -182,7 +181,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
     end
 
     it 'is nil when no feed was read' do
-      scraper = described_class.new(parsed_body, url: page_url, vocabulary: all_scope)
+      scraper = described_class.new(parsed_body, url: page_url)
       scraper.to_a
 
       expect(scraper.channel).to be_nil
@@ -220,7 +219,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
     it 'yields articles parsed from the discovered native feed', :aggregate_failures do
       allow(session).to receive(:follow_up).and_return(feed_response)
 
-      articles = described_class.new(parsed_body, url: page_url, request_session: session, vocabulary: all_scope).to_a
+      articles = described_class.new(parsed_body, url: page_url, request_session: session).to_a
 
       expect(articles.size).to eq(1)
       expect(articles.first[:title]).to eq('From feed')
@@ -239,21 +238,20 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       )
       allow(session).to receive(:follow_up).and_return(rdf_response)
 
-      articles = described_class.new(page, url: page_url, request_session: session, vocabulary: all_scope).to_a
+      articles = described_class.new(page, url: page_url, request_session: session).to_a
 
       expect(articles.map { |article| article[:title] }).to eq(['First RDF post', 'Second RDF post'])
     end
 
     it 'returns an enumerator without a block' do
-      expect(described_class.new(parsed_body, url: page_url, request_session: session,
-                                              vocabulary: all_scope).each).to be_a(Enumerator)
+      expect(described_class.new(parsed_body, url: page_url, request_session: session).each).to be_a(Enumerator)
     end
 
     it 'logs and yields nothing when discovery finds no feed', :aggregate_failures do
       allow(Html2rss::Log).to receive(:info)
       allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response).and_return(nil)
 
-      articles = described_class.new(parsed_body, url: page_url, request_session: session, vocabulary: all_scope).to_a
+      articles = described_class.new(parsed_body, url: page_url, request_session: session).to_a
 
       expect(articles).to eq([])
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_response).with(
@@ -269,7 +267,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response)
         .and_raise(Html2rss::Error, 'Network error')
 
-      articles = described_class.new(parsed_body, url: page_url, request_session: session, vocabulary: all_scope).to_a
+      articles = described_class.new(parsed_body, url: page_url, request_session: session).to_a
 
       expect(articles).to eq([])
       expect(Html2rss::Log).to have_received(:warn).with(
@@ -278,14 +276,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
     end
 
     it 'yields nothing without a request session' do
-      expect(described_class.new(parsed_body, url: page_url, vocabulary: all_scope).to_a).to eq([])
+      expect(described_class.new(parsed_body, url: page_url).to_a).to eq([])
     end
 
     it 'logs the items event with the discovered item count', :aggregate_failures do
       allow(Html2rss::Log).to receive(:info)
       allow(session).to receive(:follow_up).and_return(feed_response)
 
-      described_class.new(parsed_body, url: page_url, request_session: session, vocabulary: all_scope).to_a
+      described_class.new(parsed_body, url: page_url, request_session: session).to_a
 
       expect(Html2rss::Log).to have_received(:info).with(
         {
@@ -300,7 +298,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       allow(Html2rss::Log).to receive(:info)
       allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response).and_return(nil)
 
-      described_class.new(parsed_body, url: page_url, request_session: session, vocabulary: all_scope).to_a
+      described_class.new(parsed_body, url: page_url, request_session: session).to_a
 
       expect(Html2rss::Log).to have_received(:info).with(
         {

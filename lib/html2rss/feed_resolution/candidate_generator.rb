@@ -54,8 +54,7 @@ module Html2rss
       def feed_slot
         return unless parsed_html
 
-        Syndication::Discovery.candidate_urls(page_url: entry_url, vocabulary:, parsed_body: parsed_html)
-                              .find { eligible_url?(_1) }
+        Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).find { eligible_url?(_1) }
       end
 
       def listing_urls
