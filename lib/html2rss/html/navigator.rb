@@ -70,14 +70,16 @@ module Html2rss
         # A header/footer inside article/section/aside/main belongs to its card.
         #
         # @param node [Nokogiri::XML::Node, SST::Node, nil]
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the pager words of a Nokogiri
+        #   node's ancestors (an SST node's scope is already in its index)
         # @return [Boolean]
-        def usable_card_parent?(node)
+        def usable_card_parent?(node, vocabulary:)
           return false unless node
           return false if node.is_a?(Nokogiri::XML::Document)
 
           tag = Probe.tag(node)
           role = node.is_a?(SST::Node) ? node.attrs.raw['role'] : node['role']
-          return !page_chrome?(node) if SST::Tags.page_level_chrome?(tag, role)
+          return !page_chrome?(node, vocabulary) if SST::Tags.page_level_chrome?(tag, role)
 
           !CARD_WALK_STOP_TAGS.include?(tag) && !SST::Tags.utility_landmark?(tag, role)
         end
@@ -136,22 +138,26 @@ module Html2rss
         # check for a sectioning ancestor.
         #
         # @param node [Nokogiri::XML::Node, SST::Node]
+        # @param vocabulary [Vocabulary::Scope]
         # @return [Boolean]
-        def page_chrome?(node)
+        def page_chrome?(node, vocabulary)
           if node.is_a?(SST::Node)
             index = SST::Index.for_node(node)
             return index.nil? || index.ignored_chrome?(node)
           end
 
-          nokogiri_chrome_scope(node) == :chrome
+          nokogiri_chrome_scope(node, vocabulary) == :chrome
         end
 
         # Folds {SST::Tags.chrome_scope} over a Nokogiri node's ancestors, root first.
         #
         # @param node [Nokogiri::XML::Node]
+        # @param vocabulary [Vocabulary::Scope]
         # @return [Symbol] +:page+, +:sectioned+, or +:chrome+
-        def nokogiri_chrome_scope(node)
-          (node.ancestors.reverse << node).reduce(:page) { |scope, el| el.element? ? SST::Tags.chrome_scope(el, scope) : scope }
+        def nokogiri_chrome_scope(node, vocabulary)
+          (node.ancestors.reverse << node).reduce(:page) do |scope, el|
+            el.element? ? SST::Tags.chrome_scope(el, scope, vocabulary) : scope
+          end
         end
       end
     end

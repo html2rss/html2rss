@@ -357,7 +357,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
   describe '#document' do
     it 'uses a provided SST document without a parsed body' do
-      document = Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(html))
+      document = Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(html), vocabulary: all_scope)
 
       articles = described_class.new(nil, url: 'http://example.com', document:).to_a
 

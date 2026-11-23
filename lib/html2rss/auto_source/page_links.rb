@@ -33,17 +33,20 @@ module Html2rss
       # @param document [SST::Document, nil] page SST; nil when there is no rendered page
       # @param link_resolver [Scoring::LinkResolver, nil] page resolver (shared memo with heuristics);
       #   required when +document+ is present
+      # @param vocabulary [Vocabulary::Scope] the page language's scope
       # @return [PageLinks]
-      def self.build(document, link_resolver:)
-        new(document, link_resolver)
+      def self.build(document, link_resolver:, vocabulary:)
+        new(document, link_resolver, vocabulary)
       end
       private_class_method :new
 
       # @param document [SST::Document, nil]
       # @param link_resolver [Scoring::LinkResolver, nil]
-      def initialize(document, link_resolver)
+      # @param vocabulary [Vocabulary::Scope]
+      def initialize(document, link_resolver, vocabulary)
         @document = document
         @link_resolver = link_resolver
+        @vocabulary = vocabulary
         @walks = {}
         freeze
       end
@@ -122,7 +125,9 @@ module Html2rss
       def placements = @walks[:placements] ||= Placements.new(@document, @link_resolver)
 
       def sponsored_cards
-        @walks[:sponsored_cards] ||= SponsoredCards.new(@document, @link_resolver, ->(url) { identity(url) })
+        @walks[:sponsored_cards] ||= SponsoredCards.new(@document, @link_resolver, lambda { |url|
+          identity(url)
+        }, @vocabulary)
       end
 
       def content_positions = @walks[:content_positions] ||= placements.content_keys.each_with_index.to_h

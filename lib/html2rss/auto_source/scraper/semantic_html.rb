@@ -106,7 +106,7 @@ module Html2rss
         end
 
         def document
-          @document ||= @provided_document || SST::Normalizer.call(@parsed_body)
+          @document ||= @provided_document || SST::Normalizer.call(@parsed_body, vocabulary: link_resolver.vocabulary)
         end
       end
     end

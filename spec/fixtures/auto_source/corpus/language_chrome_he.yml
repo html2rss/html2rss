@@ -1,0 +1,18 @@
+---
+case: Fifteen invented news cards (seven short headlines, three of which open with a chrome word and a prefix or space, eight end in a year after a label word on a non-content path), account, privacy and subscription shortcuts, in language "he"; only the fifteen headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/search-missing-continues
+- https://example.com/news/2026/11/entry-into-force
+- https://example.com/news/2026/11/school-registration-open
+- https://example.com/news/2026/11/about-the-study
+- https://example.com/story-1
+- https://example.com/story-2
+- https://example.com/story-3
+- https://example.com/story-4
+- https://example.com/story-5
+- https://example.com/story-6
+- https://example.com/story-7
+- https://example.com/story-8
