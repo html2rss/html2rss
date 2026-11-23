@@ -1,0 +1,23 @@
+---
+case: Twenty invented news cards in language "cs" (four short headlines, eight that open with a label word, eight that end in a year after a label word, on a non-content path), upper and mixed case chrome with diacritics, account, privacy and subscription shortcuts; only the twenty headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/night-bus-route
+- https://example.com/news/2026/11/login-outage
+- https://example.com/news/2026/11/subscription-newsletter
+- https://example.com/news/2026/11/all-routes-map
+- https://example.com/news/2026/11/contact-with-birds
+- https://example.com/news/2026/11/about-us-square
+- https://example.com/news/2026/11/menu-prices
+- https://example.com/news/2026/11/more-articles-bridge
+- https://example.com/news/2026/11/share-cars
+- https://example.com/story-1
+- https://example.com/story-2
+- https://example.com/story-3
+- https://example.com/story-4
+- https://example.com/story-5
+- https://example.com/story-6
+- https://example.com/story-7
+- https://example.com/story-8
