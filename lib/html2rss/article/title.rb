@@ -48,6 +48,8 @@ module Html2rss
       # A whole piece that is only a Japanese calendar date (+11月12日+), optionally with a year and a clock time
       # (+11月12日 16:42+).
       DATE_PIECE = /\A(?:#{Vocabulary.alternation(:date_piece)})(?:\s+#{CLOCK})?\z/
+      # The concepts a page-only language adds to the title rules, read through {Rules}.
+      OWN_CONCEPTS = %i[field_label type_label clock_suffix date_piece].freeze
       # Content-type markers (lowercase). Description drops them as whole leftover lines.
       TYPE_MARKERS = Vocabulary.words(:type_marker)
       # The markers as one alternation, longest first so +live blog+ wins over +live+.
@@ -56,47 +58,73 @@ module Html2rss
       # followed by whitespace, so a sign (+–5 Grad+), a path (+/e/+) or a German »quote« is not one, nor
       # a comparison before a number (+> 50 Prozent+).
       SEPARATOR_MARK = %r{(?:[:|•·–—/»›→-]|>(?![[:space:]]*\d))(?=[[:space:]]|\z)}
-      # Screen-reader field labels (+Section:+, +Artikel:+) and type labels with their marker
-      # (+Article type: Video+). Each field label needs its colon: a bare +Article+ is a word. A letter with
-      # an accented variant is an alternation, not a class: with +/i+, Ruby on Linux does not fold an
-      # uppercase accented letter (+Ä+) against a class that also holds its ASCII base (+[äa]+).
-      LABEL = /
-        (?:#{Vocabulary.alternation(:field_label)})\s*[:：]
-        | (?:#{Vocabulary.alternation(:type_label)})\s*[:：]
-          (?:\s*(?:#{MARKER_ALTERNATION})(?![[:alnum:]]))?
-      /ix
-      # A whole piece that is only a label: a screen-reader label element, never headline text.
-      LABEL_PIECE = /\A(?:#{LABEL})\z/
       # Leading separators of a headline (+Kicker</span> – Headline+ leaves +– Headline+).
       LEADING_SEPARATORS = /\A(?:[[:space:]]|#{SEPARATOR_MARK})+/
       # A leading Japanese bracket (+【…】+ or +＜…＞+) of one to thirty characters, with headline text after it.
       LEADING_BRACKET = /\A[【＜][[:space:]]*([^】＞]{1,30}?)[[:space:]]*[】＞][[:space:]]*(?=\S)/
-      Rules = Data.define(:markers, :kicker_noise)
+      Rules = Data.define(:markers, :kicker_noise, :label_piece, :own_date_piece, :bare)
 
       # The page-language dependent reading of a kicker: the type markers that apply (lowercase) and the leading
-      # kicker noise built on them (separators, separated clocks, labels, a bracket naming a marker, repeated).
-      # One {Rules} per distinct marker set of {Vocabulary::SCOPES} is built at load, never per page. Labels and
-      # type labels read every marker whatever the page language: a type label (+記事の種類：独自+) is Japanese
-      # itself.
+      # kicker noise built on them (separators, separated clocks, screen-reader field labels (+Section:+) and
+      # type labels with their marker (+Article type: Video+), a bracket naming a marker, repeated). Each field
+      # label needs its colon: a bare +Article+ is a word. A letter with an accented variant is an alternation,
+      # not a class: with +/i+, Ruby on Linux does not fold an uppercase accented letter (+Ä+) against a class
+      # that also holds its ASCII base (+[äa]+).
+      #
+      # One {Rules} per distinct marker set and own-term set of {Vocabulary::SCOPES} is built at load, never per
+      # page; a scope without own terms reads exactly the shared terms. Labels and type labels read every marker
+      # whatever the page language: a type label (+記事の種類：独自+) is Japanese itself. The own terms of a
+      # {Vocabulary::PAGE_ONLY} language widen the label, clock-suffix and date readings; +bare+ is the reading
+      # without them (nil when there are none), the fallback that keeps a title from becoming empty.
       class Rules
         # @param markers [Set<String>] the type markers that apply
+        # @param own [Hash{Symbol => String}] the own alternatives per {OWN_CONCEPTS}
         # @return [Rules]
-        def self.build(markers)
-          bracket = /[【＜][[:space:]]*(?:#{Regexp.union(markers.to_a).source})[[:space:]]*[】＞]/i
-          new(markers:, kicker_noise: /
-            \A(?:
-              [[:space:]] | #{SEPARATOR_MARK} | #{LABEL} | #{bracket}
-              | #{CLOCK}(?:\s*(?:#{Vocabulary.alternation(:clock_suffix)}))?(?=[[:space:]]*(?:#{SEPARATOR_MARK}|\z))
-            )+
-          /x)
+        def self.build(markers, own)
+          rules = assemble(markers, own)
+          own.each_value.all?(&:empty?) ? rules : rules.with(bare: assemble(markers, OWN_NONE))
         end
+
+        def self.assemble(markers, own)
+          union = ->(concept) { [Vocabulary.alternation(concept), own.fetch(concept)].reject(&:empty?).join('|') }
+          label = label(union)
+          date = own.fetch(:date_piece)
+          new(markers:, label_piece: /\A(?:#{label})\z/, bare: nil, kicker_noise: kicker_noise(label, markers, union),
+              own_date_piece: (/\A(?:#{date})(?:\s+#{CLOCK})?\z/ unless date.empty?))
+        end
+
+        def self.label(union)
+          /
+            (?:#{union.call(:field_label)})\s*[:：]
+            | (?:#{union.call(:type_label)})\s*[:：]
+              (?:\s*(?:#{MARKER_ALTERNATION})(?![[:alnum:]]))?
+          /ix
+        end
+
+        def self.kicker_noise(label, markers, union)
+          bracket = /[【＜][[:space:]]*(?:#{Regexp.union(markers.to_a).source})[[:space:]]*[】＞]/i
+          /
+            \A(?:
+              [[:space:]] | #{SEPARATOR_MARK} | #{label} | #{bracket}
+              | #{CLOCK}(?:\s*(?:#{union.call(:clock_suffix)}))?(?=[[:space:]]*(?:#{SEPARATOR_MARK}|\z))
+            )+
+          /x
+        end
+        private_class_method :assemble, :label, :kicker_noise
+
+        # @return [Boolean] whether the scope has own terms
+        def own? = !bare.nil?
       end
 
-      # The {Rules} of each page language scope, shared where the marker sets are equal.
+      OWN_NONE = OWN_CONCEPTS.to_h { [_1, ''] }.freeze
+
+      # The {Rules} of each page language scope, shared where the marker sets and own terms are equal.
       RULES_BY_SCOPE = begin
         built = {}
-        Vocabulary::SCOPES.transform_values { |scope| built[scope.type_markers] ||= Rules.build(scope.type_markers) }
-                          .freeze
+        Vocabulary::SCOPES.transform_values do |scope|
+          own = OWN_CONCEPTS.to_h { [_1, scope.own_alternation(_1)] }
+          built[[scope.type_markers, own]] ||= Rules.build(scope.type_markers, own)
+        end.freeze
       end
       # Trailing stray separators (+Kicker :+, +Kicker -+, +Kicker ›+). A trailing +»+ closes a French
       # quote, so it stays.
@@ -106,7 +134,7 @@ module Html2rss
       SPACED_COLON = /\A((?:[^[:space:]]+[[:space:]]+){0,7}?[^[:space:]]*[\p{L}"'“”’»›)\]])[[:space:]]+:[[:space:]]*/
       # A kicker that already ends a sentence (+Kicker?+) joins its headline with a space, not a colon.
       TERMINAL_PUNCTUATION = /[?!…‽]\z/
-      private_constant :MARKER_ALTERNATION, :LEADING_BRACKET, :LABEL, :LABEL_PIECE,
+      private_constant :MARKER_ALTERNATION, :LEADING_BRACKET, :OWN_NONE,
                        :LEADING_SEPARATORS, :RULES_BY_SCOPE, :TRAILING_SEPARATORS, :SPACED_COLON, :TERMINAL_PUNCTUATION
 
       class << self
@@ -128,14 +156,11 @@ module Html2rss
         #   word of that language (+独自+ on a Chinese page) is no type marker; every marker by default
         # @return [String, nil] +Kicker: Headline+, the headline, the kicker when the headline is blank,
         #   or nil when both are blank
-        def compose(headline, kicker: nil, vocabulary: Vocabulary[nil])
+        def compose(headline, vocabulary:, kicker: nil)
           rules = RULES_BY_SCOPE.fetch(vocabulary.code)
-          head, top = peel_bracket(trim(headline, LEADING_SEPARATORS), trim(kicker, rules.kicker_noise), rules.markers)
-          return head if top.nil? || rules.markers.include?(read(top).to_s.downcase)
-          return top unless head
-          return head if prefixed?(head, top)
-
-          "#{top}#{top.match?(TERMINAL_PUNCTUATION) ? ' ' : SEPARATOR}#{head}"
+          composed = join(headline, kicker, rules)
+          # An own term never empties a title: without it, the kicker text would have stayed.
+          composed.nil? && rules.own? ? join(headline, kicker, rules.bare) : composed
         end
 
         ##
@@ -150,8 +175,14 @@ module Html2rss
         # {Html::TitlePieces} drops such elements at either edge of the headline.
         #
         # @param text [String, nil] visible text of one headline descendant element
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
+        # @param date_element [Boolean] whether the element is a date or time element: only there an own date
+        #   term of a page-only language counts
         # @return [Boolean]
-        def date_piece?(text) = read(text).to_s.match?(DATE_PIECE)
+        def date_piece?(text, vocabulary:, date_element:)
+          piece = read(text).to_s
+          piece.match?(DATE_PIECE) || own_date_piece?(RULES_BY_SCOPE.fetch(vocabulary.code), piece, date_element)
+        end
 
         ##
         # Whether one element inside a headline is teaser noise on its own: only a clock time or only a
@@ -159,10 +190,31 @@ module Html2rss
         # the headline; the headline text itself is never noise-stripped.
         #
         # @param text [String, nil] visible text of one headline descendant element
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
+        # @param date_element [Boolean] whether the element is a date or time element (see {.date_piece?})
         # @return [Boolean]
-        def headline_noise_piece?(text)
+        def headline_noise_piece?(text, vocabulary:, date_element:)
+          rules = RULES_BY_SCOPE.fetch(vocabulary.code)
           piece = read(text).to_s
-          piece.match?(CLOCK_PIECE) || piece.match?(DATE_PIECE) || piece.match?(LABEL_PIECE)
+          shared_noise?(piece) || piece.match?(rules.label_piece) || own_date_piece?(rules, piece, date_element)
+        end
+
+        ##
+        # Whether {.headline_noise_piece?} holds only through a term of a page-only language, so the caller can
+        # keep the headline when dropping the element would leave it without words.
+        #
+        # @param text [String, nil] visible text of one headline descendant element
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
+        # @param date_element [Boolean] whether the element is a date or time element (see {.date_piece?})
+        # @return [Boolean]
+        def own_noise_piece?(text, vocabulary:, date_element:)
+          rules = RULES_BY_SCOPE.fetch(vocabulary.code)
+          return false unless rules.own?
+
+          piece = read(text).to_s
+          return false if shared_noise?(piece) || piece.match?(rules.bare.label_piece)
+
+          piece.match?(rules.label_piece) || own_date_piece?(rules, piece, date_element)
         end
 
         ##
@@ -173,13 +225,30 @@ module Html2rss
         # @param text [String, nil] visible text of one kicker child element
         # @param vocabulary [Vocabulary::Scope] the page language's scope (see {.compose})
         # @return [Boolean]
-        def noise_piece?(text, vocabulary: Vocabulary[nil])
+        def noise_piece?(text, vocabulary:)
+          rules = RULES_BY_SCOPE.fetch(vocabulary.code)
           piece = read(text)
-          piece.nil? || piece.match?(LABEL_PIECE) || piece.match?(CLOCK_PIECE) ||
-            RULES_BY_SCOPE.fetch(vocabulary.code).markers.include?(piece.downcase)
+          piece.nil? || piece.match?(rules.label_piece) || piece.match?(CLOCK_PIECE) ||
+            rules.markers.include?(piece.downcase)
         end
 
         private
+
+        def join(headline, kicker, rules)
+          head, top = peel_bracket(trim(headline, LEADING_SEPARATORS), trim(kicker, rules.kicker_noise), rules.markers)
+          return head if top.nil? || rules.markers.include?(read(top).to_s.downcase)
+          return top unless head
+          return head if prefixed?(head, top)
+
+          "#{top}#{top.match?(TERMINAL_PUNCTUATION) ? ' ' : SEPARATOR}#{head}"
+        end
+
+        def shared_noise?(piece) = piece.match?(CLOCK_PIECE) || piece.match?(DATE_PIECE)
+
+        # An own date term counts on a date or time element only.
+        def own_date_piece?(rules, piece, date_element)
+          date_element && !rules.own_date_piece.nil? && rules.own_date_piece.match?(piece)
+        end
 
         # The text as matching reads it: bidi marks gone first, so marks set off by spaces collapse away too
         # ({.collapse} keeps them in a title). A marks-only text reads as blank.

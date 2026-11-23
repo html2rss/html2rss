@@ -56,12 +56,11 @@ RSpec.describe Html2rss::Vocabulary do
     it 'reads exactly the listed page patterns and still rejects every other pattern concept', :aggregate_failures do
       expect(described_class::PAGE_PATTERNS).to eq(
         %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice
-           paid_label ad_word element_label]
+           paid_label ad_word element_label field_label type_label clock_suffix date_piece]
       )
       unread = described_class::CONCEPTS - described_class::SCOPED_WORDS - described_class::SCOPED_PATTERNS -
                described_class::PAGE_PATTERNS - %i[type_marker]
-      expect(unread).to eq(%i[field_label type_label pager_label page_link page_link_label
-                              clock_suffix date_piece podcast_word podcast_unspaced])
+      expect(unread).to eq(%i[pager_label page_link page_link_label podcast_word podcast_unspaced])
     end
 
     it 'lists the languages in a fixed order', :aggregate_failures do

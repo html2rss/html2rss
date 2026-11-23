@@ -13,7 +13,8 @@ RSpec.describe Html2rss::Html::TitlePieces do
     let(:title_for) do
       lambda do |html|
         pieces, _, source = pieces_for.call(html)
-        Html2rss::Article::Title.compose(pieces.headline_text(source), kicker: pieces.kicker_text)
+        Html2rss::Article::Title.compose(pieces.headline_text(source), kicker: pieces.kicker_text,
+                                                                       vocabulary: all_scope)
       end
     end
 
@@ -86,7 +87,8 @@ RSpec.describe Html2rss::Html::TitlePieces do
     let(:title_for) do
       lambda do |html|
         pieces, _, source = pieces_for.call(html)
-        Html2rss::Article::Title.compose(pieces.headline_text(source), kicker: pieces.kicker_text)
+        Html2rss::Article::Title.compose(pieces.headline_text(source), kicker: pieces.kicker_text,
+                                                                       vocabulary: all_scope)
       end
     end
 
@@ -137,6 +139,51 @@ RSpec.describe Html2rss::Html::TitlePieces do
         time = Html2rss::SST::Node.build(name: :time, own_text: 'Friday')
         expect(pieces.headline_text(heading.with(children: [time, *heading.children]))).to eq('Tram')
       end
+    end
+  end
+
+  context 'with a page-only language declaring the date and label concepts' do
+    let(:xx) do
+      terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
+      terms[:type_label] = %w[soort-xx]
+      terms[:date_piece] = [/\d{1,2}-mnd-xx/]
+      language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
+      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+    end
+    let(:headline) do
+      lambda do |html, vocabulary|
+        root = Nokogiri::HTML.fragment(html).at_css('article')
+        heading = root.at_css('h2')
+        described_class.new(root, heading, anchor: root.at_css('a'), vocabulary:).headline_text(heading)
+      end
+    end
+
+    before do
+      own = Html2rss::Article::Title::OWN_CONCEPTS.to_h { [_1, xx.own_alternation(_1)] }
+      rules = Html2rss::Article::Title::Rules.build(xx.type_markers, own)
+      table = Html2rss::Article::Title.const_get(:RULES_BY_SCOPE).merge(zh: rules)
+      stub_const('Html2rss::Article::Title::RULES_BY_SCOPE', table)
+    end
+
+    it 'drops an own date only on a date element', :aggregate_failures do
+      dated = '<article><h2><a href="/s">Haven opent <span class="date">12-mnd-xx</span></a></h2></article>'
+      plain = '<article><h2><a href="/s">Haven opent <span>12-mnd-xx</span></a></h2></article>'
+
+      expect(headline.call(dated, xx)).to eq('Haven opent')
+      expect(headline.call(dated, all_scope)).to eq('Haven opent 12-mnd-xx')
+      expect(headline.call(plain, xx)).to eq('Haven opent 12-mnd-xx')
+    end
+
+    it 'drops an own label before the headline words' do
+      labelled = '<article><h2><a href="/s"><span>Soort-xx:</span> Haven opent</a></h2></article>'
+
+      expect(headline.call(labelled, xx)).to eq('Haven opent')
+    end
+
+    it 'keeps a headline that an own term alone would empty' do
+      only = '<article><h2><a href="/s"><span>Soort-xx:</span></a></h2></article>'
+
+      expect(headline.call(only, xx)).to eq('Soort-xx:')
     end
   end
 end

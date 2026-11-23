@@ -3,7 +3,8 @@
 RSpec.describe Html2rss::Article::Title::Rules do
   describe '.build' do
     let(:markers) { Set['live blog', 'live', '独自', 'video'].freeze }
-    let(:rules) { described_class.build(markers) }
+    let(:own) { Html2rss::Article::Title::OWN_CONCEPTS.to_h { [_1, ''] } }
+    let(:rules) { described_class.build(markers, own) }
     let(:strip) { ->(text) { text.sub(rules.kicker_noise, '') } }
 
     it 'carries the marker set it was built from, and a kicker noise matcher', :aggregate_failures do
@@ -42,7 +43,7 @@ RSpec.describe Html2rss::Article::Title::Rules do
     end
 
     it 'reads a type label with every marker whatever the marker set', :aggregate_failures do
-      expect(described_class.build(Set['video']).kicker_noise.match?('記事の種類：独自')).to be(true)
+      expect(described_class.build(Set['video'], own).kicker_noise.match?('記事の種類：独自')).to be(true)
     end
   end
 end

@@ -101,7 +101,24 @@ module Html2rss
         # @return [Boolean] whether the text of +node+ is headline noise ({Article::Title.headline_noise_piece?})
         #   or a paid-content label
         def noise?(node)
-          Article::Title.headline_noise_piece?(text(node)) || paid_label?(node)
+          Article::Title.headline_noise_piece?(text(node), vocabulary: @vocabulary,
+                                                           date_element: date_element?(node)) ||
+            paid_label?(node)
+        end
+
+        ##
+        # @param node [Nokogiri::XML::Node, SST::Node]
+        # @return [Boolean] whether +node+ is noise only through a term of a page-only language
+        #   ({Article::Title.own_noise_piece?})
+        def own_noise?(node)
+          Article::Title.own_noise_piece?(text(node), vocabulary: @vocabulary, date_element: date_element?(node))
+        end
+
+        ##
+        # @param node [Nokogiri::XML::Node, SST::Node]
+        # @return [Boolean] whether +node+ is a date chip by its text ({Article::Title.date_piece?})
+        def date_piece?(node)
+          Article::Title.date_piece?(text(node), vocabulary: @vocabulary, date_element: date_element?(node))
         end
       end
       private_constant :Nodes

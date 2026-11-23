@@ -78,7 +78,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(kind.call('Conteúdo patrocinado por Marca')).to eq(:paid_label)
       expect(kind.call('Publieditorial')).to eq(:paid_label)
       expect(kind.call('Publicidade')).to eq(:label)
-      title = Html2rss::Article::Title.compose('Porto reabre', kicker: 'Seção: Transportes')
+      title = Html2rss::Article::Title.compose('Porto reabre', kicker: 'Seção: Transportes', vocabulary: all_scope)
 
       expect(title).to eq('Transportes: Porto reabre')
     end
@@ -171,9 +171,10 @@ RSpec.describe Html2rss::Vocabulary do
         expect(noise.call(piece)).to be(true), piece
       end
       expect(noise.call('Тема дня')).to be(false)
-      expect(title.compose('Порт открыт после ремонта', kicker: 'Раздел: Транспорт'))
+      expect(title.compose('Порт открыт после ремонта', kicker: 'Раздел: Транспорт', vocabulary: all_scope))
         .to eq('Транспорт: Порт открыт после ремонта')
-      expect(title.compose('Порт открыт после ремонта', kicker: '10:30 мск')).to eq('Порт открыт после ремонта')
+      expect(title.compose('Порт открыт после ремонта', kicker: '10:30 мск',
+                                                        vocabulary: all_scope)).to eq('Порт открыт после ремонта')
     end
 
     it 'reads a Cyrillic podcast word with a letter boundary, in any case', :aggregate_failures do
