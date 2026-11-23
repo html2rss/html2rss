@@ -70,7 +70,8 @@ RSpec.describe Html2rss::Vocabulary do
                                                 described_class::El, described_class::Uk, described_class::Ar,
                                                 described_class::Fa, described_class::Hi, described_class::Th,
                                                 described_class::Tr, described_class::Id, described_class::Vi,
-                                                described_class::Cs, described_class::Ro])
+                                                described_class::Cs,
+                                                described_class::Hu, described_class::Ro])
       expect(described_class::LANGUAGES).to eq(languages + described_class::PAGE_ONLY)
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
@@ -211,8 +212,9 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
-      codes = %i[en de fr es it nl pl sv ja pt ru all zh ko he el uk ar fa hi th tr id vi cs ro]
-      expect(scopes.map(&:code)).to eq(codes)
+      expect(scopes.map(&:code)).to eq(
+        %i[en de fr es it nl pl sv ja pt ru all zh ko he el uk ar fa hi th tr id vi cs hu ro]
+      )
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
       expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
@@ -265,7 +267,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese.own_alternation(:utility)).to include('关于我们').and include('關於我們')
       expect(chinese.own_alternation(:recommended)).to include('推荐阅读')
       expect(chinese.type_markers).to be_frozen
-      own = [chinese, *%i[ko he el uk ar fa hi th tr id vi cs ro].map { described_class[_1] }]
+      own = [chinese, *%i[ko he el uk ar fa hi th tr id vi cs hu ro].map { described_class[_1] }]
       (described_class::SCOPES.values - own).each do |scope|
         expect(scope.own_alternations.values).to all(eq('')), scope.code.to_s
         expect(scope.own_words.values).to all(be_empty), scope.code.to_s
@@ -303,7 +305,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'gives every other scope, all and ja included, the identical full marker set without Chinese terms',
        :aggregate_failures do
-      own = [chinese, *%i[ko he el uk ar fa hi th tr id vi cs ro].map { described_class[_1] }]
+      own = [chinese, *%i[ko he el uk ar fa hi th tr id vi cs hu ro].map { described_class[_1] }]
       others = described_class::SCOPES.values - own
 
       expect(others.map(&:type_markers)).to all(equal(described_class.words(:type_marker)))
