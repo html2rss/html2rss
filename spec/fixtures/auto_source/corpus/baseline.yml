@@ -400,6 +400,30 @@ language_chrome_pt.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_ro.html:
+  junk: 0
+  real: 20
+  expected: 20
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_ro_actions.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_ro_hubs.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 language_chrome_ru.html:
   junk: 0
   real: 4
