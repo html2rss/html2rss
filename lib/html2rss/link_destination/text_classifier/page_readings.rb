@@ -45,8 +45,8 @@ module Html2rss
         class << self
           ##
           # @param own [Hash{Symbol => String}] a scope's own alternatives per {Vocabulary::PAGE_PATTERNS} concept
-          # @return [Hash{Symbol => Regexp}] +:cta+ (the shared call to action), +:own_cta+ and +:own_read_more+ (the own
-          #   terms as whole labels, bare or with a bracketed count), +:read_more+ and +:new_window+ (the shared terms
+          # @return [Hash{Symbol => Regexp}] +:cta+ (the shared call to action), +:own_cta+ and +:own_read_more+ (the
+          #   own terms as whole labels, bare or with a bracketed count), +:read_more+ and +:new_window+ (the shared terms
           #   widened by the own ones)
           def build(own)
             union = ->(concept) { Vocabulary.union(concept, own) }
