@@ -99,6 +99,17 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
 
+    context 'when a post has String title, content and excerpt fields' do
+      let(:malformed) { post.merge('title' => 'Plain', 'content' => '<p>Raw</p>', 'excerpt' => 'Lead') }
+      let(:posts) { [malformed, post] }
+
+      it 'keeps the malformed post without those fields and extracts the well-formed post', :aggregate_failures do
+        expect(articles.map { _1.fetch(:id) }).to eq(['/hello/', '/hello/'])
+        expect(articles.first).not_to include(:title, :description)
+        expect(articles.last).to include(title: 'Hello', description: '<p>Body</p>')
+      end
+    end
+
     context 'when a post has an empty or unparseable link' do
       let(:posts) { [post.merge('link' => ''), post.merge('link' => '://bad url'), post] }
 
