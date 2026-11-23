@@ -61,7 +61,7 @@ module Html2rss
       # A query beyond tracking parameters ("/read?id=123") identifies a page, so the link is no section hub.
       def identifying_query?(destination_facts)
         url = destination_facts.url
-        !url.query.nil? && !url.without_tracking_params.query.nil?
+        url.query && url.without_tracking_params.query
       end
 
       def recommended_chrome?(text, destination_facts, heading_anchor:)
