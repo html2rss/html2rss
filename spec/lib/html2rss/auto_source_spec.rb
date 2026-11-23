@@ -613,6 +613,15 @@ RSpec.describe Html2rss::AutoSource do
 
           expect(titles).to eq(['Overline: Headline one', 'Overline: Headline two', '– Headline three words'])
         end
+
+        it 'composes the kicker with the page language scope', :aggregate_failures do
+          headline = '港口今天重新开放并恢复全部航线服务'
+          items.replace([{ title: headline, kicker: '独自', url: 'https://example.com/a', id: 'a' }])
+          read = ->(lang) { described_class.new(response, config, vocabulary: Html2rss::Vocabulary[lang]).articles }
+
+          expect(read.call('zh').find { _1.scraper == klass }.title).to eq("独自: #{headline}")
+          expect(read.call(nil).find { _1.scraper == klass }.title).to eq(headline)
+        end
       end
 
       %w[NativeFeed WordpressApi Sitemap MetaOembed].each do |name|

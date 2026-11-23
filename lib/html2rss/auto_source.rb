@@ -350,10 +350,16 @@ module Html2rss
         # Hash items carry publisher-declared or structured titles: verbatim (collapse only), except an item
         # with an explicit +kicker+, which composes +Kicker: Headline+. Heuristic scrapers yield Articles
         # composed by Html::SstArticleExtractor.
-        Article.new(**item, compose_title: item.key?(:kicker), scraper: instance.class, vocabulary:)
+        Article.new(**composed_title(item), scraper: instance.class)
       else
         raise ScraperContractError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
       end
+    end
+
+    def composed_title(item)
+      return item unless item.key?(:kicker)
+
+      item.except(:kicker).merge(title: Article::Title.compose(item[:title], kicker: item[:kicker], vocabulary:))
     end
 
     def cleanup_options

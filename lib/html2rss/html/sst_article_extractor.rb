@@ -53,9 +53,8 @@ module Html2rss
         lines = leftover_lines
         published_at = extract_published_at(lines)
         root, lines, published_at = parent_card_fields(title, lines, published_at)
-        attrs = {
-          title:,
-          kicker: title_pieces.kicker_text,
+        article = Article.new(
+          title: Article::Title.compose(title, kicker: title_pieces.kicker_text, vocabulary: @vocabulary),
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, vocabulary: @vocabulary, title:),
@@ -63,11 +62,8 @@ module Html2rss
           published_at:,
           enclosures: extract_enclosures,
           categories: extract_categories(title, root:),
-          scraper: @scraper,
-          compose_title: true,
-          vocabulary: @vocabulary
-        }
-        article = Article.new(**attrs)
+          scraper: @scraper
+        )
         article.valid? ? article : nil
       end
 
