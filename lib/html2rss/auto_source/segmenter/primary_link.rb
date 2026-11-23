@@ -74,13 +74,11 @@ module Html2rss
           )
           return unless meaningful || content_like || heading_anchor
 
-          demoted = own_read_more_label?(text, heading_anchor)
-          return { anchor:, destination: destination.destination, score: 0 } if demoted
-
           score = (heading_anchor ? 100 : 0) +
                   (heading_match ? 20 : 0) +
                   (meaningful ? 10 : 0) +
                   (content_like ? 10 : 0)
+          score = 0 if own_read_more_label?(text, heading_anchor)
 
           { anchor:, destination: destination.destination, score: }
         end

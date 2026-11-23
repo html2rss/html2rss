@@ -18,7 +18,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
 
     it 'rejects a short plain section path, never another label or a longer or hyphenated one', :aggregate_failures do
       expect(%w[/sports /world/politics].map { noise.call(_1) }).to all(be(true))
-      expect(['/sports/real-story-slug', '/a/b/c', '/tin-tuc/the-thao', '/page2', '/feed_all', '/index.html',
+      expect(['/sports/real-story-slug', '/', '/a/b/c', '/tin-tuc/the-thao', '/page2', '/feed_all', '/index.html',
               '/news/2024/summary'].map { noise.call(_1) }).to all(be(false))
     end
 
