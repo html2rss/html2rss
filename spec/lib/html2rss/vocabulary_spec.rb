@@ -65,7 +65,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'lists the languages in a fixed order', :aggregate_failures do
       expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru])
-      expect(described_class::PAGE_ONLY).to eq([described_class::Zh, described_class::Ko])
+      expect(described_class::PAGE_ONLY).to eq([described_class::Zh, described_class::Ko, described_class::He])
       expect(described_class::LANGUAGES).to eq(languages + described_class::PAGE_ONLY)
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
@@ -206,7 +206,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
-      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru all zh ko])
+      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru all zh ko he])
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
       expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
@@ -259,7 +259,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese.own_alternation(:utility)).to include('关于我们').and include('關於我們')
       expect(chinese.own_alternation(:recommended)).to include('推荐阅读')
       expect(chinese.type_markers).to be_frozen
-      (described_class::SCOPES.values - [chinese, described_class[:ko]]).each do |scope|
+      (described_class::SCOPES.values - [chinese, described_class[:ko], described_class[:he]]).each do |scope|
         expect(scope.own_alternations.values).to all(eq('')), scope.code.to_s
         expect(scope.own_words.values).to all(be_empty), scope.code.to_s
       end
@@ -296,7 +296,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'gives every other scope, all and ja included, the identical full marker set without Chinese terms',
        :aggregate_failures do
-      others = described_class::SCOPES.values - [chinese, described_class[:ko]]
+      others = described_class::SCOPES.values - [chinese, described_class[:ko], described_class[:he]]
 
       expect(others.map(&:type_markers)).to all(equal(described_class.words(:type_marker)))
       expect(described_class.words(:type_marker)).to include('独自', '写真', '速報', '動画')
