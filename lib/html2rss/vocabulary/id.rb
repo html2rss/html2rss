@@ -10,9 +10,11 @@ module Html2rss
     # through a {Scope} are listed (label words, the call to action, read-more, recommended and the new-window
     # notice); the others stay +NONE+ until their readers take the page scope. It lists no type marker (stripping a
     # short kicker could leave a headline below the title floor), no section name (+nasional+, +bola+, +ekonomi+ and
-    # +otomotif+ are topics a feed may carry), no pager label, no path word, and no bare label that is also a
-    # plausible short headline (+bantuan+ is aid, +iklan+ an advertisement, +redaksi+ the editorial staff, +karir+ a
-    # career story, +berlangganan+ a subscription story). A term whose precision is unclear is left out.
+    # +otomotif+ are topics a feed may carry), no pager label, no path word, and not the bare labels judged too
+    # likely to be a headline (+bantuan+ is aid, +iklan+ an advertisement, +redaksi+ the editorial staff,
+    # +berlangganan+ a subscription story). Some common words stay listed as whole labels by judgment (+komentar+,
+    # +menu+, +cari+, +daftar+, +masuk+): a one-word text equal to one reads as chrome, while a longer headline that
+    # opens with one stays a headline. A term whose precision is unclear is left out.
     Id = Language.new(
       code: :id,
       terms: {
