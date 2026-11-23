@@ -994,7 +994,7 @@ RSpec.describe Html2rss::Vocabulary do
        'Vis mere', 'Flere nyheder', 'Kommentarer', 'Følg os', 'Spring til indhold', 'Gå til hovedindhold'].each do |item|
         expect(da.utility_chrome?(item)).to be(true), item
       end
-      ['[Søg]', '← Se alle ←', 'Log ind (åbner i nyt vindue)', "‎Søg‎"].each do |item|
+      ['[Søg]', '← Se alle ←', 'Log ind (åbner i nyt vindue)', '‎Søg‎'].each do |item|
         expect(da.utility_chrome?(item)).to be(true), item
       end
       ['Relaterede artikler', 'Relaterede historier', 'Læs også', 'Se også', 'Anbefalet til dig'].each do |item|
@@ -1012,7 +1012,8 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
-      ['LOG IND', 'SØG', 'OM OS', 'PRIVATLIVSPOLITIK', 'VILKÅR OG BETINGELSER', 'SE ALLE', 'GÅ TIL INDHOLD'].each do |label|
+      ['LOG IND', 'SØG', 'OM OS', 'PRIVATLIVSPOLITIK', 'VILKÅR OG BETINGELSER', 'SE ALLE',
+       'GÅ TIL INDHOLD'].each do |label|
         expect(da.utility_chrome?(label)).to be(true), label
       end
       ['RELATEREDE ARTIKLER', 'LÆS OGSÅ'].each { expect(da.recommended?(_1)).to be(true), _1 }
@@ -1040,7 +1041,7 @@ RSpec.describe Html2rss::Vocabulary do
        'Relaterede artikler 2026', 'Se alle 2026', 'Vilkår og betingelser 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['Se alle 12', 'Søg 3', 'Log ind 2', 'Om os 3', 'Kommentarer 140'].each do |label|
+      ['Se alle 12', 'Søg 3', 'Log ind 2', 'Om os 3'].each do |label|
         expect(da.utility_chrome?(label)).to be(false), label
       end
       ['Se alle (12)', 'Se alle [3]', 'Søg (7)', 'Kommentarer (12)'].each do |item|
@@ -1055,8 +1056,9 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'reads Kontakt through the foreign kontakt reading, which every scope shares', :aggregate_failures do
-      ['Kontakt', 'Kontakt Danmark', 'Kontakt 2026'].each do |label|
+    it 'reads Kontakt and Kommentarer through the foreign readings every scope shares',
+       :aggregate_failures do
+      ['Kontakt', 'Kontakt Danmark', 'Kontakt 2026', 'Kommentarer 140'].each do |label|
         expect([da.utility_chrome?(label), text.call(:all).utility_chrome?(label)]).to eq([true, true]), label
       end
       expect(da.utility_chrome?('Kontakt mellem skakspillerne forbudt')).to be(false)
