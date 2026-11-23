@@ -873,6 +873,112 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Czech labels' do
+    let(:cs) { text.call(:cs) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:cs]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { cs.utility?(label) }, chrome: ->(label) { cs.utility_chrome?(label) },
+        prefix: ->(label) { cs.utility_prefix?(label) }, recommended: ->(label) { cs.recommended?(label) },
+        read_more: ->(label) { cs.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      ['Přihlásit se', 'Přihlaste se', 'Odhlásit se', 'Registrovat se', 'Hledat', 'O nás', 'Kontakt', 'Kontakty',
+       'Ochrana osobních údajů', 'Zásady ochrany soukromí', 'Nastavení cookies', 'Obchodní podmínky',
+       'Mapa stránek', 'Nápověda', 'Časté dotazy', 'Menu', 'Úvodní stránka', 'Zobrazit všechny', 'Další články',
+       'Přeskočit na obsah', 'Můj účet', 'Sdílet'].each do |item|
+        expect(cs.utility_chrome?(item)).to be(true), item
+      end
+      ['[Zobrazit všechny]', '← Další články ←', 'Přihlásit se (otevře se v novém okně)',
+       "\u200eHledat\u200e"].each do |item|
+        expect(cs.utility_chrome?(item)).to be(true), item
+      end
+      ['Související články', 'Podobné články', 'Mohlo by vás zajímat', 'Čtěte také', 'Doporučujeme'].each do |item|
+        expect(cs.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Číst dále', 'Číst více', 'Celý článek', 'Pokračovat ve čtení', 'Přečtěte si více'].each do |label|
+        expect([cs.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Odebírat newsletter', 'Přihlásit se k odběru', 'Přidat komentář', 'Sdílet článek',
+       'Zaregistrovat se'].each do |item|
+        expect(cs.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'reads a label in upper case with diacritics and in NFC or NFD', :aggregate_failures do
+      ['PŘIHLÁSIT SE', 'ODHLÁSIT SE', 'O NÁS', 'OCHRANA OSOBNÍCH ÚDAJŮ', 'ČASTÉ DOTAZY', 'ÚVODNÍ STRÁNKA',
+       'Přihlásit se'.unicode_normalize(:nfd)].each do |label|
+        expect(cs.utility_chrome?(label)).to be(true), label
+      end
+      ['SOUVISEJÍCÍ ČLÁNKY', 'ČTĚTE TAKÉ'].each { expect(cs.recommended?(_1)).to be(true), _1 }
+      expect(cs.read_more?('ČÍST DÁLE')).to be(true)
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      ['Přihlásit se nemohly stovky lidí, portál byl půl dne mimo provoz',
+       'Odebírat newsletter začalo dvakrát víc čtenářů než loni', 'Kontakty ministrů s lobbisty zveřejní úřad',
+       'O nás bez nás: obec rozhodovala o náměstí', 'Menu ve školních jídelnách zdraží od ledna',
+       'Další články o opravě mostu vyjdou v prosinci', 'Sdílet auta ve městě by chtěla polovina obyvatel',
+       'Hledat pohřešovanou ženu pomáhají stovky lidí', 'Doporučujeme zůstat doma, řekl hejtman',
+       'Číst dále nebudou muset ani žáci prvních tříd', 'Čtěte také? Radnice chce zavřít knihovnu',
+       'PŘIHLÁSIT SE NEMOHLY STOVKY LIDÍ, PORTÁL BYL MIMO PROVOZ'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['O nás 2026', 'Kontakty 2026', 'Přihlásit se 2026', 'Související články 2026', 'Číst dále 2026',
+       'Ochrana soukromí 2026', 'Zobrazit všechny 2026', 'ODHLÁSIT SE 2026'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['Zobrazit všechny (12)', 'Další články [3]', 'Hledat (7)', 'Kontakty (12)'].each do |item|
+        expect(cs.utility_chrome?(item)).to be(true), item
+      end
+      ['Zobrazit všechny 12', 'Další články 3', 'O nás 2', 'Kontakty 140'].each do |label|
+        expect(cs.utility_chrome?(label)).to be(false), label
+      end
+    end
+
+    it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
+      %w[Sport Ekonomika Kultura Svět Komentář Komentáře Redakce Registrace Přihlášení Předplatné Inzerce Reklama
+         Zavřít Více Vše Cookies Předchozí Další Detail].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'keeps every foreign ambiguous term reading as chrome on a Czech page, and a longer headline a headline',
+       :aggregate_failures do
+      %w[Dela Teilen Plus Comment].each do |label|
+        expect(cs.utility_chrome?(label)).to be(true), label
+        expect(text.call(nil).utility_chrome?(label)).to be(true), label
+      end
+      ['Plus Pasáž znovu otevřela dveře', 'Dela Údolí prodloužilo turistickou sezonu'].each do |headline|
+        expect(cs.utility_chrome?(headline)).to be(false), headline
+        expect(cs.recommended?(headline)).to be(false), headline
+        expect(cs.read_more?(headline)).to be(false), headline
+      end
+    end
+
+    it 'reads the labels on a Czech page only', :aggregate_failures do
+      [nil, :ja, :en, :sv, :de, :tr].each do |code|
+        expect(text.call(code).utility_chrome?('Přihlásit se')).to be(false), code.inspect
+      end
+    end
+
+    it 'declares no type marker or path word of its own', :aggregate_failures do
+      expect(described_class::Cs.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:cs].type_markers).to eq(described_class.words(:type_marker))
+      expect(described_class::SCOPED_WORDS.flat_map { described_class::Cs.terms.fetch(_1) }).to be_empty
+    end
+  end
+
   describe 'Hindi labels' do
     let(:hi) { text.call(:hi) }
     let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:hi]) } }
