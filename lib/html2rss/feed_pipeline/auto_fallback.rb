@@ -295,12 +295,14 @@ module Html2rss
         }.compact.to_json)
       end
 
-      # rubocop:disable-next Metrics/MethodLength -- success + structured selected log
       def record_success(response:, strategy:, extraction:, state:, scrape_target: self.scrape_target)
         attempt_count = state.attempts.size
         state.succeed!(response:, extraction:, selected_strategy: strategy, attempt_count:, scrape_target:)
-        return unless attempt_count > 1
+        # Extra attempts under the first strategy are its entry-resolution retry, not a fallback hop.
+        log_selected(response:, strategy:, attempt_count:) unless strategy == strategies.first
+      end
 
+      def log_selected(response:, strategy:, attempt_count:)
         Log.info({
           event_name: 'auto_fallback.selected',
           host: response.url.host,

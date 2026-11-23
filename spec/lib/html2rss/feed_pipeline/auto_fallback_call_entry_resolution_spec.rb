@@ -76,6 +76,7 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
       )
       expect(requests.size).to be <= Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING
       expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
+      expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.selected'))
     end
 
     it 'fetches the winning listing once, as a probe', :aggregate_failures do
@@ -115,6 +116,14 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
       expect(result.status).to have_attributes(selected_strategy: :botasaurus)
       expect(result.to_rss.items.size).to eq(8)
       expect(requests.count { _1[:strategy] == :botasaurus }).to eq(1)
+    end
+
+    it 'logs the strategy selected after a real fallback hop' do
+      result
+
+      expect(Html2rss::Log).to have_received(:info).with(
+        a_string_including('"event_name":"auto_fallback.selected"', '"strategy":"botasaurus"')
+      )
     end
 
     it 'records the tournament even though the fallback won', :aggregate_failures do
