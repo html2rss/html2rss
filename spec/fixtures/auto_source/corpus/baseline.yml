@@ -352,6 +352,30 @@ language_chrome_hi.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_id.html:
+  junk: 0
+  real: 20
+  expected: 20
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_id_actions.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_id_hubs.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 language_chrome_it.html:
   junk: 0
   real: 4
