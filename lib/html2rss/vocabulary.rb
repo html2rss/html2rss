@@ -80,7 +80,7 @@ module Html2rss
     # its terms (a Han term has no word boundary, so it is read as a whole label only, see {TextClassifier}); a
     # Latin-script one ({Language#latin}) is every shared language's unambiguous terms plus its terms, with no
     # foreign ambiguous term.
-    PAGE_ONLY = [Zh, Ko, He, El, Uk, Ar, Fa, Hi, Th].freeze
+    PAGE_ONLY = [Zh, Ko, He, El, Uk, Ar, Fa, Hi, Th, Tr].freeze
 
     # Every language that has a file, in a fixed order.
     LANGUAGES = (ALL + PAGE_ONLY).freeze
