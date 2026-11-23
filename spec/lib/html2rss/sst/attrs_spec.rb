@@ -11,13 +11,15 @@ RSpec.describe Html2rss::SST::Attrs do
       expect(attrs.class_names).to be_frozen
     end
 
-    it 'rejects Hash class_names' do
-      expect { described_class.build(class_names: { a: 1 }) }.to raise_error(Html2rss::SST::InvalidError)
+    it 'rejects Hash class_names, naming the class it got' do
+      expect { described_class.build(class_names: { a: 1 }) }
+        .to raise_error(Html2rss::SST::InvalidError, 'class_names must be an Array, got Hash')
     end
 
     it 'exposes typed readers, class_attr, and raw', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       attrs = described_class.build(
         href: '/a',
+        src: '/a.png',
         id: 'x',
         class_names: %w[one two],
         datetime: '2026-01-01',
@@ -29,6 +31,7 @@ RSpec.describe Html2rss::SST::Attrs do
       )
 
       expect(attrs.href).to eq('/a')
+      expect(attrs.src).to eq('/a.png')
       expect(attrs.id).to eq('x')
       expect(attrs.class_attr).to eq('one two')
       expect(attrs.datetime).to eq('2026-01-01')
@@ -40,8 +43,9 @@ RSpec.describe Html2rss::SST::Attrs do
       expect(described_class.empty.href).to be_nil
     end
 
-    it 'rejects non-Hash raw' do
-      expect { described_class.build(raw: []) }.to raise_error(Html2rss::SST::InvalidError)
+    it 'rejects non-Hash raw, naming the class it got' do
+      expect { described_class.build(raw: []) }
+        .to raise_error(Html2rss::SST::InvalidError, 'raw must be a Hash, got Array')
     end
 
     it 'maps every blank scalar field to nil', :aggregate_failures do
@@ -65,6 +69,13 @@ RSpec.describe Html2rss::SST::Attrs do
       expect(attrs.class_names).to eq([])
       expect(attrs.raw).to eq({})
       expect(attrs.raw).to be_frozen
+    end
+
+    it 'coerces a class list that mixes Strings with other tokens', :aggregate_failures do
+      attrs = described_class.build(class_names: ['a', :b])
+
+      expect(attrs.class_names).to eq(%w[a b]).and be_frozen
+      expect(attrs.class_names).to all(be_frozen)
     end
 
     it 'shares the empty collections for empty input', :aggregate_failures do
@@ -92,19 +103,26 @@ RSpec.describe Html2rss::SST::Attrs do
       expect { attrs.raw['data-a'] << 'x' }.to raise_error(FrozenError)
     end
 
-    it 'copies a raw Hash that holds unfrozen values, leaving the caller Hash alone', :aggregate_failures do
-      raw = { 'data-a' => +'x' }
+    it 'freezes the String values of a raw Hash in place too', :aggregate_failures do
+      value = +'x'
+      attrs = described_class.build(raw: { 'data-a' => value })
+
+      expect(attrs.raw['data-a']).to be(value).and be_frozen
+    end
+
+    it 'copies a raw Hash that holds other values, leaving the caller Hash alone', :aggregate_failures do
+      raw = { 'data-a' => +'x', 'data-n' => 1 }
       attrs = described_class.build(raw:)
 
-      expect(attrs.raw).to eq('data-a' => 'x').and be_frozen
-      expect(attrs.raw['data-a']).to be_frozen
+      expect(attrs.raw).to eq('data-a' => 'x', 'data-n' => '1').and be_frozen
+      expect(attrs.raw.values).to all(be_frozen)
       expect(raw).not_to be_frozen
     end
 
     it 'stringifies and freezes class names and raw values', :aggregate_failures do
       attrs = described_class.build(class_names: [:x, 3], raw: { 'data-n' => 1 })
 
-      expect(attrs.class_names).to eq(%w[x 3])
+      expect(attrs.class_names).to eq(%w[x 3]).and be_frozen
       expect(attrs.class_names.first).to be_frozen
       expect(attrs.raw).to eq('data-n' => '1')
       expect(attrs.raw['data-n']).to be_frozen

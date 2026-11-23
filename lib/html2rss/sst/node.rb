@@ -44,7 +44,7 @@ module Html2rss
       private_class_method :freeze_texts
 
       def self.coerce_name(name)
-        raise InvalidError, 'name is required' if name.nil? || name.to_s.match?(BLANK_NAME)
+        raise InvalidError, 'name is required' if name.to_s.match?(BLANK_NAME)
 
         name.to_sym
       end

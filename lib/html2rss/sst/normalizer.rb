@@ -166,7 +166,7 @@ module Html2rss
         return if @degraded && !SEMANTIC_DEGRADE_TAGS.include?(tag)
 
         @node_count += 1
-        tag_path = (@tag_paths[path][tag] ||= "#{path}/#{tag}".freeze)
+        tag_path = (@tag_paths[path][tag] ||= "#{path}/#{tag}")
         attrs = extract_attrs(nk_node)
         scope_here = Tags.chrome_scope(nk_node, scope, @vocabulary, tag)
 
@@ -226,24 +226,24 @@ module Html2rss
         )
       end
 
-      # Repeated card classes share one frozen token list. The cache lives and dies with this normalizer and
-      # holds at most one entry per kept node ({MAX_NODES}).
+      # Repeated card classes share one token list, frozen by {Attrs.build}. The cache lives and dies with this
+      # normalizer and holds one entry per distinct class attribute of its kept nodes.
       #
-      # @return [Array<String>, nil] frozen tokens, +nil+ without a class attribute
+      # @return [Array<String>, nil] tokens, +nil+ without a class attribute
       def class_tokens(class_attr)
         return unless class_attr
 
-        @class_tokens[class_attr] ||= class_attr.split.each(&:freeze).freeze
+        @class_tokens[class_attr] ||= class_attr.split
       end
 
-      # @return [Hash{String => String}, nil] kept attributes with frozen values, +nil+ when none
+      # @return [Hash{String => String}, nil] kept attributes, +nil+ when none
       def raw_attrs(attr_nodes)
         raw = nil
         attr_nodes.each do |attr|
           name = attr.name
           next if TYPED_ATTR_NAMES.include?(name)
 
-          (raw ||= {})[name] = attr.value.freeze if name.match?(RAW_ATTR_KEEP)
+          (raw ||= {})[name] = attr.value if name.match?(RAW_ATTR_KEEP)
         end
         raw
       end

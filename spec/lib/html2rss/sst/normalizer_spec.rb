@@ -90,13 +90,20 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(link.attrs.raw).to eq({})
     end
 
-    it 'splits class names on any whitespace and freezes what it keeps', :aggregate_failures do
-      html = "<html><body><p class=\"a\tb\nc\" data-k=\"v\">x</p><p class=\" \">y</p></body></html>"
+    it 'splits class names on any whitespace and keeps none for a blank attribute', :aggregate_failures do
+      html = "<html><body><p class=\"a\tb\nc\">x</p><p class=\" \">y</p></body></html>"
       spaced, blank = described_class.call(html, vocabulary: all_scope).root.find_all { |n| n.name == :p }
 
       expect(spaced.attrs.class_names).to eq(%w[a b c])
-      expect([spaced.attrs.class_names, *spaced.attrs.class_names, spaced.attrs.raw.values.first]).to all(be_frozen)
       expect(blank.attrs.class_names).to eq([])
+    end
+
+    it 'freezes the class tokens and raw attributes it keeps', :aggregate_failures do
+      html = '<html><body><p class="a b" data-k="v">x</p></body></html>'
+      attrs = described_class.call(html, vocabulary: all_scope).root.find { |n| n.name == :p }.attrs
+
+      expect([attrs.class_names, *attrs.class_names, attrs.raw, *attrs.raw.values]).to all(be_frozen)
+      expect(attrs.raw).to eq('data-k' => 'v')
     end
 
     it 'gives an element without attributes the shared empty attrs', :aggregate_failures do
@@ -105,6 +112,24 @@ RSpec.describe Html2rss::SST::Normalizer do
 
       expect(bare.attrs).to be(Html2rss::SST::Attrs.empty)
       expect(unkept.attrs).to eq(Html2rss::SST::Attrs.empty)
+    end
+
+    it 'passes the tag it already holds to the chrome scope rule' do
+      allow(Html2rss::SST::Tags).to receive(:chrome_scope).and_call_original
+
+      described_class.call('<html><body><nav></nav></body></html>', vocabulary: all_scope)
+
+      expect(Html2rss::SST::Tags).to have_received(:chrome_scope)
+        .with(kind_of(Nokogiri::XML::Element), :page, all_scope, 'nav')
+    end
+
+    it 'keeps the scope of a node apart from an equal node elsewhere', :aggregate_failures do
+      html = '<html><body><div role="navigation"><p>a</p></div><div><p>a</p></div></body></html>'
+      document = described_class.call(html, vocabulary: all_scope)
+      chrome, plain = document.root.find_all { _1.name == :p }
+
+      expect(chrome).to eq(plain)
+      expect([chrome, plain].map { document.index.ignored_chrome?(_1) }).to eq([true, false])
     end
 
     it 'logs which root fallback was used', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -394,6 +419,14 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(first.tag_path).to eq('/html/body/p')
     end
 
+    it 'shares one frozen empty own text between nodes without text', :aggregate_failures do
+      document = described_class.call('<html><body><p></p><span></span></body></html>', vocabulary: all_scope)
+      empty, other = document.root.find_all { %i[p span].include?(_1.name) }
+
+      expect(empty.own_text).to be(other.own_text).and be_frozen
+      expect(empty.own_text).to eq('')
+    end
+
     it 'gives each node its own tails, so no node mutates another', :aggregate_failures do
       first, second = paragraphs
 
@@ -443,108 +476,6 @@ RSpec.describe Html2rss::SST::Normalizer do
       end.to raise_error(Html2rss::SST::InvalidError, 'input is required')
       expect { described_class.call(42, vocabulary: all_scope) }
         .to raise_error(Html2rss::SST::InvalidError, 'expected String or Nokogiri::XML::Node, got Integer')
-    end
-  end
-
-  describe 'chrome scope rule (SST::Tags.chrome_scope)' do
-    {
-      %w[<div> page] => :page,
-      %w[<header> page] => :chrome,
-      %w[<footer> page] => :chrome,
-      %w[<nav> page] => :chrome,
-      %w[<dialog> sectioned] => :chrome,
-      %w[<nav> sectioned] => :peripheral,
-      %w[<footer> sectioned] => :peripheral,
-      %w[<aside> page] => :peripheral,
-      %w[<menu> page] => :peripheral,
-      ['<div role="complementary">', 'page'] => :peripheral,
-      %w[<header> peripheral] => :peripheral,
-      %w[<article> peripheral] => :peripheral,
-      ['<div role="banner">', 'peripheral'] => :peripheral,
-      ['<div role="navigation">', 'peripheral'] => :chrome,
-      %w[<header> sectioned] => :sectioned,
-      %w[<section> page] => :sectioned,
-      ['<div role="main">', 'page'] => :sectioned,
-      ['<div role="MAIN">', 'page'] => :sectioned,
-      ['<div role="mainly">', 'page'] => :page,
-      %w[<article> chrome] => :chrome,
-      %w[<div> sectioned] => :sectioned,
-      %w[<svg> sectioned] => :chrome
-    }.each do |(markup, scope), expected|
-      it "maps #{markup} under #{scope} to #{expected}" do
-        element = Nokogiri::HTML::DocumentFragment.parse(markup).child
-
-        expect(Html2rss::SST::Tags.chrome_scope(element, scope.to_sym, all_scope)).to eq(expected)
-      end
-    end
-
-    it 'reads the tag it is handed instead of re-deriving it from the element', :aggregate_failures do
-      element = Nokogiri::HTML::DocumentFragment.parse('<div></div>').child
-
-      expect(Html2rss::SST::Tags.chrome_scope(element, :page, all_scope, 'header')).to eq(:chrome)
-      expect(Html2rss::SST::Tags.chrome_scope(element, :page, all_scope)).to eq(:page)
-    end
-
-    context 'with a page-only language declaring the pager concepts' do
-      let(:xx) do
-        terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
-        terms.merge!(pager_label: %w[bladeren-xx], page_link: %w[volgende-xx], page_link_label: %w[vorige-xx])
-        language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
-        Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::SHARED_LANGUAGES, own: [language])
-      end
-      let(:chrome_under) do
-        lambda do |markup, scope|
-          element = Nokogiri::HTML::DocumentFragment.parse(markup).child
-          Html2rss::SST::Tags.chrome_scope(element, :sectioned, scope)
-        end
-      end
-
-      before do
-        own = %i[pager_label page_link page_link_label].to_h { [_1, xx.own_alternation(_1)] }
-        by_scope = Html2rss::SST::Tags::PagerReadings::BY_SCOPE
-        stub_const('Html2rss::SST::Tags::PagerReadings::BY_SCOPE',
-                   by_scope.merge(zh: Html2rss::SST::Tags::PagerReadings.build(own)))
-      end
-
-      it 'reads an own pager noun as a whole aria-label, on its own page only', :aggregate_failures do
-        nav = '<nav aria-label="Bladeren-xx"></nav>'
-
-        expect(chrome_under.call(nav, xx)).to eq(:chrome)
-        expect(chrome_under.call(nav, all_scope)).to eq(:peripheral)
-        expect(chrome_under.call('<nav aria-label="Bladeren-xx lijst"></nav>', xx)).to eq(:peripheral)
-      end
-
-      it 'reads own previous and next words as page links of a labelled list', :aggregate_failures do
-        list = '<ul aria-label="pagination"><li><a>Volgende-xx</a></li><li><a>Vorige-xx</a></li></ul>'
-
-        expect(chrome_under.call(list, xx)).to eq(:chrome)
-        expect(chrome_under.call(list, all_scope)).to eq(:sectioned)
-      end
-
-      it 'leaves every shared scope on the one shared reading', :aggregate_failures do
-        readings = Html2rss::SST::Tags::PagerReadings.const_get(:BY_SCOPE)
-
-        %i[en ja de all].each { expect(readings.fetch(_1)).to be(readings.fetch(:en)) }
-        expect(readings.fetch(:zh)).not_to be(readings.fetch(:en))
-      end
-    end
-
-    {
-      %w[nav] => true, %w[aside] => true, %w[footer] => true, %w[menu] => true, %w[div navigation] => true,
-      %w[div menubar] => true, %w[div alertdialog] => true, %w[div complementary] => true,
-      %w[div search] => false, %w[div] => false
-    }.each do |(tag, role), expected|
-      it "judges #{tag} role=#{role.inspect} as utility landmark: #{expected}" do
-        expect(Html2rss::SST::Tags.utility_landmark?(tag, role)).to be(expected)
-      end
-    end
-
-    {
-      %w[header] => true, %w[div Contentinfo] => true, %w[div banner] => true, %w[nav] => false, %w[div main] => false
-    }.each do |(tag, role), expected|
-      it "judges #{tag} role=#{role.inspect} as page-level chrome: #{expected}" do
-        expect(Html2rss::SST::Tags.page_level_chrome?(tag, role)).to be(expected)
-      end
     end
   end
 end

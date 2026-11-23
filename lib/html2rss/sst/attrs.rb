@@ -30,8 +30,8 @@ module Html2rss
         # @param style [String, nil]
         # @param srcset [String, nil]
         # @param type [String, nil]
-        # @param raw [Hash{String => String}, nil] a Hash of frozen Strings is frozen in place, so +Attrs+
-        #   takes ownership of it
+        # @param raw [Hash{String => String}, nil] a Hash of Strings is frozen in place with its values, so
+        #   +Attrs+ takes ownership of it
         # @return [Attrs]
         # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists
         def build(href: nil, src: nil, id: nil, class_names: nil, datetime: nil, itemprop: nil,
@@ -80,7 +80,7 @@ module Html2rss
 
         def freeze_raw(raw)
           return AttrDefaults::EMPTY_RAW if raw.empty?
-          return raw.freeze if raw.all? { |_, value| value.is_a?(String) && value.frozen? }
+          return raw.each_value(&:freeze).freeze if raw.all? { |_, value| value.is_a?(String) }
 
           raw.transform_values { |value| value.to_s.freeze }.freeze
         end

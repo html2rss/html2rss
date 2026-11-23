@@ -65,8 +65,17 @@ RSpec.describe Html2rss::SST::Node do
     end
 
     it 'coerces tails that are not Strings', :aggregate_failures do
-      expect(described_class.build(name: :p, tails: [:one, 2]).tails).to eq(%w[one 2]).and all(be_frozen)
+      expect(described_class.build(name: :p, tails: [:one, 2]).tails).to eq(%w[one 2]).and be_frozen
+      expect(described_class.build(name: :p, tails: ['one', :two]).tails).to eq(%w[one two]).and all(be_frozen)
+      expect(described_class.build(name: :p, tails: 'one').tails).to eq(%w[one])
       expect(described_class.build(name: :p, tails: nil).tails).to eq([])
+    end
+
+    it 'freezes own text and tag path and keeps the tag path', :aggregate_failures do
+      node = described_class.build(name: :p, own_text: +'text', tag_path: +'/html/p')
+
+      expect(node.own_text).to eq('text').and be_frozen
+      expect(node.tag_path).to eq('/html/p').and be_frozen
     end
 
     it 'rejects attrs that are not typed and children that are not nodes', :aggregate_failures do
