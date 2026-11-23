@@ -304,7 +304,7 @@ module Html2rss
     def page_document
       return @page_document if defined?(@page_document)
 
-      @page_document = (SST::Normalizer.call(parsed_body) unless json_response?)
+      @page_document = (SST::Normalizer.call(parsed_body, vocabulary: @vocabulary) unless json_response?)
     end
 
     def link_resolver

@@ -201,7 +201,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         html: { enabled: true }
       )
     end
-    let(:document) { Html2rss::SST::Normalizer.call(parsed_body) }
+    let(:document) { Html2rss::SST::Normalizer.call(parsed_body, vocabulary: all_scope) }
     let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(url) }
 
     it 'reuses the provided SST::Document without re-normalizing' do # rubocop:disable RSpec/ExampleLength
@@ -271,7 +271,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       Nokogiri::HTML('<html><body><article><a href="/article-1">Article 1</a></article></body></html>')
     end
     let(:url) { Html2rss::Url.from_absolute('https://example.com') }
-    let(:document) { Html2rss::SST::Normalizer.call(parsed_body) }
+    let(:document) { Html2rss::SST::Normalizer.call(parsed_body, vocabulary: all_scope) }
     let(:resolver) { Html2rss::Scoring::LinkResolver.new(url) }
 
     it 'returns nil when the scraper is disabled or missing from opts', :aggregate_failures do

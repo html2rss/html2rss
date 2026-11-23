@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
   subject(:page_links) { described_class.build(document, link_resolver:, vocabulary: Html2rss::Vocabulary[:all]) }
 
   let(:link_resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com/news/') }
-  let(:document) { Html2rss::SST::Normalizer.call(html) }
+  let(:document) { Html2rss::SST::Normalizer.call(html, vocabulary: all_scope) }
   let(:html) do
     cards = %w[one two three].map { |slug| %(<article><h2><a href="/news/#{slug}">Story #{slug}</a></h2></article>) }
     <<~HTML
@@ -331,7 +331,7 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
     context 'with a degraded document' do
       let(:document) do
-        Html2rss::SST::Normalizer.call(html).then do |doc|
+        Html2rss::SST::Normalizer.call(html, vocabulary: all_scope).then do |doc|
           Html2rss::SST::Document.build(root: doc.root, index: doc.index, degraded: true, node_count: doc.node_count)
         end
       end

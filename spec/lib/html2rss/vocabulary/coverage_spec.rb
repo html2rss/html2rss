@@ -284,7 +284,7 @@ RSpec.describe Html2rss::Vocabulary do
     let(:pager) do
       lambda do |label|
         element = Nokogiri::HTML("<html><body><nav aria-label=\"#{label}\"></nav></body></html>").at('nav')
-        Html2rss::SST::Tags.chrome_scope(element, :sectioned) == :chrome
+        Html2rss::SST::Tags.chrome_scope(element, :sectioned, all_scope) == :chrome
       end
     end
 
@@ -308,7 +308,7 @@ RSpec.describe Html2rss::Vocabulary do
       }.each do |label, chrome|
         link = %(<a href="/a">#{label}</a>)
         markup = %(<html><body><main><ul class="pagination"><li>#{link}</li></ul></main></body></html>)
-        doc = Html2rss::SST::Normalizer.call(markup)
+        doc = Html2rss::SST::Normalizer.call(markup, vocabulary: all_scope)
 
         expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :main }.children.first)).to be(chrome), label
       end

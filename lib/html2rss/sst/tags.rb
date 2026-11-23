@@ -40,8 +40,6 @@ module Html2rss
       UTILITY_ROLES = (CHROME_ROLES | Set['complementary']).freeze
       # A nav or list labelled (aria-label) or classed as pagination is chrome in any scope.
       PAGER_NAMES = Set['nav', 'ul', 'ol'].freeze
-      # Pagination nouns ("Results pagination", "paginación"), never +paginated+.
-      PAGER_LABEL = /\b(?:#{Vocabulary.alternation(:pager_label)})/ix
       # nav: a class-token part (+pagination+, +gsc-pagination+, +pager__list+), not +paginated-list+.
       PAGER_CLASS = /(?:\A|\s|[-_])(?:pagination|pager|paging)(?:\z|\s|[-_])/i
       # ul/ol: only a whole class token (+infinite-pager+ or +js-pagination-container+ is a feed list).
@@ -50,16 +48,56 @@ module Html2rss
       # A nav linking rel=next/prev is a pager.
       PAGER_LINK_XPATH = PAGER_RELS.map { "contains(concat(' ', normalize-space(@rel), ' '), ' #{_1} ')" }
                                    .join(' or ').then { ".//a[#{_1}]" }.freeze
-      # Page-navigation link shapes: a page number, an arrow, prev/next wording, or a page query/path.
-      PAGE_LINK_TEXT = /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:#{Vocabulary.alternation(:page_link)})\b.*)\z/im
-      # A whole label that is only a previous/next/older/newer word of another language ("Suivant »", "次へ"),
-      # never one that goes on ("Suivant le match").
-      PAGE_LINK_LABEL = /\A[^\p{L}\p{N}]*(?:#{Vocabulary.alternation(:page_link_label)})[^\p{L}\p{N}]*\z/i
       PAGE_LINK_HREF = %r{[?&](?:page|paged|pg|p)=\d+|/page/\d+}i
       private_constant :PAGE_CHROME, :ALWAYS_CHROME, :UTILITY_LANDMARK, :SECTIONING, :CHROME_ROLES,
-                       :PAGE_CHROME_ROLES, :UTILITY_ROLES, :PAGER_NAMES, :PAGER_LABEL, :PAGER_CLASS,
-                       :PAGER_TOKENS, :PAGER_RELS, :PAGER_LINK_XPATH, :PAGE_LINK_TEXT, :PAGE_LINK_LABEL,
-                       :PAGE_LINK_HREF
+                       :PAGE_CHROME_ROLES, :UTILITY_ROLES, :PAGER_NAMES, :PAGER_CLASS,
+                       :PAGER_TOKENS, :PAGER_RELS, :PAGER_LINK_XPATH, :PAGE_LINK_HREF
+
+      ##
+      # How the pager concepts ({Vocabulary::PAGE_PATTERNS}: +pager_label+, +page_link+, +page_link_label+) are
+      # read: one precompiled set of matchers per page scope, built at load. The shared terms are every language of
+      # {Vocabulary::ALL}; a {Vocabulary::PAGE_ONLY} language adds its own, read as whole labels only (a Han term
+      # has no word boundary). Scopes with the same own terms (every shared language and +:all+ have none) share
+      # one entry, so a scope without own terms reads exactly the shared terms.
+      module PagerReadings
+        Readings = Data.define(:pager_label, :page_link_text, :page_link_label)
+
+        # Whole text of one own term, wrapped in punctuation only.
+        WHOLE = ->(alternation) { /\A[^\p{L}\p{N}]*(?:#{alternation})[^\p{L}\p{N}]*\z/i }
+
+        class << self
+          ##
+          # @param own [Hash{Symbol => String}] a scope's own alternatives per pager concept
+          # @return [Readings] +pager_label+ (pagination nouns such as "Results pagination" or "paginación", never
+          #   +paginated+), +page_link_text+ (a page number, an arrow, prev/next wording) and +page_link_label+ (a
+          #   whole previous/next/older/newer label such as "Suivant »" or "次へ", never one that goes on)
+          def build(own)
+            Readings.new(
+              pager_label: own_pager_label(own.fetch(:pager_label)),
+              page_link_text: /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:#{Vocabulary.alternation(:page_link)})\b.*)\z/im,
+              page_link_label: WHOLE.call([Vocabulary.alternation(:page_link_label), own.fetch(:page_link),
+                                           own.fetch(:page_link_label)].reject(&:empty?).join('|'))
+            ).freeze
+          end
+
+          private
+
+          def own_pager_label(own)
+            shared = /\b(?:#{Vocabulary.alternation(:pager_label)})/ix
+            own.empty? ? shared : Regexp.union(shared, WHOLE.call(own))
+          end
+        end
+
+        # Per scope code; scopes with the same own terms share one entry.
+        BY_SCOPE = begin
+          built = {}
+          Vocabulary::SCOPES.transform_values do |scope|
+            own = %i[pager_label page_link page_link_label].to_h { [_1, scope.own_alternation(_1)] }
+            built[own] ||= build(own)
+          end.freeze
+        end
+        private_constant :WHOLE
+      end
 
       ##
       # The single chrome-scope rule, folded down the tree by both the SST normalizer
@@ -74,11 +112,12 @@ module Html2rss
       #
       # @param element [Nokogiri::XML::Element] element being entered
       # @param scope [Symbol] parent scope: +:page+, +:sectioned+, +:peripheral+, or +:chrome+
+      # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the pager words
       # @return [Symbol] scope the element's subtree inherits
-      def self.chrome_scope(element, scope)
+      def self.chrome_scope(element, scope, vocabulary)
         tag = Html::Probe.tag(element)
         roles = role_tokens(element['role'])
-        return :chrome if scope == :chrome || chrome?(element, tag, roles, scope)
+        return :chrome if scope == :chrome || chrome?(element, tag, roles, scope, vocabulary)
         return :peripheral if scope == :peripheral || utility?(tag, roles)
 
         SECTIONING.include?(tag) || roles.include?('main') ? :sectioned : scope
@@ -107,33 +146,38 @@ module Html2rss
 
       def self.page_level?(tag, roles) = PAGE_CHROME.include?(tag) || roles.any? { PAGE_CHROME_ROLES.include?(_1) }
 
-      def self.chrome?(element, tag, roles, scope)
+      def self.chrome?(element, tag, roles, scope, vocabulary)
         return true if ALWAYS_CHROME.include?(tag) || roles.any? { CHROME_ROLES.include?(_1) }
 
-        (scope == :page && (tag == 'nav' || page_level?(tag, roles))) || pager?(element, tag)
+        (scope == :page && (tag == 'nav' || page_level?(tag, roles))) || pager?(element, tag, vocabulary)
       end
 
-      def self.pager?(element, tag)
+      def self.pager?(element, tag, vocabulary)
         return false unless PAGER_NAMES.include?(tag)
-        return list_pager?(element) unless tag == 'nav'
-        return true if element['aria-label'].to_s.match?(PAGER_LABEL) || element['class'].to_s.match?(PAGER_CLASS)
+
+        readings = PagerReadings::BY_SCOPE.fetch(vocabulary.code)
+        return list_pager?(element, readings) unless tag == 'nav'
+        if element['aria-label'].to_s.match?(readings.pager_label) || element['class'].to_s.match?(PAGER_CLASS)
+          return true
+        end
 
         !element.at_xpath(PAGER_LINK_XPATH).nil?
       end
 
       # A list is a pager only when labelled or whole-token classed as one and at least
       # half of its links look like page navigation.
-      def self.list_pager?(element)
-        named = element['aria-label'].to_s.match?(PAGER_LABEL) ||
+      def self.list_pager?(element, readings)
+        named = element['aria-label'].to_s.match?(readings.pager_label) ||
                 element['class'].to_s.downcase.split.any? { PAGER_TOKENS.include?(_1) }
         links = named ? element.css('a') : []
-        !links.empty? && links.count { page_link?(_1) } * 2 >= links.size
+        !links.empty? && links.count { page_link?(_1, readings) } * 2 >= links.size
       end
 
-      def self.page_link?(link)
+      def self.page_link?(link, readings)
         text = link.text.strip
         link['rel'].to_s.downcase.split.any? { PAGER_RELS.include?(_1) } ||
-          link['href'].to_s.match?(PAGE_LINK_HREF) || text.match?(PAGE_LINK_TEXT) || text.match?(PAGE_LINK_LABEL)
+          link['href'].to_s.match?(PAGE_LINK_HREF) || text.match?(readings.page_link_text) ||
+          text.match?(readings.page_link_label)
       end
       private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?, :list_pager?, :page_link?
     end

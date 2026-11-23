@@ -77,7 +77,7 @@ RSpec.describe Html2rss::Html::TitlePieces do
   context 'with SST nodes' do
     let(:pieces_for) do
       lambda do |html|
-        doc = Html2rss::SST::Normalizer.call("<html><body>#{html}</body></html>")
+        doc = Html2rss::SST::Normalizer.call("<html><body>#{html}</body></html>", vocabulary: all_scope)
         root = doc.root.find { _1.name == :article }
         anchor = root.find(&:link?)
         source = root.find(&:heading?) || anchor
