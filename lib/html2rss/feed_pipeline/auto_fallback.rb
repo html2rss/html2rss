@@ -261,7 +261,8 @@ module Html2rss
       rescue *NON_FALLBACK_ERRORS, Html2rss::ContractError
         raise
       rescue Html2rss::Error => error
-        log_resolution_failure('retry_failed', "entry resolution retry failed (#{error.class.name})", error:)
+        log_resolution_failure('retry_failed', "entry resolution retry failed (#{error.class})",
+                               error_class: error.class.name)
         false
       end
 
@@ -285,22 +286,13 @@ module Html2rss
       # Request slots the tournament may spend: all that are left, minus the initial fetch of a later strategy.
       def slots_left(next_strategy) = budget.remaining_requests - (next_strategy ? 1 : 0)
 
-      def log_resolution_failure(event, summary, error: nil)
+      def log_resolution_failure(event, summary, error_class: nil)
         Log.warn({
           event_name: "feed_resolution.#{event}",
-          host: channel_host,
-          **(error ? { error_class: error.class.name } : {}),
+          host: Url.from_absolute(config.url).host,
+          error_class:,
           message: "FeedResolution: #{summary}"
-        }.to_json)
-      end
-
-      # +Config#url+ is a String; parse once for structured logs.
-      #
-      # @return [String, nil]
-      def channel_host
-        Url.from_absolute(config.url.to_s).host
-      rescue Html2rss::Url::InvalidUrlError
-        nil
+        }.compact.to_json)
       end
 
       # rubocop:disable-next Metrics/MethodLength -- success + structured selected log

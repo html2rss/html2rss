@@ -52,8 +52,11 @@ RSpec.describe Html2rss::FeedResolution do
   it 'applies a winning listing URL and hands back the response that won', :aggregate_failures do
     allow(session).to receive(:follow_up).and_return(listing)
 
-    expect(resolution).to have_attributes(applied: true, scrape_url: 'https://example.com/news', reason: :winner)
+    expect(resolution).to have_attributes(
+      applied: true, entry_url:, scrape_url: 'https://example.com/news', reason: :winner
+    )
     expect(resolution.response).to be(listing)
+    expect(session).to have_received(:follow_up).with(hash_including(url: kind_of(Html2rss::Url))).twice
     expect(resolution.probe_count).to be >= 1
   end
 
@@ -128,7 +131,60 @@ RSpec.describe Html2rss::FeedResolution do
     )
     allow(session).to receive(:follow_up).and_return(empty)
 
-    expect(resolution).to have_attributes(applied: false, reason: :no_winner, scrape_url: entry_url, response: nil)
+    expect(resolution).to have_attributes(
+      applied: false, entry_url:, reason: :no_winner, scrape_url: entry_url, response: nil,
+      probe_count: 2, winner_score: nil
+    )
+  end
+
+  it 'skips a winner that does not beat the articles the entry page already has' do
+    articles = Array.new(3) { instance_double(Html2rss::Article, scraper: Html2rss::AutoSource::Scraper::Schema) }
+    allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:app_shell)
+    allow(session).to receive(:follow_up).and_return(listing)
+
+    expect(described_class.call(response:, session:, config:, articles:, slots: 5))
+      .to have_attributes(applied: false, reason: :no_winner)
+  end
+
+  it 'skips when the entry page leaves no candidate to probe', :aggregate_failures do
+    allow(Html2rss::FeedResolution::CandidateGenerator).to receive(:call).and_return([])
+    allow(session).to receive(:follow_up)
+
+    expect(resolution).to have_attributes(applied: false, reason: :no_candidates, probe_count: 0, scrape_url: entry_url)
+    expect(session).not_to have_received(:follow_up)
+  end
+
+  it 'reads the vocabulary and the probes from the channel language', :aggregate_failures do
+    finnish = instance_double(Html2rss::Config, url: entry_url, auto_source: { entry_resolution: { max_probes: 1 } },
+                                                selectors: nil, channel: { language: 'fi' })
+    allow(Html2rss::FeedResolution::CandidateGenerator).to receive(:call).and_call_original
+    allow(Html2rss::FeedResolution::Probe).to receive(:new).and_call_original
+    allow(session).to receive(:follow_up).and_return(listing)
+
+    described_class.call(response:, session:, config: finnish, articles: [], slots: 5)
+
+    expect(Html2rss::FeedResolution::CandidateGenerator).to have_received(:call)
+      .with(hash_including(vocabulary: Html2rss::Vocabulary['fi'], max: 1))
+    expect(Html2rss::FeedResolution::Probe).to have_received(:new)
+      .with(request_session: session, origin_url: Html2rss::Url.from_absolute(entry_url), channel: { language: 'fi' })
+  end
+
+  it 'logs the tournament result once for a winner and for a skip', :aggregate_failures do
+    allow(Html2rss::Log).to receive(:info)
+    allow(session).to receive(:follow_up).and_return(listing)
+
+    resolution
+    allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::ConnectionFailed)
+    described_class.call(response:, session:, config:, articles: [], slots: 5)
+
+    expect(Html2rss::Log).to have_received(:info).with(
+      a_string_including('"event_name":"feed_resolution.result"', '"host":"example.com"',
+                         '"message":"FeedResolution: entry_host=example.com scrape_host=example.com applied=true ' \
+                         "probe_count=2 winner_score=#{resolution.winner_score} reason=winner")
+    ).once
+    expect(Html2rss::Log).to have_received(:info).with(
+      a_string_including('applied=false probe_count=0 winner_score=nil reason=no_winner')
+    ).once
   end
 
   describe '.request_slots_for' do

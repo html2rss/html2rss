@@ -120,7 +120,7 @@ module Html2rss
       # @param result [Result]
       # @return [Result] the same result, after its structured log line
       def log(result)
-        scrape_host = Html2rss::Url.from_absolute(result.scrape_url).host
+        scrape_host = Url.from_absolute(result.scrape_url).host
         Log.info({
           event_name: 'feed_resolution.result',
           host: entry_url.host,

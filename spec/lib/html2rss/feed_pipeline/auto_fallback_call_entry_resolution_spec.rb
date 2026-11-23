@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable RSpec/MultipleMemoizedHelpers
+# rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
 
 require 'spec_helper'
 
@@ -59,7 +59,7 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
 
   before do
     allow(Html2rss::Log).to receive(:info)
-    allow(Html2rss::Log).to receive(:warn)
+    allow(Html2rss::Log).to receive(:warn).and_return(true) # as the real logger does
     allow(Html2rss::Log).to receive(:debug)
     allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
       ctx.budget.consume!
@@ -75,6 +75,7 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
         selected_strategy: :default, scrape_url: "#{origin}/news/", entry_resolution: hash_including(applied: true)
       )
       expect(requests.size).to be <= Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING
+      expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
     end
 
     it 'fetches the winning listing once, as a probe', :aggregate_failures do
@@ -147,6 +148,120 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
         selected_strategy: :botasaurus, scrape_url: "#{origin}/", entry_resolution: hash_including(applied: true)
       )
       expect(result.status.strategy_attempts.map { _1[:items_count] }).to eq([0, 0, 8])
+      expect(Html2rss::Log).to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
+    end
+  end
+
+  context 'when the resolved page extraction fails' do
+    let(:raw_config) do
+      { channel: { url: "#{origin}/" }, strategy: :auto, request: { max_requests: 6 },
+        auto_source: { scraper: { native_feed: { enabled: false }, wordpress_api: { enabled: false },
+                                  sitemap: { enabled: false } } } }
+    end
+    let(:pages) do
+      { default: default_pages,
+        botasaurus: { "#{origin}/" => response_for(listing_html, "#{origin}/", html_headers) } }
+    end
+    let(:failure) { Html2rss::RequestService::ConnectionFailed.new('boom') }
+
+    before do
+      allow(pipeline).to receive(:extract).and_wrap_original do |original, **kwargs|
+        raise failure if kwargs[:response].url.to_s == "#{origin}/news/"
+
+        original.call(**kwargs)
+      end
+    end
+
+    context 'with a request budget error' do
+      let(:failure) { Html2rss::RequestService::RequestBudgetExceeded.new('spent') }
+
+      it 'logs it, keeps the diagnostic and lets the next strategy run', :aggregate_failures do
+        expect(result.status).to have_attributes(
+          selected_strategy: :botasaurus, entry_resolution: hash_including(applied: true)
+        )
+        expect(Html2rss::Log).to have_received(:warn).with(
+          a_string_including('"event_name":"feed_resolution.budget_exhausted"', '"host":"example.com"',
+                             '"message":"FeedResolution: entry resolution skipped (request budget exhausted)"')
+            .and(satisfy { |line| !line.include?('error_class') })
+        )
+        expect(Html2rss::Log).to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
+      end
+    end
+
+    context 'with another request error' do
+      it 'logs it and lets the next strategy run', :aggregate_failures do
+        expect(result.status).to have_attributes(selected_strategy: :botasaurus)
+        expect(Html2rss::Log).to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
+        expect(Html2rss::Log).to have_received(:warn).with(
+          a_string_including(
+            '"event_name":"feed_resolution.retry_failed"', '"host":"example.com"',
+            '"error_class":"Html2rss::RequestService::ConnectionFailed"',
+            '"message":"FeedResolution: entry resolution retry failed (Html2rss::RequestService::ConnectionFailed)"'
+          )
+        )
+      end
+    end
+
+    context 'with an error that aborts the chain' do
+      let(:failure) { Html2rss::RequestService::InvalidUrl.new('bad') }
+
+      it 'aborts before the next strategy', :aggregate_failures do
+        expect { result }.to raise_error(Html2rss::RequestService::InvalidUrl)
+        expect(requests.count { _1[:strategy] == :botasaurus }).to eq(0)
+      end
+    end
+
+    context 'with a contract error' do
+      let(:failure) { Html2rss::RequestService::Context::InvalidError.new('broken') }
+
+      it 're-raises it' do
+        expect { result }.to raise_error(Html2rss::RequestService::Context::InvalidError)
+      end
+    end
+  end
+
+  context 'when no strategy finds items' do
+    let(:raw_config) do
+      { channel: { url: "#{origin}/" }, strategy: :auto, request: { max_requests: 8 },
+        auto_source: { scraper: { native_feed: { enabled: false }, wordpress_api: { enabled: false },
+                                  sitemap: { enabled: false } } } }
+    end
+    let(:default_pages) { super().except("#{origin}/news/") }
+    let(:pages) { { default: default_pages, botasaurus: { "#{origin}/" => default_pages.fetch("#{origin}/") } } }
+
+    it 'runs the tournament on the first hop only', :aggregate_failures do
+      allow(Html2rss::FeedResolution).to receive(:call).and_call_original
+
+      expect { result }.to raise_error(Html2rss::NoFeedItemsExtracted)
+      expect(Html2rss::FeedResolution).to have_received(:call).once
+      expect(requests.count { _1[:strategy] == :botasaurus }).to eq(1)
+    end
+  end
+
+  context 'when the resolved page is extracted through a session of its own' do
+    let(:raw_config) do
+      { channel: { url: "#{origin}/" }, strategy: :auto, request: { max_requests: 6 },
+        auto_source: { scraper: { native_feed: { enabled: false }, wordpress_api: { enabled: false },
+                                  sitemap: { enabled: false } } } }
+    end
+    let(:sessions) { [] }
+
+    before do
+      allow(pipeline).to receive(:request_session_for).and_wrap_original do |original, *args, **kwargs|
+        original.call(*args, **kwargs).tap do |session|
+          allow(session).to receive(:remember!).and_call_original
+          sessions << [kwargs[:scrape_url], session]
+        end
+      end
+    end
+
+    it 'builds it for the resolved URL and marks the winner page as visited', :aggregate_failures do
+      result
+
+      scrape_url, session = sessions.last
+      expect(sessions.size).to eq(2)
+      expect(scrape_url).to eq("#{origin}/news/")
+      expect(session).to have_received(:remember!).with(Html2rss::Url.from_absolute("#{origin}/news/"))
     end
   end
 
@@ -181,4 +296,4 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
   end
 end
 
-# rubocop:enable RSpec/MultipleMemoizedHelpers
+# rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
