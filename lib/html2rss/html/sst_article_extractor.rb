@@ -261,13 +261,13 @@ module Html2rss
       end
 
       def extract_categories(title, root: @root)
-        Set.new.tap do |categories|
+        ArticleRules::Category::Collector.new(vocabulary: @vocabulary, title:).tap do |collector|
           root.find_all { |n| category_candidate?(n) }.each do |element|
-            add_category_text!(categories, element, title:) if category_text_node?(element, root)
+            add_category_text!(collector, element) if category_text_node?(element, root)
             element.attrs.raw.each do |name, value|
               next unless ArticleRules::Category.attr_name_match?(name)
 
-              ArticleRules::Category.add_text!(categories, value, vocabulary: @vocabulary, title:)
+              collector.add(value)
             end
           end
         end.to_a
@@ -282,23 +282,23 @@ module Html2rss
         !element.equal?(root) && ArticleRules::Category.class_match?(element.attrs.class_names)
       end
 
-      def add_category_text!(categories, element, title:)
+      def add_category_text!(collector, element)
         return if category_text_container?(element)
 
         if element.link?
-          ArticleRules::Category.add_text!(categories, element.visible_text, vocabulary: @vocabulary, title:)
+          collector.add(element.visible_text)
           return
         end
 
-        add_descendant_or_visible_category!(categories, element, title:)
+        add_descendant_or_visible_category!(collector, element)
       end
 
-      def add_descendant_or_visible_category!(categories, element, title:)
+      def add_descendant_or_visible_category!(collector, element)
         anchors = element.find_all(&:link?)
         if anchors.any?
-          anchors.each { |a| ArticleRules::Category.add_text!(categories, a.visible_text, vocabulary: @vocabulary, title:) }
+          anchors.each { |a| collector.add(a.visible_text) }
         else
-          ArticleRules::Category.add_split_text!(categories, element.visible_text, vocabulary: @vocabulary, title:)
+          collector.add_split(element.visible_text)
         end
       end
 
