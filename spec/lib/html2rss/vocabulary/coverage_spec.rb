@@ -381,7 +381,8 @@ RSpec.describe Html2rss::Vocabulary do
        'Πολιτική απορρήτου 2026', 'Διαβάστε περισσότερα 2026', 'Κάντε συνδρομή 2026'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
       end
-      expect(el.recommended?('Σχετικά άρθρα 3')).to be(true)
+      expect(el.recommended?('Σχετικά άρθρα 3')).to be(false)
+      expect(el.recommended?('Σχετικά άρθρα (3)')).to be(true)
     end
 
     it 'reads the labels on a Greek page only, and the new-window notice', :aggregate_failures do
