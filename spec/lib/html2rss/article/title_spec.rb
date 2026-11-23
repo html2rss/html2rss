@@ -447,7 +447,7 @@ RSpec.describe Html2rss::Article::Title do
       expect(described_class.own_noise_piece?('Soort-xx:', vocabulary: all_scope, date_element: true)).to be(false)
     end
 
-  
+    it 'reads bidi marks around the piece and no own term in a scope without any', :aggregate_failures do
       rlm = [0x200F].pack('U')
 
       expect(described_class.own_noise_piece?("#{rlm}Soort-xx:#{rlm}", vocabulary: xx, date_element: false)).to be(true)
