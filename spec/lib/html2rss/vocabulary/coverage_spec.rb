@@ -388,7 +388,8 @@ RSpec.describe Html2rss::Vocabulary do
           expect(reader.call(label)).to be(false), label
         end
       end
-      ['تعليقات 12', 'المزيد 3', 'بحث (7)'].each { expect(ar.utility_chrome?(_1)).to be(true), _1 }
+      ['تعليقات (12)', 'المزيد [3]', 'بحث (7)'].each { expect(ar.utility_chrome?(_1)).to be(true), _1 }
+      ['تعليقات 12', 'المزيد 3', 'من نحن 2'].each { expect(ar.utility_chrome?(_1)).to be(false), _1 }
     end
 
     it 'reads the labels on a Arabic page only', :aggregate_failures do
@@ -456,7 +457,8 @@ RSpec.describe Html2rss::Vocabulary do
           expect(reader.call(label)).to be(false), label
         end
       end
-      ['نظرات 12', 'بیشتر 3', 'جستجو (7)'].each { expect(fa.utility_chrome?(_1)).to be(true), _1 }
+      ['نظرات (12)', 'بیشتر [3]', 'جستجو (7)'].each { expect(fa.utility_chrome?(_1)).to be(true), _1 }
+      ['نظرات 12', 'بیشتر 3', 'حریم خصوصی 2', 'ثبت نام 140'].each { expect(fa.utility_chrome?(_1)).to be(false), _1 }
     end
 
     it 'reads the ZWNJ, spaced and Arabic-letter spellings of a label alike, and normalizes nothing',
