@@ -354,7 +354,6 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads the apostrophe spellings of a label alike', :aggregate_failures do
       ["'", '’', 'ʼ'].each do |mark|
-        expect(uk.utility_chrome?("зворотний зв#{mark}язок")).to be(true), mark
         expect(uk.recommended?("пов#{mark}язані матеріали")).to be(true), mark
         expect(uk.utility_chrome?("зв#{mark}яжіться з нами")).to be(true), mark
       end
@@ -374,6 +373,12 @@ RSpec.describe Html2rss::Vocabulary do
        'Детальніше про реформу розповів міністр', 'Читати далі стане легше: бібліотеки оновили фонд',
        'Закрити кордон пропонують депутати'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps the bare phrase зворотний зв’язок a headline, with each apostrophe', :aggregate_failures do
+      ["'", '’', 'ʼ'].each do |mark|
+        readers.each { |name, reader| expect(reader.call("Зворотний зв#{mark}язок")).to be(false), "#{name}: #{mark}" }
       end
     end
 
