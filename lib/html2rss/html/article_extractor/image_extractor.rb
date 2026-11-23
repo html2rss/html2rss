@@ -21,7 +21,7 @@ module Html2rss
         # @param article_tag [Nokogiri::XML::Element] article container node
         # @return [String, nil] src attribute from first matching image tag
         def self.from_img(article_tag)
-          article_tag.at_css('img[src]:not([src^="data"])')&.[]('src')
+          article_tag.css('img[src]').map { |img| img['src'] }.find { |src| ArticleRules::Image.remote_src?(src) }
         end
 
         ##

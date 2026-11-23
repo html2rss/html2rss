@@ -113,6 +113,16 @@ RSpec.describe Html2rss::Html::ArticleExtractor::ImageExtractor do
       end
     end
 
+    context 'when a relative image path merely starts with "data"' do
+      let(:html) do
+        '<article><img src="data:image/gif;base64,R0lG"><img src="data/hero.jpg"></article>'
+      end
+
+      it 'keeps it and still skips the data: URI' do
+        expect(url).to eq('https://example.com/data/hero.jpg')
+      end
+    end
+
     context 'when image source is not present' do
       let(:html) { '<article></article>' }
 
