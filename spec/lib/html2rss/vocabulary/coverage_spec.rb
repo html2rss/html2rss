@@ -215,8 +215,13 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads Simplified and Traditional chrome labels as whole labels', :aggregate_failures do
       labels.each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
-      ['登录 (3)', '[订阅]', '→ 更多 →', '更多 12'].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
+      ['登录 (3)', '[订阅]', '→ 更多 →', '更多 (12)'].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
       %w[推荐阅读 推薦閱讀 相关阅读 相關閱讀 猜你喜欢 猜你喜歡].each { expect(zh.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads a bracketed count after a Chinese label as chrome, a bare number as a headline', :aggregate_failures do
+      expect(['更多 (12)', '相关阅读 [3]', '隐私政策 （2）'].map { zh.utility_chrome?(_1) }).to all(be(true))
+      expect(['更多 12', '相关阅读 3', '隐私政策 2'].map { zh.utility_chrome?(_1) }).to all(be(false))
     end
 
     it 'reads Chinese read-more and call-to-action labels as whole labels, as chrome and junk', :aggregate_failures do
@@ -317,7 +322,8 @@ RSpec.describe Html2rss::Vocabulary do
        '회사 소개 2026', '개인정보 처리방침 2026'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
       end
-      expect(ko.recommended?('관련 기사 3')).to be(true)
+      expect(['관련 기사 (3)', '관련 기사 [3]', '관련 기사 （3）', '관련 기사 ［3］'].map { ko.recommended?(_1) }).to all(be(true))
+      expect(['관련 기사 3', '관련 기사 (3', '관련 기사 3)', '관련 기사 1234'].map { ko.recommended?(_1) }).to all(be(false))
     end
 
     it 'reads the labels on a Korean page only, and the new-window notice', :aggregate_failures do
