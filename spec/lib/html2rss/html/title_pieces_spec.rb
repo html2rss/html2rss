@@ -149,7 +149,7 @@ RSpec.describe Html2rss::Html::TitlePieces do
       terms[:paid_label] = %w[betaald-xx]
       terms[:date_piece] = [/\d{1,2}-mnd-xx/]
       language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
-      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::SHARED_LANGUAGES, own: [language])
     end
     let(:headline) do
       lambda do |html, vocabulary|

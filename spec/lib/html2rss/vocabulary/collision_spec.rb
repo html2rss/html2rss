@@ -89,7 +89,7 @@ RSpec.describe Html2rss::Vocabulary do
 
   it 'has no unambiguous term reading as chrome in another language page, except the reviewed pairs',
      :aggregate_failures do
-    hits = collisions.call(described_class::ALL, link_texts)
+    hits = collisions.call(described_class::SHARED_LANGUAGES, link_texts)
 
     expect(hits - reviewed.keys).to be_empty, "unreviewed collisions: #{(hits - reviewed.keys).inspect}"
     expect(reviewed.keys - hits).to be_empty, "stale reviewed pairs: #{(reviewed.keys - hits).inspect}"

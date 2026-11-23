@@ -6,9 +6,9 @@ module Html2rss
       ##
       # Owner of how the call-to-action, read-more and new-window concepts ({Vocabulary::PAGE_PATTERNS}) are read:
       # one precompiled set of matchers per page scope, built at load. The shared terms are every language of
-      # {Vocabulary::ALL}; a {Vocabulary::PAGE_ONLY} language adds its own, read as whole labels only, so a Han
-      # term never opens a headline. Scopes with the same own terms (every shared language and +:all+ have none)
-      # share one entry, compiled once, so a scope without own terms reads exactly the shared terms.
+      # {Vocabulary::SHARED_LANGUAGES}; a {Vocabulary::PAGE_ONLY} language adds its own, read as whole labels only,
+      # so a Han term never opens a headline. Scopes with the same own terms (every shared language and +:all+ have
+      # none) share one entry, compiled once, so a scope without own terms reads exactly the shared terms.
       module PageReadings
         # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a
         # multi-word imperative phrase at the start of the text, read in every language. An infinitive or noun

@@ -44,11 +44,11 @@ RSpec.describe Html2rss::Vocabulary do
       path_article: ->(lang, term) { path.call(lang, term).content_path? }
     }
   end
-  let(:scopes) { described_class::ALL.map(&:code) + [nil] }
+  let(:scopes) { described_class::SHARED_LANGUAGES.map(&:code) + [nil] }
 
   describe 'declared terms' do
     it 'are exactly the pinned ambiguous terms per concept, by language' do
-      declared = described_class::ALL.each_with_object({}) do |lang, all|
+      declared = described_class::SHARED_LANGUAGES.each_with_object({}) do |lang, all|
         lang.ambiguous.each do |concept, terms|
           terms.each { |term| ((all[concept] ||= {})[term] ||= []) << lang.code }
         end
@@ -111,7 +111,7 @@ RSpec.describe Html2rss::Vocabulary do
 
   describe 'premium' do
     it 'is an international subscription word: unflagged, and read in every language', :aggregate_failures do
-      expect(described_class::ALL.flat_map { _1.ambiguous.values.flatten }).not_to include('premium')
+      expect(described_class::SHARED_LANGUAGES.flat_map { _1.ambiguous.values.flatten }).not_to include('premium')
       scopes.each do |lang|
         expect(text.call(lang).utility?('Premium')).to be(true), lang.inspect
         expect(text.call(lang).utility_prefix?('Premium members')).to be(true), lang.inspect

@@ -54,7 +54,8 @@ module Html2rss
       ].freeze
       private_constant :JUNK_TITLE_RULES
 
-      # Owner of the read-more vocabulary ("Read more", "More about X" in nine languages): a +:cta+ title.
+      # Owner of the read-more vocabulary ("Read more", "More about X" in every {Vocabulary::LANGUAGES}
+      # language): a +:cta+ title.
 
       # Minimum present-title length before short-title warnings.
       MIN_TITLE_LENGTH = 4

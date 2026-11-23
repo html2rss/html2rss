@@ -12,6 +12,6 @@ RSpec.describe Html2rss::Vocabulary::NonTranslated do
   end
 
   it 'is not a language' do
-    expect(Html2rss::Vocabulary::ALL).not_to include(described_class)
+    expect(Html2rss::Vocabulary::SHARED_LANGUAGES).not_to include(described_class)
   end
 end

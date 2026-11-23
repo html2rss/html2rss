@@ -6,7 +6,8 @@ module Html2rss
     # {Vocabulary}'s (every language in {Vocabulary::LANGUAGES}); this owns how each concept is read: a whole
     # text, a prefix, a call-to-action opening, or a whole text with its topic. Utility and recommendation
     # labels honour the page language ({Vocabulary::Scope}); call-to-action and read-more labels read every
-    # language of {Vocabulary::ALL}. A {Vocabulary::PAGE_ONLY} language's terms are read as whole labels only.
+    # language of {Vocabulary::SHARED_LANGUAGES}. A {Vocabulary::PAGE_ONLY} language's terms are read as whole
+    # labels only.
     class TextClassifier
       # Never matches: the ambiguous matcher of a scope without ambiguous terms. Like every matcher here it is
       # fixed to UTF-8 (+/u+): a pure-ASCII regexp would be recompiled, and allocate, on each non-ASCII text.
@@ -95,10 +96,9 @@ module Html2rss
       # ... and, for a scope with terms of its own ({Vocabulary::PAGE_ONLY}), the whole-label matcher of those terms
       # (+NEVER+ for any other scope) for every reading: no trailing word and no headline opener, because a Han
       # term has no word boundary.
-      OWN = Vocabulary::SCOPES.values.to_h do |scope|
-        whole = ->(concepts) { whole_label(concepts.map { scope.own_alternation(_1) }) }
-        [scope.code, READINGS.transform_values(&whole).freeze]
-      end.freeze
+      OWN = Vocabulary.by_own_terms(Vocabulary::SCOPED_PATTERNS) do |own, _|
+        READINGS.transform_values { whole_label(own.values_at(*_1)) }.freeze
+      end
       private_constant :NEVER, :BIDI_MARKS, :BRACKETED_COUNT, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
 
       # Zero-width non-joiner and joiner. Inside a word they spell Persian, Urdu and Indic words, so a label

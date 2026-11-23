@@ -31,8 +31,7 @@ module Html2rss
 
       # @return [Boolean] whether a page-only language adds terms to this scope
       def own?
-        own_alternations.each_value { return true unless _1.empty? }
-        false
+        own_alternations.any? { |_, terms| !terms.empty? }
       end
     end
   end
