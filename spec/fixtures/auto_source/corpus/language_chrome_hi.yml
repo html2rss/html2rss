@@ -1,5 +1,5 @@
 ---
-case: Fifteen invented news cards (four short headlines, three open with a chrome word, eight end in a year after a label word on a non-content path), account, privacy and subscription shortcuts, in language "hi"; only the fifteen headlines are items.
+case: Fifteen invented news cards (four short headlines, three open with a chrome word, eight end in a year after a label word on a non-content path), account, privacy and subscription shortcuts, in language "hi"; six cards with an unlinked headline whose only link is an ordinary noun (that link is the item); only these twenty-one are items.
 expected:
 - https://example.com/news/2026/11/harbor-ferry-timetable
 - https://example.com/news/2026/11/library-weekend-hours
@@ -16,3 +16,9 @@ expected:
 - https://example.com/story-6
 - https://example.com/story-7
 - https://example.com/story-8
+- https://example.com/card-1
+- https://example.com/card-2
+- https://example.com/card-3
+- https://example.com/card-4
+- https://example.com/card-5
+- https://example.com/card-6

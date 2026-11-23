@@ -350,9 +350,9 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
-      ['लॉग इन', 'लॉगिन', 'साइन इन', 'सर्च', 'मेन्यू', 'संपर्क करें', 'हमारे बारे में',
-       'प्राइवेसी पॉलिसी', 'गोपनीयता नीति', 'इस्तेमाल की शर्तें', 'सदस्यता', 'सहायता',
-       'न्यूज़लेटर', 'लॉगिन (3)', '[सर्च]', '→ सर्च →'].each do |label|
+      ['लॉग इन', 'लॉगिन', 'साइन इन', 'मेन्यू', 'संपर्क करें', 'हमारे बारे में',
+       'प्राइवेसी पॉलिसी', 'गोपनीयता नीति', 'इस्तेमाल की शर्तें',
+       'विज्ञापन दें', 'लॉगिन (3)', '[संपर्क करें]', '→ संपर्क करें →'].each do |label|
         expect(hi.utility_chrome?(label)).to be(true), label
       end
       ['संबंधित खबरें', 'यह भी पढ़ें', 'संबंधित लेख', 'संबंधित खबरें (3)'].each do |label|
@@ -384,6 +384,8 @@ RSpec.describe Html2rss::Vocabulary do
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
       end
       expect(['संबंधित खबरें (3)', 'संबंधित खबरें [3]'].map { hi.recommended?(_1) }).to all(be(true))
+      nouns = %w[सर्च खोजें रजिस्टर सहायता न्यूज़लेटर सदस्यता]
+      expect(nouns.flat_map { |noun| readers.values.map { _1.call(noun) } }).to all(be(false))
       bare = ['सर्च 2', 'रजिस्टर 2', 'हमारे बारे में 2', 'संबंधित खबरें 3']
       expect(bare.map { hi.utility_chrome?(_1) }).to all(be(false))
     end
@@ -395,7 +397,7 @@ RSpec.describe Html2rss::Vocabulary do
       terms = described_class::Hi.terms.values.flatten.grep(String)
       expect(terms).to all(satisfy { _1 == _1.unicode_normalize(:nfc) })
       nukta = terms.grep(/\u093C/)
-      expect(nukta).to include('और पढ़ें', 'न्यूज़लेटर')
+      expect(nukta).to include('और पढ़ें', 'न्यूज़लेटर सब्सक्राइब करें')
       nukta.each do |term|
         forms = [term.unicode_normalize(:nfd), term.gsub(Regexp.union(precomposed.keys), precomposed)]
         forms.each { expect(hi.utility_chrome?(_1) || hi.read_more?(_1) || hi.recommended?(_1)).to be(true), _1 }

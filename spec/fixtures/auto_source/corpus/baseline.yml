@@ -290,8 +290,8 @@ language_chrome_fr.html:
   sst_built: true
 language_chrome_hi.html:
   junk: 0
-  real: 15
-  expected: 15
+  real: 21
+  expected: 21
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
