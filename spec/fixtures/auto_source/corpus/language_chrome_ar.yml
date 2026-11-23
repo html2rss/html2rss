@@ -1,0 +1,19 @@
+---
+case: Sixteen invented news cards in language "ar" (four short headlines, four open with a label word, eight end in a year after a label word on a non-content path), account, privacy and subscription shortcuts wrapped in bidi marks; only the sixteen headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/search-for-survivors
+- https://example.com/news/2026/11/login-outage
+- https://example.com/news/2026/11/subscription-economy
+- https://example.com/news/2026/11/more-than-expected
+- https://example.com/news/2026/11/comments-ban
+- https://example.com/story-1
+- https://example.com/story-2
+- https://example.com/story-3
+- https://example.com/story-4
+- https://example.com/story-5
+- https://example.com/story-6
+- https://example.com/story-7
+- https://example.com/story-8

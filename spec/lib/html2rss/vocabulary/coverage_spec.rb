@@ -73,12 +73,12 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads sponsorship labels and a section label', :aggregate_failures do
-      kind = Html2rss::LinkDestination::Sponsorship::LabelText.method(:kind)
+      kind = ->(text) { Html2rss::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
 
       expect(kind.call('Conteúdo patrocinado por Marca')).to eq(:paid_label)
       expect(kind.call('Publieditorial')).to eq(:paid_label)
       expect(kind.call('Publicidade')).to eq(:label)
-      title = Html2rss::Article::Title.compose('Porto reabre', kicker: 'Seção: Transportes')
+      title = Html2rss::Article::Title.compose('Porto reabre', kicker: 'Seção: Transportes', vocabulary: all_scope)
 
       expect(title).to eq('Transportes: Porto reabre')
     end
@@ -153,7 +153,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads sponsorship labels with the ё and е spellings, and an ad word as a whole text', :aggregate_failures do
-      kind = Html2rss::LinkDestination::Sponsorship::LabelText.method(:kind)
+      kind = ->(text) { Html2rss::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
 
       ['На правах рекламы', 'Партнёрский материал', 'ПАРТНЕРСКИЙ МАТЕРИАЛ', 'Партнёрские материалы',
        'Материал партнера', 'Материал партнёра', 'Спонсорский материал', 'Рекламный материал'].each do |label|
@@ -171,9 +171,10 @@ RSpec.describe Html2rss::Vocabulary do
         expect(noise.call(piece)).to be(true), piece
       end
       expect(noise.call('Тема дня')).to be(false)
-      expect(title.compose('Порт открыт после ремонта', kicker: 'Раздел: Транспорт'))
+      expect(title.compose('Порт открыт после ремонта', kicker: 'Раздел: Транспорт', vocabulary: all_scope))
         .to eq('Транспорт: Порт открыт после ремонта')
-      expect(title.compose('Порт открыт после ремонта', kicker: '10:30 мск')).to eq('Порт открыт после ремонта')
+      expect(title.compose('Порт открыт после ремонта', kicker: '10:30 мск',
+                                                        vocabulary: all_scope)).to eq('Порт открыт после ремонта')
     end
 
     it 'reads a Cyrillic podcast word with a letter boundary, in any case', :aggregate_failures do
@@ -338,6 +339,354 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Ukrainian labels' do
+    let(:uk) { text.call(:uk) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:uk]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { uk.utility?(label) }, chrome: ->(label) { uk.utility_chrome?(label) },
+        prefix: ->(label) { uk.utility_prefix?(label) }, recommended: ->(label) { uk.recommended?(label) },
+        read_more: ->(label) { uk.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
+      %w[вхід увійти реєстрація пошук підписка підписатися поділитися закрити меню коментарі контакти].push(
+        'про нас', 'про компанію', 'карта сайту', 'політика конфіденційності', 'умови використання',
+        'Вхід (3)', '[Пошук]'
+      ).each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
+      ['читайте також', 'Читайте також', 'схожі матеріали', 'рекомендовані матеріали', 'вас також може зацікавити']
+        .each { expect(uk.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads the apostrophe spellings of a label alike', :aggregate_failures do
+      ["'", '’', 'ʼ'].each do |mark|
+        expect(uk.recommended?("пов#{mark}язані матеріали")).to be(true), mark
+        expect(uk.utility_chrome?("зв#{mark}яжіться з нами")).to be(true), mark
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Читати далі', 'докладніше', 'Детальніше', 'дізнатися більше'].each do |label|
+        expect([uk.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['підписатися на розсилку', 'Поділіться', 'залишити коментар']
+        .each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps a headline that opens with a label noun a headline', :aggregate_failures do
+      ['Пошук зниклих триває', 'Вхід до міста закрито', 'Реєстрація виборців завершилась', 'Підписка на газети зросла',
+       'Контакти з сусідами рятують', 'Меню шкільних їдалень оновили', 'Коментарі експертів розділились',
+       'Детальніше про реформу розповів міністр', 'Читати далі стане легше: бібліотеки оновили фонд',
+       'Закрити кордон пропонують депутати'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps the bare phrase зворотний зв’язок a headline, with each apostrophe', :aggregate_failures do
+      ["'", '’', 'ʼ'].each do |mark|
+        readers.each { |name, reader| expect(reader.call("Зворотний зв#{mark}язок")).to be(false), "#{name}: #{mark}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
+      ['Читайте також 2026', 'Рекомендовані матеріали 2026', 'Схожі новини 2026', 'Про нас 2026',
+       'Політика конфіденційності 2026', 'Підписка 2026'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+      expect(uk.recommended?('Схожі матеріали (3)')).to be(true)
+    end
+
+    it 'keeps a label followed by a bare count a headline', :aggregate_failures do
+      ['Умови використання 2', 'Політика конфіденційності: 100', 'Схожі матеріали 3'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'reads the labels on a Ukrainian page only, and the new-window notice', :aggregate_failures do
+      [nil, :ru, :en, :ko].each { expect(text.call(_1).utility_chrome?('Вхід')).to be(false), _1.inspect }
+      expect(uk.utility_chrome?('Вхід (відкриється у новому вікні)')).to be(true)
+      expect(text.call(nil).utility_chrome?('Вхід (відкриється у новому вікні)')).to be(false)
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::Uk.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:uk].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
+  describe 'Greek labels' do
+    let(:el) { text.call(:el) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:el]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { el.utility?(label) }, chrome: ->(label) { el.utility_chrome?(label) },
+        prefix: ->(label) { el.utility_prefix?(label) }, recommended: ->(label) { el.recommended?(label) },
+        read_more: ->(label) { el.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, in any case', :aggregate_failures do
+      %w[Σύνδεση ΣΥΝΔΕΣΗ ΣΎΝΔΕΣΗ Αποσύνδεση Εγγραφή ΕΓΓΡΑΦΗ Αναζήτηση ΑΝΑΖΗΤΗΣΗ Επικοινωνία Συνδρομή Σχόλια Μενού
+         Εγγραφείτε].each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+      ['Όροι χρήσης', 'ΟΡΟΙ ΧΡΗΣΗΣ', 'ΌΡΟΙ ΧΡΉΣΗΣ', 'Πολιτική απορρήτου', 'ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ', 'Σχετικά με εμάς',
+       'ΟΡΟΙ ΚΑΙ ΠΡΟΫΠΟΘΕΣΕΙΣ', 'Όροι και προϋποθέσεις', 'Επικοινωνία (3)', '[Μενού]']
+        .each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+      ['Σχετικά άρθρα', 'ΣΧΕΤΙΚΑ ΑΡΘΡΑ', 'Προτεινόμενα', 'Προτεινόμενα άρθρα', 'Διαβάστε επίσης', 'ΔΙΑΒΑΣΤΕ ΕΠΙΣΗΣ']
+        .each { expect(el.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Διαβάστε περισσότερα', 'ΔΙΑΒΑΣΤΕ ΠΕΡΙΣΣΟΤΕΡΑ', 'Περισσότερα', 'Διαβάστε ολόκληρο το άρθρο'].each do |label|
+        expect([el.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Εγγραφή στο newsletter', 'ΕΓΓΡΑΦΗ ΣΤΟ NEWSLETTER', 'Κάντε συνδρομή', 'Γίνετε συνδρομητής']
+        .each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps a headline that opens with a label word a headline', :aggregate_failures do
+      ['Αναζήτηση για τους αγνοούμενους', 'Σύνδεση του δικτύου με την Κρήτη', 'Εγγραφή μαθητών στα σχολεία',
+       'Επικοινωνία με τους ορειβάτες διακόπηκε', 'Συνδρομή στα μέσα μεταφοράς ακριβαίνει',
+       'Σχόλια του πρωθυπουργού για την οικονομία', 'Όροι χρήσης της γης αλλάζουν στα νησιά',
+       'Περισσότερα έσοδα από τον τουρισμό φέτος', 'Σχετικά με την απεργία της Τρίτης δήλωσε ο υπουργός',
+       'Διαβάστε επίσης ότι η τιμή του ρεύματος πέφτει'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a sports headline that echoes a dropped phrase a headline', :aggregate_failures do
+      ['Πίσω στην κορυφή', 'Ο λογαριασμός μου'].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
+      ['Σχετικά άρθρα 2026', 'Προτεινόμενα άρθρα 2026', 'Διαβάστε επίσης 2026', 'Όροι χρήσης 2026',
+       'Πολιτική απορρήτου 2026', 'Διαβάστε περισσότερα 2026', 'Κάντε συνδρομή 2026'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+      expect(el.recommended?('Σχετικά άρθρα 3')).to be(false)
+      expect(el.recommended?('Σχετικά άρθρα (3)')).to be(true)
+    end
+
+    it 'reads the labels on a Greek page only, and the new-window notice', :aggregate_failures do
+      [nil, :ja, :en, :ko].each { expect(text.call(_1).utility_chrome?('Επικοινωνία')).to be(false), _1.inspect }
+      expect(el.utility_chrome?('Επικοινωνία (ανοίγει σε νέο παράθυρο)')).to be(true)
+      expect(text.call(nil).utility_chrome?('Επικοινωνία (ανοίγει σε νέο παράθυρο)')).to be(false)
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::El.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:el].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
+  describe 'Hebrew labels' do
+    let(:he) { text.call(:he) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:he]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { he.utility?(label) }, chrome: ->(label) { he.utility_chrome?(label) },
+        prefix: ->(label) { he.utility_prefix?(label) }, recommended: ->(label) { he.recommended?(label) },
+        read_more: ->(label) { he.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
+      ['התחברות', 'הרשמה', 'כניסה', 'חיפוש', 'תנאי שימוש', 'מדיניות הפרטיות', 'צרו קשר', 'אודות', 'מפת האתר',
+       'הצהרת נגישות', 'תגובות', 'שיתוף', 'דלג לתוכן', 'התחברות (3)', '[חיפוש]', '→ אודות →'].each do |label|
+        expect(he.utility_chrome?(label)).to be(true), label
+      end
+      ['קראו גם', 'כתבות קשורות', 'עוד בנושא'].each { expect(he.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['קראו עוד', 'להמשך קריאה', 'לכתבה המלאה', 'למידע נוסף'].each do |label|
+        expect([he.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['הרשמה לניוזלטר', 'רכשו מינוי', 'הירשמו'].each { expect(he.utility_chrome?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps a headline that opens with a label word or an attached prefix a headline', :aggregate_failures do
+      ['חיפוש אחר הנעדרים נמשך', 'כניסה לתוקף של החוק', 'הרשמה לבתי הספר נפתחה', 'התחברות הרשת החדשה מעכבת תושבים',
+       'אודות המחקר החדש נמסר כי', 'עזרה לנפגעי השיטפון הגיעה', 'תגובות קשות לפסק הדין', 'קראו עוד מאמרים בנושא החינוך',
+       'כתבות קשורות לא נמצאו בארכיון', 'שיתוף פעולה חדש בין הערים', 'סגירה של הגשר נדחתה'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a title and reads a bracketed count as chrome', :aggregate_failures do
+      ['תנאי שימוש 2026', 'מדיניות פרטיות 2026', 'כתבות קשורות 2026', 'קראו גם 2026',
+       'הצהרת נגישות 2026'].each do |label|
+        expect(he.utility_chrome?(label)).to be(false), label
+        expect(junk_reason.call(label)).to be_nil, label
+      end
+      expect(he.utility_chrome?('תגובות (12)')).to be(true)
+      expect(he.utility_chrome?('תגובות 12')).to be(false)
+    end
+
+    it 'reads labels wrapped in bidi marks', :aggregate_failures do
+      ["\u200Fהתחברות\u200F", "\u202Bתנאי שימוש\u202C"].each { expect(he.utility_chrome?(_1)).to be(true), _1 }
+      expect(junk_reason.call("\u200Fקראו עוד\u200F")).to eq(:cta)
+    end
+
+    it 'reads the labels on a Hebrew page only, and the new-window notice', :aggregate_failures do
+      [nil, :ja, :en, :zh, :iw].each { expect(text.call(_1).utility_chrome?('התחברות')).to be(false), _1.inspect }
+      expect(he.utility_chrome?('התחברות (נפתח בחלון חדש)')).to be(true)
+      expect(text.call(nil).utility_chrome?('התחברות (נפתח בחלון חדש)')).to be(false)
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::He.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:he].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
+  describe 'Arabic labels' do
+    let(:ar) { text.call(:ar) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:ar]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { ar.utility?(label) }, chrome: ->(label) { ar.utility_chrome?(label) },
+        prefix: ->(label) { ar.utility_prefix?(label) }, recommended: ->(label) { ar.recommended?(label) },
+        read_more: ->(label) { ar.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or direction marks',
+       :aggregate_failures do
+      ['تسجيل الدخول', 'تسجيل الخروج', 'إنشاء حساب', 'بحث', 'البحث', 'من نحن', 'اتصل بنا', 'سياسة الخصوصية',
+       'الشروط والأحكام',
+       'خريطة الموقع', 'التعليقات', 'النشرة البريدية', 'اشتراك', 'المزيد', 'إغلاق'].each do |item|
+        expect(ar.utility_chrome?(item)).to be(true),
+                                            item
+      end
+      ["\u200fبحث\u200f", "\u202bسياسة الخصوصية\u202c", '[المزيد]', '← المزيد ←',
+       'تسجيل الدخول (يفتح في نافذة جديدة)'].each do |item|
+        expect(ar.utility_chrome?(item)).to be(true), item
+      end
+      ['ذات صلة', 'مقالات ذات صلة', 'اقرأ أيضا', 'اقرأ أيضاً'].each { expect(ar.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['اقرأ المزيد', 'للمزيد', 'للمزيد من التفاصيل', 'تابع القراءة', 'اقرأ المقال كاملا'].each do |label|
+        expect([ar.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['اشترك الآن', 'اشترك في النشرة البريدية', 'أضف تعليقاً'].each { expect(ar.utility_chrome?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps a headline that opens with a label word a headline', :aggregate_failures do
+      ['بحث عن ناجين في الميناء', 'البحث عن حلول للأزمة', 'تسجيل الدخول إلى البوابة يتعطل', 'اشتراك مجاني يغير السوق',
+       'المزيد من الأمطار هذا الأسبوع', 'تعليقات القراء توقف الحملة', 'شارك في الحملة آلاف', 'مشاركة المرأة ترتفع',
+       'للمزيد من الأمطار', 'والمزيد', 'بالبحث', 'التسجيل مفتوح', 'من نحن اليوم', 'إغلاق المطار ليومين',
+       'ذات صلة بالأزمة', 'اقرأ أيضا لماذا تغيرت الأسعار'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a headline, and reads a label with a small count as chrome',
+       :aggregate_failures do
+      ['من نحن 2026', 'سياسة الخصوصية 2026', 'ذات صلة 2026', 'اقرأ أيضا 2026', 'المزيد 2026',
+       'التعليقات 2026'].each do |label|
+        readers.each_value do |reader|
+          expect(reader.call(label)).to be(false), label
+        end
+      end
+      ['تعليقات (12)', 'المزيد [3]', 'بحث (7)'].each { expect(ar.utility_chrome?(_1)).to be(true), _1 }
+      ['تعليقات 12', 'المزيد 3', 'من نحن 2'].each { expect(ar.utility_chrome?(_1)).to be(false), _1 }
+    end
+
+    it 'reads the labels on a Arabic page only', :aggregate_failures do
+      [nil, :ja, :en, :zh, :ko, :fa].each { expect(text.call(_1).utility_chrome?("'تسجيل")).to be(false), _1.inspect }
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::Ar.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:ar].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
+  describe 'Persian labels' do
+    let(:fa) { text.call(:fa) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:fa]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { fa.utility?(label) }, chrome: ->(label) { fa.utility_chrome?(label) },
+        prefix: ->(label) { fa.utility_prefix?(label) }, recommended: ->(label) { fa.recommended?(label) },
+        read_more: ->(label) { fa.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or direction marks',
+       :aggregate_failures do
+      ['ورود', 'خروج', 'جستجو', 'جست‌وجو', 'جست و جو', 'درباره ما', 'تماس با ما', 'حریم خصوصی',
+       'نقشه سایت',
+       'راهنما', 'خبرنامه', 'اشتراک', 'نظرات', 'بیشتر', 'بستن', 'صفحه اصلی'].each do |item|
+        expect(fa.utility_chrome?(item)).to be(true),
+                                            item
+      end
+      ["\u200fجستجو\u200f", "\u202bحریم خصوصی\u202c", '[بیشتر]', '← بیشتر ←',
+       'ورود (در پنجره جدید باز می‌شود)'].each do |item|
+        expect(fa.utility_chrome?(item)).to be(true), item
+      end
+      ['مطالب مرتبط', 'اخبار مرتبط', 'مطالب پیشنهادی', 'همچنین بخوانید'].each do |item|
+        expect(fa.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['ادامه مطلب', 'بیشتر بخوانید', 'متن کامل', 'جزئیات بیشتر', 'ادامه مطلب را بخوانید'].each do |label|
+        expect([fa.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['مشترک شوید', 'اشتراک در خبرنامه', 'نظر خود را بنویسید', 'وارد شوید'].each do |item|
+        expect(fa.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'keeps a headline that opens with a label word a headline', :aggregate_failures do
+      ['جستجو برای بازماندگان در بندر', 'ورود به پورتال مختل شد', 'اشتراک رایگان بازار را عوض کرد',
+       'بیشتر از انتظار باران می‌بارد', 'نظرات خوانندگان کارزار را متوقف کرد', 'خروج بریتانیا از بازار', 'راهنمای خرید',
+       'ثبت‌نام‌کنندگان بیشتر شدند', 'ورودی‌های جدید', 'بستن مرز تا فردا', 'منوی غذا گران شد', 'ادامه مطلب این نیست',
+       'درباره ما چه می‌دانید', 'مطالب مرتبط با اقتصاد',
+       'ورود موج جدید بارشی به کشور', 'ثبت نام و قیمت خودرو', 'قوانین و مقررات'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a headline, and reads a label with a small count as chrome',
+       :aggregate_failures do
+      ['درباره ما 2026', 'حریم خصوصی 2026', 'مطالب مرتبط 2026', 'همچنین بخوانید 2026', 'بیشتر 2026',
+       'نظرات 2026'].each do |label|
+        readers.each_value do |reader|
+          expect(reader.call(label)).to be(false), label
+        end
+      end
+      ['نظرات (12)', 'بیشتر [3]', 'جستجو (7)'].each { expect(fa.utility_chrome?(_1)).to be(true), _1 }
+      ['نظرات 12', 'بیشتر 3', 'حریم خصوصی 2', 'ثبت نام 140'].each { expect(fa.utility_chrome?(_1)).to be(false), _1 }
+    end
+
+    it 'reads the ZWNJ, spaced and Arabic-letter spellings of a label alike, and normalizes nothing',
+       :aggregate_failures do
+      ["ثبت\u200cنام", 'ثبت نام', 'حريم خصوصي', 'اشتراك', 'اشتراک', 'ورود به حساب كاربري', "جست\u200cوجو",
+       'ورود / ثبت نام',
+       "ورود و ثبت\u200cنام", 'ورود | ثبت نام', 'ورود يا ثبت نام', 'شرایط و ضوابط', 'سیاست حریم خصوصی'].each do |item|
+        expect(fa.utility_chrome?(item)).to be(true), item
+      end
+      expect(fa.utility_chrome?("ثبت\u200cنام\u200c")).to be(true)
+      expect(fa.utility_chrome?('ثبتنام')).to be(false)
+      expect(fa.utility_chrome?('ورود به حساب كاربري (در پنجره جديد باز مي‌شود)')).to be(true)
+    end
+
+    it 'reads the labels on a Persian page only', :aggregate_failures do
+      [nil, :ja, :en, :zh, :ko, :ar].each { expect(text.call(_1).utility_chrome?("'ورود',")).to be(false), _1.inspect }
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::Fa.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:fa].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
   describe 'Hindi labels' do
     let(:hi) { text.call(:hi) }
     let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:hi]) } }
@@ -418,7 +767,7 @@ RSpec.describe Html2rss::Vocabulary do
     let(:pager) do
       lambda do |label|
         element = Nokogiri::HTML("<html><body><nav aria-label=\"#{label}\"></nav></body></html>").at('nav')
-        Html2rss::SST::Tags.chrome_scope(element, :sectioned) == :chrome
+        Html2rss::SST::Tags.chrome_scope(element, :sectioned, all_scope) == :chrome
       end
     end
 
@@ -442,7 +791,7 @@ RSpec.describe Html2rss::Vocabulary do
       }.each do |label, chrome|
         link = %(<a href="/a">#{label}</a>)
         markup = %(<html><body><main><ul class="pagination"><li>#{link}</li></ul></main></body></html>)
-        doc = Html2rss::SST::Normalizer.call(markup)
+        doc = Html2rss::SST::Normalizer.call(markup, vocabulary: all_scope)
 
         expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :main }.children.first)).to be(chrome), label
       end

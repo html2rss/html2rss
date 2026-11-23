@@ -46,18 +46,21 @@ module Html2rss
 
       # Text that holds a word.
       WORD = Nodes::WORD
+      # Text that holds a letter, which a clock time or punctuation does not.
+      LETTER = /\p{L}/
       # Link element names of both node kinds.
       LINK_NAMES = Set['a', :a].freeze
-      private_constant :WORD, :LINK_NAMES
+      private_constant :WORD, :LETTER, :LINK_NAMES
 
       ##
       # @param root [Nokogiri::XML::Node, SST::Node] card root
       # @param source [Nokogiri::XML::Node, SST::Node, nil] headline source: the heading, else the anchor
       # @param anchor [Nokogiri::XML::Node, SST::Node, nil] the card's selected anchor
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for kicker type markers
-      def initialize(root, source, anchor: nil, vocabulary: Vocabulary[nil])
+      def initialize(root, source, vocabulary:, anchor: nil)
         @anchor = anchor
-        @nodes = Nodes.for(root)
+        @vocabulary = vocabulary
+        @nodes = Nodes.for(root, vocabulary)
         @kicker = Kicker.new(@nodes, root, source, vocabulary) { headline_piece(source) }
       end
 
@@ -113,7 +116,20 @@ module Html2rss
         drop_pieces!(node, dropped, LEAD_WORDS) { |rest, _| rest.match?(WORD) }
         drop_pieces!(node, dropped, TAG_WORDS) { |rest, piece| rest.match?(WORD) && closing?(node, dropped, piece) }
         drop_opening_noise!(node, dropped)
-        drop_closing_dates!(node, dropped)
+        keep_words(node, drop_closing_dates!(node, dropped))
+      end
+
+      # Gives the headline back its own-term drops when, after all drops, no letter is left (a clock or a bar is
+      # no word) or the text falls below the title floor ({AutoSource::Cleanup::MIN_WORDS}): a term of a
+      # page-only language never empties or shortens a headline into rejection, whatever order its pieces
+      # were dropped in.
+      def keep_words(node, dropped)
+        return dropped unless @vocabulary.own?
+
+        left = @nodes.text(node, dropped).to_s
+        return dropped if left.match?(LETTER) && WordCount.at_least?(left, AutoSource::Cleanup::MIN_WORDS)
+
+        dropped.reject { @nodes.own_noise?(_1) }
       end
 
       # Concealed elements leave unless they hold the only words (the name of an otherwise empty link).
@@ -154,7 +170,7 @@ module Html2rss
       # The date chip of a teaser card: a date-only element ({Article::Title.date_piece?}), or a date element
       # holding only a clock time (+late <time>22:10</time>+, while +at <b>20:15</b>+ is headline text).
       def date_chip?(element)
-        Article::Title.date_piece?(@nodes.text(element)) || (@nodes.date_element?(element) && Article::Title.clock_piece?(@nodes.text(element)))
+        @nodes.date_piece?(element) || (@nodes.date_element?(element) && Article::Title.clock_piece?(@nodes.text(element)))
       end
 
       # Whether +element+ opens the text of +node+ left after +dropped+.

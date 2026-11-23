@@ -5,7 +5,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
 
   let(:base_url) { 'https://example.com/articles/' }
   let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url) }
-  let(:anchor_for) { ->(html) { Html2rss::SST::Normalizer.call(html).root.find(&:link?) } }
+  let(:anchor_for) { ->(html) { Html2rss::SST::Normalizer.call(html, vocabulary: all_scope).root.find(&:link?) } }
 
   describe '#noise_anchor?' do
     it 'rejects taxonomy destinations', :aggregate_failures do
@@ -24,7 +24,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
     end
 
     it 'rejects icon-only anchors' do # rubocop:disable RSpec/ExampleLength
-      doc = Html2rss::SST::Normalizer.call(<<~HTML)
+      doc = Html2rss::SST::Normalizer.call(<<~HTML, vocabulary: all_scope)
         <html><body><article><a href="/news/2024/platform-launch-notes"><img src="/i.png"></a></article></body></html>
       HTML
       anchor = doc.root.find(&:link?)

@@ -269,7 +269,7 @@ module Html2rss
     def vocabulary = @vocabulary ||= Vocabulary[Channel.language_for(response)]
 
     def sst_document
-      Html2rss::SST::Normalizer.call(response.body)
+      Html2rss::SST::Normalizer.call(response.body, vocabulary:)
     end
 
     def segment_stats(sst, page_url)

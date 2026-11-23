@@ -7,7 +7,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
       Html2rss::SST::Node.build(name:, own_text: text, attrs:, children:)
     end
   end
-  let(:marker) { ->(element, ancestors = []) { described_class.marker(element, ancestors) } }
+  let(:marker) { ->(element, ancestors = []) { described_class.marker(element, ancestors, vocabulary: all_scope) } }
   let(:label) { ->(text, **opts) { marker[node[text:, **opts]] } }
   let(:block) { node[name: :div, text: ''] }
   let(:paid_phrases) do
@@ -221,9 +221,10 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
 
   describe '.paid_text?' do
     it 'is true only for a whole paid phrase', :aggregate_failures do
-      expect(['Materiał Partnera', ' Sponsored ', 'タイアップ'].map { described_class.paid_text?(_1) }).to all(be(true))
+      paid = ['Materiał Partnera', ' Sponsored ', 'タイアップ']
+      expect(paid.map { |text| described_class.paid_text?(text, vocabulary: all_scope) }).to all(be(true))
       rejected = ['Werbung', 'Anzeige', 'Promoted', 'PR', 'Partners', 'Sponsored posts win', '', nil]
-      expect(rejected.map { described_class.paid_text?(_1) }).to all(be(false))
+      expect(rejected.map { described_class.paid_text?(_1, vocabulary: all_scope) }).to all(be(false))
     end
   end
 end

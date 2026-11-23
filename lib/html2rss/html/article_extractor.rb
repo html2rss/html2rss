@@ -138,7 +138,7 @@ module Html2rss
       end
 
       def usable_walk_parent?(node)
-        Navigator.usable_card_parent?(node) && !thin_heading_wrapper?(node)
+        Navigator.usable_card_parent?(node, vocabulary: @vocabulary) && !thin_heading_wrapper?(node)
       end
 
       def thin_heading_wrapper?(node)
