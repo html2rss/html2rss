@@ -873,6 +873,108 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Vietnamese labels' do
+    let(:vi) { text.call(:vi) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:vi]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { vi.utility?(label) }, chrome: ->(label) { vi.utility_chrome?(label) },
+        prefix: ->(label) { vi.utility_prefix?(label) }, recommended: ->(label) { vi.recommended?(label) },
+        read_more: ->(label) { vi.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      ['Đăng nhập', 'Đăng xuất', 'Đăng ký', 'Đăng kí', 'ĐĂNG KÍ',
+       'Tạo tài khoản', 'Tìm kiếm', 'Về chúng tôi', 'Liên hệ',
+       'Liên hệ tòa soạn', 'Chính sách bảo mật', 'Điều khoản sử dụng', 'Trang chủ', 'Menu', 'Xem thêm',
+       'Xem tất cả', 'Bình luận', 'Chia sẻ', 'Tải ứng dụng', 'Chuyển đến nội dung chính'].each do |item|
+        expect(vi.utility_chrome?(item)).to be(true), item
+      end
+      ['[Xem thêm]', '← Xem tất cả ←', 'Đăng nhập (mở trong tab mới)', "\u200eTìm kiếm\u200e"].each do |item|
+        expect(vi.utility_chrome?(item)).to be(true), item
+      end
+      ['Tin liên quan', 'Bài viết liên quan', 'Có thể bạn quan tâm', 'Gợi ý cho bạn'].each do |item|
+        expect(vi.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Đọc tiếp', 'Đọc thêm', 'Xem chi tiết', 'Đọc toàn bộ bài viết'].each do |label|
+        expect([vi.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Đăng ký nhận bản tin', 'Đăng ký ngay', 'Gửi bình luận', 'Chia sẻ bài viết'].each do |item|
+        expect(vi.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
+      ['ĐĂNG NHẬP', 'ĐĂNG XUẤT', 'TÌM KIẾM', 'LIÊN HỆ', 'CHÍNH SÁCH BẢO MẬT', 'XEM THÊM', 'TRANG CHỦ'].each do |label|
+        expect(vi.utility_chrome?(label)).to be(true), label
+      end
+      ['TIN LIÊN QUAN', 'BÀI VIẾT LIÊN QUAN'].each { expect(vi.recommended?(_1)).to be(true), _1 }
+      ['ĐỌC TIẾP', 'XEM CHI TIẾT'].each { expect(vi.read_more?(_1)).to be(true), _1 }
+      ['Đăng nhập', 'Tìm kiếm', 'Chính sách bảo mật', 'Tin liên quan'].each do |label|
+        decomposed = label.unicode_normalize(:nfd)
+        expect(decomposed).not_to eq(label)
+        expect(vi.utility_chrome?(decomposed) || vi.recommended?(decomposed)).to be(true), label
+      end
+      expect(vi.read_more?('Đọc tiếp'.unicode_normalize(:nfd))).to be(true)
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      ['Đăng nhập cổng dịch vụ công lỗi suốt nửa ngày', 'Tìm kiếm cứu nạn kéo dài suốt đêm',
+       'Liên hệ viên chức thị trấn nhận bằng khen', 'Chia sẻ sách cũ giúp quỹ học bổng',
+       'Xem thêm lớp vẽ miễn phí mở vào cuối tuần', 'Bình luận viên trẻ giành giải xuất sắc',
+       'Đăng ký cư trú trực tuyến mở lại', 'Đăng kí cư trú trực tuyến mở lại',
+       'Về chúng tôi liên hoan phim ngắn khai mạc',
+       'Trang chủ nhà văn được đặt tên đường', 'Đọc tiếp lời kể của người sống sót',
+       'Tin liên quan vụ cháy được công bố', 'ĐĂNG NHẬP CỔNG DỊCH VỤ CÔNG LỖI NỬA NGÀY'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['Liên hệ 2026', 'Tìm kiếm 2026', 'Tin liên quan 2026', 'Đọc tiếp 2026', 'Đăng nhập 2026',
+       'Chính sách bảo mật 2026', 'Xem thêm 2026', 'ĐĂNG KÝ 2026'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['Xem tất cả (12)', 'Xem thêm [3]', 'Tìm kiếm (7)', 'Bình luận (12)'].each do |item|
+        expect(vi.utility_chrome?(item)).to be(true), item
+      end
+      ['Xem tất cả 12', 'Xem thêm 3', 'Liên hệ 2', 'Bình luận 140'].each do |label|
+        expect(vi.utility_chrome?(label)).to be(false), label
+      end
+    end
+
+    it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
+      ['Thế giới', 'Thể thao', 'Kinh doanh', 'Thời sự', 'Quảng cáo', 'Giới thiệu', 'Chi tiết', 'Hủy bỏ', 'Tin khác',
+       'Mới nhất', 'Xem nhiều', '2 liên quan'].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'keeps a headline of three Vietnamese words above the title floor', :aggregate_failures do
+      ['Chợ đêm mở lại', 'Bến phà đổi giờ chạy', 'Giá vàng tăng mạnh'].each do |headline|
+        expect(junk_reason.call(headline)).to be_nil, headline
+      end
+    end
+
+    it 'reads the labels on a Vietnamese page only', :aggregate_failures do
+      [nil, :ja, :en, :sv, :de, :tr].each do |code|
+        expect(text.call(code).utility_chrome?('Đăng nhập')).to be(false), code.inspect
+      end
+    end
+
+    it 'declares no type marker or path word of its own', :aggregate_failures do
+      expect(described_class::Vi.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:vi].type_markers).to eq(described_class.words(:type_marker))
+      expect(described_class::SCOPED_WORDS.flat_map { described_class::Vi.terms.fetch(_1) }).to be_empty
+    end
+  end
+
   describe 'Indonesian labels' do
     let(:id) { text.call(:id) }
     let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:id]) } }
