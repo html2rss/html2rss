@@ -31,10 +31,10 @@ module Html2rss
         utility_prefix: NONE,
         utility_cta: [
           'přihlásit se k odběru', 'přihlaste se k odběru', 'přihlásit se k odběru newsletteru',
-          'přihlaste se k odběru newsletteru', 'přihlásit se k rozesílce', 'odebírat newsletter',
-          'odebírat novinky', 'koupit předplatné', 'objednat předplatné', 'zaregistrovat se', 'vytvořit účet',
-          'přidat komentář', 'napsat komentář', 'okomentovat', 'sdílet článek', 'sdílet na facebooku',
-          'kontaktujte nás', 'napište nám', 'podat inzerát'
+          'přihlaste se k odběru newsletteru', 'přihlásit se k rozesílce', 'odebírat newsletter', 'odebírat novinky',
+          'koupit předplatné', 'objednat předplatné', 'zaregistrovat se', 'vytvořit účet', 'přidat komentář',
+          'napsat komentář', 'okomentovat', 'sdílet článek', 'sdílet na facebooku', 'kontaktujte nás', 'napište nám',
+          'podat inzerát'
         ],
         read_more: [
           'číst dále', 'číst více', 'číst dál', 'čtěte více', 'čtěte dále', 'celý článek', 'zobrazit celý článek',
@@ -67,12 +67,10 @@ module Html2rss
           'hledat', 'vyhledávání', 'o nás', 'kontakt', 'kontakty', 'ochrana soukromí', 'ochrana osobních údajů',
           'zpracování osobních údajů', 'zásady ochrany soukromí', 'zásady ochrany osobních údajů',
           'zásady zpracování osobních údajů', 'informace o zpracování osobních údajů', 'nastavení soukromí',
-          'nastavení cookies', 'nastavení cookie', 'nastavení souborů cookie', 'zásady cookies',
-          'podmínky používání', 'podmínky užívání', 'obchodní podmínky', 'všeobecné obchodní podmínky',
-          'všeobecné podmínky', 'všeobecné smluvní podmínky', 'mapa stránek', 'nápověda', 'často kladené otázky',
-          'časté dotazy', 'nejčastější dotazy', 'menu', 'úvodní stránka', 'hlavní stránka', 'domovská stránka',
-          'zobrazit všechny', 'zobrazit vše', 'zobrazit více', 'zobrazit další', 'načíst další', 'načíst více',
-          'všechny články', 'všechny zprávy', 'další články', 'další zprávy', 'sdílet',
+          'nastavení cookies', 'nastavení cookie', 'nastavení souborů cookie', 'zásady cookies', 'podmínky používání',
+          'podmínky užívání', 'obchodní podmínky', 'všeobecné obchodní podmínky', 'všeobecné podmínky',
+          'všeobecné smluvní podmínky', 'mapa stránek', 'nápověda', 'často kladené otázky', 'časté dotazy',
+          'nejčastější dotazy', 'menu', 'úvodní stránka', 'hlavní stránka', 'domovská stránka', 'sdílet',
           'přeskočit na obsah', 'přeskočit na hlavní obsah', 'přejít na obsah', 'přejít k obsahu', 'můj účet',
           'moje předplatné', 'spravovat účet'
         ],

@@ -3,18 +3,18 @@
 module Html2rss
   module Vocabulary
     # Indonesian. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +id+, and nowhere else, so
-    # +:all+ and every other language read exactly what they read without it. Indonesian is written in Latin script
-    # and its label words are ordinary words (+masuk+ is "enter", +daftar+ a list, +cari+ to look for, +lainnya+
-    # "others"), so no term is read as a prefix or a substring: each label is listed whole and read as a whole text
-    # only (no trailing word, no headline opener, see {LinkDestination::TextClassifier}). Only the concepts read
-    # through a {Scope} are listed (label words, the call to action, read-more, recommended and the new-window
-    # notice); the others stay +NONE+ until their readers take the page scope. It lists no type marker (stripping a
-    # short kicker could leave a headline below the title floor), no section name (+nasional+, +bola+, +ekonomi+ and
-    # +otomotif+ are topics a feed may carry), no pager label, no path word, and not the bare labels judged too
-    # likely to be a headline (+bantuan+ is aid, +iklan+ an advertisement, +redaksi+ the editorial staff,
-    # +berlangganan+ a subscription story). Some common words stay listed as whole labels by judgment (+komentar+,
-    # +menu+, +cari+, +daftar+, +masuk+): a one-word text equal to one reads as chrome, while a longer headline that
-    # opens with one stays a headline. A term whose precision is unclear is left out.
+    # +:all+ and every other language read exactly what they read without it. Indonesian is written in Latin script and
+    # its label words are ordinary words (+masuk+ is "enter", +daftar+ a list, +cari+ to look for), so no term is read
+    # as a prefix or a substring: each label is listed whole and read as a whole text only (no trailing word, no
+    # headline opener, see {LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed
+    # (label words, the call to action, read-more, recommended and the new-window notice); the others stay +NONE+ until
+    # their readers take the page scope. It lists no type marker (stripping a short kicker could leave a headline below
+    # the title floor), no section name (+nasional+, +bola+, +ekonomi+ and +otomotif+ are topics a feed may carry), no
+    # pager label, no path word, and not the bare labels judged too likely to be a headline (+bantuan+ is aid, +iklan+
+    # an advertisement, +redaksi+ the editorial staff, +berlangganan+ a subscription story). Some common words stay
+    # listed as whole labels by judgment (+komentar+, +menu+, +cari+, +daftar+, +masuk+): a one-word text equal to one
+    # reads as chrome, while a longer headline that opens with one stays a headline. A term whose precision is unclear
+    # is left out.
     Id = Language.new(
       code: :id,
       terms: {
@@ -62,14 +62,13 @@ module Html2rss
         podcast_unspaced: NONE,
         type_marker: NONE,
         utility: [
-          'masuk', 'masuk akun', 'daftar', 'daftar akun', 'keluar akun', 'cari', 'pencarian',
-          'tentang kami', 'hubungi kami', 'kontak', 'kontak kami', 'pedoman media siber', 'pedoman siber',
-          'pasang iklan', 'info iklan', 'kebijakan privasi', 'kebijakan cookie', 'pengaturan cookie',
-          'kelola cookie', 'syarat dan ketentuan', 'syarat ketentuan', 'ketentuan layanan', 'ketentuan penggunaan',
-          'peta situs', 'pertanyaan umum', 'pertanyaan yang sering diajukan', 'pusat bantuan', 'menu', 'tutup menu',
-          'buka menu', 'beranda', 'halaman utama', 'lihat semua', 'lihat semuanya', 'lihat lainnya',
-          'lihat lebih banyak', 'lihat berita lainnya', 'berita lainnya', 'lainnya', 'komentar', 'bagikan',
-          'ikuti kami', 'lewati ke konten', 'langsung ke konten', 'lompat ke konten', 'ke konten utama'
+          'masuk', 'masuk akun', 'daftar', 'daftar akun', 'keluar akun', 'cari', 'pencarian', 'tentang kami',
+          'hubungi kami', 'kontak', 'kontak kami', 'pedoman media siber', 'pedoman siber', 'pasang iklan', 'info iklan',
+          'kebijakan privasi', 'kebijakan cookie', 'pengaturan cookie', 'kelola cookie', 'syarat dan ketentuan',
+          'syarat ketentuan', 'ketentuan layanan', 'ketentuan penggunaan', 'peta situs', 'pertanyaan umum',
+          'pertanyaan yang sering diajukan', 'pusat bantuan', 'menu', 'tutup menu', 'buka menu', 'beranda',
+          'halaman utama', 'komentar', 'bagikan', 'ikuti kami', 'lewati ke konten', 'langsung ke konten',
+          'lompat ke konten', 'ke konten utama'
         ],
         recommended: [
           'berita terkait', 'artikel terkait', 'tulisan terkait', 'baca juga', 'baca lainnya',

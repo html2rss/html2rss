@@ -74,6 +74,35 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 
+  describe 'list-level more labels in a page-only language' do
+    let(:dir) { Dir.mktmpdir }
+    let(:path) { File.join(dir, 'page.html') }
+    let(:more_labels) do
+      { zh: '更多', ko: '더보기', ar: 'المزيد', fa: 'بیشتر', th: 'ดูเพิ่มเติม', tr: 'daha fazla', id: 'lihat semua',
+        vi: 'xem thêm', cs: 'zobrazit všechny', hu: 'összes hír' }
+    end
+    let(:card_page) do
+      lambda do |code, label|
+        cards = (1..6).map do |i|
+          %(<article><h2>Real headline #{i} with several words</h2><p>A summary sentence.</p>) +
+            %(<a href="/section/long-article-slug-#{i}#{'.html' if i > 3}">#{label}</a></article>)
+        end
+        %(<!doctype html><html lang="#{code}"><body>#{cards.join}</body></html>)
+      end
+    end
+
+    after { FileUtils.remove_entry(dir) }
+
+    it 'keeps every card linked by a list-level more label in a page-only language', :aggregate_failures do
+      more_labels.each do |code, label|
+        File.write(path, card_page.call(code, label))
+        items = AutoSourceCorpus.auto_source(path:, url: 'https://example.com/section/').articles
+
+        expect(items.size).to eq(6), "#{code}: #{items.size} items"
+      end
+    end
+  end
+
   describe '.response' do
     let(:dir) { Dir.mktmpdir('corpus-encoding-') }
     let(:url) { 'https://example.com/news/' }
