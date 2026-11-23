@@ -47,11 +47,12 @@ module Html2rss
       end
 
       # A section link labelled with an own read-more term of a page-only language ("see all"): a path of one or two
-      # segments, none a content word or post suffix, ending in a plain word (no hyphen, digit, underscore or dot).
+      # segments, none a content word, ending in a plain word (no hyphen, digit, underscore or dot, so never a post
+      # suffix).
       # A card whose only link is such a label is lost; a hyphenated hub still passes.
       def own_hub_label?(text, destination_facts, heading_anchor:)
         segments = destination_facts.segments
-        return false if heading_anchor || destination_facts.content_path || destination_facts.strong_post_suffix
+        return false if heading_anchor || destination_facts.content_path
         return false unless segments.size.between?(1, 2) && !segments.last.match?(/[-\d_.]/)
 
         @link_resolver.own_read_more_text?(text)

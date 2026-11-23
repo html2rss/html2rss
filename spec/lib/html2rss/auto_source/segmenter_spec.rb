@@ -148,6 +148,44 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
     end
   end
 
+  describe '.call with an own read-more label' do
+    let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[:vi]) }
+    let(:hrefs) do
+      lambda do |card|
+        html = (1..3).map do |i|
+          "<article>#{card.call(i)}</article>"
+        end.join
+        segments = described_class.call(document_for("<html><body>#{html}</body></html>"),
+                                        base_url: 'https://example.com', strategy: :semantic, link_resolver: resolver)
+        segments.map { _1.primary_link.attrs.href }
+      end
+    end
+
+    it 'never picks the labelled link over the story link', :aggregate_failures do
+      story = lambda { |i|
+        %(<h2>Real headline #{i} with several words</h2><a href="/news-desk/top-stories">Xem tất cả</a>) +
+          %(<a href="/section/story-#{i}">Open this story</a>)
+      }
+
+      expect(hrefs.call(story)).to eq(%w[/section/story-1 /section/story-2 /section/story-3])
+    end
+
+    it 'keeps the labelled link when it is the only link of the card' do
+      expect(hrefs.call(lambda { |i|
+        %(<h2>Real headline #{i} with several words</h2><a href="/news-desk/top-#{i}">Xem tất cả</a>)
+      }))
+        .to eq(%w[/news-desk/top-1 /news-desk/top-2 /news-desk/top-3])
+    end
+
+    it 'keeps a heading link that carries the label text' do
+      card = lambda { |i|
+        %(<a href="/news-desk/top-#{i}">Xem thêm</a><h2><a href="/section/story-#{i}">Xem tất cả</a></h2>)
+      }
+
+      expect(hrefs.call(card)).to all(start_with('/section/story-'))
+    end
+  end
+
   describe '#landmark_ancestor?' do
     it 'is true for anchors under utility landmarks outside the content container', # rubocop:disable RSpec/ExampleLength
        :aggregate_failures do

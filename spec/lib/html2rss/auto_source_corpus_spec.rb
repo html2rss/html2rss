@@ -145,8 +145,8 @@ RSpec.describe Html2rss::AutoSource do
           end.join
         },
         block: lambda { |label|
-          %(<div class="block"><h2>Section heading for sports here</h2><p>Latest stories from this section.</p>) +
-            %(<a href="/sports">#{label}</a></div>#{real})
+          intro = %(<div class="block"><h2>Section heading for sports here</h2><p>Latest stories from this section.</p>)
+          %(#{intro}<a href="/sports">#{label}</a></div>#{real})
         },
         head: lambda { |label|
           %(<div class="head"><h2>Latest world news today here</h2><a href="/world">#{label}</a></div>) + real

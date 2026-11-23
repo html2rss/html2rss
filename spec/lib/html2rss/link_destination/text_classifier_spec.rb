@@ -277,6 +277,7 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
       expect(['阅读全文', '阅读全文 (3)'].map { zh.own_read_more?(_1) }).to all(be(true))
       expect([zh.own_read_more?('Read more'), described_class.new.own_read_more?('阅读全文')]).to eq([false, false])
+      expect(zh.own_read_more?("\u200F阅读全文\u200F")).to be(true)
     end
 
     it 'keeps a shared read-more term with a count unread on every scope', :aggregate_failures do
