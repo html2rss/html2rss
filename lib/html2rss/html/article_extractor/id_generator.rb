@@ -20,11 +20,8 @@ module Html2rss
             return id_from_dom if id_from_dom
 
             heading_text = resolve_heading_text(article_tag, heading)
-            if heading_text && !heading_text.strip.empty?
-              generate_slug(heading_text)
-            else
-              generate_content_hash(article_tag)
-            end
+            slug = generate_slug(heading_text) if heading_text && !heading_text.strip.empty?
+            slug || generate_content_hash(article_tag)
           end
 
           private

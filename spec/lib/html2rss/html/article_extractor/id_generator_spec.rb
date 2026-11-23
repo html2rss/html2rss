@@ -51,13 +51,23 @@ RSpec.describe Html2rss::Html::ArticleExtractor::IdGenerator do
       expect(id).to eq('hello-world')
     end
 
-    it 'returns nil when the heading slug is empty', :aggregate_failures do
+    it 'falls back to the content hash when the heading slug is empty', :aggregate_failures do
       container = Nokogiri::HTML('<div class="card"><h2>!!!</h2></div>').at_css('.card')
       heading = container.at_css('h2')
 
       id = described_class.call(container, heading:, url: nil, selected_anchor: nil)
 
-      expect(id).to be_nil
+      expect(id).to eq(Zlib.crc32('!!!').to_s(36))
+    end
+
+    it 'gives a non-ASCII heading a stable non-nil id', :aggregate_failures do
+      container = Nokogiri::HTML('<div class="card"><h2>日本語の見出し</h2></div>').at_css('.card')
+      heading = container.at_css('h2')
+
+      ids = Array.new(2) { described_class.call(container, heading:, url: nil, selected_anchor: nil) }
+
+      expect(ids.first).to match(/\A[0-9a-z]+\z/)
+      expect(ids.uniq.size).to eq(1)
     end
 
     it 'uses the first non-blank text node when the heading is blank', :aggregate_failures do
