@@ -137,16 +137,16 @@ RSpec.describe Html2rss::Html::Navigator do
     let(:document) { Nokogiri::HTML('<body><nav></nav><div class="card"></div></body>') }
 
     it 'accepts ordinary wrappers and rejects landmarks', :aggregate_failures do
-      expect(described_class.usable_card_parent?(document.at_css('div'))).to be(true)
-      expect(described_class.usable_card_parent?(document.at_css('nav'))).to be(false)
-      expect(described_class.usable_card_parent?(document.at_css('body'))).to be(false)
-      expect(described_class.usable_card_parent?(document)).to be(false)
+      expect(usable_card?(document.at_css('div'))).to be(true)
+      expect(usable_card?(document.at_css('nav'))).to be(false)
+      expect(usable_card?(document.at_css('body'))).to be(false)
+      expect(usable_card?(document)).to be(false)
     end
 
     it 'treats uppercase NAV as a card-walk stop' do
       document = Nokogiri::HTML('<html><body><NAV><a href="/home">Home</a></NAV></body></html>')
 
-      expect(described_class.usable_card_parent?(document.at_css('NAV'))).to be(false)
+      expect(usable_card?(document.at_css('NAV'))).to be(false)
     end
 
     it 'stops at page-level header and footer but not at ones inside sectioning content' do # rubocop:disable RSpec/ExampleLength
@@ -154,7 +154,9 @@ RSpec.describe Html2rss::Html::Navigator do
                                 '<article><header id="ah"></header><footer id="af"></footer></article>' \
                                 '<main><div><header id="mh"></header></div></main>' \
                                 '<nav><header id="nh"></header></nav></body>')
-      usable = %w[ph pf ah af mh nh].to_h { |id| [id, described_class.usable_card_parent?(document.at_css("##{id}"))] }
+      usable = %w[ph pf ah af mh nh].to_h do |id|
+        [id, usable_card?(document.at_css("##{id}"))]
+      end
 
       expect(usable).to eq('ph' => false, 'pf' => false, 'ah' => true, 'af' => true, 'mh' => true, 'nh' => false)
     end
@@ -167,9 +169,11 @@ RSpec.describe Html2rss::Html::Navigator do
       ids = %w[rn rc rd dl rs as pb ab]
       expected = { 'rn' => false, 'rc' => false, 'rd' => false, 'dl' => false, 'rs' => true, 'as' => false,
                    'pb' => false, 'ab' => true }
-      sst_root = Html2rss::SST::Normalizer.call(html).root
-      nokogiri = ids.to_h { |id| [id, described_class.usable_card_parent?(Nokogiri::HTML(html).at_css("##{id}"))] }
-      sst = ids.to_h { |id| [id, described_class.usable_card_parent?(sst_root.find_all { _1.attrs.id == id }.first)] }
+      sst_root = document_for(html).root
+      nokogiri = ids.to_h { |id| [id, usable_card?(Nokogiri::HTML(html).at_css("##{id}"))] }
+      sst = ids.to_h do |id|
+        [id, usable_card?(sst_root.find { _1.attrs.id == id })]
+      end
 
       expect([nokogiri, sst]).to eq([expected, expected])
     end
@@ -190,24 +194,30 @@ RSpec.describe Html2rss::Html::Navigator do
       end
 
       let(:document) { Nokogiri::HTML(html) }
-      let(:sst_root) { Html2rss::SST::Normalizer.call(html).root }
+      let(:sst_root) { document_for(html).root }
 
-      it 'agrees on page-level, sectioned and chrome-inherited headers', :aggregate_failures do
-        nokogiri = ids.to_h { |id| [id, described_class.usable_card_parent?(document.at_css("##{id}"))] }
-        sst = ids.to_h { |id| [id, described_class.usable_card_parent?(sst_root.find_all { _1.attrs.id == id }.first)] }
+      it 'agrees on page-level, sectioned and chrome-inherited headers', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        nokogiri = ids.to_h do |id|
+          [id, usable_card?(document.at_css("##{id}"))]
+        end
+        sst = ids.to_h do |id|
+          [id, usable_card?(sst_root.find { _1.attrs.id == id })]
+        end
 
         expect(nokogiri).to eq(expected)
         expect(sst).to eq(expected)
       end
     end
 
-    it 'follows the SST chrome index for header and footer nodes', :aggregate_failures do
-      doc = Html2rss::SST::Normalizer.call('<html><body><header>H</header><article><header>A</header></article></body></html>')
+    it 'follows the SST chrome index for header and footer nodes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      doc = document_for(
+        '<html><body><header>H</header><article><header>A</header></article></body></html>'
+      )
       page_header, card_header = doc.root.find_all { _1.name == :header }
 
-      expect(described_class.usable_card_parent?(page_header)).to be(false)
-      expect(described_class.usable_card_parent?(card_header)).to be(true)
-      expect(described_class.usable_card_parent?(Html2rss::SST::Node.build(name: :header))).to be(false)
+      expect(usable_card?(page_header)).to be(false)
+      expect(usable_card?(card_header)).to be(true)
+      expect(usable_card?(Html2rss::SST::Node.build(name: :header))).to be(false)
     end
   end
 

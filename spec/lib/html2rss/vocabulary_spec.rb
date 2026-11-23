@@ -55,17 +55,19 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads exactly the listed page patterns and still rejects every other pattern concept', :aggregate_failures do
       expect(described_class::PAGE_PATTERNS).to eq(
-        %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice]
+        %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice
+           paid_label ad_word element_label field_label type_label clock_suffix date_piece
+           pager_label page_link page_link_label]
       )
       unread = described_class::CONCEPTS - described_class::SCOPED_WORDS - described_class::SCOPED_PATTERNS -
                described_class::PAGE_PATTERNS - %i[type_marker]
-      expect(unread).to eq(%i[paid_label ad_word field_label type_label pager_label page_link page_link_label
-                              clock_suffix date_piece element_label podcast_word podcast_unspaced])
+      expect(unread).to eq(%i[podcast_word podcast_unspaced])
     end
 
     it 'lists the languages in a fixed order', :aggregate_failures do
       expect(languages.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru])
-      expect(described_class::PAGE_ONLY).to eq([described_class::Zh, described_class::Ko, described_class::Ar,
+      expect(described_class::PAGE_ONLY).to eq([described_class::Zh, described_class::Ko, described_class::He,
+                                                described_class::El, described_class::Uk, described_class::Ar,
                                                 described_class::Fa])
       expect(described_class::LANGUAGES).to eq(languages + described_class::PAGE_ONLY)
       expect(languages).to all(be_a(described_class::Language))
@@ -207,7 +209,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
-      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru all zh ko ar fa])
+      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru all zh ko he el uk ar fa])
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
       expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
@@ -260,7 +262,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese.own_alternation(:utility)).to include('关于我们').and include('關於我們')
       expect(chinese.own_alternation(:recommended)).to include('推荐阅读')
       expect(chinese.type_markers).to be_frozen
-      (described_class::SCOPES.values - [chinese, *%i[ko ar fa].map { described_class[_1] }]).each do |scope|
+      (described_class::SCOPES.values - [chinese, *%i[ko he el uk ar fa].map { described_class[_1] }]).each do |scope|
         expect(scope.own_alternations.values).to all(eq('')), scope.code.to_s
         expect(scope.own_words.values).to all(be_empty), scope.code.to_s
       end
@@ -297,7 +299,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'gives every other scope, all and ja included, the identical full marker set without Chinese terms',
        :aggregate_failures do
-      others = described_class::SCOPES.values - [chinese, *%i[ko ar fa].map { described_class[_1] }]
+      others = described_class::SCOPES.values - [chinese, *%i[ko he el uk ar fa].map { described_class[_1] }]
 
       expect(others.map(&:type_markers)).to all(equal(described_class.words(:type_marker)))
       expect(described_class.words(:type_marker)).to include('独自', '写真', '速報', '動画')
@@ -480,6 +482,51 @@ RSpec.describe Html2rss::Vocabulary do
       every = described_class.compile(described_class::ALL.flat_map { _1.terms.fetch(:utility) }).split('|')
 
       expect((shared + flagged).uniq).to match_array(every.uniq)
+    end
+  end
+
+  describe '#own?' do
+    it 'is true only for a scope with own terms', :aggregate_failures do
+      expect(described_class[:zh].own?).to be(true)
+      expect(%i[en ja de all].map { described_class[_1].own? }).to all(be(false))
+    end
+  end
+
+  describe '.union' do
+    it 'is the shared alternatives, widened by the own ones when there are any', :aggregate_failures do
+      none = { read_more: '', utility_cta: '' }
+
+      expect(described_class.union(:read_more, none)).to eq(described_class.alternation(:read_more))
+      expect(described_class.union(:read_more, { read_more: 'lees-xx' }))
+        .to eq("#{described_class.alternation(:read_more)}|lees-xx")
+      expect(described_class.union(:utility_cta, none)).not_to include('|lees-xx')
+    end
+  end
+
+  describe '.by_own_terms' do
+    it 'builds one entry per distinct own-term set and key, shared by every scope without own terms',
+       :aggregate_failures do
+      calls = []
+      table = described_class.by_own_terms(%i[read_more]) { |own, scope| (calls << [own, scope.code]).size }
+
+      expect(table.keys).to eq(described_class::SCOPES.keys)
+      expect(table.values.uniq.size).to eq(calls.size)
+      expect(calls.size).to be < described_class::SCOPES.size
+      expect(table).to be_frozen
+      expect(table.fetch(:en)).to equal(table.fetch(:all))
+    end
+
+    it 'tells scopes apart by the key too', :aggregate_failures do
+      by_code = described_class.by_own_terms(%i[read_more], key: :code.to_proc) { |_own, scope| scope.code }
+
+      expect(by_code).to eq(described_class::SCOPES.keys.to_h { [_1, _1] })
+    end
+
+    it 'reads the own terms of a page-only scope', :aggregate_failures do
+      own = nil
+      described_class.by_own_terms(%i[read_more]) { |terms, scope| own = terms if scope.code == :zh }
+
+      expect(own.fetch(:read_more)).to include('阅读全文')
     end
   end
 end

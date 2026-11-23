@@ -272,6 +272,14 @@ language_chrome_de.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_el.html:
+  junk: 0
+  real: 16
+  expected: 16
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 language_chrome_en.html:
   junk: 0
   real: 4
@@ -300,6 +308,14 @@ language_chrome_fr.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_he.html:
+  junk: 0
+  real: 15
+  expected: 15
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
@@ -364,6 +380,14 @@ language_chrome_sv.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_uk.html:
+  junk: 0
+  real: 13
+  expected: 13
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0

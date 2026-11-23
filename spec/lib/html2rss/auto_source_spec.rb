@@ -383,9 +383,9 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       before do
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_wrap_original do |method, *args|
+        allow(Html2rss::SST::Normalizer).to receive(:call).and_wrap_original do |method, *args, **kwargs|
           counts[:sst] += 1
-          method.call(*args)
+          method.call(*args, **kwargs)
         end
         allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_wrap_original do |method, *args, **kwargs|
           counts[:resolver] += 1

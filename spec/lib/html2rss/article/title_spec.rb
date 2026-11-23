@@ -123,7 +123,7 @@ RSpec.describe Html2rss::Article::Title do
       [nil, nil] => nil
     }.each do |(headline, kicker), expected|
       it "composes #{headline.inspect} with kicker #{kicker.inspect} as #{expected.inspect}" do
-        expect(described_class.compose(headline, kicker:)).to eq(expected)
+        expect(described_class.compose(headline, kicker:, vocabulary: all_scope)).to eq(expected)
       end
     end
 
@@ -174,31 +174,32 @@ RSpec.describe Html2rss::Article::Title do
       'One two three four five six seven eight nine : Tram' => 'One two three four five six seven eight nine : Tram'
     }.each do |headline, expected|
       it "cleans #{headline.inspect} to #{expected.inspect}" do
-        expect(described_class.compose(headline)).to eq(expected)
+        expect(described_class.compose(headline, vocabulary: all_scope)).to eq(expected)
       end
     end
 
     it 'is idempotent on its own output' do
-      title = described_class.compose('– 12:30 | Storm ahead', kicker: 'Rubrik: Weather :')
+      title = described_class.compose('– 12:30 | Storm ahead', kicker: 'Rubrik: Weather :', vocabulary: all_scope)
 
-      expect(described_class.compose(title)).to eq(title)
+      expect(described_class.compose(title, vocabulary: all_scope)).to eq(title)
     end
 
     it 'drops a kicker that is only a marker wrapped in marks and keeps the headline verbatim' do
       rlm = [0x200F].pack('U')
       headline = "#{rlm}Headline#{rlm}"
-      expect(described_class.compose(headline, kicker: "#{rlm}Video#{rlm}")).to eq(headline)
+      expect(described_class.compose(headline, kicker: "#{rlm}Video#{rlm}", vocabulary: all_scope)).to eq(headline)
     end
 
     it 'keeps a ZWNJ inside a Persian word, and the marks, in the output' do
       rlm = [0x200F].pack('U')
       kicker = "#{rlm}kicker#{rlm}"
-      expect(described_class.compose("a#{[0x200C].pack('U')}b", kicker:)).to eq("#{kicker}: a#{[0x200C].pack('U')}b")
+      zwnj = [0x200C].pack('U')
+      expect(described_class.compose("a#{zwnj}b", kicker:, vocabulary: all_scope)).to eq("#{kicker}: a#{zwnj}b")
     end
 
     it 'composes a blank bracket label as before, without raising', :aggregate_failures do
-      expect(described_class.compose('【 】Headline')).to eq(' : Headline')
-      expect(described_class.compose("＜\u3000＞Headline")).to eq(' : Headline')
+      expect(described_class.compose('【 】Headline', vocabulary: all_scope)).to eq(' : Headline')
+      expect(described_class.compose("＜\u3000＞Headline", vocabulary: all_scope)).to eq(' : Headline')
     end
   end
 
@@ -237,14 +238,16 @@ RSpec.describe Html2rss::Article::Title do
       '10:00 Budget vote' => false, '' => false, nil => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
-        expect(described_class.headline_noise_piece?(text)).to be(expected)
+        expect(described_class.headline_noise_piece?(text, vocabulary: all_scope, date_element: false)).to be(expected)
       end
     end
 
     bidi_wrappers.each do |wrapper|
       it "reads a date and a label wrapped in #{wrapper.inspect}", :aggregate_failures do
-        expect(described_class.headline_noise_piece?(format(wrapper, '11月12日 16:42'))).to be(true)
-        expect(described_class.headline_noise_piece?(format(wrapper, 'Section:'))).to be(true)
+        expect(described_class.headline_noise_piece?(format(wrapper, '11月12日 16:42'), vocabulary: all_scope,
+                                                                                      date_element: false)).to be(true)
+        expect(described_class.headline_noise_piece?(format(wrapper, 'Section:'), vocabulary: all_scope,
+                                                                                  date_element: false)).to be(true)
       end
     end
   end
@@ -255,13 +258,14 @@ RSpec.describe Html2rss::Article::Title do
       '16:42' => false, 'November 12' => false, nil => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
-        expect(described_class.date_piece?(text)).to be(expected)
+        expect(described_class.date_piece?(text, vocabulary: all_scope, date_element: false)).to be(expected)
       end
     end
 
     bidi_wrappers.each do |wrapper|
       it "reads a date wrapped in #{wrapper.inspect}" do
-        expect(described_class.date_piece?(format(wrapper, '11月12日'))).to be(true)
+        expect(described_class.date_piece?(format(wrapper, '11月12日'), vocabulary: all_scope,
+                                                                      date_element: false)).to be(true)
       end
     end
   end
@@ -277,15 +281,16 @@ RSpec.describe Html2rss::Article::Title do
         it "treats #{label.inspect} in #{form} as a label piece" do
           text = label.unicode_normalize(form)
 
-          expect([described_class.headline_noise_piece?(text), described_class.noise_piece?(text)]).to eq([true, true])
+          expect([described_class.headline_noise_piece?(text, vocabulary: all_scope, date_element: false),
+                  described_class.noise_piece?(text, vocabulary: all_scope)]).to eq([true, true])
         end
       end
     end
 
     it 'composes the same title from a decomposed and a composed kicker label' do
-      decomposed = described_class.compose('Hafen', kicker: "A\u0308mne: Verkehr")
+      decomposed = described_class.compose('Hafen', kicker: "A\u0308mne: Verkehr", vocabulary: all_scope)
 
-      expect(decomposed).to eq(described_class.compose('Hafen', kicker: "\u00C4mne: Verkehr"))
+      expect(decomposed).to eq(described_class.compose('Hafen', kicker: "\u00C4mne: Verkehr", vocabulary: all_scope))
     end
   end
 
@@ -299,24 +304,24 @@ RSpec.describe Html2rss::Article::Title do
       'Hafen-Streit:' => false, 'Thema: Verkehr' => false, 'Artikel' => false, '28:25' => false, 'Video tour' => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
-        expect(described_class.noise_piece?(text)).to be(expected)
+        expect(described_class.noise_piece?(text, vocabulary: all_scope)).to be(expected)
       end
     end
 
     bidi_wrappers.each do |wrapper|
       it "reads a marker, label and clock wrapped in #{wrapper.inspect}", :aggregate_failures do
-        expect(described_class.noise_piece?(format(wrapper, 'Video'))).to be(true)
-        expect(described_class.noise_piece?(format(wrapper, 'Section:'))).to be(true)
-        expect(described_class.noise_piece?(format(wrapper, '10:00'))).to be(true)
-        expect(described_class.noise_piece?(format(wrapper, 'Conflict'))).to be(false)
+        expect(described_class.noise_piece?(format(wrapper, 'Video'), vocabulary: all_scope)).to be(true)
+        expect(described_class.noise_piece?(format(wrapper, 'Section:'), vocabulary: all_scope)).to be(true)
+        expect(described_class.noise_piece?(format(wrapper, '10:00'), vocabulary: all_scope)).to be(true)
+        expect(described_class.noise_piece?(format(wrapper, 'Conflict'), vocabulary: all_scope)).to be(false)
       end
     end
 
     it 'reads marks set off by spaces, and marks alone, like the clean form', :aggregate_failures do
       rlm = [0x200F].pack('U')
-      expect(described_class.noise_piece?("#{rlm} Video")).to be(true)
-      expect(described_class.noise_piece?("#{rlm} 10:00 #{rlm}")).to be(true)
-      expect(described_class.noise_piece?(rlm)).to be(true)
+      expect(described_class.noise_piece?("#{rlm} Video", vocabulary: all_scope)).to be(true)
+      expect(described_class.noise_piece?("#{rlm} 10:00 #{rlm}", vocabulary: all_scope)).to be(true)
+      expect(described_class.noise_piece?(rlm, vocabulary: all_scope)).to be(true)
     end
   end
 
@@ -332,7 +337,7 @@ RSpec.describe Html2rss::Article::Title do
         expect(chinese.map { described_class.compose('見出しの本文', kicker: marker, vocabulary: _1) }).to all(eq(composed))
         expect(others.map { described_class.compose('見出しの本文', kicker: marker, vocabulary: _1) })
           .to all(eq('見出しの本文'))
-        expect(described_class.compose('見出しの本文', kicker: marker)).to eq('見出しの本文')
+        expect(described_class.compose('見出しの本文', kicker: marker, vocabulary: all_scope)).to eq('見出しの本文')
       end
     end
 
@@ -340,11 +345,11 @@ RSpec.describe Html2rss::Article::Title do
       expect(chinese.map { described_class.compose('【独自】政府が発表', vocabulary: _1) }).to all(eq('独自: 政府が発表'))
       expect(chinese.map { described_class.compose('＜写真＞海辺の町', vocabulary: _1) }).to all(eq('写真: 海辺の町'))
       expect(others.map { described_class.compose('【独自】政府が発表', vocabulary: _1) }).to all(eq('政府が発表'))
-      expect(described_class.compose('＜写真＞海辺の町')).to eq('海辺の町')
+      expect(described_class.compose('＜写真＞海辺の町', vocabulary: all_scope)).to eq('海辺の町')
     end
 
     it 'keeps a bracket marker inside a kicker as noise only where it is a marker', :aggregate_failures do
-      expect(described_class.compose('見出し本文', kicker: '【独自】')).to eq('見出し本文')
+      expect(described_class.compose('見出し本文', kicker: '【独自】', vocabulary: all_scope)).to eq('見出し本文')
       expect(described_class.compose('見出し本文', kicker: '【独自】', vocabulary: Html2rss::Vocabulary['zh']))
         .to eq('【独自】: 見出し本文')
     end
@@ -353,7 +358,7 @@ RSpec.describe Html2rss::Article::Title do
       expect(chinese.map { described_class.noise_piece?('独自', vocabulary: _1) }).to all(be(false))
       expect(chinese.map { described_class.noise_piece?(' 写真 ', vocabulary: _1) }).to all(be(false))
       expect(others.map { described_class.noise_piece?('独自', vocabulary: _1) }).to all(be(true))
-      expect(described_class.noise_piece?('写真')).to be(true)
+      expect(described_class.noise_piece?('写真', vocabulary: all_scope)).to be(true)
     end
 
     it 'keeps every other marker a marker on a Chinese page', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -379,6 +384,75 @@ RSpec.describe Html2rss::Article::Title do
       expect(described_class.compose('Haven', kicker: 'Video', vocabulary: zh)).to eq('Haven')
       expect(described_class.compose('Haven', kicker: 'Thema: Verkehr', vocabulary: zh)).to eq('Verkehr: Haven')
       expect(described_class.noise_piece?('Live Blog', vocabulary: zh)).to be(true)
+    end
+  end
+
+  shared_context 'with a page-only title language' do
+    let(:xx) do
+      terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
+      terms.merge!(field_label: %w[rubriek-xx], type_label: %w[soort-xx], clock_suffix: %w[uur-xx],
+                   date_piece: [/\d{1,2}-mnd-xx|\d{1,2}:\d{2}/])
+      language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
+      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+    end
+    let(:own_only) { { vocabulary: xx, date_element: true } }
+
+    # The scope table is closed at load, so the simulated language joins it for the example.
+    before do
+      own = described_class::OWN_CONCEPTS.to_h { [_1, xx.own_alternation(_1)] }
+      table = described_class.const_get(:RULES_BY_SCOPE).merge(zh: described_class::Rules.build(xx.type_markers, own))
+      stub_const("#{described_class}::RULES_BY_SCOPE", table)
+    end
+  end
+
+  describe '.compose with a page-only language' do
+    include_context 'with a page-only title language'
+
+    it 'strips an own label and clock suffix from a kicker, and no one else does', :aggregate_failures do
+      expect(described_class.compose('Haven', kicker: 'Rubriek-xx: Sport', vocabulary: xx)).to eq('Sport: Haven')
+      expect(described_class.compose('Haven', kicker: '10:30 uur-xx | Sport', vocabulary: xx)).to eq('Sport: Haven')
+      expect(described_class.compose('Haven', kicker: 'Soort-xx: Video Sport', vocabulary: xx)).to eq('Sport: Haven')
+      expect(described_class.compose('Haven', kicker: 'Rubriek-xx: Sport', vocabulary: all_scope))
+        .to eq('Rubriek-xx: Sport: Haven')
+    end
+
+    it 'never empties a title: a kicker that is only an own label stays', :aggregate_failures do
+      expect(described_class.compose(nil, kicker: 'Rubriek-xx:', vocabulary: xx)).to eq('Rubriek-xx')
+      expect(described_class.compose(nil, kicker: 'Rubriek-xx:', vocabulary: all_scope)).to eq('Rubriek-xx')
+      expect(described_class.compose(nil, kicker: nil, vocabulary: xx)).to be_nil
+    end
+  end
+
+  describe '.noise_piece? and .date_piece? with a page-only language' do
+    include_context 'with a page-only title language'
+
+    it 'reads an own label as a whole piece, an own date only as a standalone chip', :aggregate_failures do
+      expect(described_class.noise_piece?('Soort-xx:', vocabulary: xx)).to be(true)
+      expect(described_class.noise_piece?('Soort-xx:', vocabulary: all_scope)).to be(false)
+      expect(described_class.date_piece?('12-mnd-xx', **own_only)).to be(true)
+      expect(described_class.date_piece?('12-mnd-xx', vocabulary: xx, date_element: false)).to be(false)
+      expect(described_class.date_piece?('12-mnd-xx', vocabulary: all_scope, date_element: true)).to be(false)
+    end
+  end
+
+  describe '.own_noise_piece? with a page-only language' do
+    include_context 'with a page-only title language'
+
+    it 'tells a piece that is noise only through an own term', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      expect(described_class.own_noise_piece?('12-mnd-xx', **own_only)).to be(true)
+      expect(described_class.own_noise_piece?('Soort-xx:', vocabulary: xx, date_element: false)).to be(true)
+      expect(described_class.own_noise_piece?('10:30', **own_only)).to be(false)
+      expect(described_class.own_noise_piece?('Section:', **own_only)).to be(false)
+      expect([nil, '', '  '].map { described_class.own_noise_piece?(_1, **own_only) }).to all(be(false))
+      expect(described_class.own_noise_piece?('Soort-xx:', vocabulary: all_scope, date_element: true)).to be(false)
+    end
+
+    it 'reads bidi marks around the piece and no own term in a scope without any', :aggregate_failures do
+      rlm = [0x200F].pack('U')
+
+      expect(described_class.own_noise_piece?("#{rlm}Soort-xx:#{rlm}", vocabulary: xx, date_element: false)).to be(true)
+      expect(described_class.own_noise_piece?('Soort-xx:', vocabulary: Html2rss::Vocabulary[:en], date_element: false))
+        .to be(false)
     end
   end
 end

@@ -98,7 +98,7 @@ module Html2rss
         end
 
         def document
-          @document ||= @provided_document || SST::Normalizer.call(@parsed_body)
+          @document ||= @provided_document || SST::Normalizer.call(@parsed_body, vocabulary: link_resolver.vocabulary)
         end
 
         def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY

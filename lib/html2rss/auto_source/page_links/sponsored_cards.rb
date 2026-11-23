@@ -42,7 +42,9 @@ module Html2rss
         # @param document [SST::Document, nil]
         # @param link_resolver [Scoring::LinkResolver, nil]
         # @param identity [#call] {PageLinks#identity}, the page's one article key for a destination URL
-        def initialize(document, link_resolver, identity)
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for label text
+        def initialize(document, link_resolver, identity, vocabulary)
+          @vocabulary = vocabulary
           @claims = AnchorClaims.new(link_resolver, identity)
           @linked = Set.new
           @ancestors, @labelled, @links = Array.new(3) { [] }
@@ -87,7 +89,7 @@ module Html2rss
         def record(anchor) = @links << @claims.record(anchor, in_heading: @ancestors.any?(&:heading?))
 
         def mark(node, start, pending)
-          marker = LinkDestination::Sponsorship.marker(node, @ancestors)
+          marker = LinkDestination::Sponsorship.marker(node, @ancestors, vocabulary: @vocabulary)
           return pending unless marker
           return pending.tap { @claims.claim(start...@claims.size) } if marker == :container && @claims.size > start
           return pending.tap { @linked << @links.last } unless @links.empty?
