@@ -47,7 +47,8 @@ module Html2rss
           'näytä kaikki', 'katso kaikki', 'näytä lisää', 'katso lisää', 'lisää uutisia', 'lisää juttuja',
           'lisää artikkeleita', 'kaikki uutiset', 'kaikki artikkelit', 'kaikki jutut', 'näytä kaikki uutiset',
           'näytä kaikki jutut', 'näytä kaikki artikkelit', 'katso kaikki uutiset', 'katso kaikki jutut',
-          'näytä lisää uutisia', 'näytä lisää juttuja', 'lataa lisää'
+          'näytä lisää uutisia', 'näytä lisää juttuja', 'lataa lisää', 'lue lisää aiheesta',
+          'aiheesta lisää'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,
@@ -81,7 +82,7 @@ module Html2rss
           'saavutettavuusseloste', 'anna palautetta', 'takaisin sivun alkuun'
         ],
         recommended: [
-          'lue myös', 'katso myös', 'lue lisää aiheesta', 'aiheesta lisää', 'samasta aiheesta',
+          'lue myös', 'katso myös', 'samasta aiheesta',
           'aiheeseen liittyvää', 'aiheeseen liittyvät jutut', 'aiheeseen liittyvät artikkelit',
           'liittyvät artikkelit', 'liittyvät jutut', 'suositellut jutut', 'suositellut artikkelit',
           'sinulle suositeltua', 'muut lukivat myös'

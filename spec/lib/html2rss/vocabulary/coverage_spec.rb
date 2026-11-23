@@ -1263,7 +1263,7 @@ RSpec.describe Html2rss::Vocabulary do
        'SIIRRY SISÄLTÖÖN'].each do |label|
         expect(fi.utility_chrome?(label)).to be(true), label
       end
-      ['LUE MYÖS', 'AIHEESTA LISÄÄ'].each { expect(fi.recommended?(_1)).to be(true), _1 }
+      ['LUE MYÖS', 'KATSO MYÖS'].each { expect(fi.recommended?(_1)).to be(true), _1 }
       ['LUE LISÄÄ', 'LUE KOKO ARTIKKELI'].each { expect(fi.read_more?(_1)).to be(true), _1 }
       ['Kirjaudu sisään', 'Tietoa meistä', 'Käyttöehdot', 'Evästekäytännöt', 'Lue myös'].each do |label|
         decomposed = label.unicode_normalize(:nfd)
@@ -1312,7 +1312,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads a list-level label as read-more, never chrome, so a card keeps its item', :aggregate_failures do
       ['Näytä kaikki', 'Katso kaikki', 'Näytä lisää', 'Lisää uutisia', 'Kaikki uutiset', 'Kaikki artikkelit',
-       'Näytä kaikki (3)', 'Katso kaikki [3]'].each do |label|
+       'Lue lisää aiheesta', 'Aiheesta lisää', 'Näytä kaikki (3)', 'Katso kaikki [3]'].each do |label|
         expect([fi.utility_chrome?(label), fi.utility?(label), fi.read_more?(label)]).to eq([false, false, true]), label
       end
       expect(described_class::Fi.terms.fetch(:utility) + described_class::Fi.terms.fetch(:utility_cta))

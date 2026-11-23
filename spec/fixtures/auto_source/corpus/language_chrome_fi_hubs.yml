@@ -1,5 +1,5 @@
 ---
-case: Eight invented news cards in language "fi" plus six sentence-labelled links to a topic hub and a paid-plan page under foreign topic and plus path words; only the eight headlines are items.
+case: Eight invented news cards in language "fi" plus six sentence-labelled links to a topic hub and a paid-plan page under foreign topic and plus path words, and a sport block with a long heading linked by a list-level label to a section; only the eight headlines are items.
 expected:
 - https://example.com/news/2026/11/story-1
 - https://example.com/news/2026/11/story-2

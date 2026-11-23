@@ -106,7 +106,7 @@ RSpec.describe Html2rss::AutoSource do
         da: ['se alle', 'se flere', 'flere nyheder'],
         fi: [
           'näytä kaikki', 'katso kaikki', 'näytä lisää', 'lisää uutisia', 'kaikki uutiset',
-          'kaikki artikkelit'
+          'kaikki artikkelit', 'lue lisää aiheesta', 'aiheesta lisää'
         ]
       }.flat_map { |code, labels| labels.map { [code, _1] } }
     end
