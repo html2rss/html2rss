@@ -167,10 +167,13 @@ module Html2rss
       # A list is a pager only when labelled or whole-token classed as one and at least
       # half of its links look like page navigation.
       def self.list_pager?(element, readings)
-        named = element['aria-label'].to_s.match?(readings.pager_label) ||
-                element['class'].to_s.downcase.split.any? { PAGER_TOKENS.include?(_1) }
-        links = named ? element.css('a') : []
+        links = named_pager?(element, readings) ? element.css('a') : []
         !links.empty? && links.count { page_link?(_1, readings) } * 2 >= links.size
+      end
+
+      def self.named_pager?(element, readings)
+        element['aria-label'].to_s.match?(readings.pager_label) ||
+          element['class'].to_s.downcase.split.any? { PAGER_TOKENS.include?(_1) }
       end
 
       def self.page_link?(link, readings)
@@ -179,7 +182,7 @@ module Html2rss
           link['href'].to_s.match?(PAGE_LINK_HREF) || text.match?(readings.page_link_text) ||
           text.match?(readings.page_link_label)
       end
-      private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?, :list_pager?, :page_link?
+      private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?, :list_pager?, :named_pager?, :page_link?
     end
   end
 end
