@@ -76,8 +76,8 @@ module Html2rss
             Readings.new(
               pager_label: own_pager_label(own.fetch(:pager_label)),
               page_link_text: /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:#{Vocabulary.alternation(:page_link)})\b.*)\z/im,
-              page_link_label: WHOLE.call([Vocabulary.alternation(:page_link_label), own.fetch(:page_link),
-                                           own.fetch(:page_link_label)].reject(&:empty?).join('|'))
+              page_link_label: WHOLE.call([Vocabulary.union(:page_link_label, own), own.fetch(:page_link)]
+                                            .reject(&:empty?).join('|'))
             ).freeze
           end
 
@@ -90,13 +90,7 @@ module Html2rss
         end
 
         # Per scope code; scopes with the same own terms share one entry.
-        BY_SCOPE = begin
-          built = {}
-          Vocabulary::SCOPES.transform_values do |scope|
-            own = %i[pager_label page_link page_link_label].to_h { [_1, scope.own_alternation(_1)] }
-            built[own] ||= build(own)
-          end.freeze
-        end
+        BY_SCOPE = Vocabulary.by_own_terms(%i[pager_label page_link page_link_label]) { |own, _scope| build(own) }
         private_constant :WHOLE
       end
 

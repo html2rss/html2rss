@@ -86,7 +86,7 @@ module Html2rss
         end
 
         def self.assemble(markers, own)
-          union = ->(concept) { [Vocabulary.alternation(concept), own.fetch(concept)].reject(&:empty?).join('|') }
+          union = ->(concept) { Vocabulary.union(concept, own) }
           label = label(union)
           date = own.fetch(:date_piece)
           new(markers:, label_piece: /\A(?:#{label})\z/, bare: nil, kicker_noise: kicker_noise(label, markers, union),
@@ -119,12 +119,8 @@ module Html2rss
       OWN_NONE = OWN_CONCEPTS.to_h { [_1, ''] }.freeze
 
       # The {Rules} of each page language scope, shared where the marker sets and own terms are equal.
-      RULES_BY_SCOPE = begin
-        built = {}
-        Vocabulary::SCOPES.transform_values do |scope|
-          own = OWN_CONCEPTS.to_h { [_1, scope.own_alternation(_1)] }
-          built[[scope.type_markers, own]] ||= Rules.build(scope.type_markers, own)
-        end.freeze
+      RULES_BY_SCOPE = Vocabulary.by_own_terms(OWN_CONCEPTS, key: :type_markers.to_proc) do |own, scope|
+        Rules.build(scope.type_markers, own)
       end
       # Trailing stray separators (+Kicker :+, +Kicker -+, +Kicker ›+). A trailing +»+ closes a French
       # quote, so it stays.
@@ -176,8 +172,9 @@ module Html2rss
         #
         # @param text [String, nil] visible text of one headline descendant element
         # @param vocabulary [Vocabulary::Scope] the page language's scope
-        # @param date_element [Boolean] whether the element is a date or time element: only there an own date
-        #   term of a page-only language counts
+        # @param date_element [Boolean] whether the element is a standalone date chip (a date or time element set
+        #   apart from the headline words, {Html::TitlePieces::Nodes#dropped_date?}): only there an own date term
+        #   of a page-only language counts
         # @return [Boolean]
         def date_piece?(text, vocabulary:, date_element:)
           piece = read(text).to_s
@@ -191,7 +188,7 @@ module Html2rss
         #
         # @param text [String, nil] visible text of one headline descendant element
         # @param vocabulary [Vocabulary::Scope] the page language's scope
-        # @param date_element [Boolean] whether the element is a date or time element (see {.date_piece?})
+        # @param date_element [Boolean] whether the element is a standalone date chip (see {.date_piece?})
         # @return [Boolean]
         def headline_noise_piece?(text, vocabulary:, date_element:)
           rules = RULES_BY_SCOPE.fetch(vocabulary.code)
@@ -205,7 +202,7 @@ module Html2rss
         #
         # @param text [String, nil] visible text of one headline descendant element
         # @param vocabulary [Vocabulary::Scope] the page language's scope
-        # @param date_element [Boolean] whether the element is a date or time element (see {.date_piece?})
+        # @param date_element [Boolean] whether the element is a standalone date chip (see {.date_piece?})
         # @return [Boolean]
         def own_noise_piece?(text, vocabulary:, date_element:)
           rules = RULES_BY_SCOPE.fetch(vocabulary.code)
@@ -245,7 +242,7 @@ module Html2rss
 
         def shared_noise?(piece) = piece.match?(CLOCK_PIECE) || piece.match?(DATE_PIECE)
 
-        # An own date term counts on a date or time element only.
+        # An own date term counts on a standalone date chip only.
         def own_date_piece?(rules, piece, date_element)
           date_element && !rules.own_date_piece.nil? && rules.own_date_piece.match?(piece)
         end

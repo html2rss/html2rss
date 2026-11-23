@@ -95,6 +95,14 @@ module Html2rss
         # @return [Boolean]
         def paid_text?(text, vocabulary:) = LabelText.kind(text, vocabulary:) == :paid_label
 
+        ##
+        # Whether +text+ is a paid label only through a term of a page-only language ({LabelText.own_paid?}).
+        #
+        # @param text [String, nil]
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
+        # @return [Boolean]
+        def own_paid_text?(text, vocabulary:) = LabelText.own_paid?(text, vocabulary:)
+
         private
 
         # Runs on every node of the page: literal checks gate each regex.

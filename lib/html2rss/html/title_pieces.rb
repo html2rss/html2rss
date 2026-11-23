@@ -113,7 +113,15 @@ module Html2rss
         drop_pieces!(node, dropped, LEAD_WORDS) { |rest, _| rest.match?(WORD) }
         drop_pieces!(node, dropped, TAG_WORDS) { |rest, piece| rest.match?(WORD) && closing?(node, dropped, piece) }
         drop_opening_noise!(node, dropped)
-        drop_closing_dates!(node, dropped)
+        keep_words(node, drop_closing_dates!(node, dropped))
+      end
+
+      # Gives the headline back its own-term drops when, after all drops, no word is left: a term of a page-only
+      # language never empties a headline, whatever order its pieces were dropped in.
+      def keep_words(node, dropped)
+        return dropped if @nodes.text(node, dropped).to_s.match?(WORD)
+
+        dropped.reject { @nodes.own_noise?(_1) }
       end
 
       # Concealed elements leave unless they hold the only words (the name of an otherwise empty link).
@@ -135,7 +143,6 @@ module Html2rss
         @nodes.elements(node).each do |element|
           next if within?(element, dropped) || !@nodes.noise?(element)
           break unless opening?(node, dropped, element)
-          next if emptying?(node, dropped, element)
 
           dropped << element
         end
@@ -146,7 +153,6 @@ module Html2rss
         @nodes.elements(node).reverse_each do |element|
           next if within?(element, dropped) || !date_chip?(element)
           break unless closing?(node, dropped, element)
-          next if emptying?(node, dropped, element)
 
           dropped << element
         end
@@ -157,12 +163,6 @@ module Html2rss
       # holding only a clock time (+late <time>22:10</time>+, while +at <b>20:15</b>+ is headline text).
       def date_chip?(element)
         @nodes.date_piece?(element) || (@nodes.date_element?(element) && Article::Title.clock_piece?(@nodes.text(element)))
-      end
-
-      # Whether dropping +element+, which only a page-only language's own term calls noise, would leave +node+
-      # without words: the title is kept whole then.
-      def emptying?(node, dropped, element)
-        @nodes.own_noise?(element) && !@nodes.text(node, dropped + [element]).to_s.match?(WORD)
       end
 
       # Whether +element+ opens the text of +node+ left after +dropped+.

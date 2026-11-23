@@ -33,10 +33,9 @@ module Html2rss
           # @return [Readings] the shared terms of every language, widened by the own ones (whole labels, like
           #   every term here)
           def build(own)
-            union = ->(concept) { [Vocabulary.alternation(concept), own.fetch(concept)].reject(&:empty?).join('|') }
-            Readings.new(label: LABEL_PATTERN.call(union.call(:paid_label), union.call(:ad_word)),
-                         element_label: ELEMENT_LABEL.call(union.call(:element_label)),
-                         element_label_word: /#{union.call(:element_label)}/)
+            element = Vocabulary.union(:element_label, own)
+            Readings.new(label: LABEL_PATTERN.call(Vocabulary.union(:paid_label, own), Vocabulary.union(:ad_word, own)),
+                         element_label: ELEMENT_LABEL.call(element), element_label_word: /#{element}/)
           end
 
           ##
@@ -45,14 +44,17 @@ module Html2rss
           # @param element [Boolean] whether +text+ is an element's text, the only place "PR" counts
           # @return [Symbol, nil] +:paid_label+ for a paid phrase, +:label+ for an ad word, else nil
           def kind(text, vocabulary:, element: true)
-            return if text.nil?
+            kind_in(BY_SCOPE.fetch(vocabulary.code), text, element)
+          end
 
+          ##
+          # @param text [String, nil] a whole text
+          # @param vocabulary [Vocabulary::Scope] the page language's scope
+          # @return [Boolean] whether +text+ states paid content only through a term of a page-only language
+          def own_paid?(text, vocabulary:)
             reading = BY_SCOPE.fetch(vocabulary.code)
-            text = TextClassifier.strip_bidi(text.unicode_normalize)
-            return :label if element && text.match?(reading.element_label)
-
-            match = reading.label.match(text)
-            match && (match[:paid] ? :paid_label : :label)
+            !reading.equal?(SHARED) && kind_in(reading, text, true) == :paid_label &&
+              kind_in(SHARED, text, true) != :paid_label
           end
 
           ##
@@ -66,17 +68,25 @@ module Html2rss
             text = TextClassifier.strip_bidi(text.unicode_normalize)
             text.match?(reading.label) || text.match?(reading.element_label_word)
           end
+
+          private
+
+          def kind_in(reading, text, element)
+            return if text.nil?
+
+            text = TextClassifier.strip_bidi(text.unicode_normalize)
+            return :label if element && text.match?(reading.element_label)
+
+            match = reading.label.match(text)
+            match && (match[:paid] ? :paid_label : :label)
+          end
         end
 
         # Per scope code; scopes with the same own terms share one entry.
-        BY_SCOPE = begin
-          built = {}
-          Vocabulary::SCOPES.transform_values do |scope|
-            own = %i[paid_label ad_word element_label].to_h { [_1, scope.own_alternation(_1)] }
-            built[own] ||= build(own)
-          end.freeze
-        end
-        private_constant :LABEL_PATTERN, :ELEMENT_LABEL, :BY_SCOPE
+        BY_SCOPE = Vocabulary.by_own_terms(%i[paid_label ad_word element_label]) { |own, _scope| build(own) }
+        # The reading of a scope without own terms.
+        SHARED = BY_SCOPE.fetch(:all)
+        private_constant :LABEL_PATTERN, :ELEMENT_LABEL, :BY_SCOPE, :SHARED
       end
     end
   end

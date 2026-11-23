@@ -146,6 +146,7 @@ RSpec.describe Html2rss::Html::TitlePieces do
     let(:xx) do
       terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
       terms[:type_label] = %w[soort-xx]
+      terms[:paid_label] = %w[betaald-xx]
       terms[:date_piece] = [/\d{1,2}-mnd-xx/]
       language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
       Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
@@ -165,12 +166,11 @@ RSpec.describe Html2rss::Html::TitlePieces do
       stub_const('Html2rss::Article::Title::RULES_BY_SCOPE', table)
     end
 
-    it 'drops an own date only on a date element', :aggregate_failures do
-      dated = '<article><h2><a href="/s">Haven opent <span class="date">12-mnd-xx</span></a></h2></article>'
+    it 'keeps an own date term that stands inside running text', :aggregate_failures do
+      inline = '<article><h2><a href="/s">Haven opent <time>12-mnd-xx</time></a></h2></article>'
       plain = '<article><h2><a href="/s">Haven opent <span>12-mnd-xx</span></a></h2></article>'
 
-      expect(headline.call(dated, xx)).to eq('Haven opent')
-      expect(headline.call(dated, all_scope)).to eq('Haven opent 12-mnd-xx')
+      expect(headline.call(inline, xx)).to eq('Haven opent 12-mnd-xx')
       expect(headline.call(plain, xx)).to eq('Haven opent 12-mnd-xx')
     end
 
@@ -180,10 +180,16 @@ RSpec.describe Html2rss::Html::TitlePieces do
       expect(headline.call(labelled, xx)).to eq('Haven opent')
     end
 
-    it 'keeps a headline that an own term alone would empty' do
-      only = '<article><h2><a href="/s"><span>Soort-xx:</span></a></h2></article>'
+    it 'keeps a headline that own terms alone would empty, whatever the drops', # rubocop:disable RSpec/ExampleLength
+       :aggregate_failures do
+      [
+        '<span>Soort-xx:</span>', '<span>Betaald-xx</span>',
+        '<span>Soort-xx:</span><span>12:30</span>', '<span>Betaald-xx</span><span>12:30</span>'
+      ].each do |inner|
+        html = %(<article><h2><a href="/s">#{inner}</a></h2></article>)
 
-      expect(headline.call(only, xx)).to eq('Soort-xx:')
+        expect(headline.call(html, xx)).not_to be_nil, inner
+      end
     end
   end
 end

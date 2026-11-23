@@ -102,23 +102,24 @@ module Html2rss
         #   or a paid-content label
         def noise?(node)
           Article::Title.headline_noise_piece?(text(node), vocabulary: @vocabulary,
-                                                           date_element: date_element?(node)) ||
+                                                           date_element: dropped_date?(node)) ||
             paid_label?(node)
         end
 
         ##
         # @param node [Nokogiri::XML::Node, SST::Node]
-        # @return [Boolean] whether +node+ is noise only through a term of a page-only language
-        #   ({Article::Title.own_noise_piece?})
+        # @return [Boolean] whether +node+ is noise only through a term of a page-only language: a title piece
+        #   ({Article::Title.own_noise_piece?}) or a paid label ({LinkDestination::Sponsorship.own_paid_text?})
         def own_noise?(node)
-          Article::Title.own_noise_piece?(text(node), vocabulary: @vocabulary, date_element: date_element?(node))
+          Article::Title.own_noise_piece?(text(node), vocabulary: @vocabulary, date_element: dropped_date?(node)) ||
+            LinkDestination::Sponsorship.own_paid_text?(text(node), vocabulary: @vocabulary)
         end
 
         ##
         # @param node [Nokogiri::XML::Node, SST::Node]
         # @return [Boolean] whether +node+ is a date chip by its text ({Article::Title.date_piece?})
         def date_piece?(node)
-          Article::Title.date_piece?(text(node), vocabulary: @vocabulary, date_element: date_element?(node))
+          Article::Title.date_piece?(text(node), vocabulary: @vocabulary, date_element: dropped_date?(node))
         end
       end
       private_constant :Nodes
