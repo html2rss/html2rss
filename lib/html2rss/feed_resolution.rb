@@ -18,12 +18,13 @@ module Html2rss
     }.freeze
 
     ##
-    # Tournament outcome for one entry-resolution attempt.
-    Result = Data.define(:entry_url, :scrape_url, :applied, :reason, :probe_count, :winner_score)
+    # Tournament outcome for one entry-resolution attempt. +response+ is the winner's already fetched
+    # response (nil unless applied), so the caller extracts it without fetching the winner again.
+    Result = Data.define(:entry_url, :scrape_url, :applied, :reason, :probe_count, :winner_score, :response)
 
     ##
     # @param auto_source [Hash, nil]
-    # @return [Integer] entry-resolution budget slots (probes + retry GET when enabled)
+    # @return [Integer] entry-resolution budget slots (one per probe when enabled)
     def self.request_slots_for(auto_source)
       return 0 unless auto_source
 
@@ -31,203 +32,40 @@ module Html2rss
     end
 
     ##
-    # @param entry_url [String, Html2rss::Url]
-    # @param response [Html2rss::RequestService::Response]
-    # @param session [Html2rss::RequestSession]
-    # @param config [Html2rss::Config]
-    # @param articles [Array<Html2rss::Article>]
-    # @param surface_category [Symbol, nil]
-    # @return [Result]
-    # rubocop:disable-next Metrics/ParameterLists -- tournament kwargs stay co-located
-    def self.call(entry_url:, response:, session:, config:, articles:, surface_category: nil)
-      Runner.new(
-        entry_url:, response:, session:, config:, articles:, surface_category:
-      ).call
-    end
-
-    ##
-    # Outcome of {FeedResolution.try_apply!} for the auto-fallback chain.
-    ApplyOutcome = Data.define(:scrape_target, :status)
-
-    ##
-    # Runs the tournament and, when a winner applies, re-fetches and re-extracts articles.
+    # Decides whether the entry page needs a better entry URL and, when it does, probes candidates.
     #
-    # @param pipeline [Html2rss::FeedPipeline]
-    # @param config [Html2rss::Config]
-    # @param response [Html2rss::RequestService::Response]
+    # @param response [Html2rss::RequestService::Response] the entry page response
     # @param session [Html2rss::RequestSession]
-    # @param strategy [Symbol]
-    # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources]
-    # @param articles [Array]
-    # @param scrape_target [Html2rss::ScrapeTarget]
-    # @param state [Html2rss::FeedPipeline::AutoFallback::AttemptState]
-    # @param budget [Html2rss::RequestService::Budget]
-    # @return [ApplyOutcome, nil] `:succeeded` sticky scrape target when retry extract yielded items;
-    #   `nil` when no winner or retry was empty (entry scrape target kept; Diag.applied may still be true)
-    # rubocop:disable-next Metrics/ParameterLists -- orchestration kwargs stay co-located
-    def self.try_apply!(pipeline:, config:, response:, session:, strategy:, resources:, articles:,
-                        scrape_target:, state:, budget:)
-      Orchestrator.new(
-        pipeline:, config:, response:, session:, strategy:, resources:, articles:,
-        scrape_target:, state:, budget:
-      ).call
-    end
-
-    # Tournament + optional retry orchestration for {FeedPipeline::AutoFallback}.
-    class Orchestrator
-      # Minimum remaining request budget required before probing candidates.
-      MIN_BUDGET_REMAINING = 3
-
-      # Error classes that abort resolution instead of falling through (mirrors AutoFallback).
-      NON_FALLBACK_ERRORS = FeedPipeline::AutoFallback::NON_FALLBACK_ERRORS
-
-      ##
-      # @param pipeline [Html2rss::FeedPipeline]
-      # @param config [Html2rss::Config]
-      # @param response [Html2rss::RequestService::Response]
-      # @param session [Html2rss::RequestSession]
-      # @param strategy [Symbol]
-      # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources]
-      # @param articles [Array]
-      # @param scrape_target [Html2rss::ScrapeTarget]
-      # @param state [Html2rss::FeedPipeline::AutoFallback::AttemptState]
-      # @param budget [Html2rss::RequestService::Budget]
-      # rubocop:disable-next Metrics/ParameterLists -- orchestration context stays co-located
-      def initialize(pipeline:, config:, response:, session:, strategy:, resources:, articles:,
-                     scrape_target:, state:, budget:)
-        @pipeline = pipeline
-        @config = config
-        @response = response
-        @session = session
-        @strategy = strategy
-        @resources = resources
-        @articles = articles
-        @scrape_target = scrape_target
-        @state = state
-        @budget = budget
-      end
-
-      ##
-      # @return [ApplyOutcome, nil]
-      # rubocop:disable-next Metrics/MethodLength -- eligibility + tournament + retry path
-      def call
-        return unless eligible?
-
-        state.mark_resolution_tried!
-        resolution = run_tournament
-        state.remember_entry_resolution(resolution)
-        return unless resolution.applied
-
-        effective = scrape_target.with_effective(resolution.scrape_url)
-        ApplyOutcome.new(scrape_target: effective, status: :succeeded) if retry_with(effective:)
-      rescue RequestService::RequestBudgetExceeded
-        log_budget_exhausted
-        nil
-      rescue *NON_FALLBACK_ERRORS, Html2rss::ContractError
-        raise
-      rescue Html2rss::Error => error
-        log_retry_failed(error)
-        nil
-      end
-
-      private
-
-      attr_reader :pipeline, :config, :response, :session, :strategy, :resources, :articles,
-                  :scrape_target, :state, :budget, :surface_category
-
-      def log_budget_exhausted
-        Log.warn({
-          event_name: 'feed_resolution.budget_exhausted',
-          host: channel_host,
-          message: 'FeedResolution: entry resolution skipped (request budget exhausted)'
-        }.to_json)
-      end
-
-      def log_retry_failed(error)
-        Log.warn({
-          event_name: 'feed_resolution.retry_failed',
-          host: channel_host,
-          error_class: error.class.name,
-          message: "FeedResolution: entry resolution retry failed (#{error.class.name})"
-        }.to_json)
-      end
-
-      # +Config#url+ is a String; parse once for structured logs.
-      #
-      # @return [String, nil]
-      def channel_host
-        Url.from_absolute(config.url.to_s).host
-      rescue Html2rss::Url::InvalidUrlError
-        nil
-      end
-
-      def eligible?
-        return false if state.resolution_tried?
-        return false if response.feed_response?
-        return false if budget.remaining_requests < MIN_BUDGET_REMAINING
-
-        @surface_category = PageRecon.surface_category_for(response:, url: config.url)
-        Policy.resolve?(config:, articles:, surface_category:)
-      end
-
-      def run_tournament
-        FeedResolution.call(
-          entry_url: config.url,
-          response:,
-          session:,
-          config:,
-          articles:,
-          surface_category:
-        )
-      end
-
-      def retry_with(effective:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- retry extract path
-        retry_session = pipeline.request_session_for(
-          config, strategy:, resources:, scrape_url: effective.effective_url
-        )
-        retry_response = retry_session.fetch_initial_response
-        extraction = pipeline.extract(config:, response: retry_response, request_session: retry_session)
-        items_count = extraction.articles.size
-        state.remember_response(retry_response)
-        state.record_items(strategy:, items_count:, transport_meta: retry_response.transport_meta)
-        return unless items_count.positive?
-
-        state.succeed!(
-          response: retry_response, extraction:, selected_strategy: strategy,
-          attempt_count: state.attempts.size, scrape_target: effective
-        )
-        true
-      end
+    # @param config [Html2rss::Config]
+    # @param articles [Array<Html2rss::Article>] what the entry page extracted
+    # @param slots [Integer] request slots the tournament may spend (caps the configured probes)
+    # @return [Result, nil] nil when no tournament ran (feed response, policy, or no slots)
+    def self.call(response:, session:, config:, articles:, slots:)
+      Runner.new(response:, session:, config:, articles:, slots:).call
     end
 
     # Internal tournament runner (keeps {FeedResolution} a Zeitwerk namespace module).
     class Runner
       ##
-      # @param entry_url [String, Html2rss::Url]
       # @param response [Html2rss::RequestService::Response]
       # @param session [Html2rss::RequestSession]
       # @param config [Html2rss::Config]
       # @param articles [Array<Html2rss::Article>]
-      # @param surface_category [Symbol, nil]
-      # rubocop:disable-next Metrics/ParameterLists -- tournament context stays co-located
-      def initialize(entry_url:, response:, session:, config:, articles:, surface_category: nil)
-        raise InvalidError, 'articles must be an Array' unless articles.is_a?(Array)
-
-        @entry_url = Url.from_absolute(entry_url)
+      # @param slots [Integer] request slots the tournament may spend
+      def initialize(response:, session:, config:, articles:, slots:)
+        @entry_url = Url.from_absolute(config.url)
         @response = response
         @session = session
         @config = config
         @articles = articles
-        @surface_category = surface_category
+        @slots = slots
       end
 
       ##
-      # @return [Result]
-      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- policy → candidates → probe → select
+      # @return [Result, nil] nil when the entry page does not warrant a tournament
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- eligibility → candidates → probe → select
       def call
-        return skip(:policy_skip) unless Policy.resolve?(
-          config:, articles:, surface_category:
-        )
+        return unless eligible?
 
         candidates = CandidateGenerator.call(
           entry_url:,
@@ -246,10 +84,18 @@ module Html2rss
 
       private
 
-      attr_reader :entry_url, :response, :session, :config, :articles, :surface_category
+      attr_reader :entry_url, :response, :session, :config, :articles, :slots
 
+      def eligible?
+        return false if response.feed_response? || max_probes < 1
+
+        surface_category = PageRecon.surface_category_for(response:, url: config.url)
+        Policy.resolve?(config:, articles:, surface_category:)
+      end
+
+      # @return [Integer] configured probes, capped by the request slots left to spend
       def max_probes
-        Options.from_auto_source(config.auto_source).max_probes
+        [Options.from_auto_source(config.auto_source).max_probes, slots].min
       end
 
       def probe_candidates(candidates)
@@ -258,35 +104,31 @@ module Html2rss
       end
 
       def apply(winner, probe_count:)
-        result(
-          applied: true,
-          reason: :winner,
-          scrape_url: winner.url.to_s,
-          probe_count:,
-          winner_score: winner.score
-        )
+        log(Result.new(
+              entry_url: entry_url.to_s, scrape_url: winner.url.to_s, applied: true, reason: :winner,
+              probe_count:, winner_score: winner.score, response: winner.response
+            ))
       end
 
       def skip(reason, probe_count: 0)
-        result(
-          applied: false,
-          reason:,
-          scrape_url: entry_url.to_s,
-          probe_count:,
-          winner_score: nil
-        )
+        log(Result.new(
+              entry_url: entry_url.to_s, scrape_url: entry_url.to_s, applied: false, reason:,
+              probe_count:, winner_score: nil, response: nil
+            ))
       end
 
-      def result(applied:, reason:, scrape_url:, probe_count:, winner_score:)
-        scrape_host = Html2rss::Url.from_absolute(scrape_url).host
+      # @param result [Result]
+      # @return [Result] the same result, after its structured log line
+      def log(result)
+        scrape_host = Html2rss::Url.from_absolute(result.scrape_url).host
         Log.info({
           event_name: 'feed_resolution.result',
           host: entry_url.host,
           message: "FeedResolution: entry_host=#{entry_url.host} scrape_host=#{scrape_host} " \
-                   "applied=#{applied} probe_count=#{probe_count} winner_score=#{winner_score.inspect} " \
-                   "reason=#{reason}"
+                   "applied=#{result.applied} probe_count=#{result.probe_count} " \
+                   "winner_score=#{result.winner_score.inspect} reason=#{result.reason}"
         }.to_json)
-        Result.new(entry_url: entry_url.to_s, scrape_url:, applied:, reason:, probe_count:, winner_score:)
+        result
       end
     end
   end

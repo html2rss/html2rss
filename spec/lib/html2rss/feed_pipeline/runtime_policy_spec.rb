@@ -22,7 +22,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     }
   end
 
-  # Default auto_source reserves NativeFeed (+1) + entry_resolution (max_probes+1 retry)
+  # Default auto_source reserves NativeFeed (+1) + entry_resolution (one slot per probe)
   # on top of wordpress_api/sitemap/pagination; that baseline exceeds Policy::MAX_REQUESTS_CEILING.
   let(:request_ceiling) { Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING }
 
@@ -48,7 +48,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
 
         expect(native_slots).to eq(1)
         expect(fr_opts.max_probes).to eq(5)
-        expect(fr_slots).to eq(fr_opts.max_probes + 1)
+        expect(fr_slots).to eq(fr_opts.max_probes)
         expect(baseline).to be >= (1 + native_slots + fr_slots)
         expect(runtime_policy.max_requests).to eq(request_ceiling)
         expect(runtime_policy.max_redirects).to eq(8)

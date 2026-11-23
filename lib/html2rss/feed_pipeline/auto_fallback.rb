@@ -214,22 +214,13 @@ module Html2rss
       # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Metrics/ParameterLists -- extract + resolution delegate
       def process_response(response:, strategy:, next_strategy:, request_session:, state:, elapsed_ms: nil)
         extraction = pipeline.extract(config:, response:, request_session:)
-        state.remember_response(response)
-        items_count = extraction.articles.size
-        state.record_items(strategy:, items_count:, transport_meta: response.transport_meta, elapsed_ms:)
-        Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
+        record_extraction(state:, strategy:, response:, extraction:, elapsed_ms:)
+        Log.debug("#{self.class}: strategy=#{strategy} items=#{extraction.articles.size} " \
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")
 
-        if (outcome = FeedResolution.try_apply!(
-          pipeline:, config:, response:, session: request_session, strategy:, resources:,
-          articles: extraction.articles, scrape_target:, state:, budget:
-        ))
-          @scrape_target = outcome.scrape_target
-          return
-        end
-
-        return record_success(response:, strategy:, extraction:, state:) if items_count.positive?
+        return if resolve_entry(response:, strategy:, next_strategy:, request_session:, extraction:, state:)
+        return record_success(response:, strategy:, extraction:, state:) if extraction.articles.any?
 
         if DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
           state.abort!
@@ -240,8 +231,80 @@ module Html2rss
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
       end
 
+      # The one record path for an extraction, whether it came from the entry fetch or the resolved retry.
+      def record_extraction(state:, strategy:, response:, extraction:, elapsed_ms: nil)
+        state.remember_response(response)
+        state.record_items(
+          strategy:, items_count: extraction.articles.size, transport_meta: response.transport_meta, elapsed_ms:
+        )
+      end
+
+      # Runs the entry-resolution tournament once per chain and retries the winner's page.
+      # The tournament never spends the request slot a later strategy needs for its initial fetch.
+      #
+      # @return [Boolean] true when the retry extraction yielded items and ended the chain
+      # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- eligibility, record, retry, error policy
+      def resolve_entry(response:, strategy:, next_strategy:, request_session:, extraction:, state:)
+        return false if state.resolution_tried?
+
+        resolution = FeedResolution.call(
+          response:, session: request_session, config:, articles: extraction.articles, slots: slots_left(next_strategy)
+        )
+        return false unless resolution
+
+        state.mark_resolution_tried!
+        state.remember_entry_resolution(resolution)
+        resolution.applied && retry_succeeded?(resolution:, strategy:, state:)
+      rescue RequestService::RequestBudgetExceeded
+        log_resolution_failure('budget_exhausted', 'entry resolution skipped (request budget exhausted)')
+        false
+      rescue *NON_FALLBACK_ERRORS, Html2rss::ContractError
+        raise
+      rescue Html2rss::Error => error
+        log_resolution_failure('retry_failed', "entry resolution retry failed (#{error.class.name})", error:)
+        false
+      end
+
+      # Extracts the winner's already fetched response; the target turns sticky only when it yields items.
+      def retry_succeeded?(resolution:, strategy:, state:)
+        target = scrape_target.with_effective(resolution.scrape_url)
+        extraction = extract_resolved(resolution:, strategy:, target:)
+        record_extraction(state:, strategy:, response: resolution.response, extraction:)
+        return false if extraction.articles.empty?
+
+        record_success(response: resolution.response, strategy:, extraction:, state:, scrape_target: target)
+        true
+      end
+
+      def extract_resolved(resolution:, strategy:, target:)
+        retry_session = pipeline.request_session_for(config, strategy:, resources:, scrape_url: target.effective_url)
+        retry_session.remember!(resolution.response.url)
+        pipeline.extract(config:, response: resolution.response, request_session: retry_session)
+      end
+
+      # Request slots the tournament may spend: all that are left, minus the initial fetch of a later strategy.
+      def slots_left(next_strategy) = budget.remaining_requests - (next_strategy ? 1 : 0)
+
+      def log_resolution_failure(event, summary, error: nil)
+        Log.warn({
+          event_name: "feed_resolution.#{event}",
+          host: channel_host,
+          **(error ? { error_class: error.class.name } : {}),
+          message: "FeedResolution: #{summary}"
+        }.to_json)
+      end
+
+      # +Config#url+ is a String; parse once for structured logs.
+      #
+      # @return [String, nil]
+      def channel_host
+        Url.from_absolute(config.url.to_s).host
+      rescue Html2rss::Url::InvalidUrlError
+        nil
+      end
+
       # rubocop:disable-next Metrics/MethodLength -- success + structured selected log
-      def record_success(response:, strategy:, extraction:, state:)
+      def record_success(response:, strategy:, extraction:, state:, scrape_target: self.scrape_target)
         attempt_count = state.attempts.size
         state.succeed!(response:, extraction:, selected_strategy: strategy, attempt_count:, scrape_target:)
         return unless attempt_count > 1
