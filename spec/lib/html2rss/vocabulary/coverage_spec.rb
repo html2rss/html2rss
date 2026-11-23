@@ -1097,6 +1097,116 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Danish labels' do
+    let(:da) { text.call(:da) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:da]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { da.utility?(label) }, chrome: ->(label) { da.utility_chrome?(label) },
+        prefix: ->(label) { da.utility_prefix?(label) }, recommended: ->(label) { da.recommended?(label) },
+        read_more: ->(label) { da.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      ['Log ind', 'Log på', 'Log ud', 'Opret bruger', 'Opret konto', 'Søg', 'Søgning', 'Om os', 'Tip os',
+       'Kundeservice', 'Privatlivspolitik', 'Persondatapolitik', 'Cookiepolitik', 'Cookieindstillinger',
+       'Vilkår og betingelser', 'Ofte stillede spørgsmål', 'Menu', 'Åbn menu', 'Forside', 'Kommentarer',
+       'Følg os', 'Spring til indhold',
+       'Gå til hovedindhold'].each do |item|
+        expect(da.utility_chrome?(item)).to be(true), item
+      end
+      ['[Søg]', '← Søg ←', 'Log ind (åbner i nyt vindue)', '‎Søg‎'].each do |item|
+        expect(da.utility_chrome?(item)).to be(true), item
+      end
+      ['Relaterede artikler', 'Relaterede historier', 'Læs også', 'Se også', 'Anbefalet til dig'].each do |item|
+        expect(da.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Læs mere', 'Læs mere her', 'Læs hele artiklen', 'Læs videre', 'Læs resten', 'Se mere',
+       'Vis mere'].each do |label|
+        expect([da.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Tilmeld dig nyhedsbrev', 'Køb abonnement', 'Bliv abonnent', 'Skriv en kommentar', 'Del artiklen'].each do |item|
+        expect(da.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
+      ['LOG IND', 'SØG', 'OM OS', 'PRIVATLIVSPOLITIK', 'VILKÅR OG BETINGELSER', 'TIP OS',
+       'GÅ TIL INDHOLD'].each do |label|
+        expect(da.utility_chrome?(label)).to be(true), label
+      end
+      ['RELATEREDE ARTIKLER', 'LÆS OGSÅ'].each { expect(da.recommended?(_1)).to be(true), _1 }
+      ['LÆS MERE', 'LÆS HELE ARTIKLEN'].each { expect(da.read_more?(_1)).to be(true), _1 }
+      ['Log ind', 'Søg', 'Om os', 'Privatlivspolitik', 'Vilkår og betingelser', 'Læs også'].each do |label|
+        decomposed = label.unicode_normalize(:nfd)
+        expect(da.utility_chrome?(decomposed) || da.recommended?(decomposed)).to be(true), label
+      end
+      expect('Vilkår og betingelser'.unicode_normalize(:nfd)).not_to eq('Vilkår og betingelser')
+      expect(da.read_more?('Læs mere'.unicode_normalize(:nfd))).to be(true)
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      ['Log ind ramte portalen, som lå nede en halv dag', 'Søg efter savnet fisker er indstillet',
+       'Læs mere end ventet: lånerne slår rekord', 'Om os og kortfilmfestivalen, som begynder i dag',
+       'Se også naboens have, som vandt prisen for årets bed', 'Del af byens gamle havn bliver til park',
+       'Cookiepolitik i bageriet: kunderne får gratis småkager', 'LOG IND RAMTE PORTALEN HELE DAGEN'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['Log ind 2026', 'Søg 2026', 'Læs mere 2026', 'Om os 2026', 'Privatlivspolitik 2026',
+       'Relaterede artikler 2026', 'Tip os 2026', 'Vilkår og betingelser 2026'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['Tip os 12', 'Søg 3', 'Log ind 2', 'Om os 3'].each do |label|
+        expect(da.utility_chrome?(label)).to be(false), label
+      end
+      ['Tip os (12)', 'Søg [3]', 'Søg (7)', 'Kommentarer (12)'].each do |item|
+        expect(da.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
+      ['Se alle', 'Se flere', 'Flere nyheder', 'Del', 'Hjælp', 'Annoncering', 'Lyt', 'Seneste nyt',
+       'Mest læste', 'Udland', 'Kultur', 'Debat',
+       'Erhverv', 'Del 2'].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'reads Kontakt and Kommentarer through the foreign readings every scope shares',
+       :aggregate_failures do
+      ['Kontakt', 'Kontakt Danmark', 'Kontakt 2026', 'Kommentarer 140'].each do |label|
+        expect([da.utility_chrome?(label), text.call(:all).utility_chrome?(label)]).to eq([true, true]), label
+      end
+      expect(da.utility_chrome?('Kontakt mellem skakspillerne forbudt')).to be(false)
+    end
+
+    it 'keeps a card whose only link carries a read-more label and not a list-level label', :aggregate_failures do
+      ['Se alle', 'Se flere', 'Flere nyheder'].each { expect(da.utility_chrome?(_1)).to be(false), _1 }
+      expect([da.read_more?('Vis mere'), junk_reason.call('Vis mere')]).to eq([true, :cta])
+    end
+
+    it 'reads the labels on a Danish page only', :aggregate_failures do
+      [nil, :ja, :en, :sv, :de, :id].each do |code|
+        expect(text.call(code).utility_chrome?('Log ind')).to be(false), code.inspect
+      end
+    end
+
+    it 'declares no type marker or path word of its own', :aggregate_failures do
+      expect(described_class::Da.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:da].type_markers).to eq(described_class.words(:type_marker))
+      expect(described_class::SCOPED_WORDS.flat_map { described_class::Da.terms.fetch(_1) }).to be_empty
+    end
+  end
+
   describe 'Indonesian labels' do
     let(:id) { text.call(:id) }
     let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:id]) } }

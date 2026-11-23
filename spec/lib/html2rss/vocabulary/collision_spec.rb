@@ -14,12 +14,16 @@ RSpec.describe Html2rss::Vocabulary do
   # still hit (a stale entry fails), so the list only ever shrinks or is re-reviewed.
   let(:reviewed) do
     english_chrome = 'the page is tagged in another language but carries an English chrome link'
+    also_danish = 'the word is also a utility label in Danish, so the Danish page reads it as chrome'
     shared_word = 'the same word is a utility label in English too: an international word, not a language clash'
     {
       [:en, 'about', :de] => english_chrome, [:en, 'about', :ja] => english_chrome,
       [:en, 'contact', :de] => english_chrome, [:en, 'contact', :ja] => english_chrome,
       [:en, 'contact', :ro] => shared_word, [:en, 'share', :id] => english_chrome,
       [:en, 'share', :ro] => english_chrome, [:en, 'share', :tr] => english_chrome,
+      [:en, 'share', :da] => english_chrome,
+      [:de, 'kontakt', :da] => also_danish, [:pl, 'kontakt', :da] => also_danish,
+      [:sv, 'kontakt', :da] => also_danish, [:sv, 'kommentarer', :da] => also_danish,
       [:en, 'share', :cs] => english_chrome,
       [:de, 'kontakt', :cs] => shared_word, [:pl, 'kontakt', :cs] => shared_word,
       [:sv, 'kontakt', :cs] => shared_word,
