@@ -687,6 +687,76 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Thai labels' do
+    let(:th) { text.call(:th) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:th]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { th.utility?(label) }, chrome: ->(label) { th.utility_chrome?(label) },
+        prefix: ->(label) { th.utility_prefix?(label) }, recommended: ->(label) { th.recommended?(label) },
+        read_more: ->(label) { th.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      %w[เข้าสู่ระบบ ออกจากระบบ สมัครสมาชิก ค้นหา เกี่ยวกับเรา ติดต่อเรา นโยบายความเป็นส่วนตัว
+         นโยบายคุกกี้ ข้อตกลงและเงื่อนไข แผนผังเว็บไซต์ แผนผังเว็บไซท์ จดหมายข่าว หน้าแรก ดูเพิ่มเติม
+         ดูทั้งหมด แชร์ เมนู].each do |item|
+        expect(th.utility_chrome?(item)).to be(true), item
+      end
+      ['[ดูเพิ่มเติม]', '← ดูทั้งหมด ←', 'เข้าสู่ระบบ (เปิดในหน้าต่างใหม่)', "\u200eค้นหา\u200e"].each do |item|
+        expect(th.utility_chrome?(item)).to be(true), item
+      end
+      %w[ข่าวที่เกี่ยวข้อง บทความที่เกี่ยวข้อง ข่าวแนะนำ คุณอาจสนใจ].each do |item|
+        expect(th.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      %w[อ่านต่อ อ่านเพิ่มเติม อ่านข่าวต่อ ดูรายละเอียด รายละเอียดเพิ่มเติม].each do |label|
+        expect([th.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      %w[สมัครรับจดหมายข่าว แสดงความคิดเห็น สมัครสมาชิกวันนี้].each do |item|
+        expect(th.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      %w[ค้นหาผู้รอดชีวิตในท่าเรือ เข้าสู่ระบบพอร์ทัลขัดข้อง สมัครสมาชิกฟรีเปลี่ยนตลาดหนังสือพิมพ์
+         ดูเพิ่มเติมได้ที่ห้องสมุดกลาง อ่านต่อไปนี้คือกำหนดการใหม่ เมนูอาหารกลางวันขึ้นราคา
+         หน้าแรกของงานตลาดนัดเปิดแล้ว แชร์ข้อมูลช่วยตามหาเด็กหาย ติดต่อเราได้ทุกวันเป็นเวลาหนึ่งเดือน
+         ลงทะเบียนผู้สูงอายุเพิ่มขึ้น ร่วมงานกับเราสิบตำแหน่งใหม่ ปิดท่าเรือสองวัน ข่าวที่เกี่ยวข้องกับน้ำท่วม
+         ฝนตกหนักและดูเพิ่มเติม ท่าเรือเปิดค้นหาผู้สูญหาย คำถามที่พบบ่อยของผู้เช่า เพิ่มเติมจากเมื่อวาน
+         ช่วยเหลือผู้ประสบภัยน้ำท่วม นโยบายคุกกี้ใหม่ของเว็บไซต์ข่าว].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['เกี่ยวกับเรา 2026', 'นโยบายความเป็นส่วนตัว 2569', 'ข่าวที่เกี่ยวข้อง 2026', 'อ่านต่อ 2026', 'ดูเพิ่มเติม 2026',
+       'ดูทั้งหมด 2569', 'ค้นหา 2026'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['ดูทั้งหมด (12)', 'ดูเพิ่มเติม [3]', 'ค้นหา (7)'].each { expect(th.utility_chrome?(_1)).to be(true), _1 }
+      ['ดูทั้งหมด 12', 'ดูเพิ่มเติม 3', 'เกี่ยวกับเรา 2', 'ค้นหา 140'].each do |label|
+        expect(th.utility_chrome?(label)).to be(false), label
+      end
+    end
+
+    it 'reads the labels on a Thai page only', :aggregate_failures do
+      [nil, :ja, :en, :zh, :ko, :fa].each do |code|
+        expect(text.call(code).utility_chrome?('เข้าสู่ระบบ')).to be(false), code.inspect
+      end
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::Th.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:th].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
   describe 'pager nouns' do
     let(:pager) do
       lambda do |label|
