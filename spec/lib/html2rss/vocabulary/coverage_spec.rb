@@ -355,7 +355,7 @@ RSpec.describe Html2rss::Vocabulary do
        'न्यूज़लेटर', 'लॉगिन (3)', '[सर्च]', '→ सर्च →'].each do |label|
         expect(hi.utility_chrome?(label)).to be(true), label
       end
-      ['संबंधित खबरें', 'यह भी पढ़ें', 'संबंधित लेख', 'संबंधित खबरें 3'].each do |label|
+      ['संबंधित खबरें', 'यह भी पढ़ें', 'संबंधित लेख', 'संबंधित खबरें (3)'].each do |label|
         expect(hi.recommended?(label)).to be(true), label
       end
     end
@@ -378,12 +378,13 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
+    it 'keeps a label followed by a year a headline, and a label with a bracketed count chrome', :aggregate_failures do
       ['संबंधित खबरें 2026', 'यह भी पढ़ें 2026', 'सदस्यता 2026', 'हमारे बारे में 2026', 'प्राइवेसी पॉलिसी 2026',
        'सब्सक्राइब करें 2026', 'नियम और शर्तें 2026'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
       end
-      expect(hi.recommended?('संबंधित खबरें 3')).to be(true)
+      expect(['संबंधित खबरें (3)', 'संबंधित खबरें [3]'].map { hi.recommended?(_1) }).to all(be(true))
+      expect(['सर्च 2', 'रजिस्टर 2', 'हमारे बारे में 2', 'संबंधित खबरें 3'].map { hi.utility_chrome?(_1) }).to all(be(false))
     end
 
     it 'matches a term however its nukta letters are encoded, and holds every term in NFC', :aggregate_failures do
