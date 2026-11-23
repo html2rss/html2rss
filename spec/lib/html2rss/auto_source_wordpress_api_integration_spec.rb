@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::AutoSource do
   describe '#articles' do
-    subject(:articles) { described_class.new(response, config, request_session:).articles }
+    subject(:articles) { described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil]).articles }
 
     let(:url) { Html2rss::Url.from_absolute('https://example.com/blog') }
     let(:request_session) { instance_double(Html2rss::RequestSession) }

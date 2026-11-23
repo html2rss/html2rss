@@ -5,7 +5,7 @@
 require_relative '../../support/saved_responses'
 
 RSpec.describe Html2rss::AutoSource do
-  subject(:auto_source) { described_class.new(response, config, request_session:) }
+  subject(:auto_source) { described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil]) }
 
   let(:config) { described_class::DEFAULT_CONFIG }
   let(:url) { Html2rss::Url.from_absolute('https://example.com') }
@@ -237,7 +237,7 @@ RSpec.describe Html2rss::AutoSource do
       it 'never builds the heuristic tier, also when the items exactly fill the limit', :aggregate_failures do
         allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new).and_call_original
         articles
-        described_class.new(response, config.merge(limit: schema_items.size)).articles
+        described_class.new(response, config.merge(limit: schema_items.size), vocabulary: Html2rss::Vocabulary[nil]).articles
         expect(Html2rss::AutoSource::Scraper::SemanticHtml).not_to have_received(:new)
       end
 
@@ -356,7 +356,8 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       it 'admits the sponsored items when cleanup keeps them', :aggregate_failures do
-        kept = described_class.new(response, described_class::DEFAULT_CONFIG.merge(cleanup: { keep_sponsored: true }))
+        kept = described_class.new(response, described_class::DEFAULT_CONFIG.merge(cleanup: { keep_sponsored: true }),
+                                   vocabulary: Html2rss::Vocabulary[nil])
 
         expect(kept.articles.map { _1.url.path }).to include(*sponsored_paths)
         expect(kept.admission_drops).not_to have_key('sponsored')
@@ -401,7 +402,7 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'builds the SST once to check a native feed that fills the limit for sponsorship', :aggregate_failures do
         allow(Html2rss::AutoSource::Scraper::NativeFeed).to receive(:new).and_return(native_feed)
-        limited = described_class.new(response, described_class::DEFAULT_CONFIG.merge(limit: 1)).articles
+        limited = described_class.new(response, described_class::DEFAULT_CONFIG.merge(limit: 1), vocabulary: Html2rss::Vocabulary[nil]).articles
 
         expect(limited.map { _1.url.path }).to eq(['/news/feed-1'])
         expect(counts[:sst]).to eq(1)
@@ -1081,8 +1082,8 @@ RSpec.describe Html2rss::AutoSource do
       allow(described_class::Corroboration).to receive(:new).and_call_original
     end
 
-    it 'resolves the response language once and hands one scope to every classifier', :aggregate_failures do
-      auto_source.articles
+    it 'hands the one scope its caller resolved to every classifier', :aggregate_failures do
+      described_class.new(response, config, request_session:, vocabulary: swedish).articles
 
       expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(swedish))
       expect(described_class::Cleanup).to have_received(:call).at_least(:once)
@@ -1106,9 +1107,10 @@ RSpec.describe Html2rss::AutoSource do
             %(<article><span class="kicker">独自</span><h2><a href="/news/#{id}">#{headline.call(id)}</a></h2></article>)
           end
           page = %(<html lang="#{lang}"><body><main>#{cards.join}</main></body></html>)
-          described_class.new(Html2rss::RequestService::Response.new(body: page,
-                                                                     headers: { 'content-type' => 'text/html' }, url:),
-                              config, request_session:, **options).articles.map(&:title)
+          headers = { 'content-type' => 'text/html' }
+          response = Html2rss::RequestService::Response.new(body: page, headers:, url:)
+          vocabulary = options.fetch(:vocabulary) { Html2rss::Vocabulary[Html2rss::Channel.language_for(response)] }
+          described_class.new(response, config, request_session:, vocabulary:).articles.map(&:title)
         end
       end
 
@@ -1127,7 +1129,7 @@ RSpec.describe Html2rss::AutoSource do
     it 'reads every ambiguous term when the page states no language', :aggregate_failures do
       described_class.new(Html2rss::RequestService::Response.new(body: '<html><body><main></main></body></html>',
                                                                  headers: { 'content-type' => 'text/html' }, url:),
-                          config, request_session:).articles
+                          config, request_session:, vocabulary: Html2rss::Vocabulary[nil]).articles
 
       expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(Html2rss::Vocabulary[nil]))
     end

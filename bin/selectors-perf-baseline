@@ -70,7 +70,7 @@ def load_inline_case(spec, body)
 end
 
 def run_selectors(response, selectors, time_zone)
-  Html2rss::Selectors.new(response, selectors:, time_zone:).articles.size
+  Html2rss::Selectors.new(response, selectors:, time_zone:, vocabulary: Html2rss::Vocabulary[Html2rss::Channel.language_for(response)]).articles.size
 end
 
 root = File.expand_path('..', __dir__)

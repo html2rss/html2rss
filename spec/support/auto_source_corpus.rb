@@ -18,7 +18,7 @@ require 'yaml'
 # A saved page whose bytes are valid UTF-8 is UTF-8 (the capture tool re-encodes pages, so an in-page
 # +<meta charset>+ may be stale). A page whose bytes are not is decoded by {Html2rss::RequestService::Response}
 # from its own +<meta charset>+, as in production. {.response} owns building the response.
-module AutoSourceCorpus
+module AutoSourceCorpus # rubocop:disable Metrics/ModuleLength -- one cohesive corpus runner
   ROOT = File.expand_path('../fixtures/auto_source/corpus', __dir__)
   BASELINE_PATH = File.join(ROOT, 'baseline.yml')
   BASE_URL = 'https://example.com/news/'
@@ -68,7 +68,9 @@ module AutoSourceCorpus
     # @param request_session [#follow_up, nil] session for follow-up fetches
     # @return [Html2rss::AutoSource] not yet extracted; call +articles+
     def auto_source(path:, url: BASE_URL, request_session: nil)
-      Html2rss::AutoSource.new(response(path:, url:), request_session:)
+      page = response(path:, url:)
+      vocabulary = Html2rss::Vocabulary[Html2rss::Channel.language_for(page)]
+      Html2rss::AutoSource.new(page, request_session:, vocabulary:)
     end
 
     # The one builder of a Response from a saved file, shared with {SavedResponses}: a page whose bytes are

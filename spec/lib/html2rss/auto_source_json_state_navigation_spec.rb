@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource do
   describe '#articles with Next.js navigation menus in JSON state' do
     subject(:urls) { articles.map { _1.url.to_s } }
 
-    let(:articles) { described_class.new(response, config).articles }
+    let(:articles) { described_class.new(response, config, vocabulary: Html2rss::Vocabulary[nil]).articles }
 
     let(:url) { Html2rss::Url.from_absolute('https://www.example.com/videos/shows/daily-news/') }
     let(:response) do

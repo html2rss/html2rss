@@ -112,14 +112,13 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
     # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
-    # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope, resolved once here and shared by
-    #   every classifier of this run; the page's own language ({Channel.language_for}) by default
+    # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope, resolved by the caller once and
+    #   shared by every classifier of this run
     # @option opts [Integer] :limit max articles to keep; later tiers stop once this many survive Cleanup
     # @option opts [Hash] :scraper scraper configuration map
     # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
-    def initialize(response, opts = DEFAULT_CONFIG, request_session: nil,
-                   vocabulary: Vocabulary[Channel.language_for(response)])
+    def initialize(response, opts = DEFAULT_CONFIG, vocabulary:, request_session: nil)
       @vocabulary = vocabulary
       @parsed_body = response.parsed_body
       @body = response.body

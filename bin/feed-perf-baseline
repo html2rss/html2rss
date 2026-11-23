@@ -27,7 +27,8 @@ def news_case(root)
   body = File.read(File.join(root, NEWS_FIXTURE))
   response = response_for(body, 'text/html')
   response.instance_variable_set(:@parsed_body, Nokogiri::HTML(body))
-  [response, Html2rss::AutoSource.new(response).articles, nil]
+  vocabulary = Html2rss::Vocabulary[Html2rss::Channel.language_for(response)]
+  [response, Html2rss::AutoSource.new(response, vocabulary:).articles, nil]
 end
 
 def podcast_case(root)

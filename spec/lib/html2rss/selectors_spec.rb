@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Selectors do
-  subject(:instance) { described_class.new(response, selectors:, time_zone:) }
+  subject(:instance) { described_class.new(response, selectors:, time_zone:, vocabulary: Html2rss::Vocabulary[nil]) }
 
   let(:response) { Html2rss::RequestService::Response.new url: 'http://example.com', headers: { 'content-type': 'text/html' }, body: }
   let(:selectors) do
@@ -263,7 +263,7 @@ RSpec.describe Html2rss::Selectors do
             url: 'https://example.com/news/', headers: { 'content-type': 'text/html' },
             body: %(<html><body><article><h1>t</h1><span class="u">#{text_value}</span></article></body></html>)
           )
-          selectors_instance = described_class.new(response, selectors:, time_zone:)
+          selectors_instance = described_class.new(response, selectors:, time_zone:, vocabulary: Html2rss::Vocabulary[nil])
 
           expect(selectors_instance.articles.first&.url&.to_s).to eq(expected)
           expect(selectors_instance.admission_drops).to eq(expected ? {} : { 'missing_url' => 1 })
@@ -503,6 +503,10 @@ RSpec.describe Html2rss::Selectors do
     end
 
     context 'when the page language is Chinese' do
+      subject(:instance) do
+        described_class.new(response, selectors:, time_zone:, vocabulary: Html2rss::Vocabulary[:zh])
+      end
+
       let(:body) do
         <<~HTML
           <html lang="zh-Hant"><body>
@@ -825,14 +829,15 @@ RSpec.describe Html2rss::Selectors do
         ['javascript:alert(1)//a.mp3', 'data:audio/mpeg;base64,AAAA', 'ftp://example.com/a.mp3'].each do |static|
           selectors[:enclosure] = { extractor: 'static', static:, content_type: 'audio/mpeg' }
 
-          expect(described_class.new(response, selectors:, time_zone: 'UTC').select(:enclosure, item)).to be_nil
+          engine = described_class.new(response, selectors:, time_zone: 'UTC', vocabulary: Html2rss::Vocabulary[nil])
+          expect(engine.select(:enclosure, item)).to be_nil
         end
       end
 
       it 'keeps a non-web href out of the article and its description', :aggregate_failures do
         page = Html2rss::RequestService::Response.new(url: response.url, headers: response.headers,
                                                       body: body.sub('/a.mp3', 'javascript:alert(1)//a.mp3'))
-        article = described_class.new(page, selectors:, time_zone: 'UTC').articles.first
+        article = described_class.new(page, selectors:, time_zone: 'UTC', vocabulary: Html2rss::Vocabulary[nil]).articles.first
 
         expect(article.enclosures).to eq([])
         expect(Html2rss::FeedBuilder::ItemPresentation.description_for(article).to_s).not_to include('javascript:')

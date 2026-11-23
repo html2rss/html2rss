@@ -53,8 +53,8 @@ module Html2rss
     # @param response [RequestService::Response] The response object.
     # @param selectors [Hash] A hash of CSS selectors.
     # @param time_zone [String] Time zone string used for date parsing.
-    # @param vocabulary [Vocabulary::Scope] the page language's scope; the response's own language by default
-    def initialize(response, selectors:, time_zone:, vocabulary: Vocabulary[Channel.language_for(response)])
+    # @param vocabulary [Vocabulary::Scope] the page language's scope, resolved by the caller
+    def initialize(response, selectors:, time_zone:, vocabulary:)
       @response = response
       @vocabulary = vocabulary
       @url = response.base_url
