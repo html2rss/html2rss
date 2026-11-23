@@ -205,18 +205,11 @@ module Html2rss
         SST::Index.for_node(@root)&.parent_of(@root)
       end
 
-      # DOM id of the card, else the link's path (the tracking-free query when the path is the bare root).
+      # DOM id of the card, else the link's path or query.
       def parse_id_from_dom
+        url = extract_url
         nested = @root.find { |n| n.attrs.id }
-        [@root.attrs.id, nested&.attrs&.id, url_id(extract_url)].compact.reject(&:empty?).first
-      end
-
-      # A root-path URL tells its articles apart by query (+/?p=123+); every other URL by path.
-      def url_id(url)
-        return unless url
-
-        query = url.without_tracking_params.query if url.path == '/'
-        query.to_s.empty? ? url.path : query
+        [@root.attrs.id, nested&.attrs&.id, url&.path, url&.query].compact.reject(&:empty?).first
       end
 
       def extract_image

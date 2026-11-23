@@ -220,18 +220,9 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       end
     end
 
-    it 'tells root-path query URLs apart', :aggregate_failures do
-      expect(id_for.call('/?p=123')).to eq('p=123')
-      expect(id_for.call('/?p=124')).to eq('p=124')
-    end
-
-    it 'ignores tracking params on a root-path query URL' do
-      expect(id_for.call('/?p=123&utm_source=x')).to eq(id_for.call('/?p=123'))
-    end
-
-    it 'keeps the bare root path when there is no usable query', :aggregate_failures do
-      expect(id_for.call('/')).to eq('/')
-      expect(id_for.call('/?utm_source=x')).to eq('/')
+    it 'keeps the path as id on a root-path query URL (the guid already hashes the url)', :aggregate_failures do
+      expect(id_for.call('/?p=123')).to eq('/')
+      expect(id_for.call('/?p=124')).to eq('/')
     end
 
     it 'keeps the path as id on non-root URLs' do
