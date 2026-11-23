@@ -62,14 +62,14 @@ module Html2rss
         end
 
         # @param alternatives [Array<String>] regex alternatives of a scope's own terms
-        # @return [Regexp] the whole text is one term, with wrapping punctuation, symbols or arrows and one bare
-        #   count, and no other word; +NEVER+ without any alternative
+        # @return [Regexp] the whole text is one term, with wrapping punctuation, symbols or arrows and one short
+        #   count (up to three digits, so a year is a headline), and no other word; +NEVER+ without any alternative
         def whole_label(alternatives)
           alternatives = alternatives.reject(&:empty?)
           return NEVER if alternatives.empty?
 
           wrap = '[\s\p{P}\p{S}]*'
-          /\A#{wrap}(?:#{alternatives.join('|')})#{wrap}(?:\d+#{wrap})?\z/iux
+          /\A#{wrap}(?:#{alternatives.join('|')})#{wrap}(?:\d{1,3}#{wrap})?\z/iux
         end
       end
 
