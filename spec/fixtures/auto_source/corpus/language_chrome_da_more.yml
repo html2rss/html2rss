@@ -1,0 +1,9 @@
+---
+case: Six invented news cards in language "da", each with a plain heading, a summary and one link labelled with a read-more or list-level "more" label, ending in a long slug or `.html`; all six stay items.
+expected:
+- https://example.com/nyheder/lang-artikel-om-faergeplanen
+- https://example.com/nyheder/lang-artikel-om-biblioteket.html
+- https://example.com/nyheder/lang-artikel-om-torvet
+- https://example.com/nyheder/lang-artikel-om-natbussen.html
+- https://example.com/nyheder/lang-artikel-om-broen
+- https://example.com/nyheder/lang-artikel-om-cykelstien.html
