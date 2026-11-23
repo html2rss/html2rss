@@ -314,8 +314,8 @@ language_chrome_ja.html:
   sst_built: true
 language_chrome_ko.html:
   junk: 0
-  real: 15
-  expected: 15
+  real: 16
+  expected: 16
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
