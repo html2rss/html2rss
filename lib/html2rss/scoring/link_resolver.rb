@@ -72,8 +72,8 @@ module Html2rss
 
       ##
       # @param text [String, #to_s]
-      # @return [Boolean] true when the text is an own read-more term of a page-only language
-      def own_read_more_text?(text) = @text_classifier.own_read_more?(text)
+      # @return [Boolean] true when the text is a list-level "more" or "see all" term of a page-only language
+      def list_more_text?(text) = @text_classifier.list_more?(text)
 
       private
 

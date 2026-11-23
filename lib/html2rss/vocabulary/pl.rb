@@ -39,6 +39,7 @@ module Html2rss
           /czytaj\s+wi(?:ę|e)cej/, 'czytaj dalej', /dowiedz\s+si(?:ę|e)\s+wi(?:ę|e)cej/,
           /wi(?:ę|e)cej\s+informacji/, /czytaj\s+ca(?:ł|l)o(?:ś|s)(?:ć|c)/, /zobacz\s+wi(?:ę|e)cej/
         ],
+        list_more: NONE,
         topic_lead: [/wi(?:ę|e)cej/],
         topic_preposition: ['o', 'na temat'],
         read_more_suffix: NONE,

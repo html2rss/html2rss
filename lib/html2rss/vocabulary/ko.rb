@@ -31,8 +31,9 @@ module Html2rss
         ],
         read_more: [
           '기사 전문 보기', '기사 전문보기', '전문 보기', '전문보기', '원문 보기', '원문보기', '자세히 보기', '자세히보기', '기사 더보기', '계속 읽기', '더 읽기',
-          '더 알아보기', '더보기'
+          '더 알아보기'
         ],
+        list_more: ['더보기'],
         topic_lead: NONE,
         topic_preposition: NONE,
         read_more_suffix: NONE,

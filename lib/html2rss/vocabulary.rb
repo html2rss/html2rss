@@ -47,7 +47,7 @@ module Html2rss
     # +page_link_label+ holds the previous/next/older/newer words of the other languages, read as a whole label;
     # +page_link+ stays the English pattern, which accepts text after the word.
     PATTERN_CONCEPTS = %i[
-      utility_prefix utility recommended utility_cta read_more topic_lead topic_preposition read_more_suffix
+      utility_prefix utility recommended utility_cta read_more list_more topic_lead topic_preposition read_more_suffix
       new_window_notice paid_label ad_word field_label type_label pager_label page_link page_link_label
       clock_suffix date_piece element_label podcast_word podcast_unspaced
     ].freeze
@@ -58,15 +58,16 @@ module Html2rss
     # Pattern concepts that honour {Language#ambiguous}.
     SCOPED_PATTERNS = %i[utility_prefix utility recommended].freeze
 
-    # Pattern concepts a {PAGE_ONLY} language may declare besides {SCOPED_PATTERNS}: the call-to-action, read-more
-    # and new-window readers of {LinkDestination::TextClassifier}, the sponsorship labels of
+    # Pattern concepts a {PAGE_ONLY} language may declare besides {SCOPED_PATTERNS}: the call-to-action, read-more,
+    # list-level "more" (+list_more+, a "see all" label that names a list, not a story) and new-window
+    # readers of {LinkDestination::TextClassifier}, the sponsorship labels of
     # {LinkDestination::Sponsorship::LabelText}, the title concepts of {Article::Title} and the pager concepts of
     # {SST::Tags}, which read a scope's own terms as whole labels. The podcast concepts stay out: their reader
     # matches inside URLs and titles, where a short Han term is not precise. A concept joins this list only when
     # every production path that reads it takes the page scope; a page-only language declaring any other pattern
     # concept would have a dead term, so the conformance spec rejects it.
-    PAGE_PATTERNS = %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice
-                       paid_label ad_word element_label field_label type_label clock_suffix date_piece
+    PAGE_PATTERNS = %i[utility_cta read_more list_more topic_lead topic_preposition read_more_suffix
+                       new_window_notice paid_label ad_word element_label field_label type_label clock_suffix date_piece
                        pager_label page_link page_link_label].freeze
 
     # Every concept each language in {ALL} declares.

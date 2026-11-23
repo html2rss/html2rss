@@ -41,9 +41,10 @@ module Html2rss
         read_more: ARABIC_KEYBOARD_SPELLINGS.call(
           [
             'ادامه مطلب', 'ادامه خبر', 'ادامه مطلب را بخوانید', 'بیشتر بخوانید', 'مطالعه بیشتر', 'متن کامل',
-            'متن کامل خبر', 'مشاهده متن کامل', 'جزئیات بیشتر', 'جزییات بیشتر', 'بیشتر', 'مشاهده بیشتر', 'مشاهده همه'
+            'متن کامل خبر', 'مشاهده متن کامل', 'جزئیات بیشتر', 'جزییات بیشتر'
           ]
         ),
+        list_more: ARABIC_KEYBOARD_SPELLINGS.call(['بیشتر', 'مشاهده بیشتر', 'مشاهده همه']),
         topic_lead: NONE,
         topic_preposition: NONE,
         read_more_suffix: NONE,

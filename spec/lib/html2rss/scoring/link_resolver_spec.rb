@@ -4,12 +4,12 @@
 RSpec.describe Html2rss::Scoring::LinkResolver do
   subject(:resolver) { described_class.new('https://example.com/articles/') }
 
-  describe '#own_read_more_text?' do
-    it 'names an own read-more term of the page scope only', :aggregate_failures do
+  describe '#list_more_text?' do
+    it 'names a list-level term of the page scope only, never a true read-more term', :aggregate_failures do
       vi = described_class.new('https://example.com/', vocabulary: Html2rss::Vocabulary[:vi])
 
-      expect([vi.own_read_more_text?('Xem tất cả'), vi.own_read_more_text?('Read more')]).to eq([true, false])
-      expect(resolver.own_read_more_text?('Xem tất cả')).to be(false)
+      expect(['Xem tất cả', 'Đọc tiếp', 'Read more'].map { vi.list_more_text?(_1) }).to eq([true, false, false])
+      expect(resolver.list_more_text?('Xem tất cả')).to be(false)
     end
   end
 

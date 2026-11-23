@@ -37,6 +37,7 @@ module Html2rss
           'lees meer', 'lees verder', 'verder lezen', 'meer lezen', 'meer informatie', 'meer weten',
           /lees\s+(?:het\s+)?(?:hele|volledige)\s+artikel/
         ],
+        list_more: NONE,
         topic_lead: ['meer'],
         topic_preposition: %w[over van],
         read_more_suffix: NONE,

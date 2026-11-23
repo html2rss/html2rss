@@ -8,6 +8,9 @@ module Html2rss
       # Child tag names that mark icon-only anchors as noise.
       ICON_NAMES = %i[img svg].freeze
 
+      # Query parameters that name a page, so a link carrying one is no section hub (+/read?id=123+).
+      IDENTITY_PARAMS = %w[id aid p].freeze
+
       # @param link_resolver [LinkResolver]
       def initialize(link_resolver:)
         @link_resolver = link_resolver
@@ -27,7 +30,7 @@ module Html2rss
         return true unless destination_facts
 
         destination_facts.taxonomy_path ||
-          short_utility_label?(text, destination_facts) || own_hub_label?(text, destination_facts, heading_anchor:) ||
+          short_utility_label?(text, destination_facts) || list_hub_label?(text, destination_facts, heading_anchor:) ||
           recommended_chrome?(text, destination_facts, heading_anchor:) ||
           (@link_resolver.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
           (@link_resolver.utility_text?(text) && destination_facts.vanity_path) ||
@@ -46,22 +49,16 @@ module Html2rss
           !WordCount.at_least?(text, 4)
       end
 
-      # A section link labelled with an own read-more term of a page-only language ("see all"): a path of one or two
+      # A section link labelled with a list-level term of a page-only language ("see all"): a path of one or two
       # segments, none a content word, ending in a plain word (no hyphen, digit, underscore or dot, so never a post
-      # suffix).
+      # suffix), and no identity query parameter (+/read?id=123+ names a page, not a hub).
       # A card whose only link is such a label is lost; a hyphenated hub still passes.
-      def own_hub_label?(text, destination_facts, heading_anchor:)
+      def list_hub_label?(text, destination_facts, heading_anchor:)
         segments = destination_facts.segments
         return false if heading_anchor || destination_facts.content_path
         return false unless segments.size.between?(1, 2) && !segments.last.match?(/[-\d_.]/)
 
-        @link_resolver.own_read_more_text?(text) && !identifying_query?(destination_facts)
-      end
-
-      # A query beyond tracking parameters ("/read?id=123") identifies a page, so the link is no section hub.
-      def identifying_query?(destination_facts)
-        url = destination_facts.url
-        url.query && url.without_tracking_params.query
+        @link_resolver.list_more_text?(text) && !destination_facts.url.query_values.keys.intersect?(IDENTITY_PARAMS)
       end
 
       def recommended_chrome?(text, destination_facts, heading_anchor:)

@@ -37,6 +37,7 @@ module Html2rss
           'और पढ़ें', 'और देखें', 'और जानें', 'अधिक पढ़ें', 'अधिक जानें', 'आगे पढ़ें', 'पूरी खबर पढ़ें',
           'पूरी ख़बर पढ़ें', 'पूरा पढ़ें', 'विस्तार से पढ़ें', 'विस्तार में पढ़ें'
         ],
+        list_more: NONE,
         topic_lead: NONE,
         topic_preposition: NONE,
         read_more_suffix: NONE,

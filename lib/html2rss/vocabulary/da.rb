@@ -13,8 +13,7 @@ module Html2rss
     # may carry), no pager label, no path word, and not the bare labels judged too likely to be a headline (+del+ is
     # a part of a series, +hjælp+ is aid, +annoncering+ advertising, +lyt+ an imperative that opens headlines,
     # +seneste nyt+ and +mest læste+ are sections, +se alle+, +se flere+ and +flere nyheder+ are list-level "more"
-    # labels, listed as read-more labels because as chrome they would empty a card whose only link carries one, like
-    # +vis mere+). Some
+    # labels, listed under +list_more+ because as chrome they would empty a card whose only link carries one). Some
     # common words stay listed as whole labels by judgment (+kontakt+, +søg+, +menu+, +kommentarer+): a one-word
     # text equal to one reads as chrome, while a longer headline that opens with one stays a headline, and a
     # label followed by a year or a bare number stays a headline for every Danish-owned term. The exception is
@@ -44,8 +43,9 @@ module Html2rss
         ],
         read_more: [
           'læs mere', 'læs mere her', 'læs hele artiklen', 'læs hele historien', 'læs videre', 'læs resten',
-          'læs resten af artiklen', 'læs flere', 'se mere', 'vis mere', 'se alle', 'se flere', 'flere nyheder'
+          'læs resten af artiklen', 'læs flere', 'se mere', 'vis mere'
         ],
+        list_more: ['se alle', 'se flere', 'flere nyheder'],
         topic_lead: NONE,
         topic_preposition: NONE,
         read_more_suffix: NONE,

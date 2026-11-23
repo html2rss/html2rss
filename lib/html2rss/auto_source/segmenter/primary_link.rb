@@ -78,8 +78,7 @@ module Html2rss
                   (heading_match ? 20 : 0) +
                   (meaningful ? 10 : 0) +
                   (content_like ? 10 : 0)
-          score = 0 if !heading_anchor && !content_like && !destination.strong_post_suffix &&
-                       @link_resolver.own_read_more_text?(text)
+          score = 0 if !heading_anchor && @link_resolver.list_more_text?(text)
 
           { anchor:, destination: destination.destination, score: }
         end

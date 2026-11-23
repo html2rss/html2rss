@@ -25,6 +25,7 @@ RSpec.describe Html2rss::Vocabulary do
         clock_suffix: all - %i[de ru],
         date_piece: all - %i[ja],
         element_label: all - %i[ja],
+        list_more: all,
         read_more_suffix: all - %i[ja],
         topic_lead: %i[ja ru],
         topic_preposition: %i[ja],
@@ -55,7 +56,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads exactly the listed page patterns and still rejects every other pattern concept', :aggregate_failures do
       expect(described_class::PAGE_PATTERNS).to eq(
-        %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice
+        %i[utility_cta read_more list_more topic_lead topic_preposition read_more_suffix new_window_notice
            paid_label ad_word element_label field_label type_label clock_suffix date_piece
            pager_label page_link page_link_label]
       )

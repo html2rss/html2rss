@@ -42,8 +42,10 @@ module Html2rss
         read_more: [
           'devamını oku', 'devamını okuyun', 'devamı', 'haberin devamı', 'yazının devamı', 'daha fazla oku',
           'tamamını oku', 'haberin tamamını oku', 'haberi oku', 'yazının tamamını oku', 'devamı için tıklayın',
-          'okumaya devam et', 'okumaya devam edin', 'daha fazla', 'daha fazlası', 'daha fazla göster', 'tümünü gör',
-          'tümünü göster', 'hepsini gör'
+          'okumaya devam et', 'okumaya devam edin'
+        ],
+        list_more: [
+          'daha fazla', 'daha fazlası', 'daha fazla göster', 'tümünü gör', 'tümünü göster', 'hepsini gör'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,

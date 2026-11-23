@@ -7,7 +7,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
   let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url) }
   let(:anchor_for) { ->(html) { Html2rss::SST::Normalizer.call(html, vocabulary: all_scope).root.find(&:link?) } }
 
-  describe '#noise_anchor? with an own read-more label' do
+  describe '#noise_anchor? with a list-level label' do
     let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url, vocabulary: Html2rss::Vocabulary[:vi]) }
     let(:noise) do
       lambda do |path, text = 'Xem tất cả', heading_anchor: false|
@@ -24,13 +24,14 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
 
     it 'keeps a link with an identifying query eligible, and reads a tracking-only query as a hub',
        :aggregate_failures do
-      expect(%w[/read?id=123 /view?id=1 /detail?id=1 /show?aid=1].map { noise.call(_1) }).to all(be(false))
-      expect(noise.call('/sports?utm_source=x')).to be(true)
+      expect(%w[/read?id=123 /view?id=1 /detail?id=1 /show?aid=1 /read?p=1].map { noise.call(_1) }).to all(be(false))
+      expect(%w[/sports?utm_source=x /sports?page=2 /sports?sort=new /sports?lang=vi].map { noise.call(_1) })
+        .to all(be(true))
     end
 
     it 'keeps a heading anchor, a shared label and an ordinary text eligible', :aggregate_failures do
       expect(noise.call('/sports', heading_anchor: true)).to be(false)
-      expect(noise.call('/sports', 'Read more')).to be(false)
+      expect(['Read more', 'Đọc tiếp'].map { noise.call('/sports', _1) }).to all(be(false))
       expect(noise.call('/sports', 'Open this story right now')).to be(false)
     end
 

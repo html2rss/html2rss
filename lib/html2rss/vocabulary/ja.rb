@@ -36,6 +36,7 @@ module Html2rss
           /会員登録はこちら(?:から)?/
         ],
         read_more: %w[続きを読む もっと読む 続きはこちら 詳しくはこちら 詳細を見る 詳細はこちら 全文を読む 続きを見る],
+        list_more: NONE,
         topic_lead: NONE,
         topic_preposition: NONE,
         read_more_suffix: [/の続きを読む/, /をもっと読む/, /について詳しく(?:はこちら)?/, /の詳細(?:を見る|はこちら)/],

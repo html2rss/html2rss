@@ -74,7 +74,7 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 
-  describe 'list-level more labels in a page-only language' do
+  describe 'list-level and read-more labels in a page-only language' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:dir) { Dir.mktmpdir }
     let(:path) { File.join(dir, 'page.html') }
     let(:pairs) do
@@ -103,9 +103,14 @@ RSpec.describe Html2rss::AutoSource do
           'vezi toate', 'vezi toate articolele', 'vezi toate știrile', 'vezi mai multe știri', 'toate articolele',
           'toate știrile', 'citește mai multe știri'
         ],
-        da: ['se alle', 'se flere', 'flere nyheder'],
-        he: ['קראו עוד'], el: ['διαβάστε περισσότερα'], uk: ['читати далі'], hi: ['और पढ़ें']
+        da: ['se alle', 'se flere', 'flere nyheder']
       }.flat_map { |code, labels| labels.map { [code, _1] } }
+    end
+    let(:true_pairs) do
+      {
+        vi: 'đọc tiếp', zh: '阅读全文', tr: 'devamını oku', cs: 'číst dále', hu: 'tovább', ro: 'citește mai mult',
+        da: 'læs mere', he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें'
+      }
     end
     let(:urls) do
       lambda do |code, body|
@@ -120,9 +125,6 @@ RSpec.describe Html2rss::AutoSource do
           %(<article><h2>Real headline #{i} with several words</h2>#{block.call(i)}</article>)
         end.join
       }
-      real = (1..6).map do |i|
-        %(<h2><a href="/section/real-story-slug-#{i}">Real headline #{i} with several words</a></h2>)
-      end.join
       {
         card_only: lambda { |label|
           cards.call do |i|
@@ -134,9 +136,9 @@ RSpec.describe Html2rss::AutoSource do
             %(<div class="menu"><ul><li><a href="/sections">#{label}</a></li></ul></div>) +
             %(<footer><a href="/archive">#{label}</a></footer>)
         },
-        hub_and_story: lambda { |label|
+        hub_and_story: lambda { |label, hub|
           cards.call do |i|
-            %(<a href="/news-desk/top-stories">#{label}</a>#{story.call(i)})
+            %(<a href="#{hub}">#{label}</a>#{story.call(i)})
           end
         },
         image_story: lambda { |label|
@@ -145,27 +147,37 @@ RSpec.describe Html2rss::AutoSource do
               %(<h2>Real headline #{i} with several words</h2><a href="/sports">#{label}</a></article>)
           end.join
         },
-        block: lambda { |label|
+        block: lambda { |label, hub, cards|
           intro = %(<div class="block"><h2>Section heading for sports here</h2><p>Latest stories from this section.</p>)
-          %(#{intro}<a href="/sports">#{label}</a></div>#{real})
+          %(#{intro}<a href="#{hub}">#{label}</a></div>#{cards})
         },
         query_id: lambda { |label, path|
           (1..6).map do |i|
             %(<article><h3>Unlinked title with more words</h3><p>text</p><a href="#{path}#{i}">#{label}</a></article>)
           end.join
         },
-        story_label: lambda { |label|
-          decoys = ['<a href="/people/jane-doe">Jane Doe</a>', '<a href="/politics/local-news">Local news</a>',
-                    '<a href="https://source.example.org/wire/item">Wire service</a>']
+        story_label: lambda { |label, destination|
+          later = '<a href="/politics/local-news">Local news</a><a href="/world">World</a>' \
+                  '<a href="https://source.example.org/wire/item">Wire service</a>'
           (1..6).map do |i|
-            heading = '<h3>Unlinked title with more words</h3>'
-            story = %(#{heading}<a href="/a/2024/05/council-approves-budget-#{i}">#{label}</a>)
-            %(<article>#{i.odd? ? decoys[i % 3] + story : story + decoys[i % 3]}</article>)
+            %(<article><h3>Council approves the new city budget after long debate #{i}</h3>) +
+              %(<a href="#{destination.call(i)}">#{label}</a><a href="/people/jane-doe-#{i}">Jane Doe</a>) +
+              %(#{later}</article>)
           end.join
         },
-        head: lambda { |label|
-          %(<div class="head"><h2>Latest world news today here</h2><a href="/world">#{label}</a></div>) + real
+        head: lambda { |label, hub, cards|
+          %(<div class="head"><h2>Latest world news today here</h2><a href="#{hub}">#{label}</a></div>) + cards
         }
+      }
+    end
+    let(:layouts) do
+      linked = ->(i) { %(<a href="/section/real-story-slug-#{i}">Real headline #{i} with several words</a>) }
+      {
+        bare: (1..6).map { |i| %(<h2>#{linked.call(i)}</h2>) }.join,
+        images: (1..6).map do |i|
+          %(<article><a href="/section/real-story-slug-#{i}"><img src="/i#{i}.jpg" alt=""></a>) +
+            %(<h2>#{linked.call(i)}</h2></article>)
+        end.join
       }
     end
 
@@ -184,16 +196,20 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     it 'keeps the story link of a card, never a hub labelled with the term', :aggregate_failures do
-      pairs.uniq(&:first).each do |code, label|
-        found = urls.call(code, pages[:hub_and_story].call(label))
-        expect(found.grep(/real-story-slug/).size).to eq(6), "#{code} #{label}"
+      pairs.uniq(&:first).product(%w[/sports /tin-tuc/the-thao]).each do |(code, label), hub|
+        found = urls.call(code, pages[:hub_and_story].call(label, hub))
+        expect(found.grep(/real-story-slug/).size).to eq(6), "#{code} #{label} #{hub}"
       end
     end
 
-    it 'keeps a label that points at a story, beside an author link in either order', :aggregate_failures do
-      pairs.uniq(&:first).each do |code, label|
-        found = urls.call(code, pages[:story_label].call(label))
-        expect(found.grep(/council-approves-budget/).size).to eq(6), "#{code} #{label}"
+    it 'ranks a true read-more label as before, whatever it points at and whatever links follow',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      destinations = [->(i) { "/world/council-approves-budget-#{i}" }, ->(i) { "/tin-tuc/budget-#{i}.html" },
+                      ->(i) { "/world/48213#{i}" }, ->(i) { "/read?id=#{i}" }]
+      true_pairs.to_a.product(destinations).each do |(code, label), destination|
+        found = urls.call(code, pages[:story_label].call(label, destination))
+        expect(found.size).to eq(6), "#{code} #{label} #{destination.call(1)}"
+        expect(found.map { _1.sub('https://example.com', '') }).to eq((1..6).map(&destination)), "#{code} #{label}"
       end
     end
 
@@ -209,9 +225,13 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
-    it 'adds no item for a section block or heading linked by the term', :aggregate_failures do
-      pairs.uniq(&:first).product(%i[block head]).each do |(code, label), kind|
-        expect(urls.call(code, pages[kind].call(label)).size).to eq(6), "#{code} #{label} #{kind}"
+    it 'adds no item for a section block or heading linked by the term, with or without a query',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      queries = ['', '?page=2', '?sort=new', '?lang=vi', '?utm_source=x']
+      pairs.uniq(&:first).product(%i[block head], queries, %i[bare images]).each do |(code, label), kind, query, layout|
+        hub = "#{kind == :block ? '/sports' : '/world'}#{query}"
+        found = urls.call(code, pages[kind].call(label, hub, layouts.fetch(layout)))
+        expect(found.size).to eq(6), "#{code} #{label} #{kind} #{hub} #{layout}"
       end
     end
   end

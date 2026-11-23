@@ -38,6 +38,7 @@ module Html2rss
           /l(?:ä|a)s\s+mer/, /l(?:ä|a)s\s+vidare/, /forts(?:ä|a)tt\s+l(?:ä|a)sa/, 'mer information',
           /l(?:ä|a)s\s+hela\s+artikeln/
         ],
+        list_more: NONE,
         topic_lead: ['mer'],
         topic_preposition: %w[om av],
         read_more_suffix: NONE,
