@@ -20,10 +20,10 @@ module Html2rss
 
         ##
         # @param nodes [Nodes] reader of the card's nodes
-        # @param root [Nokogiri::XML::Node, SST::Node] card root
-        # @param source [Nokogiri::XML::Node, SST::Node, nil] headline source: the heading, else the anchor
+        # @param root [SST::Node] card root
+        # @param source [SST::Node, nil] headline source: the heading, else the anchor
         # @param vocabulary [Vocabulary::Scope] the page language's scope ({Article::Title.noise_piece?})
-        # @yieldreturn [Nokogiri::XML::Node, SST::Node, nil] the source's headline piece, read only when
+        # @yieldreturn [SST::Node, nil] the source's headline piece, read only when
         #   no marked or label kicker is found
         def initialize(nodes, root, source, vocabulary, &)
           @nodes = nodes
@@ -34,7 +34,7 @@ module Html2rss
         end
 
         ##
-        # @return [Nokogiri::XML::Node, SST::Node, nil] the kicker element
+        # @return [SST::Node, nil] the kicker element
         attr_reader :element
 
         ##

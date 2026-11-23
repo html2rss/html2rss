@@ -1,79 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Html::TitlePieces do
-  context 'with Nokogiri nodes' do
-    let(:pieces_for) do
-      lambda do |html|
-        root = Nokogiri::HTML.fragment(html).at_css('article')
-        anchor = root.at_css('a[href]')
-        source = root.at_css('h1, h2, h3, h4, h5, h6') || anchor
-        [described_class.new(root, source, anchor:, vocabulary: all_scope), root, source]
-      end
-    end
-    let(:title_for) do
-      lambda do |html|
-        pieces, _, source = pieces_for.call(html)
-        Html2rss::Article::Title.compose(pieces.headline_text(source), kicker: pieces.kicker_text,
-                                                                       vocabulary: all_scope)
-      end
-    end
-
-    it_behaves_like 'article extractor title pieces'
-
-    it 'reads no headline from a heading holding only a date chip inside a time element' do
-      pieces, _, source = pieces_for.call(%(<article><h3><time datetime="2026-11-12"><span>11月12日</span></time></h3>) +
-                                          %(<a href="/s">Tram line extends</a></article>))
-      expect(pieces.headline_text(source)).to be_nil
-    end
-
-    it 'returns the kicker element and memoizes a missing one', :aggregate_failures do
-      pieces, root, = pieces_for.call('<article><b class="kicker">Transit</b><h2><a href="/s">Tram</a></h2></article>')
-      expect(pieces.kicker).to equal(root.at_css('b'))
-
-      bare, = pieces_for.call('<article><h2><a href="/s">Tram</a></h2></article>')
-      expect([bare.kicker, bare.kicker, bare.kicker_text]).to eq([nil, nil, nil])
-    end
-
-    it 'drops a Han type marker piece from the kicker unless the page is Chinese' do
-      html = %(<article><b class="kicker"><i>独自</i> Transit</b><h2>T</h2></article>)
-      root = Nokogiri::HTML.fragment(html).at_css('article')
-      kicker_text = ->(vocabulary) { described_class.new(root, root.at_css('h2'), vocabulary:).kicker_text }
-
-      expect([Html2rss::Vocabulary[:ja], Html2rss::Vocabulary['zh-Hant']].map(&kicker_text))
-        .to eq(['Transit', '独自 Transit'])
-    end
-
-    it 'takes a data-tb-kicker element as the kicker' do
-      pieces, = pieces_for.call('<article><b data-tb-kicker="">Transit</b><h2><a href="/s">Tram</a></h2></article>')
-      expect(pieces.kicker_text).to eq('Transit')
-    end
-
-    it 'takes a marked element as the kicker when the card has no headline source' do
-      root = Nokogiri::HTML.fragment('<article><b class="kicker">Transit</b><p>Tram</p></article>').at_css('article')
-      expect(described_class.new(root, nil, vocabulary: all_scope).kicker_text).to eq('Transit')
-    end
-
-    it 'finds no kicker without a marked one or a headline source' do
-      root = Nokogiri::HTML.fragment('<article><b>Transit</b><p>Tram</p></article>').at_css('article')
-      expect(described_class.new(root, nil, vocabulary: all_scope).kicker).to be_nil
-    end
-
-    it 'reads a heading whose only link is not the selected anchor as a whole' do
-      html = '<article><a href="/s">Pics</a><h2><span>Transit</span> <a href="/t">Tram line extends</a></h2></article>'
-      expect(title_for.call(html)).to eq('Transit Tram line extends')
-    end
-
-    it 'returns nil headline text without a node' do
-      pieces, = pieces_for.call('<article><h2><a href="/s">Tram</a></h2></article>')
-      expect(pieces.headline_text(nil)).to be_nil
-    end
-
-    it 'drops every noise element opening the headline, then keeps the rest' do
-      html = '<article><h2><a href="/s"><time>19:47</time> <i>Section:</i> Tram at <b>20:15</b></a></h2></article>'
-      expect(title_for.call(html)).to eq('Tram at 20:15')
-    end
-  end
-
   context 'with SST nodes' do
     let(:pieces_for) do
       lambda do |html|
@@ -103,6 +30,43 @@ RSpec.describe Html2rss::Html::TitlePieces do
     it 'takes a data-tb-kicker element as the kicker' do
       pieces, = pieces_for.call('<article><b data-tb-kicker="">Transit</b><h2><a href="/s">Tram</a></h2></article>')
       expect(pieces.kicker_text).to eq('Transit')
+    end
+
+    it 'returns the kicker element and memoizes a missing one', :aggregate_failures do
+      pieces, root, = pieces_for.call('<article><b class="kicker">Transit</b><h2><a href="/s">Tram</a></h2></article>')
+      expect(pieces.kicker).to equal(root.find { _1.name == :b })
+
+      bare, = pieces_for.call('<article><h2><a href="/s">Tram</a></h2></article>')
+      expect([bare.kicker, bare.kicker, bare.kicker_text]).to eq([nil, nil, nil])
+    end
+
+    it 'drops a Han type marker piece from the kicker unless the page is Chinese' do
+      _, root, = pieces_for.call('<article><b class="kicker"><i>独自</i> Transit</b><h2>T</h2></article>')
+      heading = root.find(&:heading?)
+      kicker_text = ->(vocabulary) { described_class.new(root, heading, vocabulary:).kicker_text }
+
+      expect([Html2rss::Vocabulary[:ja], Html2rss::Vocabulary['zh-Hant']].map(&kicker_text))
+        .to eq(['Transit', '独自 Transit'])
+    end
+
+    it 'takes a marked element as the kicker when the card has no headline source' do
+      _, root, = pieces_for.call('<article><b class="kicker">Transit</b><p>Tram</p></article>')
+      expect(described_class.new(root, nil, vocabulary: all_scope).kicker_text).to eq('Transit')
+    end
+
+    it 'finds no kicker without a marked one or a headline source' do
+      _, root, = pieces_for.call('<article><b>Transit</b><p>Tram</p></article>')
+      expect(described_class.new(root, nil, vocabulary: all_scope).kicker).to be_nil
+    end
+
+    it 'returns nil headline text without a node' do
+      pieces, = pieces_for.call('<article><h2><a href="/s">Tram</a></h2></article>')
+      expect(pieces.headline_text(nil)).to be_nil
+    end
+
+    it 'drops every noise element opening the headline, then keeps the rest' do
+      html = '<article><h2><a href="/s"><time>19:47</time> <i>Section:</i> Tram at <b>20:15</b></a></h2></article>'
+      expect(title_for.call(html)).to eq('Tram at 20:15')
     end
 
     it 'reads a heading whose only link is not the selected anchor as a whole' do
@@ -153,9 +117,10 @@ RSpec.describe Html2rss::Html::TitlePieces do
     end
     let(:headline) do
       lambda do |html, vocabulary|
-        root = Nokogiri::HTML.fragment(html).at_css('article')
-        heading = root.at_css('h2')
-        described_class.new(root, heading, anchor: root.at_css('a'), vocabulary:).headline_text(heading)
+        doc = Html2rss::SST::Normalizer.call("<html><body>#{html}</body></html>", vocabulary:)
+        root = doc.root.find { _1.name == :article }
+        heading = root.find { _1.name == :h2 }
+        [described_class.new(root, heading, anchor: root.find(&:link?), vocabulary:).headline_text(heading), doc].first
       end
     end
 

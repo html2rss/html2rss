@@ -4,8 +4,8 @@ module Html2rss
   module Html
     ##
     # Builds an {Html2rss::Article} from an SST segment / ranked segment.
-    # Port of Html::ArticleExtractor field logic onto SST::Node.
-    # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated for parity with ArticleExtractor
+    # {Item} reads a card a selector config picked.
+    # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated
     class SstArticleExtractor
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
       # {Html2rss::SelectorCandidates}, which owns no copy of it.

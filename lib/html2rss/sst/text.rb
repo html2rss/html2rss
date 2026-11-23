@@ -3,7 +3,7 @@
 module Html2rss
   module SST
     ##
-    # Visible-text extraction for SST nodes (port of Navigator::TextExtractor).
+    # Visible-text extraction for SST nodes.
     #
     # Block children separate by a newline (or the given separator); other neighbours by one space,
     # except where an inline element embedded in direct text touches it with no whitespace between them

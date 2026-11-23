@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Host specs define leftover_fields as a lambda: ->(html, item_selector: 'article') { Hash }
-# Nokogiri adapters return ArticleExtractor hashes; SST maps Article fields onto the same keys.
+# Host specs map the extractor's fields onto the same keys.
 RSpec.shared_examples 'article extractor leftover hygiene' do
   describe 'Novo-shaped CTA leftover' do
     let(:html) do
