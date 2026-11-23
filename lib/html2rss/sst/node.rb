@@ -12,7 +12,8 @@ module Html2rss
       # @param name [Symbol, String]
       # @param attrs [Attrs, nil]
       # @param own_text [String, nil] all direct text, in document order
-      # @param tails [Array<String>, nil] direct text following each child, parallel to +children+
+      # @param tails [Array<String>, nil] direct text following each child, parallel to +children+;
+      #   an Array of Strings is frozen in place, so the node takes ownership of it
       # @param children [Array<Node>, nil]
       # @param tag_path [String, nil] index-free ancestry path for list clustering
       # @return [Node]
@@ -25,11 +26,18 @@ module Html2rss
           name: coerce_name(name),
           attrs: attrs_value,
           own_text: own_text.to_s.freeze,
-          tails: Array(tails).map { _1.to_s.freeze }.freeze,
+          tails: freeze_texts(tails),
           children: kids,
           tag_path: tag_path.to_s.freeze
         )
       end
+
+      def self.freeze_texts(texts)
+        return Array(texts).map { _1.to_s.freeze }.freeze unless texts.is_a?(Array) && texts.all?(String)
+
+        texts.each(&:freeze).freeze
+      end
+      private_class_method :freeze_texts
 
       def self.coerce_name(name)
         raise InvalidError, 'name is required' if name.nil? || name.to_s.strip.empty?

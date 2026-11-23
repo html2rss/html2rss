@@ -356,6 +356,37 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
   end
 
+  describe '.call text slots and paths' do
+    let(:html) do
+      '<html><body><p>a<b>1</b><i>2</i>c<!-- note -->d<script>x</script>e</p><p>f<b>1</b></p><p></p></body></html>'
+    end
+    let(:paragraphs) { described_class.call(html, vocabulary: all_scope).root.find_all { _1.name == :p } }
+
+    it 'splits direct text across the kept children, merging runs a comment splits', :aggregate_failures do
+      expect(paragraphs.first).to have_attributes(own_text: 'acde', lead_text: 'a', tails: ['', 'cde'])
+      expect(paragraphs[1]).to have_attributes(own_text: 'f', lead_text: 'f', tails: [''])
+      expect(paragraphs.last).to have_attributes(own_text: '', lead_text: '', tails: [])
+    end
+
+    it 'freezes every text and shares one path string per ancestry', :aggregate_failures do
+      first, second = paragraphs
+
+      expect([first.own_text, *first.tails, first.tag_path]).to all(be_frozen)
+      expect(first.tails).to be_frozen
+      expect(second.tag_path).to be(first.tag_path)
+      expect(first.tag_path).to eq('/html/body/p')
+    end
+
+    it 'gives each node its own tails, so no node mutates another', :aggregate_failures do
+      first, second = paragraphs
+
+      expect(first.tails).not_to be(second.tails)
+      expect { first.tails.first << 'x' }.to raise_error(FrozenError)
+      expect { first.tails << 'x' }.to raise_error(FrozenError)
+      expect { second.own_text << 'x' }.to raise_error(FrozenError)
+    end
+  end
+
   describe '.call input validation' do
     it 'rejects nil and unsupported input', :aggregate_failures do
       expect do

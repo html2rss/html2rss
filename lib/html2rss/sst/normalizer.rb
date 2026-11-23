@@ -57,6 +57,9 @@ module Html2rss
       # Typed Attrs fields excluded from the leftover raw hash.
       TYPED_ATTR_NAMES = Set['href', 'src', 'id', 'class', 'datetime', 'itemprop', 'style', 'srcset', 'type'].freeze
 
+      # Shared, frozen empty text slot.
+      EMPTY_TEXT = ''
+
       class << self
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
@@ -95,6 +98,7 @@ module Html2rss
         @parents = {}.compare_by_identity
         @depths = {}.compare_by_identity
         @scopes = {}.compare_by_identity
+        @tag_paths = Hash.new { |paths, path| paths[path] = {} }
       end
 
       ##
@@ -150,37 +154,42 @@ module Html2rss
         node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
       end
 
-      # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
       def normalize_element(nk_node, depth:, path:, scope:)
         return unless nk_node.element?
 
         tag = Html::Probe.tag(nk_node)
         return unless (nk_children = child_nodes(nk_node, tag))
 
-        if @node_count >= MAX_NODES && !@degraded
-          @degraded = true
-          Log.warn({
-            event_name: 'sst.normalizer.max_nodes',
-            max_nodes: MAX_NODES,
-            message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
-          }.to_json)
-        end
-
+        degrade_when_full
         return if @degraded && !SEMANTIC_DEGRADE_TAGS.include?(tag)
 
         @node_count += 1
-        tag_path = "#{path}/#{tag}"
+        tag_path = (@tag_paths[path][tag] ||= "#{path}/#{tag}".freeze)
         attrs = extract_attrs(nk_node)
         scope_here = Tags.chrome_scope(nk_node, scope, @vocabulary, tag)
 
-        children, lead, tails = normalize_children(nk_children, depth:, path: tag_path, scope: scope_here)
+        tails = [EMPTY_TEXT]
+        children = normalize_children(nk_children, tails, depth:, path: tag_path, scope: scope_here)
+        own_text = join_text(tails.shift, tails)
 
-        node = Node.build(name: tag, attrs:, own_text: [lead, *tails].join, children:, tag_path:, tails:)
+        node = Node.build(name: tag, attrs:, own_text:, children:, tag_path:, tails:)
         @depths[node] = depth
         @scopes[node] = scope_here
         children.each { |child| @parents[child] = node }
 
         node
+      end
+
+      def degrade_when_full
+        return unless @node_count >= MAX_NODES && !@degraded
+
+        @degraded = true
+        Log.warn({
+          event_name: 'sst.normalizer.max_nodes',
+          max_nodes: MAX_NODES,
+          message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
+        }.to_json)
       end
 
       # The Nokogiri children to normalize, or nil for a stripped tag. A +noscript+ is kept only for the
@@ -221,17 +230,30 @@ module Html2rss
       end
 
       # Walks child nodes once, keeping direct text in the slot of the preceding kept child
-      # (slot 0 is the lead text) so text order survives the element-only tree.
-      def normalize_children(nk_children, depth:, path:, scope:)
+      # (slot 0 is the lead text) so text order survives the element-only tree. The caller owns +slots+.
+      def normalize_children(nk_children, slots, depth:, path:, scope:)
         children = []
-        slots = [+'']
         nk_children.each do |child|
-          next slots.last << child.text if child.text?
+          next append_text(slots, child.text) if child.text?
 
           node = normalize_element(child, depth: depth + 1, path:, scope:)
-          (children << node) && (slots << +'') if node
+          (children << node) && (slots << EMPTY_TEXT) if node
         end
-        [children, slots.first, slots.drop(1)]
+        children
+      end
+
+      # Direct text lands in the last slot; an empty slot takes the fresh string, so no slot is pre-allocated.
+      def append_text(slots, text)
+        last = slots.last
+        last.empty? ? (slots[-1] = text) : last << text
+      end
+
+      # The node's own text: the lead and tails in document order. Appends to +lead+, which the caller
+      # no longer reads, unless it is the shared empty slot.
+      def join_text(lead, tails)
+        return lead if tails.all?(&:empty?)
+
+        tails.each_with_object(+lead) { |tail, text| text << tail }
       end
     end
   end

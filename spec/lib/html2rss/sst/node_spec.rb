@@ -50,6 +50,18 @@ RSpec.describe Html2rss::SST::Node do
       expect(node.tag_path).to eq('')
     end
 
+    it 'freezes Array tails in place, taking ownership of them', :aggregate_failures do
+      tails = ['one', +'two']
+
+      expect(described_class.build(name: :p, tails:).tails).to be(tails)
+      expect(tails).to be_frozen.and all(be_frozen)
+    end
+
+    it 'coerces tails that are not Strings', :aggregate_failures do
+      expect(described_class.build(name: :p, tails: [:one, 2]).tails).to eq(%w[one 2]).and all(be_frozen)
+      expect(described_class.build(name: :p, tails: nil).tails).to eq([])
+    end
+
     it 'rejects attrs that are not typed and children that are not nodes', :aggregate_failures do
       expect { described_class.build(name: :div, attrs: Object.new) }
         .to raise_error(Html2rss::SST::InvalidError, 'attrs must be SST::Attrs')
