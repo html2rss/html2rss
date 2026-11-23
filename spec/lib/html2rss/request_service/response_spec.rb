@@ -525,6 +525,14 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(response.content_type).to eq('')
     end
 
+    it 'returns the value of a public lookup, nil when absent', :aggregate_failures do
+      response = described_class.new(body: '', headers: { 'X-Test' => 'v' },
+                                     url: Html2rss::Url.from_absolute('https://example.com'))
+
+      expect(response.header('x-test')).to eq('v')
+      expect(response.header('x-other')).to be_nil
+    end
+
     it 'prefers an exact-case header key over a case-insensitive match', :aggregate_failures do
       headers = { 'Content-Type' => 'text/plain', 'content-type' => 'application/rss+xml' }
       response = described_class.new(body: '', headers:, url: Html2rss::Url.from_absolute('https://example.com'))
