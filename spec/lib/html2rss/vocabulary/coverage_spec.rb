@@ -991,7 +991,8 @@ RSpec.describe Html2rss::Vocabulary do
       ['Log ind', 'Log på', 'Log ud', 'Opret bruger', 'Opret konto', 'Søg', 'Søgning', 'Om os', 'Tip os',
        'Kundeservice', 'Privatlivspolitik', 'Persondatapolitik', 'Cookiepolitik', 'Cookieindstillinger',
        'Vilkår og betingelser', 'Ofte stillede spørgsmål', 'Menu', 'Åbn menu', 'Forside', 'Se alle', 'Se flere',
-       'Vis mere', 'Flere nyheder', 'Kommentarer', 'Følg os', 'Spring til indhold', 'Gå til hovedindhold'].each do |item|
+       'Vis mere', 'Flere nyheder', 'Kommentarer', 'Følg os', 'Spring til indhold',
+       'Gå til hovedindhold'].each do |item|
         expect(da.utility_chrome?(item)).to be(true), item
       end
       ['[Søg]', '← Se alle ←', 'Log ind (åbner i nyt vindue)', '‎Søg‎'].each do |item|
