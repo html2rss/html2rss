@@ -384,7 +384,8 @@ RSpec.describe Html2rss::Vocabulary do
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
       end
       expect(['संबंधित खबरें (3)', 'संबंधित खबरें [3]'].map { hi.recommended?(_1) }).to all(be(true))
-      expect(['सर्च 2', 'रजिस्टर 2', 'हमारे बारे में 2', 'संबंधित खबरें 3'].map { hi.utility_chrome?(_1) }).to all(be(false))
+      bare = ['सर्च 2', 'रजिस्टर 2', 'हमारे बारे में 2', 'संबंधित खबरें 3']
+      expect(bare.map { hi.utility_chrome?(_1) }).to all(be(false))
     end
 
     it 'matches a term however its nukta letters are encoded, and holds every term in NFC', :aggregate_failures do
