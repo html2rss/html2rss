@@ -351,13 +351,13 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads chrome and recommended labels as whole labels, with a small count or direction marks',
        :aggregate_failures do
-      ['تسجيل الدخول', 'تسجيل الخروج', 'إنشاء حساب', 'بحث', 'البحث', 'من نحن', 'اتصل بنا', 'سياسة الخصوصية',
+      ['تسجيل الدخول', 'تسجيل الخروج', 'إنشاء حساب', 'من نحن', 'اتصل بنا', 'سياسة الخصوصية',
        'الشروط والأحكام',
-       'خريطة الموقع', 'التعليقات', 'النشرة البريدية', 'اشتراك', 'المزيد', 'إغلاق'].each do |item|
+       'خريطة الموقع', 'المزيد', 'إغلاق'].each do |item|
         expect(ar.utility_chrome?(item)).to be(true),
                                             item
       end
-      ["\u200fبحث\u200f", "\u202bسياسة الخصوصية\u202c", '[المزيد]', '← المزيد ←',
+      ["\u200fمن نحن\u200f", "\u202bسياسة الخصوصية\u202c", '[المزيد]', '← المزيد ←',
        'تسجيل الدخول (يفتح في نافذة جديدة)'].each do |item|
         expect(ar.utility_chrome?(item)).to be(true), item
       end
@@ -388,8 +388,11 @@ RSpec.describe Html2rss::Vocabulary do
           expect(reader.call(label)).to be(false), label
         end
       end
-      ['تعليقات (12)', 'المزيد [3]', 'بحث (7)'].each { expect(ar.utility_chrome?(_1)).to be(true), _1 }
-      ['تعليقات 12', 'المزيد 3', 'من نحن 2'].each { expect(ar.utility_chrome?(_1)).to be(false), _1 }
+      ['إغلاق (12)', 'المزيد [3]', 'من نحن (7)'].each { expect(ar.utility_chrome?(_1)).to be(true), _1 }
+      ['تعليقات 12', 'المزيد 3', 'من نحن 2', 'بحث', 'تعليقات', 'مشاركة', 'اشتراك', 'النشرة البريدية',
+       'مساعدة'].each do |item|
+        expect(ar.utility_chrome?(item)).to be(false), item
+      end
     end
 
     it 'reads the labels on a Arabic page only', :aggregate_failures do
@@ -415,14 +418,14 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads chrome and recommended labels as whole labels, with a small count or direction marks',
        :aggregate_failures do
-      ['ورود', 'خروج', 'جستجو', 'جست‌وجو', 'جست و جو', 'درباره ما', 'تماس با ما', 'حریم خصوصی',
+      ['ورود به حساب', 'خروج از حساب', 'جستجو در سایت', 'درباره ما', 'تماس با ما', 'حریم خصوصی',
        'نقشه سایت',
-       'راهنما', 'خبرنامه', 'اشتراک', 'نظرات', 'بیشتر', 'بستن', 'صفحه اصلی'].each do |item|
+       'عضویت در خبرنامه', 'بیشتر', 'بستن', 'صفحه اصلی'].each do |item|
         expect(fa.utility_chrome?(item)).to be(true),
                                             item
       end
-      ["\u200fجستجو\u200f", "\u202bحریم خصوصی\u202c", '[بیشتر]', '← بیشتر ←',
-       'ورود (در پنجره جدید باز می‌شود)'].each do |item|
+      ["\u200fدرباره ما\u200f", "\u202bحریم خصوصی\u202c", '[بیشتر]', '← بیشتر ←',
+       'ورود به حساب (در پنجره جدید باز می‌شود)'].each do |item|
         expect(fa.utility_chrome?(item)).to be(true), item
       end
       ['مطالب مرتبط', 'اخبار مرتبط', 'مطالب پیشنهادی', 'همچنین بخوانید'].each do |item|
@@ -457,18 +460,24 @@ RSpec.describe Html2rss::Vocabulary do
           expect(reader.call(label)).to be(false), label
         end
       end
-      ['نظرات (12)', 'بیشتر [3]', 'جستجو (7)'].each { expect(fa.utility_chrome?(_1)).to be(true), _1 }
-      ['نظرات 12', 'بیشتر 3', 'حریم خصوصی 2', 'ثبت نام 140'].each { expect(fa.utility_chrome?(_1)).to be(false), _1 }
+      ['بستن (12)', 'بیشتر [3]', 'درباره ما (7)'].each { expect(fa.utility_chrome?(_1)).to be(true), _1 }
+      ['نظرات 12', 'بیشتر 3', 'حریم خصوصی 2', 'ثبت نام 140',
+       'جستجو', 'جست‌وجو', 'جست و جو', 'نظرات', 'اشتراک', 'اشتراك',
+       'اشتراک‌گذاری', 'اشتراک گذاری', 'عضویت', 'عضويت', 'ثبت‌نام',
+       "ثبت\u200cنام", 'ثبت نام', 'خبرنامه', 'راهنما', 'ورود', 'خروج'].each do |item|
+        expect(fa.utility_chrome?(item)).to be(false),
+                                            item
+      end
     end
 
     it 'reads the ZWNJ, spaced and Arabic-letter spellings of a label alike, and normalizes nothing',
        :aggregate_failures do
-      ["ثبت\u200cنام", 'ثبت نام', 'حريم خصوصي', 'اشتراك', 'اشتراک', 'ورود به حساب كاربري', "جست\u200cوجو",
+      ['حريم خصوصي', 'ورود به حساب كاربري', 'عضويت در خبرنامه',
        'ورود / ثبت نام',
        "ورود و ثبت\u200cنام", 'ورود | ثبت نام', 'ورود يا ثبت نام', 'شرایط و ضوابط', 'سیاست حریم خصوصی'].each do |item|
         expect(fa.utility_chrome?(item)).to be(true), item
       end
-      expect(fa.utility_chrome?("ثبت\u200cنام\u200c")).to be(true)
+      expect(fa.utility_chrome?("ثبت\u200cنام\u200c")).to be(false)
       expect(fa.utility_chrome?('ثبتنام')).to be(false)
       expect(fa.utility_chrome?('ورود به حساب كاربري (در پنجره جديد باز مي‌شود)')).to be(true)
     end

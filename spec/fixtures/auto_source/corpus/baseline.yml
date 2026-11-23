@@ -258,8 +258,8 @@ kicker_heading_teaser.html:
   sst_built: true
 language_chrome_ar.html:
   junk: 0
-  real: 16
-  expected: 16
+  real: 24
+  expected: 24
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
@@ -290,8 +290,8 @@ language_chrome_es.html:
   sst_built: true
 language_chrome_fa.html:
   junk: 0
-  real: 16
-  expected: 16
+  real: 24
+  expected: 24
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
