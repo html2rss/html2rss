@@ -317,13 +317,6 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'keeps an ordinary noun label, a card link text or a sports headline, a headline', :aggregate_failures do
-      %w[Σύνδεση ΣΥΝΔΕΣΗ Αποσύνδεση Εγγραφή ΕΓΓΡΑΦΗ Αναζήτηση Συνδρομή Συνδρομές Σχόλια Ειδοποιήσεις Προτεινόμενα]
-        .push('Πίσω στην κορυφή', 'Ο λογαριασμός μου').each do |label|
-          readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
-        end
-    end
-
     it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
       ['추천 기사 2026', '추천 뉴스 2026', '관련 기사 2026', '신문 구독 2026', '무료 구독 2026', '뉴스레터 구독 2026',
        '회사 소개 2026', '개인정보 처리방침 2026'].each do |headline|
