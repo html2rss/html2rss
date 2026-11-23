@@ -200,7 +200,7 @@ RSpec.describe Html2rss::Vocabulary do
 
   describe 'Chinese labels' do
     let(:labels) do
-      %w[关于我们 關於我們 联系我们 聯絡我們 登录 登入 注册 註冊 订阅 訂閱 分享 搜索 搜尋 更多 查看更多 隐私政策
+      %w[关于我们 關於我們 联系我们 聯絡我們 登录 登入 注册 註冊 订阅 訂閱 分享 搜索 搜尋 隐私政策
          隱私權政策 评论 留言 帮助 幫助]
     end
     let(:zh) { text.call(:zh) }
@@ -216,13 +216,13 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads Simplified and Traditional chrome labels as whole labels', :aggregate_failures do
       labels.each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
-      ['登录 (3)', '[订阅]', '→ 更多 →', '更多 (12)'].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
+      ['登录 (3)', '[订阅]', '→ 订阅 →', '订阅 (12)'].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
       %w[推荐阅读 推薦閱讀 相关阅读 相關閱讀 猜你喜欢 猜你喜歡].each { expect(zh.recommended?(_1)).to be(true), _1 }
     end
 
     it 'reads a bracketed count after a Chinese label as chrome, a bare number as a headline', :aggregate_failures do
-      expect(['更多 (12)', '相关阅读 [3]', '隐私政策 （2）'].map { zh.utility_chrome?(_1) }).to all(be(true))
-      expect(['更多 12', '相关阅读 3', '隐私政策 2'].map { zh.utility_chrome?(_1) }).to all(be(false))
+      expect(['评论 (12)', '相关阅读 [3]', '隐私政策 （2）'].map { zh.utility_chrome?(_1) }).to all(be(true))
+      expect(['评论 12', '相关阅读 3', '隐私政策 2'].map { zh.utility_chrome?(_1) }).to all(be(false))
     end
 
     it 'reads Chinese read-more and call-to-action labels as whole labels, as chrome and junk', :aggregate_failures do
@@ -297,9 +297,9 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
-      %w[로그인 로그아웃 회원가입 검색 이용약관 개인정보처리방침 회사소개 사이트맵 고객센터 뉴스레터 구독 더보기 닫기 공유
+      %w[로그인 로그아웃 회원가입 검색 이용약관 개인정보처리방침 회사소개 사이트맵 고객센터 뉴스레터 구독 닫기 공유
          댓글].each { expect(ko.utility_chrome?(_1)).to be(true), _1 }
-      ['개인정보 처리방침', '본문 바로가기', '로그인 (3)', '[더보기]', '→ 더보기 →'].each { expect(ko.utility_chrome?(_1)).to be(true), _1 }
+      ['개인정보 처리방침', '본문 바로가기', '로그인 (3)', '[닫기]', '→ 닫기 →'].each { expect(ko.utility_chrome?(_1)).to be(true), _1 }
       %w[관련기사 추천기사].push('관련 기사', '추천 기사').each { expect(ko.recommended?(_1)).to be(true), _1 }
     end
 
@@ -557,11 +557,11 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['تسجيل الدخول', 'تسجيل الخروج', 'إنشاء حساب', 'بحث', 'البحث', 'من نحن', 'اتصل بنا', 'سياسة الخصوصية',
        'الشروط والأحكام',
-       'خريطة الموقع', 'التعليقات', 'النشرة البريدية', 'اشتراك', 'المزيد', 'إغلاق'].each do |item|
+       'خريطة الموقع', 'التعليقات', 'النشرة البريدية', 'اشتراك', 'إغلاق'].each do |item|
         expect(ar.utility_chrome?(item)).to be(true),
                                             item
       end
-      ["\u200fبحث\u200f", "\u202bسياسة الخصوصية\u202c", '[المزيد]', '← المزيد ←',
+      ["\u200fبحث\u200f", "\u202bسياسة الخصوصية\u202c", '[إغلاق]', '← إغلاق ←',
        'تسجيل الدخول (يفتح في نافذة جديدة)'].each do |item|
         expect(ar.utility_chrome?(item)).to be(true), item
       end
@@ -592,8 +592,8 @@ RSpec.describe Html2rss::Vocabulary do
           expect(reader.call(label)).to be(false), label
         end
       end
-      ['تعليقات (12)', 'المزيد [3]', 'بحث (7)'].each { expect(ar.utility_chrome?(_1)).to be(true), _1 }
-      ['تعليقات 12', 'المزيد 3', 'من نحن 2'].each { expect(ar.utility_chrome?(_1)).to be(false), _1 }
+      ['تعليقات (12)', 'إغلاق [3]', 'بحث (7)'].each { expect(ar.utility_chrome?(_1)).to be(true), _1 }
+      ['تعليقات 12', 'إغلاق 3', 'من نحن 2'].each { expect(ar.utility_chrome?(_1)).to be(false), _1 }
     end
 
     it 'reads the labels on a Arabic page only', :aggregate_failures do
@@ -621,11 +621,11 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['ورود', 'خروج', 'جستجو', 'جست‌وجو', 'جست و جو', 'درباره ما', 'تماس با ما', 'حریم خصوصی',
        'نقشه سایت',
-       'راهنما', 'خبرنامه', 'اشتراک', 'نظرات', 'بیشتر', 'بستن', 'صفحه اصلی'].each do |item|
+       'راهنما', 'خبرنامه', 'اشتراک', 'نظرات', 'بستن', 'صفحه اصلی'].each do |item|
         expect(fa.utility_chrome?(item)).to be(true),
                                             item
       end
-      ["\u200fجستجو\u200f", "\u202bحریم خصوصی\u202c", '[بیشتر]', '← بیشتر ←',
+      ["\u200fجستجو\u200f", "\u202bحریم خصوصی\u202c", '[بستن]', '← بستن ←',
        'ورود (در پنجره جدید باز می‌شود)'].each do |item|
         expect(fa.utility_chrome?(item)).to be(true), item
       end
@@ -661,8 +661,8 @@ RSpec.describe Html2rss::Vocabulary do
           expect(reader.call(label)).to be(false), label
         end
       end
-      ['نظرات (12)', 'بیشتر [3]', 'جستجو (7)'].each { expect(fa.utility_chrome?(_1)).to be(true), _1 }
-      ['نظرات 12', 'بیشتر 3', 'حریم خصوصی 2', 'ثبت نام 140'].each { expect(fa.utility_chrome?(_1)).to be(false), _1 }
+      ['نظرات (12)', 'بستن [3]', 'جستجو (7)'].each { expect(fa.utility_chrome?(_1)).to be(true), _1 }
+      ['نظرات 12', 'بستن 3', 'حریم خصوصی 2', 'ثبت نام 140'].each { expect(fa.utility_chrome?(_1)).to be(false), _1 }
     end
 
     it 'reads the ZWNJ, spaced and Arabic-letter spellings of a label alike, and normalizes nothing',
@@ -701,11 +701,10 @@ RSpec.describe Html2rss::Vocabulary do
     it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
        :aggregate_failures do
       %w[เข้าสู่ระบบ ออกจากระบบ สมัครสมาชิก ค้นหา เกี่ยวกับเรา ติดต่อเรา นโยบายความเป็นส่วนตัว
-         นโยบายคุกกี้ ข้อตกลงและเงื่อนไข แผนผังเว็บไซต์ แผนผังเว็บไซท์ จดหมายข่าว หน้าแรก ดูเพิ่มเติม
-         ดูทั้งหมด แชร์ เมนู].each do |item|
+         นโยบายคุกกี้ ข้อตกลงและเงื่อนไข แผนผังเว็บไซต์ แผนผังเว็บไซท์ จดหมายข่าว หน้าแรก แชร์ เมนู].each do |item|
         expect(th.utility_chrome?(item)).to be(true), item
       end
-      ['[ดูเพิ่มเติม]', '← ดูทั้งหมด ←', 'เข้าสู่ระบบ (เปิดในหน้าต่างใหม่)', "\u200eค้นหา\u200e"].each do |item|
+      ['[แชร์]', '← เมนู ←', 'เข้าสู่ระบบ (เปิดในหน้าต่างใหม่)', "\u200eค้นหา\u200e"].each do |item|
         expect(th.utility_chrome?(item)).to be(true), item
       end
       %w[ข่าวที่เกี่ยวข้อง บทความที่เกี่ยวข้อง ข่าวแนะนำ คุณอาจสนใจ].each do |item|
@@ -736,11 +735,11 @@ RSpec.describe Html2rss::Vocabulary do
     it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
        :aggregate_failures do
       ['เกี่ยวกับเรา 2026', 'นโยบายความเป็นส่วนตัว 2569', 'ข่าวที่เกี่ยวข้อง 2026', 'อ่านต่อ 2026', 'ดูเพิ่มเติม 2026',
-       'ดูทั้งหมด 2569', 'ค้นหา 2026'].each do |label|
+       'แชร์ 2569', 'ค้นหา 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['ดูทั้งหมด (12)', 'ดูเพิ่มเติม [3]', 'ค้นหา (7)'].each { expect(th.utility_chrome?(_1)).to be(true), _1 }
-      ['ดูทั้งหมด 12', 'ดูเพิ่มเติม 3', 'เกี่ยวกับเรา 2', 'ค้นหา 140'].each do |label|
+      ['แชร์ (12)', 'เมนู [3]', 'ค้นหา (7)'].each { expect(th.utility_chrome?(_1)).to be(true), _1 }
+      ['แชร์ 12', 'เมนู 3', 'เกี่ยวกับเรา 2', 'ค้นหา 140'].each do |label|
         expect(th.utility_chrome?(label)).to be(false), label
       end
     end
@@ -772,10 +771,10 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['Giriş Yap', 'Oturum Aç', 'Çıkış Yap', 'Kayıt Ol', 'Arama', 'Hakkımızda', 'İletişim', 'Bize Ulaşın',
        'Gizlilik Politikası', 'Çerez Politikası', 'Kullanım Koşulları', 'Site Haritası', 'Sıkça Sorulan Sorular',
-       'Menü', 'Ana Sayfa', 'Daha Fazla', 'Tümünü Gör', 'Yorumlar', 'Paylaş'].each do |item|
+       'Menü', 'Ana Sayfa', 'Yorumlar', 'Paylaş'].each do |item|
         expect(tr.utility_chrome?(item)).to be(true), item
       end
-      ['[Daha Fazla]', '← Tümünü Gör ←', 'Giriş Yap (yeni sekmede açılır)', "\u200eArama\u200e"].each do |item|
+      ['[Paylaş]', '← Menü ←', 'Giriş Yap (yeni sekmede açılır)', "\u200eArama\u200e"].each do |item|
         expect(tr.utility_chrome?(item)).to be(true), item
       end
       ['İlgili Haberler', 'Benzer Haberler', 'İlginizi Çekebilir', 'Önerilen Yazılar'].each do |item|
@@ -798,7 +797,7 @@ RSpec.describe Html2rss::Vocabulary do
       ['giriş yap', 'GİRİŞ YAP', 'Giriş Yap', 'çıkış yap', 'ÇIKIŞ YAP', 'Çıkış Yap', 'iletişim', 'İLETİŞİM',
        'İletişim', 'hakkımızda', 'HAKKIMIZDA', 'Hakkımızda', 'gizlilik politikası', 'GİZLİLİK POLİTİKASI',
        'sıkça sorulan sorular', 'SIKÇA SORULAN SORULAR', 'kullanım koşulları', 'KULLANIM KOŞULLARI',
-       'kayıt ol', 'KAYIT OL', 'tümünü gör', 'TÜMÜNÜ GÖR'].each do |label|
+       'kayıt ol', 'KAYIT OL'].each do |label|
         expect(tr.utility_chrome?(label)).to be(true), label
       end
       ['İLGİLİ HABERLER', 'BENZER HABERLER', 'İLGİNİZİ ÇEKEBİLİR'].each { expect(tr.recommended?(_1)).to be(true), _1 }
@@ -822,13 +821,13 @@ RSpec.describe Html2rss::Vocabulary do
     it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
        :aggregate_failures do
       ['Hakkımızda 2026', 'İletişim 2026', 'İlgili Haberler 2026', 'Devamını Oku 2026', 'Giriş Yap 2026',
-       'Gizlilik Politikası 2026', 'Daha Fazla 2026', 'ÇIKIŞ YAP 2026'].each do |label|
+       'Gizlilik Politikası 2026', 'Menü 2026', 'ÇIKIŞ YAP 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['Tümünü Gör (12)', 'Daha Fazla [3]', 'Arama (7)', 'Yorumlar (12)'].each do |item|
+      ['Menü (12)', 'Paylaş [3]', 'Arama (7)', 'Yorumlar (12)'].each do |item|
         expect(tr.utility_chrome?(item)).to be(true), item
       end
-      ['Tümünü Gör 12', 'Daha Fazla 3', 'Hakkımızda 2', 'Yorumlar 140'].each do |label|
+      ['Menü 12', 'Paylaş 3', 'Hakkımızda 2', 'Yorumlar 140'].each do |label|
         expect(tr.utility_chrome?(label)).to be(false), label
       end
     end
@@ -888,11 +887,11 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['Belépés', 'Bejelentkezés', 'Kijelentkezés', 'Regisztráció', 'Keresés', 'Rólunk', 'Impresszum', 'Kapcsolat',
        'Médiaajánlat', 'Adatvédelmi tájékoztató', 'Felhasználási feltételek', 'Süti beállítások', 'ÁSZF',
-       'Moderálási szabályzat', 'Hírlevél', 'Menü', 'Címlap', 'Ugrás a tartalomhoz', 'További hírek',
-       'További cikkeink', 'Összes', 'Hozzászólások', 'Megosztás', 'Tovább a rovatra'].each do |item|
+       'Moderálási szabályzat', 'Hírlevél', 'Menü', 'Címlap', 'Ugrás a tartalomhoz', 'Hozzászólások',
+       'Megosztás'].each do |item|
         expect(hu.utility_chrome?(item)).to be(true), item
       end
-      ['[További hírek]', '← Összes ←', 'Belépés (új ablakban nyílik meg)', "\u200eKeresés\u200e"].each do |item|
+      ['[Hírlevél]', '← Menü ←', 'Belépés (új ablakban nyílik meg)', "\u200eKeresés\u200e"].each do |item|
         expect(hu.utility_chrome?(item)).to be(true), item
       end
       ['Kapcsolódó cikkek', 'Ajánlott hírek', 'Ez is érdekelhet', 'Olvasd el ezt is'].each do |item|
@@ -912,7 +911,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads the labels in upper case, with the double-acute letters and in decomposed form', :aggregate_failures do
       ['BEJELENTKEZÉS', 'KIJELENTKEZÉS', 'BELÉPÉS', 'KERESÉS', 'RÓLUNK', 'ADATVÉDELMI TÁJÉKOZTATÓ', 'MENÜ',
-       'TOVÁBBI HÍREK', 'HOZZÁSZÓLÁSOK', 'HÍRLEVÉL', 'TOVÁBB A ROVATRA', 'ÖSSZES FRISS HÍR'].each do |label|
+       'HOZZÁSZÓLÁSOK', 'HÍRLEVÉL'].each do |label|
         expect(hu.utility_chrome?(label)).to be(true), label
       end
       ['KAPCSOLÓDÓ CIKKEK', 'EZ IS ÉRDEKELHET', 'ÖNNEK AJÁNLJUK', 'OLVASD EL EZT IS'].each do |label|
@@ -943,13 +942,13 @@ RSpec.describe Html2rss::Vocabulary do
     it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
        :aggregate_failures do
       ['Kapcsolat 2026', 'Keresés 2026', 'Kapcsolódó cikkek 2026', 'Tovább 2026', 'Belépés 2026', 'Impresszum 2026',
-       'További hírek 2026', 'BEJELENTKEZÉS 2026', 'Tovább 3', 'Keresés 12'].each do |label|
+       'Hírlevél 2026', 'BEJELENTKEZÉS 2026', 'Tovább 3', 'Keresés 12'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['További hírek (12)', 'Összes [3]', 'Keresés (7)', 'Hozzászólások (12)'].each do |item|
+      ['Hírlevél (12)', 'Menü [3]', 'Keresés (7)', 'Hozzászólások (12)'].each do |item|
         expect(hu.utility_chrome?(item)).to be(true), item
       end
-      ['További hírek 12', 'Összes 3', 'Kapcsolat 2', 'Hozzászólások 140'].each do |label|
+      ['Hírlevél 12', 'Menü 3', 'Kapcsolat 2', 'Hozzászólások 140'].each do |label|
         expect(hu.utility_chrome?(label)).to be(false), label
       end
     end
@@ -965,15 +964,20 @@ RSpec.describe Html2rss::Vocabulary do
       ['Még több', 'Mutass többet', 'Továbbiak', 'MÉG TÖBB'].each do |label|
         readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
       end
-      ['Még több hír', 'Még több cikk', 'További hírek', 'További cikkek'].each do |label|
-        expect(hu.utility_chrome?(label)).to be(true), label
+    end
+
+    it 'reads a list-level label as read-more, never chrome, so a card keeps its item', :aggregate_failures do
+      ['Még több hír', 'Még több cikk', 'További hírek', 'További cikkek', 'Összes', 'Összes hír',
+       'Tovább a rovatra'].each do |label|
+        expect([hu.utility_chrome?(label), hu.read_more?(label)]).to eq([false, true]), label
       end
     end
 
-    it 'reads a bracketed count after a read-more label as neither chrome nor read-more', :aggregate_failures do
-      ['Tovább (3)', 'Tovább [3]', 'Bővebben (3)'].each do |label|
-        expect([hu.read_more?(label), hu.utility_chrome?(label)]).to eq([false, false]), label
+    it 'reads a bracketed count after an own read-more label as read-more, never chrome', :aggregate_failures do
+      ['Tovább (3)', 'Tovább [3]', 'Bővebben (3)', 'További hírek [3]', 'Összes （3）'].each do |label|
+        expect([hu.read_more?(label), hu.utility_chrome?(label)]).to eq([true, false]), label
       end
+      ['Tovább 3', 'További hírek 2026', 'Tovább (1234)'].each { expect(hu.read_more?(_1)).to be(false), _1 }
     end
 
     it 'keeps a headline of three Hungarian words above the title floor', :aggregate_failures do
@@ -1010,16 +1014,24 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['Đăng nhập', 'Đăng xuất', 'Đăng ký', 'Đăng kí', 'ĐĂNG KÍ',
        'Tạo tài khoản', 'Tìm kiếm', 'Về chúng tôi', 'Liên hệ',
-       'Liên hệ tòa soạn', 'Chính sách bảo mật', 'Điều khoản sử dụng', 'Trang chủ', 'Menu', 'Xem thêm',
-       'Xem tất cả', 'Bình luận', 'Chia sẻ', 'Tải ứng dụng', 'Chuyển đến nội dung chính'].each do |item|
+       'Liên hệ tòa soạn', 'Chính sách bảo mật', 'Điều khoản sử dụng', 'Trang chủ', 'Menu', 'Bình luận',
+       'Chia sẻ', 'Tải ứng dụng', 'Chuyển đến nội dung chính'].each do |item|
         expect(vi.utility_chrome?(item)).to be(true), item
       end
-      ['[Xem thêm]', '← Xem tất cả ←', 'Đăng nhập (mở trong tab mới)', "\u200eTìm kiếm\u200e"].each do |item|
+      ['[Menu]', '← Trang chủ ←', 'Đăng nhập (mở trong tab mới)', "\u200eTìm kiếm\u200e"].each do |item|
         expect(vi.utility_chrome?(item)).to be(true), item
       end
       ['Tin liên quan', 'Bài viết liên quan', 'Có thể bạn quan tâm', 'Gợi ý cho bạn'].each do |item|
         expect(vi.recommended?(item)).to be(true), item
       end
+    end
+
+    it 'reads a bracketed count after an own read-more label as read-more, a bare number or a year as a title',
+       :aggregate_failures do
+      ['Xem tất cả [3]', 'Xem thêm (12)', 'Xem tất cả ［3］'].each do |label|
+        expect([vi.read_more?(label), vi.utility_chrome?(label)]).to eq([true, false]), label
+      end
+      ['Xem tất cả 3', 'Xem tất cả 2026', 'Xem tất cả (1234)'].each { expect(vi.read_more?(_1)).to be(false), _1 }
     end
 
     it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
@@ -1032,7 +1044,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
-      ['ĐĂNG NHẬP', 'ĐĂNG XUẤT', 'TÌM KIẾM', 'LIÊN HỆ', 'CHÍNH SÁCH BẢO MẬT', 'XEM THÊM', 'TRANG CHỦ'].each do |label|
+      ['ĐĂNG NHẬP', 'ĐĂNG XUẤT', 'TÌM KIẾM', 'LIÊN HỆ', 'CHÍNH SÁCH BẢO MẬT', 'TRANG CHỦ'].each do |label|
         expect(vi.utility_chrome?(label)).to be(true), label
       end
       ['TIN LIÊN QUAN', 'BÀI VIẾT LIÊN QUAN'].each { expect(vi.recommended?(_1)).to be(true), _1 }
@@ -1063,10 +1075,10 @@ RSpec.describe Html2rss::Vocabulary do
        'Chính sách bảo mật 2026', 'Xem thêm 2026', 'ĐĂNG KÝ 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['Xem tất cả (12)', 'Xem thêm [3]', 'Tìm kiếm (7)', 'Bình luận (12)'].each do |item|
+      ['Trang chủ (12)', 'Menu [3]', 'Tìm kiếm (7)', 'Bình luận (12)'].each do |item|
         expect(vi.utility_chrome?(item)).to be(true), item
       end
-      ['Xem tất cả 12', 'Xem thêm 3', 'Liên hệ 2', 'Bình luận 140'].each do |label|
+      ['Trang chủ 12', 'Menu 3', 'Liên hệ 2', 'Bình luận 140'].each do |label|
         expect(vi.utility_chrome?(label)).to be(false), label
       end
     end
@@ -1174,8 +1186,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
-      ['Se alle', 'Se flere', 'Flere nyheder', 'Del', 'Hjælp', 'Annoncering', 'Lyt', 'Seneste nyt',
-       'Mest læste', 'Udland', 'Kultur', 'Debat',
+      ['Del', 'Hjælp', 'Annoncering', 'Lyt', 'Seneste nyt', 'Mest læste', 'Udland', 'Kultur', 'Debat',
        'Erhverv', 'Del 2'].each do |label|
         readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
       end
@@ -1189,8 +1200,10 @@ RSpec.describe Html2rss::Vocabulary do
       expect(da.utility_chrome?('Kontakt mellem skakspillerne forbudt')).to be(false)
     end
 
-    it 'keeps a card whose only link carries a read-more label and not a list-level label', :aggregate_failures do
-      ['Se alle', 'Se flere', 'Flere nyheder'].each { expect(da.utility_chrome?(_1)).to be(false), _1 }
+    it 'reads a list-level label as read-more, never chrome, so a card keeps its item', :aggregate_failures do
+      ['Se alle', 'Se flere', 'Flere nyheder'].each do |label|
+        expect([da.utility_chrome?(label), da.read_more?(label)]).to eq([false, true]), label
+      end
       expect([da.read_more?('Vis mere'), junk_reason.call('Vis mere')]).to eq([true, :cta])
     end
 
@@ -1222,11 +1235,11 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['Masuk', 'Daftar', 'Cari', 'Pencarian', 'Tentang Kami', 'Hubungi Kami', 'Kontak', 'Pedoman Media Siber',
        'Info Iklan', 'Kebijakan Privasi', 'Syarat dan Ketentuan', 'Peta Situs', 'Pusat Bantuan', 'Menu',
-       'Tutup Menu', 'Beranda', 'Lihat Semua', 'Lihat Berita Lainnya', 'Berita Lainnya', 'Komentar', 'Bagikan',
-       'Ikuti Kami', 'LIHAT SEMUA', 'TENTANG KAMI'].each do |item|
+       'Tutup Menu', 'Beranda', 'Komentar', 'Bagikan',
+       'Ikuti Kami', 'TENTANG KAMI'].each do |item|
         expect(id.utility_chrome?(item)).to be(true), item
       end
-      ['[Lihat Semua]', '← Lihat Semua ←', 'Masuk (buka di tab baru)', "\u200eCari\u200e"].each do |item|
+      ['[Beranda]', '← Beranda ←', 'Masuk (buka di tab baru)', "\u200eCari\u200e"].each do |item|
         expect(id.utility_chrome?(item)).to be(true), item
       end
       ['Berita Terkait', 'Artikel Terkait', 'Baca Juga', 'Rekomendasi untuk Anda', 'Anda Mungkin Suka'].each do |item|
@@ -1263,10 +1276,10 @@ RSpec.describe Html2rss::Vocabulary do
        'Kebijakan Privasi 2026', 'Lihat Semua 2026', 'Cari 2026', 'Pusat Bantuan 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['Lihat Semua (12)', 'Lihat Semua [3]', 'Pencarian (7)', 'Komentar (12)'].each do |item|
+      ['Beranda (12)', 'Menu [3]', 'Pencarian (7)', 'Komentar (12)'].each do |item|
         expect(id.utility_chrome?(item)).to be(true), item
       end
-      ['Lihat Semua 12', 'Lihat Semua 3', 'Tentang Kami 2', 'Komentar 140'].each do |label|
+      ['Beranda 12', 'Menu 3', 'Tentang Kami 2', 'Komentar 140'].each do |label|
         expect(id.utility_chrome?(label)).to be(false), label
       end
     end
@@ -1319,17 +1332,25 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['Přihlásit se', 'Přihlaste se', 'Odhlásit se', 'Registrovat se', 'Hledat', 'O nás', 'Kontakt', 'Kontakty',
        'Ochrana osobních údajů', 'Zásady ochrany soukromí', 'Nastavení cookies', 'Obchodní podmínky',
-       'Mapa stránek', 'Nápověda', 'Časté dotazy', 'Menu', 'Úvodní stránka', 'Zobrazit všechny', 'Další články',
+       'Mapa stránek', 'Nápověda', 'Časté dotazy', 'Menu', 'Úvodní stránka',
        'Přeskočit na obsah', 'Můj účet', 'Sdílet'].each do |item|
         expect(cs.utility_chrome?(item)).to be(true), item
       end
-      ['[Zobrazit všechny]', '← Další články ←', 'Přihlásit se (otevře se v novém okně)',
+      ['[Menu]', '← Sdílet ←', 'Přihlásit se (otevře se v novém okně)',
        "\u200eHledat\u200e"].each do |item|
         expect(cs.utility_chrome?(item)).to be(true), item
       end
       ['Související články', 'Podobné články', 'Mohlo by vás zajímat', 'Čtěte také', 'Doporučujeme'].each do |item|
         expect(cs.recommended?(item)).to be(true), item
       end
+    end
+
+    it 'reads a bracketed count after an own read-more label as read-more, a bare number or a year as a title',
+       :aggregate_failures do
+      ['Další články (12)', 'Zobrazit všechny [3]', 'Další články （12）'].each do |label|
+        expect([cs.read_more?(label), cs.utility_chrome?(label)]).to eq([true, false]), label
+      end
+      ['Další články 3', 'Další články 2026', 'Další články (1234)'].each { expect(cs.read_more?(_1)).to be(false), _1 }
     end
 
     it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
@@ -1369,10 +1390,10 @@ RSpec.describe Html2rss::Vocabulary do
        'Ochrana soukromí 2026', 'Zobrazit všechny 2026', 'ODHLÁSIT SE 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['Zobrazit všechny (12)', 'Další články [3]', 'Hledat (7)', 'Kontakty (12)'].each do |item|
+      ['Menu (12)', 'Sdílet [3]', 'Hledat (7)', 'Kontakty (12)'].each do |item|
         expect(cs.utility_chrome?(item)).to be(true), item
       end
-      ['Zobrazit všechny 12', 'Další články 3', 'O nás 2', 'Kontakty 140'].each do |label|
+      ['Menu 12', 'Sdílet 3', 'O nás 2', 'Kontakty 140'].each do |label|
         expect(cs.utility_chrome?(label)).to be(false), label
       end
     end
@@ -1636,13 +1657,13 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     # A "more" or "all" label that is chrome empties a card whose only other link it is (the heading is no link).
-    # These stay out of the chrome terms, so the card keeps its item; the bare read-more forms are read-more.
-    it 'reads no "all" or "more" label as chrome, so a card with it as its only link keeps its item',
+    # These are read-more labels, not chrome terms, so the card keeps its item.
+    it 'reads an "all" or "more" label as read-more, not chrome, so a card with it as its only link keeps its item',
        :aggregate_failures do
       ['Vezi toate', 'Vezi toate articolele', 'Vezi toate știrile', 'Vezi mai multe știri', 'Toate articolele',
        'Toate știrile', 'Citește mai multe știri'].each do |label|
         readings = [ro.utility_chrome?(label), ro.recommended?(label), ro.read_more?(label)]
-        expect(readings).to eq([false, false, false]), label
+        expect(readings).to eq([false, false, true]), label
       end
     end
 

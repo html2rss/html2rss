@@ -36,13 +36,16 @@ module Html2rss
         utility_cta: [
           'bültene abone ol', 'bültenimize abone ol', 'bültenimize abone olun', 'e-bültene abone ol',
           'e-bültene kayıt ol', 'e-bültene kaydol', 'e-bültene abone olun', 'şimdi abone ol', 'hemen abone ol',
-          'ücretsiz abone ol', 'abone ol', 'abone olun', 'yorum yap', 'yorum yaz', 'haberi paylaş',
-          'bu haberi paylaş', 'bu yazıyı paylaş', 'makaleyi paylaş', 'hemen üye ol', 'ücretsiz üye ol'
+          'ücretsiz abone ol', 'abone ol', 'abone olun', 'yorum yap', 'yorum yaz', 'haberi paylaş', 'bu haberi paylaş',
+          'bu yazıyı paylaş', 'makaleyi paylaş', 'hemen üye ol', 'ücretsiz üye ol'
         ],
         read_more: [
-          'devamını oku', 'devamını okuyun', 'devamı', 'haberin devamı', 'yazının devamı',
-          'daha fazla oku', 'tamamını oku', 'haberin tamamını oku', 'haberi oku', 'yazının tamamını oku',
-          'devamı için tıklayın', 'okumaya devam et', 'okumaya devam edin'
+          'devamını oku', 'devamını okuyun', 'devamı', 'haberin devamı', 'yazının devamı', 'daha fazla oku',
+          'tamamını oku', 'haberin tamamını oku', 'haberi oku', 'yazının tamamını oku', 'devamı için tıklayın',
+          'okumaya devam et', 'okumaya devam edin'
+        ],
+        list_more: [
+          'daha fazla', 'daha fazlası', 'daha fazla göster', 'tümünü gör', 'tümünü göster', 'hepsini gör'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,
@@ -65,15 +68,13 @@ module Html2rss
         podcast_unspaced: NONE,
         type_marker: NONE,
         utility: [
-          'giriş yap', 'giriş yapın', 'oturum aç', 'oturum açın', 'üye girişi', 'kullanıcı girişi',
-          'çıkış yap', 'çıkış yapın', 'oturumu kapat', 'kayıt ol', 'kaydol', 'üye ol', 'arama',
-          'hakkımızda', 'iletişim', 'bize ulaşın', 'bize yazın', 'künye', 'reklam ver',
-          'gizlilik politikası', 'gizlilik sözleşmesi', 'gizlilik bildirimi', 'çerez politikası',
-          'çerez ayarları', 'çerez tercihleri', 'çerezleri yönet', 'kvkk', 'aydınlatma metni',
-          'kullanım koşulları', 'kullanım şartları', 'kullanım sözleşmesi', 'şartlar ve koşullar',
-          'site haritası', 'sıkça sorulan sorular', 'yardım merkezi', 'menü', 'ana sayfa', 'anasayfa',
-          'daha fazla', 'daha fazlası', 'daha fazla göster', 'tümünü gör', 'tümünü göster', 'hepsini gör',
-          'yorumlar', 'paylaş', 'içeriğe geç', 'içeriğe atla', 'ana içeriğe geç', 'ana içeriğe atla'
+          'giriş yap', 'giriş yapın', 'oturum aç', 'oturum açın', 'üye girişi', 'kullanıcı girişi', 'çıkış yap',
+          'çıkış yapın', 'oturumu kapat', 'kayıt ol', 'kaydol', 'üye ol', 'arama', 'hakkımızda', 'iletişim',
+          'bize ulaşın', 'bize yazın', 'künye', 'reklam ver', 'gizlilik politikası', 'gizlilik sözleşmesi',
+          'gizlilik bildirimi', 'çerez politikası', 'çerez ayarları', 'çerez tercihleri', 'çerezleri yönet', 'kvkk',
+          'aydınlatma metni', 'kullanım koşulları', 'kullanım şartları', 'kullanım sözleşmesi', 'şartlar ve koşullar',
+          'site haritası', 'sıkça sorulan sorular', 'yardım merkezi', 'menü', 'ana sayfa', 'anasayfa', 'yorumlar',
+          'paylaş', 'içeriğe geç', 'içeriğe atla', 'ana içeriğe geç', 'ana içeriğe atla'
         ],
         recommended: [
           'ilgili haberler', 'ilgili yazılar', 'ilgili içerikler', 'ilgili makaleler', 'benzer haberler',

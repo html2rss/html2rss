@@ -44,6 +44,7 @@ module Html2rss
           /mais\s+informa(?:ç|c)(?:õ|o)es/, /leia\s+a\s+mat(?:é|e)ria\s+completa/,
           /leia\s+(?:o\s+)?(?:artigo|texto)\s+completo/
         ],
+        list_more: NONE,
         topic_lead: ['mais'],
         topic_preposition: ['sobre', 'acerca de'],
         read_more_suffix: NONE,

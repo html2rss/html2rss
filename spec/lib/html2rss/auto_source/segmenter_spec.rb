@@ -148,6 +148,88 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
     end
   end
 
+  describe '.call with an own read-more or list-level label' do
+    let(:labels) do
+      { vi: 'đọc tiếp', zh: '阅读全文', tr: 'devamını oku', cs: 'číst dále', hu: 'tovább', ro: 'citește mai mult',
+        da: 'læs mere', he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें' }
+    end
+    let(:list_labels) do
+      { vi: 'xem tất cả', zh: '更多', tr: 'daha fazla', cs: 'zobrazit všechny', hu: 'összes hír', ro: 'vezi toate',
+        da: 'se alle', ko: '더보기', ar: 'عرض الكل', fa: 'مشاهده همه', th: 'ดูทั้งหมด', id: 'lihat semua' }
+    end
+    let(:hrefs) do
+      lambda do |code, card, table = labels|
+        html = (1..6).map { |i| "<article>#{card.call(i, table.fetch(code))}</article>" }.join
+        resolver = Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[code])
+        segments = described_class.call(document_for("<html><body>#{html}</body></html>"),
+                                        base_url: 'https://example.com', strategy: :semantic, link_resolver: resolver)
+        segments.map { _1.primary_link.attrs.href }
+      end
+    end
+    let(:scenarios) do
+      dated = ->(i) { "/a/2024/05/council-approves-budget-#{i}" }
+      slug = ->(i) { "/section/real-story-slug-#{i}" }
+      decoys = ['<a href="/people/jane-doe">Jane Doe</a>', '<a href="/politics/local-news">Local news</a>',
+                '<a href="https://source.example.org/wire/item">Wire service</a>']
+      with_decoy = decoys.product(%i[before after]).map do |decoy, order|
+        card = lambda do |i, label|
+          story = %(<h3>Unlinked title</h3><a href="#{dated.call(i)}">#{label}</a>)
+          order == :before ? decoy + story : story + decoy
+        end
+        ["story label #{order} #{decoy[9, 8]}", card, dated, labels]
+      end
+      hubs = %w[/sports /tin-tuc/the-thao].map do |hub|
+        card = lambda do |i, label|
+          %(<h2>Real headline #{i} with several words</h2><a href="#{hub}">#{label}</a>) +
+            %(<a href="#{slug.call(i)}">Open this story right now please</a>)
+        end
+        ["hub #{hub}", card, slug, list_labels]
+      end
+      shaped = { 'post suffix' => ->(i) { "/x/a-b-c-d-1000#{i}.html" }, 'content word' => lambda { |i|
+        "/news/story-#{i}"
+      } }.map do |name, href|
+        card = ->(i, label) { %(<h3>Unlinked title</h3><a href="#{href.call(i)}">#{label}</a>#{decoys.first}) }
+        ["#{name} label first", card, href, labels]
+      end
+      with_decoy + hubs + shaped
+    end
+
+    it 'keeps the story link of every card, whatever labelled link sits beside it', :aggregate_failures do
+      scenarios.each do |name, card, story, table|
+        table.each_key do |code|
+          expect(hrefs.call(code, card, table)).to eq((1..6).map(&story)), "#{code} #{name}"
+        end
+      end
+    end
+
+    it 'produces no hub item when the story link is only an image', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      card = lambda do |i, label|
+        %(<a href="/section/real-story-slug-#{i}"><img src="/i#{i}.jpg" alt=""></a><h2>Headline #{i}</h2>) +
+          %(<a href="/sports">#{label}</a>)
+      end
+
+      found = list_labels.keys.map { hrefs.call(_1, card, list_labels) }
+
+      expect(found).to all(satisfy { |urls| urls.none?('/sports') })
+    end
+
+    it 'keeps the labelled link when it is the only link of the card' do
+      card = lambda { |i, label|
+        %(<h2>Real headline #{i} with several words</h2><a href="/news-desk/top-#{i}">#{label}</a>)
+      }
+
+      expect(hrefs.call(:vi, card, list_labels)).to eq((1..6).map { "/news-desk/top-#{_1}" })
+    end
+
+    it 'keeps a heading link that carries the label text' do
+      card = lambda { |i, label|
+        %(<a href="/news-desk/top-#{i}">Xem thêm</a><h2><a href="/section/story-#{i}">#{label}</a></h2>)
+      }
+
+      expect(hrefs.call(:vi, card, list_labels)).to all(start_with('/section/story-'))
+    end
+  end
+
   describe '#landmark_ancestor?' do
     it 'is true for anchors under utility landmarks outside the content container', # rubocop:disable RSpec/ExampleLength
        :aggregate_failures do
@@ -307,6 +389,48 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       it 'does not take the entry anchor' do
         expect(picked).to be_nil
       end
+    end
+  end
+
+  describe Html2rss::AutoSource::Segmenter::PrimaryLink, 'scoring a list-level label' do
+    let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[:vi]) }
+    let(:picked) do
+      lambda do |body|
+        document = document_for("<html><body><article>#{body}</article></body></html>")
+        segmenter = Html2rss::AutoSource::Segmenter.new(document, base_url: 'https://example.com',
+                                                                  strategy: :semantic, link_resolver: resolver)
+        described_class.new(segmenter).select(document.root.find { _1.name == :article })&.attrs&.href
+      end
+    end
+    let(:decoy) { '<a href="/economy">Economy</a>' }
+
+    it 'scores a label to a destination with story evidence like any link, so the story beats a section link',
+       :aggregate_failures do
+      expect([picked.call(%(<a href="/news/story">Xem tất cả</a>#{decoy})),
+              picked.call(%(#{decoy}<a href="/news/story">Xem tất cả</a>))]).to eq(%w[/news/story /news/story])
+      %w[/x/48213 /x/harbour-bridge-reopens /x/aa--bb].each do |path|
+        expect(picked.call(%(<a href="#{path}">Xem tất cả</a>) + decoy)).to eq(path), path
+      end
+    end
+
+    it 'scores a label to a destination without story evidence 0, below any other link', :aggregate_failures do
+      %w[/world/asia/europe /x/a-b /x/plain /].each do |path|
+        label = %(<a href="#{path}">Xem tất cả</a>)
+
+        expect([picked.call(label + decoy), picked.call(decoy + label)]).to eq(%w[/economy /economy]), path
+      end
+    end
+
+    it 'keeps a label as the only link, and ranks a plain link before a label on an equal footing',
+       :aggregate_failures do
+      expect(picked.call('<a href="/world/asia/europe">Xem tất cả</a>')).to eq('/world/asia/europe')
+      expect(picked.call('<a href="/world/asia/europe">Xem tất cả</a><a href="/x/plain">Plain</a>')).to eq('/x/plain')
+    end
+
+    it 'keeps the full score of a label inside a heading' do
+      body = '<h2><a href="/world/asia/europe">Xem tất cả</a></h2>'
+
+      expect(picked.call(decoy + body)).to eq('/world/asia/europe')
     end
   end
 

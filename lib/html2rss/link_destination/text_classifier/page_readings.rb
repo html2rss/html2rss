@@ -45,13 +45,17 @@ module Html2rss
         class << self
           ##
           # @param own [Hash{Symbol => String}] a scope's own alternatives per {Vocabulary::PAGE_PATTERNS} concept
-          # @return [Hash{Symbol => Regexp}] +:cta+ (the shared call to action), +:own_cta+ (the own terms as whole
-          #   labels), +:read_more+ and +:new_window+ (the shared terms widened by the own ones)
+          # @return [Hash{Symbol => Regexp}] +:cta+ (the shared call to action), +:own_cta+, +:list_more+ and
+          #   +:own_more+ (the own call-to-action, list-level and read-more plus list-level terms as whole labels,
+          #   bare or with a bracketed count), +:read_more+ and +:new_window+ (the shared terms widened by the own
+          #   read-more ones)
           def build(own)
             union = ->(concept) { Vocabulary.union(concept, own) }
             {
               cta: UTILITY_CTA,
               own_cta: TextClassifier.whole_label([own.fetch(:utility_cta)]),
+              list_more: TextClassifier.whole_label([own.fetch(:list_more)]),
+              own_more: TextClassifier.whole_label(own.values_at(:read_more, :list_more)),
               read_more: READ_MORE.call(union.call(:read_more), Vocabulary.alternation(:read_more),
                                         *%i[topic_lead topic_preposition read_more_suffix].map(&union)),
               new_window: NEW_WINDOW.call(union.call(:new_window_notice))

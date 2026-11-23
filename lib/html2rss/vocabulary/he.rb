@@ -33,6 +33,7 @@ module Html2rss
           'קראו עוד', 'קרא עוד', 'קראי עוד', 'להמשך קריאה', 'המשך קריאה', 'להמשך הכתבה',
           'לכתבה המלאה', 'למידע נוסף', 'עוד פרטים'
         ],
+        list_more: NONE,
         topic_lead: NONE,
         topic_preposition: NONE,
         read_more_suffix: NONE,

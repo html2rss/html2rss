@@ -4,6 +4,15 @@
 RSpec.describe Html2rss::Scoring::LinkResolver do
   subject(:resolver) { described_class.new('https://example.com/articles/') }
 
+  describe '#list_more_text?' do
+    it 'names a list-level term of the page scope only, never a true read-more term', :aggregate_failures do
+      vi = described_class.new('https://example.com/', vocabulary: Html2rss::Vocabulary[:vi])
+
+      expect(['Xem tất cả', 'Đọc tiếp', 'Read more'].map { vi.list_more_text?(_1) }).to eq([true, false, false])
+      expect(resolver.list_more_text?('Xem tất cả')).to be(false)
+    end
+  end
+
   describe '#destination_facts' do
     it 'returns nil when URL normalization rejects a malformed href' do
       expect(resolver.destination_facts('http://example .com')).to be_nil

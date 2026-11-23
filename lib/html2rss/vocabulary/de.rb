@@ -46,6 +46,7 @@ module Html2rss
           'weiterlesen', 'weiter lesen', 'mehr lesen', 'mehr erfahren', 'mehr dazu', 'mehr zum thema',
           'lesen sie mehr', 'lesen sie weiter', /(?:den\s+)?(?:ganzen|gesamten|vollst(?:ä|a)ndigen)\s+artikel\s+lesen/
         ],
+        list_more: NONE,
         topic_lead: ['mehr'],
         topic_preposition: ['zu', 'zum thema', 'zum', 'zur', /(?:ü|ue)ber/, 'von'],
         read_more_suffix: NONE,

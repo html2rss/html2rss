@@ -31,13 +31,14 @@ module Html2rss
         utility_prefix: NONE,
         utility_cta: [
           'đăng ký nhận bản tin', 'đăng ký nhận tin', 'đăng ký bản tin', 'đăng ký ngay',
-          'đăng ký nhận bản tin miễn phí', 'đăng ký thành viên', 'đăng ký tài khoản', 'gửi bình luận',
-          'viết bình luận', 'bình luận ngay', 'chia sẻ bài viết', 'chia sẻ bài này'
+          'đăng ký nhận bản tin miễn phí', 'đăng ký thành viên', 'đăng ký tài khoản', 'gửi bình luận', 'viết bình luận',
+          'bình luận ngay', 'chia sẻ bài viết', 'chia sẻ bài này'
         ],
         read_more: [
           'đọc tiếp', 'đọc thêm', 'xem tiếp', 'xem chi tiết', 'đọc toàn bộ bài viết', 'xem toàn bộ bài viết',
           'đọc tiếp bài viết', 'đọc bài viết', 'xem bài viết'
         ],
+        list_more: ['xem thêm', 'xem tất cả', 'xem toàn bộ'],
         topic_lead: NONE,
         topic_preposition: NONE,
         read_more_suffix: NONE,
@@ -60,11 +61,10 @@ module Html2rss
         type_marker: NONE,
         utility: [
           'đăng nhập', 'đăng xuất', 'đăng ký', 'đăng kí', 'tạo tài khoản', 'tìm kiếm', 'về chúng tôi', 'liên hệ',
-          'liên hệ quảng cáo', 'liên hệ tòa soạn', 'liên hệ toà soạn', 'thông tin tòa soạn',
-          'chính sách bảo mật', 'chính sách quyền riêng tư', 'chính sách cookie', 'điều khoản sử dụng',
-          'điều khoản dịch vụ', 'điều khoản và điều kiện', 'trang chủ', 'menu', 'xem thêm', 'xem tất cả',
-          'xem toàn bộ', 'bình luận', 'chia sẻ', 'tải ứng dụng', 'đặt báo', 'bỏ qua đến nội dung chính',
-          'chuyển đến nội dung chính', 'chuyển đến nội dung'
+          'liên hệ quảng cáo', 'liên hệ tòa soạn', 'liên hệ toà soạn', 'thông tin tòa soạn', 'chính sách bảo mật',
+          'chính sách quyền riêng tư', 'chính sách cookie', 'điều khoản sử dụng', 'điều khoản dịch vụ',
+          'điều khoản và điều kiện', 'trang chủ', 'menu', 'bình luận', 'chia sẻ', 'tải ứng dụng', 'đặt báo',
+          'bỏ qua đến nội dung chính', 'chuyển đến nội dung chính', 'chuyển đến nội dung'
         ],
         recommended: [
           'tin liên quan', 'bài liên quan', 'bài viết liên quan', 'tin cùng chuyên mục', 'bài viết khác',

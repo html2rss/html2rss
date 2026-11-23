@@ -70,6 +70,11 @@ module Html2rss
       # @return [Boolean]
       def recommended_text?(text) = @text_classifier.recommended?(text)
 
+      ##
+      # @param text [String, #to_s]
+      # @return [Boolean] true when the text is a list-level "more" or "see all" term of a page-only language
+      def list_more_text?(text) = @text_classifier.list_more?(text)
+
       private
 
       def extract_href(node_or_href)

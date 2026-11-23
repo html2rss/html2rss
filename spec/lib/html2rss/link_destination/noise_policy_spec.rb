@@ -7,6 +7,40 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
   let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url) }
   let(:anchor_for) { ->(html) { Html2rss::SST::Normalizer.call(html, vocabulary: all_scope).root.find(&:link?) } }
 
+  describe '#noise_anchor? with a list-level label' do
+    let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url, vocabulary: Html2rss::Vocabulary[:vi]) }
+    let(:noise) do
+      lambda do |path, text = 'Xem tất cả', heading_anchor: false|
+        facts = link_resolver.destination_facts(path)
+        policy.noise_anchor?(text:, destination_facts: facts, heading_anchor:)
+      end
+    end
+
+    it 'rejects a short plain section path, never another label or a longer or hyphenated one', :aggregate_failures do
+      expect(%w[/sports /world/politics].map { noise.call(_1) }).to all(be(true))
+      expect(['/sports/real-story-slug', '/', '/a/b/c', '/tin-tuc/the-thao', '/page2', '/feed_all', '/index.html',
+              '/news/2024/summary'].map { noise.call(_1) }).to all(be(false))
+    end
+
+    it 'keeps a link with an identifying query eligible, and reads a tracking-only query as a hub',
+       :aggregate_failures do
+      expect(%w[/read?id=123 /view?id=1 /detail?id=1 /show?aid=1 /read?p=1].map { noise.call(_1) }).to all(be(false))
+      expect(%w[/sports?utm_source=x /sports?page=2 /sports?sort=new /sports?lang=vi].map { noise.call(_1) })
+        .to all(be(true))
+    end
+
+    it 'keeps a heading anchor, a shared label and an ordinary text eligible', :aggregate_failures do
+      expect(noise.call('/sports', heading_anchor: true)).to be(false)
+      expect(['Read more', 'Đọc tiếp'].map { noise.call('/sports', _1) }).to all(be(false))
+      expect(noise.call('/sports', 'Open this story right now')).to be(false)
+    end
+
+    it 'keeps a content path or a post suffix eligible', :aggregate_failures do
+      expect(noise.call('/news/story')).to be(false)
+      expect(noise.call('/articles/one')).to be(false)
+    end
+  end
+
   describe '#noise_anchor?' do
     it 'rejects taxonomy destinations', :aggregate_failures do
       facts = link_resolver.destination_facts('/category/security')

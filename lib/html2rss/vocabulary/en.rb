@@ -50,6 +50,7 @@ module Html2rss
           'read more', 'read on', 'continue reading', 'keep reading', 'learn more', 'find out more',
           /read\s+(?:the\s+)?(?:full\s+|whole\s+)?(?:story|article)/, 'read the rest'
         ],
+        list_more: NONE,
         topic_lead: ['more'],
         topic_preposition: %w[about on from],
         read_more_suffix: NONE,

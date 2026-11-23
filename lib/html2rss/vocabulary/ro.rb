@@ -18,7 +18,8 @@ module Html2rss
     # count or a year after one is a headline. +contact+ also keeps the shared English, French and Dutch reading (one
     # trailing word plus a count), so "Contact direct 12" and "Contact 2026" are chrome. No "more" or "all" label is a
     # chrome term (+vezi toate+, +toate știrile+): a chrome link that is a card's only link empties the card, so
-    # +mai multe+, +mai mult+, +vezi mai multe+ and +vezi mai mult+ are read-more labels instead. A term whose
+    # the list-level ones (+vezi toate+, +toate articolele+, +toate știrile+) are +list_more+ terms, and +mai multe+,
+    # +mai mult+, +vezi mai multe+ and +vezi mai mult+ are read-more labels. A term whose
     # precision is unclear is left out.
     #
     # Romanian writes +ș+ and +ț+ two ways, both common on real pages: comma-below (U+0219, U+021B) and the legacy
@@ -48,10 +49,14 @@ module Html2rss
           'distribuie acest articol', 'distribuie știrea', 'distribuie această știre'
         ],
         read_more: [
-          'citește mai mult', 'citește mai multe', 'citește mai departe', 'citește tot articolul',
-          'citește articolul', 'citește articolul complet', 'citește continuarea', 'citește tot', 'află mai multe',
-          'află mai mult', 'mai multe', 'mai mult', 'vezi mai multe', 'vezi mai mult', 'vezi detalii',
-          'continuă lectura', 'citește în continuare'
+          'citește mai mult', 'citește mai multe', 'citește mai departe', 'citește tot articolul', 'citește articolul',
+          'citește articolul complet', 'citește continuarea', 'citește tot', 'află mai multe', 'află mai mult',
+          'mai multe', 'mai mult', 'vezi mai multe', 'vezi mai mult', 'vezi detalii', 'continuă lectura',
+          'citește în continuare'
+        ],
+        list_more: [
+          'vezi toate', 'vezi toate articolele', 'vezi toate știrile', 'vezi mai multe știri', 'toate articolele',
+          'toate știrile', 'citește mai multe știri'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,

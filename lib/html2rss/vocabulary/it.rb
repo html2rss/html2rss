@@ -37,6 +37,7 @@ module Html2rss
           /scopri\s+di\s+pi(?:ù|u)/, 'maggiori informazioni', 'ulteriori informazioni',
           /per\s+saperne\s+di\s+pi(?:ù|u)/, 'approfondisci'
         ],
+        list_more: NONE,
         topic_lead: ['altro', /di\s+pi(?:ù|u)/],
         topic_preposition: %w[su riguardo],
         read_more_suffix: NONE,

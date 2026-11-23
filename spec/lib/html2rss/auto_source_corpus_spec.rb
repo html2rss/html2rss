@@ -74,6 +74,197 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 
+  describe 'list-level and read-more labels in a page-only language' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:dir) { Dir.mktmpdir }
+    let(:path) { File.join(dir, 'page.html') }
+    let(:pairs) do
+      {
+        zh: %w[查看全部 查看更多 更多],
+        ko: ['더보기'],
+        ar: ['المزيد', 'عرض الكل', 'عرض المزيد'],
+        fa: ['بیشتر', 'مشاهده بیشتر', 'مشاهده همه'],
+        th: %w[ดูเพิ่มเติม ดูเพิ่ม ดูทั้งหมด เพิ่มเติม],
+        tr: ['daha fazla', 'daha fazlası', 'daha fazla göster', 'tümünü gör', 'tümünü göster', 'hepsini gör'],
+        id: [
+          'lihat semua', 'lihat semuanya', 'lihat lainnya', 'lihat lebih banyak', 'lihat berita lainnya',
+          'berita lainnya', 'lainnya'
+        ],
+        vi: ['xem thêm', 'xem tất cả', 'xem toàn bộ'],
+        cs: [
+          'zobrazit všechny', 'zobrazit vše', 'zobrazit více', 'zobrazit další', 'načíst další', 'načíst více',
+          'všechny články', 'všechny zprávy', 'další články', 'další zprávy'
+        ],
+        hu: [
+          'összes', 'összes megtekintése', 'összes hír', 'összes friss hír', 'összes cikk', 'mutasd mindet',
+          'még több hír', 'még több cikk', 'további hírek', 'további cikkek', 'további cikkeink', 'további epizódok',
+          'további tartalmak', 'tovább a rovatra'
+        ],
+        ro: [
+          'vezi toate', 'vezi toate articolele', 'vezi toate știrile', 'vezi mai multe știri', 'toate articolele',
+          'toate știrile', 'citește mai multe știri'
+        ],
+        da: ['se alle', 'se flere', 'flere nyheder']
+      }.flat_map { |code, labels| labels.map { [code, _1] } }
+    end
+    let(:true_pairs) do
+      {
+        vi: 'đọc tiếp', zh: '阅读全文', tr: 'devamını oku', cs: 'číst dále', hu: 'tovább', ro: 'citește mai mult',
+        da: 'læs mere', he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें'
+      }
+    end
+    let(:urls) do
+      lambda do |code, body|
+        File.write(path, %(<!doctype html><html lang="#{code}"><body>#{body}</body></html>))
+        AutoSourceCorpus.auto_source(path:, url: 'https://example.com/section/').articles.map { _1.url.to_s }
+      end
+    end
+    let(:pages) do
+      story = ->(i) { %(<a href="/section/real-story-slug-#{i}">Open this story right now please</a>) }
+      cards = lambda { |&block|
+        (1..6).map do |i|
+          %(<article><h2>Real headline #{i} with several words</h2>#{block.call(i)}</article>)
+        end.join
+      }
+      {
+        card_only: lambda { |label|
+          cards.call do |i|
+            %(<p>A summary.</p><a href="/section/long-slug-#{i}#{'.html' if i > 3}">#{label}</a>)
+          end
+        },
+        menu_footer: lambda { |label|
+          cards.call { |i| %(<a href="/section/long-slug-#{i}">#{label}</a>) } +
+            %(<div class="menu"><ul><li><a href="/sections">#{label}</a></li></ul></div>) +
+            %(<footer><a href="/archive">#{label}</a></footer>)
+        },
+        hub_and_story: lambda { |label, hub|
+          cards.call do |i|
+            %(<a href="#{hub}">#{label}</a>#{story.call(i)})
+          end
+        },
+        image_story: lambda { |label|
+          (1..6).map do |i|
+            %(<article><a href="/section/real-story-slug-#{i}"><img src="/i#{i}.jpg" alt=""></a>) +
+              %(<h2>Real headline #{i} with several words</h2><a href="/sports">#{label}</a></article>)
+          end.join
+        },
+        block: lambda { |label, hub, cards|
+          intro = %(<div class="block"><h2>Section heading for sports here</h2><p>Latest stories from this section.</p>)
+          %(#{intro}<a href="#{hub}">#{label}</a></div>#{cards})
+        },
+        query_id: lambda { |label, path|
+          (1..6).map do |i|
+            %(<article><h3>Unlinked title with more words</h3><p>text</p><a href="#{path}#{i}">#{label}</a></article>)
+          end.join
+        },
+        list_story: lambda { |label, story, decoy, order, image|
+          (1..6).map do |i|
+            link = %(<a href="#{story.call(i)}">#{label}</a>)
+            pic = image ? %(<a href="#{story.call(i)}"><img src="/i#{i}.jpg" alt=""></a>) : ''
+            body = order == :before ? decoy + link : link + decoy
+            %(<article>#{pic}<h3>Unlinked headline #{i} with several words</h3><p>Summary</p>#{body}</article>)
+          end.join
+        },
+        story_label: lambda { |label, destination|
+          later = '<a href="/politics/local-news">Local news</a><a href="/world">World</a>' \
+                  '<a href="https://source.example.org/wire/item">Wire service</a>'
+          (1..6).map do |i|
+            %(<article><h3>Council approves the new city budget after long debate #{i}</h3>) +
+              %(<a href="#{destination.call(i)}">#{label}</a><a href="/people/jane-doe-#{i}">Jane Doe</a>) +
+              %(#{later}</article>)
+          end.join
+        },
+        head: lambda { |label, hub, cards|
+          %(<div class="head"><h2>Latest world news today here</h2><a href="#{hub}">#{label}</a></div>) + cards
+        }
+      }
+    end
+    let(:layouts) do
+      linked = ->(i) { %(<a href="/section/real-story-slug-#{i}">Real headline #{i} with several words</a>) }
+      {
+        bare: (1..6).map { |i| %(<h2>#{linked.call(i)}</h2>) }.join,
+        images: (1..6).map do |i|
+          %(<article><a href="/section/real-story-slug-#{i}"><img src="/i#{i}.jpg" alt=""></a>) +
+            %(<h2>#{linked.call(i)}</h2></article>)
+        end.join
+      }
+    end
+
+    after { FileUtils.remove_entry(dir) }
+
+    it 'keeps every card linked by a list-level more label', :aggregate_failures do
+      pairs.each do |code, label|
+        expect(urls.call(code, pages[:card_only].call(label)).size).to eq(6), "#{code} #{label}"
+      end
+    end
+
+    it 'adds no item for a menu or footer link with the label', :aggregate_failures do
+      pairs.each do |code, label|
+        expect(urls.call(code, pages[:menu_footer].call(label)).size).to eq(6), "#{code} #{label}"
+      end
+    end
+
+    it 'keeps the story link of a card, never a hub labelled with the term', :aggregate_failures do
+      pairs.uniq(&:first).product(%w[/sports /tin-tuc/the-thao]).each do |(code, label), hub|
+        found = urls.call(code, pages[:hub_and_story].call(label, hub))
+        expect(found.grep(/real-story-slug/).size).to eq(6), "#{code} #{label} #{hub}"
+      end
+    end
+
+    it 'keeps the story a list-level label points at, over a section or source link',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      story = ->(i) { "/news/2026/11/harbour-bridge-reopens-after-storm-#{i}" }
+      decoys = ['<a href="/economy">Economy</a>', '<a href="https://source.example.org/wire/item">Wire service</a>']
+      pairs.uniq(&:first).product(decoys, %i[before after], [false, true]).each do |(code, label), decoy, order, image|
+        found = urls.call(code, pages[:list_story].call(label, story, decoy, order, image))
+        expect(found.map { _1.sub('https://example.com', '') }).to eq((1..6).map(&story)), "#{code} #{order} #{image}"
+      end
+    end
+
+    it 'keeps a slug, section slug or document story a Romanian or Danish list label points at',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stories = [->(i) { "/harbour-bridge-reopens-after-storm-#{i}" },
+                 ->(i) { "/section/harbour-bridge-reopens-after-storm-#{i}" },
+                 ->(i) { "/section/harbour-bridge-reopens-after-storm-#{i}.html" }]
+      pairs.uniq(&:first).select { %i[ro da].include?(_1.first) }.product(stories).each do |(code, label), story|
+        found = urls.call(code, pages[:list_story].call(label, story, '<a href="/economy">Economy</a>', :after, false))
+        expect(found.map { _1.sub('https://example.com', '') }).to eq((1..6).map(&story)), "#{code} #{story.call(1)}"
+      end
+    end
+
+    it 'ranks a true read-more label as before, whatever it points at and whatever links follow',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      destinations = [->(i) { "/world/council-approves-budget-#{i}" }, ->(i) { "/tin-tuc/budget-#{i}.html" },
+                      ->(i) { "/world/48213#{i}" }, ->(i) { "/read?id=#{i}" }]
+      true_pairs.to_a.product(destinations).each do |(code, label), destination|
+        found = urls.call(code, pages[:story_label].call(label, destination))
+        expect(found.size).to eq(6), "#{code} #{label} #{destination.call(1)}"
+        expect(found.map { _1.sub('https://example.com', '') }).to eq((1..6).map(&destination)), "#{code} #{label}"
+      end
+    end
+
+    it 'keeps a card whose only link carries the label and an identifying query', :aggregate_failures do
+      pairs.uniq(&:first).product(%w[/read?id= /view?id= /detail?id= /show?aid=]).each do |(code, label), path|
+        expect(urls.call(code, pages[:query_id].call(label, path)).size).to eq(6), "#{code} #{path}"
+      end
+    end
+
+    it 'produces no item on a hub when the card story link is only an image', :aggregate_failures do
+      pairs.uniq(&:first).each do |code, label|
+        expect(urls.call(code, pages[:image_story].call(label)).grep(/sports/)).to be_empty, "#{code} #{label}"
+      end
+    end
+
+    it 'adds no item for a section block or heading linked by the term, with or without a query',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      queries = ['', '?page=2', '?sort=new', '?lang=vi', '?utm_source=x']
+      pairs.uniq(&:first).product(%i[block head], queries, %i[bare images]).each do |(code, label), kind, query, layout|
+        hub = "#{kind == :block ? '/sports' : '/world'}#{query}"
+        found = urls.call(code, pages[kind].call(label, hub, layouts.fetch(layout)))
+        expect(found.size).to eq(6), "#{code} #{label} #{kind} #{hub} #{layout}"
+      end
+    end
+  end
+
   describe '.response' do
     let(:dir) { Dir.mktmpdir('corpus-encoding-') }
     let(:url) { 'https://example.com/news/' }

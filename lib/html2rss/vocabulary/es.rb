@@ -43,6 +43,7 @@ module Html2rss
           /leer\s+m(?:á|a)s/, 'seguir leyendo', 'continuar leyendo', /saber\s+m(?:á|a)s/,
           /m(?:á|a)s\s+informaci(?:ó|o)n/, /leer\s+(?:todo|el\s+art(?:í|i)culo\s+completo)/
         ],
+        list_more: NONE,
         topic_lead: [/m(?:á|a)s/],
         topic_preposition: ['sobre'],
         read_more_suffix: NONE,

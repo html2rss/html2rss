@@ -41,6 +41,7 @@ module Html2rss
           'lire la suite', 'lire plus', /lire\s+l['’]article(?:\s+complet)?/, 'en savoir plus',
           'pour en savoir plus', /plus\s+d['’]infos?/, /plus\s+d['’]informations?/
         ],
+        list_more: NONE,
         topic_lead: [/plus\s+d['’]infos?/],
         topic_preposition: ['sur', /(?:à|a)\s+propos\s+de/, 'de'],
         read_more_suffix: NONE,

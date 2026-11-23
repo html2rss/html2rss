@@ -266,6 +266,28 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
   end
 
   describe '#read_more?' do
+    it 'reads a bracketed short count after an own read-more term as read-more, never a bare number or a year',
+       :aggregate_failures do
+      zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
+      expect(['阅读全文 (3)', '了解更多 （12）', '继续阅读 [3]'].map { zh.read_more?(_1) }).to all(be(true))
+      expect(['阅读全文 3', '阅读全文 2026', '阅读全文 (1234)'].map { zh.read_more?(_1) }).to all(be(false))
+    end
+
+    it 'reads a list-level term as read-more, and names it apart from a true read-more term', :aggregate_failures do
+      zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
+      expect(['查看全部', '更多 (3)', '[查看更多]'].map { [zh.list_more?(_1), zh.read_more?(_1)] }).to all(eq([true, true]))
+      expect(['阅读全文', '阅读全文 (3)', 'Read more', '更多 3', '更多 (1234)'].map { zh.list_more?(_1) }).to all(be(false))
+      expect(described_class.new.list_more?('查看全部')).to be(false)
+      expect(zh.list_more?("\u200F更多\u200F")).to be(true)
+    end
+
+    it 'keeps a shared read-more term with a count unread on every scope', :aggregate_failures do
+      zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
+      [described_class.new, zh, described_class.new(vocabulary: Html2rss::Vocabulary[:en])].each do |classifier|
+        expect(classifier.read_more?('Read more (3)')).to be(false)
+      end
+    end
+
     [
       'Read more', 'Continue reading »', 'Learn more', 'More about «Harbor ferry»',
       'More about „Hafen“', 'Mehr über "Hafen"', "More about 'Harbor'", 'More about “Harbor”', 'Mehr über 「港」',
@@ -424,8 +446,8 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     end
 
     it 'reads a bracketed short count after an own term, never a bare number or a year', :aggregate_failures do
-      expect(['相关阅读 (3)', '隐私政策 [128]', '登录 （3）', '更多 ［12］'].map { zh.utility_chrome?(_1) }).to all(be(true))
-      expect(['相关阅读 3', '隐私政策 128', '更多 12', '登录 (3', '登录 3)', '登录 (3]'].map { zh.utility_chrome?(_1) })
+      expect(['相关阅读 (3)', '隐私政策 [128]', '登录 （3）', '评论 ［12］'].map { zh.utility_chrome?(_1) }).to all(be(true))
+      expect(['相关阅读 3', '隐私政策 128', '评论 12', '登录 (3', '登录 3)', '登录 (3]'].map { zh.utility_chrome?(_1) })
         .to all(be(false))
       expect(['相关阅读 2026', '隐私政策 2026', '推荐阅读 2026'].map { zh.utility_chrome?(_1) }).to all(be(false))
       expect(['相关阅读 2026', '推荐阅读 2026'].map { zh.recommended?(_1) }).to all(be(false))
@@ -450,6 +472,7 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       terms[:path_section] = %w[sectie-xx]
       terms[:utility_cta] = %w[abonneer-xx]
       terms[:read_more] = %w[lees-xx]
+      terms[:list_more] = %w[alles-xx]
       terms[:topic_lead] = %w[meer-xx]
       terms[:topic_preposition] = %w[over-xx]
       terms[:read_more_suffix] = [/-vervolg-xx/]
@@ -470,9 +493,13 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       { own_cta: ['Abonneer-xx op ons nieuws'], read_more: ['Lees-xx de haven opent weer', 'Lees-xx over-xx "Haven"'] }
     end
 
-    it 'reads every page pattern through the same scope, with no special case per concept', :aggregate_failures do
+    it 'reads every page pattern through the same scope, with no special case per concept',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       read.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(true)) }
       unread.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(false)) }
+      expect(%w[Lees-xx Alles-xx].map { readings.fetch(:own_more).match?("#{_1} (3)") }).to all(be(true))
+      expect(readings.fetch(:own_more).match?('Read more (3)')).to be(false)
+      expect(%w[Alles-xx Lees-xx].map { readings.fetch(:list_more).match?(_1) }).to eq([true, false])
       expect(scope.words(:path_section)).to include('sectie-xx')
     end
 
