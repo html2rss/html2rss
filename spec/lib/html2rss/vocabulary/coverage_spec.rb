@@ -961,6 +961,21 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
+    it 'leaves the bare more labels out, so a card linked by one stays a card', :aggregate_failures do
+      ['Még több', 'Mutass többet', 'Továbbiak', 'MÉG TÖBB'].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+      ['Még több hír', 'Még több cikk', 'További hírek', 'További cikkek'].each do |label|
+        expect(hu.utility_chrome?(label)).to be(true), label
+      end
+    end
+
+    it 'reads a bracketed count after a read-more label as neither chrome nor read-more', :aggregate_failures do
+      ['Tovább (3)', 'Tovább [3]', 'Bővebben (3)'].each do |label|
+        expect([hu.read_more?(label), hu.utility_chrome?(label)]).to eq([false, false]), label
+      end
+    end
+
     it 'keeps a headline of three Hungarian words above the title floor', :aggregate_failures do
       ['Éjjeli piac nyit újra', 'Kompmenet változik hétfőtől', 'Aranyár nőtt tovább'].each do |headline|
         expect(junk_reason.call(headline)).to be_nil, headline

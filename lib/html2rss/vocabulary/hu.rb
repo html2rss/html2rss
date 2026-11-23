@@ -80,8 +80,8 @@ module Html2rss
           'feliratkozás', 'feliratkozom', 'menü', 'menü megnyitása', 'menü bezárása', 'főmenü', 'címlap', 'kezdőlap',
           'főoldal', 'vissza a címlapra', 'vissza a főoldalra', 'ugrás a tartalomhoz', 'ugrás a tartalomra',
           'ugrás a főtartalomhoz', 'ugrás a fő tartalomhoz', 'tovább a rovatra', 'összes', 'összes megtekintése',
-          'összes hír', 'összes friss hír', 'összes cikk', 'mutasd mindet', 'mutass többet', 'még több', 'még több hír',
-          'még több cikk', 'továbbiak', 'további hírek', 'további cikkek', 'további cikkeink', 'további epizódok',
+          'összes hír', 'összes friss hír', 'összes cikk', 'mutasd mindet', 'még több hír',
+          'még több cikk', 'további hírek', 'további cikkek', 'további cikkeink', 'további epizódok',
           'további tartalmak', 'hozzászólás', 'hozzászólások', 'komment', 'kommentek', 'megosztás', 'megosztom',
           'kövess minket', 'kövessen minket', 'alkalmazás letöltése', 'töltsd le az alkalmazást'
         ],
