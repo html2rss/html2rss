@@ -34,19 +34,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::CandidateDetector do
     end
   end
 
-  describe '.traversable_candidate?' do
-    it 'delegates arrays and hashes to candidate detection', :aggregate_failures do
-      expect(described_class.traversable_candidate?([{ title: 'T', url: '/a' }])).to be(true)
-      expect(described_class.traversable_candidate?({ items: [{ title: 'T', url: '/a' }] })).to be(true)
-      expect(described_class.traversable_candidate?([{ title: 'T' }])).to be(false)
-    end
-
-    it 'returns false for scalar values', :aggregate_failures do
-      expect(described_class.traversable_candidate?('x')).to be(false)
-      expect(described_class.traversable_candidate?(nil)).to be(false)
-    end
-  end
-
   describe '.array_of_articles?' do
     it 'is true when any hash element has both a title and a url' do
       expect(described_class.array_of_articles?([{ title: 'T', url: '/a' }])).to be(true)

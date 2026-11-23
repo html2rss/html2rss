@@ -131,14 +131,4 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       end
     end
   end
-
-  describe '.budget_for' do
-    let(:config) { Html2rss::Config.from_hash(raw_config) }
-
-    it 'builds a Budget with request pools', :aggregate_failures do
-      budget = described_class.budget_for(config)
-
-      expect(budget.remaining_requests).to eq(request_ceiling)
-    end
-  end
 end

@@ -39,13 +39,6 @@ module Html2rss
       end
 
       ##
-      # Builds a Budget with request slot pools.
-      #
-      # @param config [Html2rss::Config] validated feed config
-      # @return [Html2rss::RequestService::Budget] shared budget for the feed build
-      def self.budget_for(config) = resources_for(config).budget
-
-      ##
       # Reserve enough HTTP request slots for the initial request plus predictable
       # follow-ups.
       #
