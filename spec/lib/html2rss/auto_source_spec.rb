@@ -623,6 +623,12 @@ RSpec.describe Html2rss::AutoSource do
           expect(read.call('zh').find { _1.scraper == klass }.title).to eq("独自: #{headline}")
           expect(read.call(nil).find { _1.scraper == klass }.title).to eq(headline)
         end
+
+        it 'composes a kicker item that has no title key without raising' do
+          items.replace([{ kicker: 'Overline', url: 'https://example.com/a', id: 'a' }])
+
+          expect { articles }.not_to raise_error
+        end
       end
 
       %w[NativeFeed WordpressApi Sitemap MetaOembed].each do |name|
