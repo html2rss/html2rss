@@ -1,0 +1,9 @@
+---
+case: Six invented news cards in language "hu", each with a plain heading, a summary and one link to the article labelled with a bare more label that is not in the vocabulary, on a flat path with and without an extension; all six cards stay items.
+expected:
+- https://example.com/hir/hosszu-cikk-cimszo-1
+- https://example.com/hir/hosszu-cikk-cimszo-2
+- https://example.com/hir/hosszu-cikk-cimszo-3
+- https://example.com/hir/hosszu-cikk-cimszo-4.html
+- https://example.com/hir/hosszu-cikk-cimszo-5.html
+- https://example.com/hir/hosszu-cikk-cimszo-6.html

@@ -1,0 +1,11 @@
+---
+case: Eight invented news cards in language "hu", each with a heading link, a summary and an action row of a comment link to the same article and a share link, on a flat path; all eight headlines stay items.
+expected:
+- https://example.com/hir/story-1
+- https://example.com/hir/story-2
+- https://example.com/hir/story-3
+- https://example.com/hir/story-4
+- https://example.com/hir/story-5
+- https://example.com/hir/story-6
+- https://example.com/hir/story-7
+- https://example.com/hir/story-8
