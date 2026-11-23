@@ -51,6 +51,14 @@ RSpec.describe Html2rss::Html::ArticleExtractor::IdGenerator do
       expect(id).to eq('hello-world')
     end
 
+    it 'slugifies the given heading rather than the first text node' do
+      container = Nokogiri::HTML('<div class="card"><p>Intro</p><h2>Headline Here</h2></div>').at_css('.card')
+
+      id = described_class.call(container, heading: container.at_css('h2'), url: nil, selected_anchor: nil)
+
+      expect(id).to eq('headline-here')
+    end
+
     it 'falls back to the content hash when the heading slug is empty', :aggregate_failures do
       container = Nokogiri::HTML('<div class="card"><h2>!!!</h2></div>').at_css('.card')
       heading = container.at_css('h2')

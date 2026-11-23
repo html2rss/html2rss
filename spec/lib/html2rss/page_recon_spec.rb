@@ -137,6 +137,18 @@ RSpec.describe Html2rss::PageRecon do
       .with(anything, vocabulary: be(Html2rss::Vocabulary[:sv])).at_least(:once)
   end
 
+  it 'resolves the page language from the channel override over the page declaration', :aggregate_failures do
+    english = Html2rss::RequestService::Response.new(
+      body: list_response.body.sub('<html', '<html lang="en"'), url: list_response.url,
+      headers: { 'content-type' => 'text/html' }, status: 200
+    )
+    allow(Html2rss::Vocabulary).to receive(:[]).and_call_original
+    described_class.assess(response: english, url: 'https://example.com/blog', channel: { language: 'sv' })
+
+    expect(Html2rss::Vocabulary).to have_received(:[]).with('sv').at_least(:once)
+    expect(Html2rss::Vocabulary).not_to have_received(:[]).with('en')
+  end
+
   it 'omits sst and segment stats when the body normalizes to no document', :aggregate_failures do
     empty = Html2rss::RequestService::Response.new(
       body: '',

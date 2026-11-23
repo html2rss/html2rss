@@ -23,6 +23,16 @@ RSpec.describe Html2rss::Html::ArticleExtractor::ImageExtractor do
       end
     end
 
+    context 'when several images carry a remote source' do
+      let(:html) do
+        '<article><img src="data:image/gif;base64,AAAA"><img src="first.jpg"><img src="second.jpg"></article>'
+      end
+
+      it 'returns the first one' do
+        expect(url).to eq('https://example.com/first.jpg')
+      end
+    end
+
     context 'when image source is present and image url contains commas' do
       let(:html) do
         <<~HTML

@@ -51,7 +51,12 @@ RSpec.describe Html2rss::FeedResolution::Probe do
 
     scored = probe.call(candidate_url)
 
-    expect(scored).to have_attributes(url: candidate_url, articles_count: be >= 1)
+    expected = Html2rss::PageRecon.assess(response: html_response, url: candidate_url)
+
+    expect(scored).to have_attributes(
+      url: candidate_url, articles_count: expected.articles_count,
+      score: Html2rss::FeedResolution::Scorer.score_assessment(expected)
+    )
   end
 
   it 'follows up on the candidate url for the entry-resolution relation' do
