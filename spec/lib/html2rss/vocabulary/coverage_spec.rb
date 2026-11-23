@@ -1329,6 +1329,128 @@ RSpec.describe Html2rss::Vocabulary do
       expect(described_class::Fi.terms.fetch(:type_marker)).to be_empty
       expect(described_class[:fi].type_markers).to eq(described_class.words(:type_marker))
       expect(described_class::SCOPED_WORDS.flat_map { described_class::Fi.terms.fetch(_1) }).to be_empty
+  end
+
+  describe 'Norwegian labels' do
+    let(:no) { text.call(:no) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:no]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { no.utility?(label) }, chrome: ->(label) { no.utility_chrome?(label) },
+        prefix: ->(label) { no.utility_prefix?(label) }, recommended: ->(label) { no.recommended?(label) },
+        read_more: ->(label) { no.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      ['Logg inn', 'Logg ut', 'Opprett bruker', 'Opprett konto', 'Søk', 'Tips oss', 'Kundeservice',
+       'Personvern', 'Personvernerklæring', 'Personverninnstillinger', 'Cookieinnstillinger',
+       'Vilkår og betingelser', 'Brukervilkår', 'Ofte stilte spørsmål', 'Meny', 'Lukk meny', 'Forsiden',
+       'Følg oss', 'Min side', 'Hopp til innhold', 'Hopp til hovedinnhold', 'Opprett brukar',
+       'Brukarvilkår', 'Hopp til hovudinnhald', 'Framsida', 'Kommentarar'].each do |item|
+        expect(no.utility_chrome?(item)).to be(true), item
+      end
+      ['[Søk]', '← Søk ←', 'Logg inn (åpnes i nytt vindu)', "\u200eSøk\u200e"].each do |item|
+        expect(no.utility_chrome?(item)).to be(true), item
+      end
+      ['Relaterte artikler', 'Relaterte artiklar', 'Relaterte saker', 'Les også', 'Se også', 'Sjå også',
+       'Anbefalt for deg', 'Andre leste også'].each do |item|
+        expect(no.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Les mer', 'Les mer her', 'Les hele saken', 'Les videre', 'Les resten', 'Se mer', 'Vis mer', 'Les meir',
+       'Les heile saka', 'Les vidare', 'Sjå meir'].each do |label|
+        expect([no.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Abonner på nyhetsbrev', 'Kjøp abonnement', 'Bli abonnent', 'Skriv en kommentar', 'Skriv ein kommentar',
+       'Del artikkelen'].each do |item|
+        expect(no.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
+      ['LOGG INN', 'SØK', 'PERSONVERNERKLÆRING', 'VILKÅR OG BETINGELSER', 'TIPS OSS',
+       'HOPP TIL HOVEDINNHOLD'].each do |label|
+        expect(no.utility_chrome?(label)).to be(true), label
+      end
+      ['RELATERTE ARTIKLER', 'LES OGSÅ'].each { expect(no.recommended?(_1)).to be(true), _1 }
+      ['LES MER', 'LES HELE SAKEN'].each { expect(no.read_more?(_1)).to be(true), _1 }
+      ['Logg inn', 'Søk', 'Personvernerklæring', 'Vilkår og betingelser', 'Les også'].each do |label|
+        decomposed = label.unicode_normalize(:nfd)
+        expect(no.utility_chrome?(decomposed) || no.recommended?(decomposed)).to be(true), label
+      end
+      expect('Vilkår og betingelser'.unicode_normalize(:nfd)).not_to eq('Vilkår og betingelser')
+      expect(no.read_more?('Les mer'.unicode_normalize(:nfd))).to be(true)
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      ['Logg inn rammet portalen, som lå nede en halv dag', 'Søk etter savnet fisker er avsluttet',
+       'Les mer enn ventet: lånerne slår rekord på biblioteket', 'Meny for hele uken i skolekantinen er klar',
+       'Se også naboens hage, som vant prisen for årets bed', 'Del av byens gamle havn blir til park',
+       'Tips oss om saken er ikke nok, sier politiet', 'Min side av saken er enkel: bussen må gå oftere',
+       'Personvern for barn i skolen får ny lov', 'LOGG INN RAMMET PORTALEN HELE DAGEN'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['Logg inn 2026', 'Søk 2026', 'Les mer 2026', 'Personvernerklæring 2026', 'Relaterte artikler 2026',
+       'Tips oss 2026', 'Vilkår og betingelser 2026', 'Les også 2026'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['Tips oss 12', 'Søk 3', 'Logg inn 2', 'Les mer 112', 'Meny 4'].each do |label|
+        expect([no.utility_chrome?(label), no.read_more?(label)]).to eq([false, false]), label
+      end
+      ['Tips oss (12)', 'Søk [3]', 'Søk (7)', 'Kommentarar (12)'].each do |item|
+        expect(no.utility_chrome?(item)).to be(true), item
+      end
+      ['Les mer (3)', 'Les mer [3]'].each { expect(no.read_more?(_1)).to be(true), _1 }
+    end
+
+    it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
+      ['Del', 'Hjelp', 'Annonsering', 'Presse', 'Siste nytt', 'Nyheter', 'Sport', 'Kultur', 'Meninger', 'Økonomi',
+       'Se alle spill', 'Flere spill', 'Del 2', 'Les', 'Se', 'Vis'].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'leaves Kontakt, Kontakt oss, Om oss and Kommentarer to the shared readings every scope has',
+       :aggregate_failures do
+      ['Kontakt', 'Kontakt oss', 'Om oss', 'Kommentarer', 'Kontakt Norge', 'Kontakt 2026', 'Om oss 2026',
+       'Kommentarer 140'].each do |label|
+        expect([no.utility_chrome?(label), text.call(:all).utility_chrome?(label)]).to eq([true, true]), label
+      end
+      expect(no.utility_chrome?('Kontakt mellom sjakkspillerne forbudt')).to be(false)
+      shared = ['kontakt', 'kontakt oss', 'om oss', 'kommentarer']
+      expect(described_class::No.terms.fetch(:utility) & shared).to be_empty
+    end
+
+    it 'reads a list-level label as read-more, never chrome, so a card keeps its item', :aggregate_failures do
+      ['Se alle', 'Vis alle', 'Se flere', 'Flere nyheter', 'Flere saker', 'Alle nyheter', 'Alle saker', 'Sjå alle',
+       'Fleire nyheiter'].each do |label|
+        expect([no.utility_chrome?(label), no.utility?(label), no.read_more?(label)]).to eq([false, false, true]), label
+      end
+      expect([no.read_more?('Vis mer'), junk_reason.call('Vis mer')]).to eq([true, :cta])
+    end
+
+    it 'reads the labels on a Norwegian page only, whichever tag names it', :aggregate_failures do
+      [nil, :ja, :en, :sv, :de, :da, :id].each do |code|
+        expect(text.call(code).utility_chrome?('Logg inn')).to be(false), code.inspect
+      end
+      %w[no nb nn nb-NO NN].each do |tag|
+        expect(text.call(tag).utility_chrome?('Logg inn')).to be(true), tag
+      end
+    end
+
+    it 'declares no type marker, path word, paid label or ad word of its own', :aggregate_failures do
+      expect(described_class::No.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:no].type_markers).to eq(described_class.words(:type_marker))
+      expect(described_class::SCOPED_WORDS.flat_map { described_class::No.terms.fetch(_1) }).to be_empty
+      expect(%i[paid_label ad_word].flat_map { described_class::No.terms.fetch(_1) }).to be_empty
     end
   end
 
