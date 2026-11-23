@@ -181,7 +181,13 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         end
         ["hub #{hub}", card, slug]
       end
-      with_decoy + hubs
+      shaped = { 'post suffix' => ->(i) { "/x/a-b-c-d-1000#{i}.html" }, 'content word' => lambda { |i|
+        "/news/story-#{i}"
+      } }.map do |name, href|
+        card = ->(i, label) { %(<h3>Unlinked title</h3><a href="#{href.call(i)}">#{label}</a>#{decoys.first}) }
+        ["#{name} label first", card, href]
+      end
+      with_decoy + hubs + shaped
     end
 
     it 'keeps the story link of every card, whatever labelled link sits beside it', :aggregate_failures do
