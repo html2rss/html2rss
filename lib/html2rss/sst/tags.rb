@@ -76,12 +76,16 @@ module Html2rss
             Readings.new(
               pager_label: own_pager_label(own.fetch(:pager_label)),
               page_link_text: /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:#{Vocabulary.alternation(:page_link)})\b.*)\z/im,
-              page_link_label: WHOLE.call([Vocabulary.union(:page_link_label, own), own.fetch(:page_link)]
-                                            .reject(&:empty?).join('|'))
+              page_link_label: WHOLE.call(Vocabulary.union(:page_link_label, own_labels(own)))
             )
           end
 
           private
+
+          # The own previous/next wording, which a whole label also reads, joined with the own label terms.
+          def own_labels(own)
+            own.merge(page_link_label: [own.fetch(:page_link_label), own.fetch(:page_link)].reject(&:empty?).join('|'))
+          end
 
           def own_pager_label(own)
             shared = /\b(?:#{Vocabulary.alternation(:pager_label)})/ix

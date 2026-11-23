@@ -46,9 +46,11 @@ module Html2rss
 
       # Text that holds a word.
       WORD = Nodes::WORD
+      # Text that holds a letter, which a clock time or punctuation does not.
+      LETTER = /\p{L}/
       # Link element names of both node kinds.
       LINK_NAMES = Set['a', :a].freeze
-      private_constant :WORD, :LINK_NAMES
+      private_constant :WORD, :LETTER, :LINK_NAMES
 
       ##
       # @param root [Nokogiri::XML::Node, SST::Node] card root
@@ -57,6 +59,7 @@ module Html2rss
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for kicker type markers
       def initialize(root, source, vocabulary:, anchor: nil)
         @anchor = anchor
+        @vocabulary = vocabulary
         @nodes = Nodes.for(root, vocabulary)
         @kicker = Kicker.new(@nodes, root, source, vocabulary) { headline_piece(source) }
       end
@@ -116,10 +119,15 @@ module Html2rss
         keep_words(node, drop_closing_dates!(node, dropped))
       end
 
-      # Gives the headline back its own-term drops when, after all drops, no word is left: a term of a page-only
-      # language never empties a headline, whatever order its pieces were dropped in.
+      # Gives the headline back its own-term drops when, after all drops, no letter is left (a clock or a bar is
+      # no word) or the text falls below the title floor ({AutoSource::Cleanup::MIN_WORDS}): a term of a
+      # page-only language never empties or shortens a headline into rejection, whatever order its pieces
+      # were dropped in.
       def keep_words(node, dropped)
-        return dropped if @nodes.text(node, dropped).to_s.match?(WORD)
+        return dropped unless @vocabulary.own?
+
+        left = @nodes.text(node, dropped).to_s
+        return dropped if left.match?(LETTER) && WordCount.at_least?(left, AutoSource::Cleanup::MIN_WORDS)
 
         dropped.reject { @nodes.own_noise?(_1) }
       end

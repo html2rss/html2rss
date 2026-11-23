@@ -178,9 +178,33 @@ RSpec.describe Html2rss::Html::TitlePieces do
     end
 
     it 'drops an own label before the headline words' do
-      labelled = '<article><h2><a href="/s"><span>Soort-xx:</span> Haven opent</a></h2></article>'
+      labelled = '<article><h2><a href="/s"><span>Soort-xx:</span> Haven opent kade</a></h2></article>'
 
-      expect(headline.call(labelled, xx)).to eq('Haven opent')
+      expect(headline.call(labelled, xx)).to eq('Haven opent kade')
+    end
+
+    it 'keeps an own label when only a clock or a bar would be left', :aggregate_failures do
+      ['<span>Betaald-xx</span> 12:30', '<span>Betaald-xx</span>｜<span>12:30</span>'].each do |inner|
+        html = %(<article><h2>#{inner}</h2><a href="/s">x</a></article>)
+
+        expect(headline.call(html, xx)).to match(/Betaald-xx/i), inner
+      end
+    end
+
+    it 'keeps an own label that would leave the headline below the title floor', :aggregate_failures do
+      short = '<article><h2><span>Soort-xx:</span> Haven opent</h2><a href="/s">x</a></article>'
+      long = '<article><h2><span>Soort-xx:</span> Haven opent nieuwe kade</h2><a href="/s">x</a></article>'
+
+      expect(headline.call(short, xx)).to eq('Soort-xx: Haven opent')
+      expect(headline.call(long, xx)).to eq('Haven opent nieuwe kade')
+    end
+
+    it 'reads no own term in a shared scope', :aggregate_failures do
+      html = '<article><h2><span>Soort-xx:</span> Haven opent</h2><a href="/s">x</a></article>'
+
+      expect(headline.call(html, all_scope)).to eq('Soort-xx: Haven opent')
+      expect(xx.own?).to be(true)
+      expect(all_scope.own?).to be(false)
     end
 
     it 'keeps a headline that own terms alone would empty, whatever the drops', # rubocop:disable RSpec/ExampleLength
