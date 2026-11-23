@@ -77,7 +77,7 @@ module Html2rss
       def language_for(response, overrides = NO_OVERRIDES)
         return overrides[:language] if overrides[:language]
 
-        language_code = headers(response)['content-language'].to_s[/\A[a-z]{2}(?![a-z])/]
+        language_code = header_language(response)
         return language_code if language_code
 
         return unless html_response?(response)
@@ -86,6 +86,11 @@ module Html2rss
       end
 
       private
+
+      # The header's primary tag, lowercased; the header name and tag are case-insensitive (BCP 47).
+      def header_language(response)
+        response.header('content-language').to_s.downcase(:ascii)[/\A[a-z]{2}(?![a-z])/]
+      end
 
       # Fallback RSS ttl (in minutes) when no cache directives are present.
       def default_ttl_in_minutes = 360
