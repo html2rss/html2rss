@@ -131,7 +131,7 @@ module Html2rss
         def compose(headline, kicker: nil, vocabulary: Vocabulary[nil])
           rules = RULES_BY_SCOPE.fetch(vocabulary.code)
           head, top = peel_bracket(trim(headline, LEADING_SEPARATORS), trim(kicker, rules.kicker_noise), rules.markers)
-          return head if top.nil? || rules.markers.include?(read(top).downcase)
+          return head if top.nil? || rules.markers.include?(read(top).to_s.downcase)
           return top unless head
           return head if prefixed?(head, top)
 
@@ -181,12 +181,9 @@ module Html2rss
 
         private
 
-        # The collapsed text as matching reads it: without bidi marks, which {.collapse} keeps in a title.
-        def read(text)
-          return unless (collapsed = collapse(text))
-
-          LinkDestination::TextClassifier.strip_bidi(collapsed)
-        end
+        # The text as matching reads it: bidi marks gone first, so marks set off by spaces collapse away too
+        # ({.collapse} keeps them in a title). A marks-only text reads as blank.
+        def read(text) = collapse(LinkDestination::TextClassifier.strip_bidi(text.to_s))
 
         def trim(text, prefix)
           return unless (collapsed = collapse(text))
