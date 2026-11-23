@@ -4,6 +4,7 @@ module Html2rss
   module Vocabulary
     # Adds the Arabic-keyboard spelling (+ي+, +ك+ for +ی+, +ک+) to each label, so a page typed either way reads alike.
     ARABIC_KEYBOARD_SPELLINGS = ->(terms) { terms.flat_map { [_1, _1.tr('یک', 'يك')] }.uniq.freeze }
+    private_constant :ARABIC_KEYBOARD_SPELLINGS
 
     # Persian (Farsi). It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +fa+, and nowhere
     # else. Persian writes compounds with a zero-width non-joiner (+ثبت‌نام+, +دیدگاه‌ها+) or a space, and attaches
@@ -64,12 +65,12 @@ module Html2rss
           [
             'ورود', 'ورود به حساب', 'ورود به حساب کاربری', 'خروج', 'خروج از حساب', 'خروج از حساب کاربری', 'جستجو',
             'جست‌وجو', 'جست و جو', 'جستجو در سایت', 'درباره ما', 'تماس با ما', 'ارتباط با ما', 'حریم خصوصی',
-            'سیاست حفظ حریم خصوصی', 'سیاست حریم خصوصی', 'قوانین و مقررات', 'شرایط استفاده', 'شرایط و ضوابط',
+            'سیاست حفظ حریم خصوصی', 'سیاست حریم خصوصی', 'شرایط استفاده', 'شرایط و ضوابط',
             'نقشه سایت', 'راهنما', 'خبرنامه', 'عضویت', 'عضویت در خبرنامه', 'اشتراک', 'اشتراک‌گذاری', 'اشتراک گذاری',
             'ثبت‌نام', 'ثبت نام', 'نظرات', 'ارسال نظر', 'ارسال دیدگاه', 'بستن', 'بیشتر', 'مشاهده بیشتر',
             'مشاهده همه', 'منو', 'صفحه اصلی'
           ]
-        ) + [%r{ورود\s*(?:و|یا|/|\|)\s*ثبت(?:‌|\s)?نام}],
+        ) + [%r{ورود\s*(?:و|[یي]ا|/|\|)\s*ثبت(?:‌|\s)?نام}],
         recommended: ARABIC_KEYBOARD_SPELLINGS.call(
           [
             'مطالب مرتبط', 'اخبار مرتبط', 'خبرهای مرتبط', 'مطلب مرتبط', 'خبر مرتبط', 'مطالب مشابه', 'اخبار مشابه',

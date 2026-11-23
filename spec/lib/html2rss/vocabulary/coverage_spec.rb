@@ -408,7 +408,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads chrome and recommended labels as whole labels, with a small count or direction marks',
        :aggregate_failures do
-      ['ورود', 'خروج', 'جستجو', 'جست‌وجو', 'جست و جو', 'درباره ما', 'تماس با ما', 'حریم خصوصی', 'قوانین و مقررات',
+      ['ورود', 'خروج', 'جستجو', 'جست‌وجو', 'جست و جو', 'درباره ما', 'تماس با ما', 'حریم خصوصی',
        'نقشه سایت',
        'راهنما', 'خبرنامه', 'اشتراک', 'نظرات', 'بیشتر', 'بستن', 'صفحه اصلی'].each do |item|
         expect(fa.utility_chrome?(item)).to be(true),
@@ -437,7 +437,7 @@ RSpec.describe Html2rss::Vocabulary do
        'بیشتر از انتظار باران می‌بارد', 'نظرات خوانندگان کارزار را متوقف کرد', 'خروج بریتانیا از بازار', 'راهنمای خرید',
        'ثبت‌نام‌کنندگان بیشتر شدند', 'ورودی‌های جدید', 'بستن مرز تا فردا', 'منوی غذا گران شد', 'ادامه مطلب این نیست',
        'درباره ما چه می‌دانید', 'مطالب مرتبط با اقتصاد',
-       'ورود موج جدید بارشی به کشور', 'ثبت نام و قیمت خودرو'].each do |headline|
+       'ورود موج جدید بارشی به کشور', 'ثبت نام و قیمت خودرو', 'قوانین و مقررات'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
       end
     end
@@ -457,7 +457,7 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ["ثبت\u200cنام", 'ثبت نام', 'حريم خصوصي', 'اشتراك', 'اشتراک', 'ورود به حساب كاربري', "جست\u200cوجو",
        'ورود / ثبت نام',
-       "ورود و ثبت\u200cنام", 'ورود | ثبت نام'].each do |item|
+       "ورود و ثبت\u200cنام", 'ورود | ثبت نام', 'ورود يا ثبت نام', 'شرایط و ضوابط', 'سیاست حریم خصوصی'].each do |item|
         expect(fa.utility_chrome?(item)).to be(true), item
       end
       expect(fa.utility_chrome?("ثبت\u200cنام\u200c")).to be(true)
