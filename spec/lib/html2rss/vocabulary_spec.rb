@@ -212,7 +212,9 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
-      expect(scopes.map(&:code)).to eq(%i[en de fr es it nl pl sv ja pt ru all zh ko he el uk ar fa hi th tr id vi cs hu])
+      expect(scopes.map(&:code)).to eq(
+        %i[en de fr es it nl pl sv ja pt ru all zh ko he el uk ar fa hi th tr id vi cs hu]
+      )
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
       expect(scopes.zip(scopes.map { described_class[_1.code] })).to all(satisfy { |a, b| a.equal?(b) })
