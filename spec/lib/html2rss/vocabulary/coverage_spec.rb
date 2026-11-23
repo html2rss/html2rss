@@ -1329,6 +1329,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(described_class::Fi.terms.fetch(:type_marker)).to be_empty
       expect(described_class[:fi].type_markers).to eq(described_class.words(:type_marker))
       expect(described_class::SCOPED_WORDS.flat_map { described_class::Fi.terms.fetch(_1) }).to be_empty
+    end
   end
 
   describe 'Norwegian labels' do
