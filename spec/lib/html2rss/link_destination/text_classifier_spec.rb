@@ -183,6 +183,13 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       end
     end
 
+    it 'reads a page-only call-to-action label as a whole label on its own page only', :aggregate_failures do
+      zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
+
+      expect([zh.utility_chrome?('立即订阅'), zh.utility_chrome?('立即订阅 (3)')]).to eq([true, true])
+      expect([classifier.utility_chrome?('立即订阅'), zh.utility_chrome?('立即订阅用户突破百万')]).to eq([false, false])
+    end
+
     it 'reads an ambiguous term only in its own language scope', :aggregate_failures do
       sv = described_class.new(vocabulary: Html2rss::Vocabulary[:sv])
       en = described_class.new(vocabulary: Html2rss::Vocabulary[:en])
@@ -295,6 +302,22 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     it 'treats nil as an empty label', :aggregate_failures do
       expect(classifier.read_more?(nil)).to be(false)
     end
+
+    it 'reads a Chinese label as a standalone label only, never as a topic lead-in', :aggregate_failures do
+      zh = described_class.for(Html2rss::Vocabulary[:zh])
+
+      ['阅读全文 about “气候”', '了解更多 über „Klima“', '了解更多 about «气候»'].each do |text|
+        expect(zh.read_more?(text)).to be(false), text
+      end
+      expect(['阅读全文', '了解更多', 'More about «Climate»', 'Mehr über „Klima“'].map { zh.read_more?(_1) }).to all(be(true))
+    end
+
+    it 'reads the shared topic lead-ins on every scope as before', :aggregate_failures do
+      topics = ['More about «Harbor ferry»', 'Mehr über „Hafen“', 'Lire la suite de «Port»', 'Mehr über die Rente']
+      reads = %i[all en de ja zh].map { |lang| topics.map { described_class.for(Html2rss::Vocabulary[lang]).read_more?(_1) } }
+
+      expect(reads.uniq).to eq([[true, true, true, false]])
+    end
   end
 
   describe 'new-window notices' do
@@ -400,12 +423,106 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect([everything.utility_chrome?('关于我们'), everything.recommended?('相关阅读')]).to eq([false, false])
     end
 
+    it 'reads a short count after an own term, never a year', :aggregate_failures do
+      expect(['相关阅读 3', '隐私政策 128', '登录 (3)'].map { zh.utility_chrome?(_1) }).to all(be(true))
+      expect(['相关阅读 2026', '隐私政策 2026', '推荐阅读 2026'].map { zh.utility_chrome?(_1) }).to all(be(false))
+      expect(['相关阅读 2026', '推荐阅读 2026'].map { zh.recommended?(_1) }).to all(be(false))
+    end
+
+    it 'keeps the shared reading of a count, year included', :aggregate_failures do
+      expect(['Contact 12', 'Contact 2026'].map { described_class.new.utility_chrome?(_1) }).to all(be(true))
+    end
+
     it 'reads no trailing word and no opener', :aggregate_failures do
       ['帮助 受灾群众重建家园', '评论 美国大选结果影响全球市场', '相关阅读：港口重新开放'].each do |headline|
         expect(zh.utility_chrome?(headline)).to be(false), headline
         expect(zh.utility?(headline)).to be(false), headline
         expect(zh.recommended?(headline)).to be(false), headline
       end
+    end
+  end
+
+  describe 'a page-only language declaring every page pattern' do
+    let(:scope) do
+      terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
+      terms[:path_section] = %w[sectie-xx]
+      terms[:utility_cta] = %w[abonneer-xx]
+      terms[:read_more] = %w[lees-xx]
+      terms[:topic_lead] = %w[meer-xx]
+      terms[:topic_preposition] = %w[over-xx]
+      terms[:read_more_suffix] = [/-vervolg-xx/]
+      terms[:new_window_notice] = [/nieuw-xx/]
+      language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
+      Html2rss::Vocabulary.build_scope(:xx, Html2rss::Vocabulary::ALL, own: [language])
+    end
+    let(:readings) do
+      described_class::PageReadings.build(Html2rss::Vocabulary::PAGE_PATTERNS.to_h { [_1, scope.own_alternation(_1)] })
+    end
+    let(:shared) { described_class::PageReadings::BY_SCOPE.fetch(:en) }
+
+    let(:read) do
+      { own_cta: %w[Abonneer-xx], new_window: ['Haven (nieuw-xx)'],
+        read_more: ['Lees-xx', 'Meer-xx over-xx "Haven"', 'Haven-vervolg-xx', 'Read more', 'Lire la suite de «Port»'] }
+    end
+    let(:unread) do
+      { own_cta: ['Abonneer-xx op ons nieuws'], read_more: ['Lees-xx de haven opent weer', 'Lees-xx over-xx "Haven"'] }
+    end
+
+    it 'reads every page pattern through the same scope, with no special case per concept', :aggregate_failures do
+      read.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(true)) }
+      unread.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(false)) }
+      expect(scope.words(:path_section)).to include('sectie-xx')
+    end
+
+    it 'adds nothing to a scope without own terms, which keeps the one shared matcher', :aggregate_failures do
+      expect(shared.fetch(:read_more).match?('Lees-xx')).to be(false)
+      expect(shared.fetch(:own_cta).match?('Abonneer-xx')).to be(false)
+      %i[ja de all].each { expect(described_class::PageReadings::BY_SCOPE.fetch(_1)).to be(shared) }
+      expect(described_class::PageReadings::BY_SCOPE.fetch(:zh)).not_to be(shared)
+    end
+
+    it 'leaves the shared alternations exactly the terms of the shared languages', :aggregate_failures do
+      Html2rss::Vocabulary::PAGE_PATTERNS.each do |concept|
+        terms = Html2rss::Vocabulary::ALL.flat_map { _1.terms.fetch(concept) }
+
+        expect(Html2rss::Vocabulary.alternation(concept)).to eq(Html2rss::Vocabulary.compile(terms)), concept.to_s
+      end
+    end
+
+    it 'gives no shared scope an own term', :aggregate_failures do
+      (Html2rss::Vocabulary::ALL.map(&:code) + %i[all]).each do |code|
+        own = Html2rss::Vocabulary::PAGE_PATTERNS.map { Html2rss::Vocabulary::SCOPES.fetch(code).own_alternation(_1) }
+
+        expect(own).to all(eq('')), code.to_s
+      end
+    end
+  end
+
+  describe 'a scope with only read-more terms' do
+    let(:built) do
+      own = Html2rss::Vocabulary::PAGE_PATTERNS.to_h { [_1, _1 == :read_more ? 'lees-xx' : ''] }
+      described_class::PageReadings.build(own)
+    end
+
+    it 'widens the read-more matcher without matching an empty label', :aggregate_failures do
+      expect(built.fetch(:read_more).match?('Lees-xx')).to be(true)
+      expect(['', '...', ' → '].map { built.fetch(:read_more).match?(_1) }).to all(be(false))
+      expect(built).to be_frozen
+    end
+
+    it 'adds no own call to action, and keeps the shared notice', :aggregate_failures do
+      expect(built.fetch(:own_cta).match?('lees-xx')).to be(false)
+      expect(built.fetch(:cta).match?('Subscribe to our newsletter')).to be(true)
+      expect(built.fetch(:new_window).match?('Haven (opens in new tab)')).to be(true)
+    end
+  end
+
+  describe '.for' do
+    it 'is one classifier per scope, each reading its own page language', :aggregate_failures do
+      zh = described_class.for(Html2rss::Vocabulary[:zh])
+
+      expect([zh.read_more?('阅读全文'), described_class.for(Html2rss::Vocabulary[:all]).read_more?('阅读全文')])
+        .to eq([true, false])
     end
   end
 end

@@ -260,7 +260,7 @@ module Html2rss
     # @return [QualityReport]
     def self.quality_report_for(items, channel_url:, config:, feed_result:, pipeline_outcome:, # rubocop:disable Metrics/ParameterLists
                                 probe_native_feed: true)
-      audit = AutoSource::Cleanup.audit_feed_items(items)
+      audit = AutoSource::Cleanup.audit_feed_items(items, vocabulary: enhance_vocabulary(config, pipeline_outcome))
       native_feed = probe_native_feed_url(channel_url, config, pipeline_outcome.response)&.to_s if probe_native_feed
       report = QualityReport.from_audit(audit, native_feed:)
       report = append_url_mismatch_warning(report, channel_url, feed_result)

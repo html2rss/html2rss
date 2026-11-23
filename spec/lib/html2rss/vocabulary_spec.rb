@@ -37,9 +37,11 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     # A page-only language declares terms only for the concepts a page scope reads (path words, the scoped
-    # patterns and the type markers), and no ambiguous term: it applies as a whole, on its own pages.
+    # patterns, the page patterns and the type markers), and no ambiguous term: it applies as a whole, on its own
+    # pages.
     it 'has each page-only language declare only concepts that a page scope reads', :aggregate_failures do
-      read_by_scope = described_class::SCOPED_WORDS + described_class::SCOPED_PATTERNS + %i[type_marker]
+      read_by_scope = described_class::SCOPED_WORDS + described_class::SCOPED_PATTERNS +
+                      described_class::PAGE_PATTERNS + %i[type_marker]
 
       described_class::PAGE_ONLY.each do |language|
         declared = language.terms.select { |_concept, terms| terms.any? }.keys
@@ -49,6 +51,16 @@ RSpec.describe Html2rss::Vocabulary do
         expect(language.ambiguous).to be_empty
         expect(described_class::ALL).not_to include(language)
       end
+    end
+
+    it 'reads exactly the listed page patterns and still rejects every other pattern concept', :aggregate_failures do
+      expect(described_class::PAGE_PATTERNS).to eq(
+        %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice]
+      )
+      unread = described_class::CONCEPTS - described_class::SCOPED_WORDS - described_class::SCOPED_PATTERNS -
+               described_class::PAGE_PATTERNS - %i[type_marker]
+      expect(unread).to eq(%i[paid_label ad_word field_label type_label pager_label page_link page_link_label
+                              clock_suffix date_piece element_label podcast_word podcast_unspaced])
     end
 
     it 'lists the languages in a fixed order', :aggregate_failures do

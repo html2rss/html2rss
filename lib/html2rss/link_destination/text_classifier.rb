@@ -28,6 +28,12 @@ module Html2rss
 
       class << self
         ##
+        # The shared, non-memoizing classifier of a page language's scope: nothing is built per call.
+        #
+        # @param vocabulary [Vocabulary::Scope] the page language's scope ({Vocabulary.[]})
+        # @return [TextClassifier]
+        def for(vocabulary) = SHARED.fetch(vocabulary.code)
+
         # The one owner of reading a label without direction marks ({BIDI_MARKS}). Text without a mark is
         # returned as is, so the common case allocates nothing.
         #
@@ -56,14 +62,14 @@ module Html2rss
         end
 
         # @param alternatives [Array<String>] regex alternatives of a scope's own terms
-        # @return [Regexp] the whole text is one term, with wrapping punctuation, symbols or arrows and one bare
-        #   count, and no other word; +NEVER+ without any alternative
+        # @return [Regexp] the whole text is one term, with wrapping punctuation, symbols or arrows and one short
+        #   count (up to three digits, so a year is a headline), and no other word; +NEVER+ without any alternative
         def whole_label(alternatives)
           alternatives = alternatives.reject(&:empty?)
           return NEVER if alternatives.empty?
 
           wrap = '[\s\p{P}\p{S}]*'
-          /\A#{wrap}(?:#{alternatives.join('|')})#{wrap}(?:\d+#{wrap})?\z/iux
+          /\A#{wrap}(?:#{alternatives.join('|')})#{wrap}(?:\d{1,3}#{wrap})?\z/iux
         end
       end
 
@@ -90,42 +96,6 @@ module Html2rss
       end.freeze
       private_constant :NEVER, :BIDI_MARKS, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
 
-      # A sentence-form call to action ("Subscribe to our newsletter", "Abonnieren Sie unseren Newsletter"): a
-      # multi-word imperative phrase at the start of the text, read in every language. An infinitive or noun
-      # form stays a headline opener ("Kommentare zum Artikel 13: ..."), so the vocabulary lists it only with a
-      # chrome object or as the whole label. A Latin term ends at a word boundary. A Japanese term has none
-      # between two kana or kanji, so it ends at whitespace, punctuation, a symbol or the end of the text
-      # ("コメントを投稿した男性を逮捕" is a headline).
-      UTILITY_CTA = /
-        \A\s*(?:#{Vocabulary.alternation(:utility_cta)})
-        (?:(?<![\p{Han}\p{Hiragana}\p{Katakana}])\b|(?<=[\p{Han}\p{Hiragana}\p{Katakana}])(?=[\s\p{P}\p{S}]|\z))
-      /iux
-      private_constant :UTILITY_CTA
-
-      # Whole read-more labels that stand alone ("Continue reading", "Lire la suite", "続きを読む").
-      READ_MORE_PHRASE = /#{Vocabulary.alternation(:read_more)}/ix
-      # "More about X" lead-ins: a read-more phrase or a bare "more", then a topic preposition.
-      READ_MORE_TOPIC_LEAD = /
-        (?:#{READ_MORE_PHRASE.source}|#{Vocabulary.alternation(:topic_lead)})
-        \s+(?:#{Vocabulary.alternation(:topic_preposition)})
-      /ix
-      # A read-more label as a whole text, optionally wrapped in punctuation or arrows. The topic after a
-      # lead-in counts only when quoted ("More about «X»", „X“, "X", 'X', 「X」), so a headline that merely
-      # opens with one ("Mehr über die Zukunft der Rente") stays a headline; Japanese topic forms put the
-      # topic first.
-      READ_MORE_PATTERN = /
-        \A[\s\p{P}\p{S}]*(?:
-          (?:#{READ_MORE_PHRASE.source})|
-          (?:#{READ_MORE_TOPIC_LEAD.source})\s*[«„"“”'‘’‹「].+[»"“”'’›」]|
-          \S{1,40}(?:#{Vocabulary.alternation(:read_more_suffix)})
-        )[\s\p{P}\p{S}]*\z
-      /ix
-
-      # Visible new-window notice that trails a link label, in parentheses or brackets.
-      NEW_WINDOW_NOTICE = /
-        \s*[(\[（【]\s*(?:#{Vocabulary.alternation(:new_window_notice)})\s*[)\]）】]\s*\z
-      /ix
-
       # Zero-width non-joiner and joiner. Inside a word they spell Persian, Urdu and Indic words, so a label
       # holding one is trimmed only at its edges, up to the first and last {LABEL_CHAR}.
       JOINER = /[\u200C\u200D]/
@@ -139,6 +109,7 @@ module Html2rss
         @normalized = {} if memoize
         @ambiguous = AMBIGUOUS.fetch(vocabulary.code)
         @own = OWN.fetch(vocabulary.code)
+        @page = PageReadings::BY_SCOPE.fetch(vocabulary.code)
       end
 
       # @param text [String, #to_s] visible anchor text
@@ -151,7 +122,8 @@ module Html2rss
       #   a headline that merely opens with a utility word is neither. The text is normalized once.
       def utility_chrome?(text)
         normalized = normalize(text)
-        reading_match?(:utility_label, normalized) || normalized.match?(UTILITY_CTA)
+        reading_match?(:utility_label, normalized) ||
+          normalized.match?(@page.fetch(:cta)) || normalized.match?(@page.fetch(:own_cta))
       end
 
       # @param text [String, #to_s] visible anchor text
@@ -164,7 +136,7 @@ module Html2rss
 
       # @param text [String, #to_s] visible anchor text or extracted title
       # @return [Boolean] true when the whole text is a read-more label, bare or with its topic
-      def read_more?(text) = normalize(text).match?(READ_MORE_PATTERN)
+      def read_more?(text) = normalize(text).match?(@page.fetch(:read_more))
 
       private
 
@@ -189,11 +161,15 @@ module Html2rss
 
       def compute_normal(string)
         text = string.unicode_normalize(:nfc)
-        text = self.class.strip_bidi(text).sub(NEW_WINDOW_NOTICE, '')
+        text = self.class.strip_bidi(text).sub(@page.fetch(:new_window), '')
         text.match?(JOINER) ? trim_edges(text) : text
       end
 
       def trim_edges(text) = text[text.index(LABEL_CHAR)..text.rindex(LABEL_CHAR)]
+
+      # One classifier per scope, built after the class body so every constant it reads exists.
+      SHARED = Vocabulary::SCOPES.transform_values { new(vocabulary: _1) }.freeze
+      private_constant :SHARED
     end
   end
 end

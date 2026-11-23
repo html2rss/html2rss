@@ -55,8 +55,6 @@ module Html2rss
       private_constant :JUNK_TITLE_RULES
 
       # Owner of the read-more vocabulary ("Read more", "More about X" in nine languages): a +:cta+ title.
-      TEXT_CLASSIFIER = LinkDestination::TextClassifier.new
-      private_constant :TEXT_CLASSIFIER
 
       # Minimum present-title length before short-title warnings.
       MIN_TITLE_LENGTH = 4
@@ -121,13 +119,13 @@ module Html2rss
           end
           identity = page_identity(page_links)
           drop_placement_params!(articles, page_links)
-          deduplicate_by_url!(articles, tallies, identity)
+          deduplicate_by_url!(articles, tallies, identity, vocabulary)
           reject_sponsored!(articles, page_links, tallies) unless keep_sponsored
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies, identity)
           reject_different_domain!(articles, url, feed_url, tallies) unless keep_different_domain
           reject_excluded_destinations!(articles, tallies, vocabulary)
-          reject_low_quality_titles!(articles, tallies)
+          reject_low_quality_titles!(articles, tallies, vocabulary)
 
           Log.debug "Cleanup: end with #{articles.size} articles"
           Result.new(articles:, drop_tallies: tallies.freeze)
@@ -136,25 +134,28 @@ module Html2rss
         # First matching junk reason for a title, or nil when the title is acceptable.
         #
         # @param title [String, nil] candidate title text
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, for the read-more labels
         # @return [Symbol, nil]
-        def junk_reason(title)
+        def junk_reason(title, vocabulary:)
           return if title.nil?
 
           normalized = normalize_title(title)
           return if normalized.empty?
 
           JUNK_TITLE_RULES.find { |_, pattern| pattern.match?(normalized) }&.first ||
-            (:cta if TEXT_CLASSIFIER.read_more?(normalized))
+            (:cta if LinkDestination::TextClassifier.for(vocabulary).read_more?(normalized))
         end
 
         # @param items [Array<Html2rss::Article, RSS::Rss::Channel::Item>]
+        # @param vocabulary [Vocabulary::Scope] the scope of the page the feed was built from, so a page-only
+        #   language's read-more titles count as junk like the feed's own cleanup
         # @return [AuditResult]
-        def audit_feed_items(items)
+        def audit_feed_items(items, vocabulary:)
           articles = items.map { |item| feed_item_as_article(item) }
           metrics = initial_audit_metrics(articles.size)
           violations = Hash.new(0)
           warnings = audit_url_diversity(articles, metrics, violations)
-          audit_item_titles(articles, metrics, violations)
+          audit_item_titles(articles, metrics, violations, vocabulary)
           warnings = finalize_audit_warnings(warnings, metrics)
           log_audit(metrics, warnings, violations)
           AuditResult.new(warnings:, metrics: metrics.freeze, violations: violations.freeze)
@@ -181,13 +182,13 @@ module Html2rss
           [:duplicate_urls]
         end
 
-        def audit_item_titles(items, metrics, violations)
+        def audit_item_titles(items, metrics, violations, vocabulary)
           items.each do |item|
             title = normalize_title(item.title)
             next if title.empty?
 
             audit_short_title(title, metrics, violations)
-            audit_title_quality(title, metrics, violations)
+            audit_title_quality(title, metrics, violations, vocabulary)
           end
         end
 
@@ -198,8 +199,8 @@ module Html2rss
           violations[:short_title] += 1
         end
 
-        def audit_title_quality(title, metrics, violations)
-          reason = junk_reason(title)
+        def audit_title_quality(title, metrics, violations, vocabulary)
+          reason = junk_reason(title, vocabulary:)
           if reason
             metrics[:junk_title_count] += 1
             violations[reason] += 1
@@ -271,8 +272,8 @@ module Html2rss
         # lacks ({Article#merge}), so a native feed item keeps its date, guid and title and takes the
         # page card's image. A read-more titled copy always loses to a copy with a real title: the
         # link text is chrome, the other copy carries the headline.
-        def deduplicate_by_url!(articles, tallies, identity)
-          reject_read_more_copies!(articles, tallies, identity)
+        def deduplicate_by_url!(articles, tallies, identity, vocabulary)
+          reject_read_more_copies!(articles, tallies, identity, vocabulary)
           kept = articles.each_with_object({}) do |article, by_identity|
             key = identity.call(article.url)
             by_identity[key] = by_identity[key]&.merge(article) || article
@@ -341,32 +342,33 @@ module Html2rss
         # Drops untitled page-derived items and junk/unnatural titles — blanking a bad title would
         # hide bad extraction as "unknown" and admit empty items. A publisher-declared item may be
         # untitled (microblog feed posts) and is kept. {Article} collapses a blank title to nil.
-        def reject_low_quality_titles!(articles, tallies)
+        def reject_low_quality_titles!(articles, tallies, vocabulary)
           articles.reject! do |article|
-            reason = title_reject_reason(article)
+            reason = title_reject_reason(article, vocabulary)
             tallies[reason] += 1 if reason
             reason
           end
         end
 
-        def title_reject_reason(article)
+        def title_reject_reason(article, vocabulary)
           title = article.title
           if title.nil?
             'blank_title' if Scraper::PAGE_SCRAPERS.include?(article.scraper)
           else
-            junk_reason(title)&.to_s || ('low_word_count' unless WordCount.at_least?(title, MIN_WORDS))
+            junk_reason(title, vocabulary:)&.to_s || ('low_word_count' unless WordCount.at_least?(title, MIN_WORDS))
           end
         end
 
-        def reject_read_more_copies!(articles, tallies, identity)
-          titled = articles.reject { |article| read_more_title?(article) }.to_set { |a| identity.call(a.url) }
+        def reject_read_more_copies!(articles, tallies, identity, vocabulary)
+          real = articles.reject { |article| read_more_title?(article, vocabulary) }
+          titled = real.to_set { |a| identity.call(a.url) }
           tally_reject!(articles, tallies, 'duplicate_url') do |article|
-            read_more_title?(article) && titled.include?(identity.call(article.url))
+            read_more_title?(article, vocabulary) && titled.include?(identity.call(article.url))
           end
         end
 
-        def read_more_title?(article)
-          article.title && junk_reason(article.title) == :cta
+        def read_more_title?(article, vocabulary)
+          article.title && junk_reason(article.title, vocabulary:) == :cta
         end
 
         def tally_reject!(articles, tallies, reason)

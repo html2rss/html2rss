@@ -25,7 +25,7 @@ module Html2rss
       # @return [String] regex alternatives of the ambiguous terms that apply, empty when none
       def ambiguous_alternation(concept) = alternations.fetch(concept)
 
-      # @param concept [Symbol] a member of {Vocabulary::SCOPED_PATTERNS}
+      # @param concept [Symbol] a member of {Vocabulary::SCOPED_PATTERNS} or {Vocabulary::PAGE_PATTERNS}
       # @return [String] regex alternatives of the terms only a page in this language applies, empty when none
       def own_alternation(concept) = own_alternations.fetch(concept)
     end

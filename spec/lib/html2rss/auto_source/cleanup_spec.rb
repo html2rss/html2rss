@@ -176,6 +176,23 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with a Chinese read-more copy of an article that also has a real title' do
+      let(:read_more_first) do
+        instance_double(Html2rss::Article, valid?: true, url: articles.first.url, title: '阅读全文')
+      end
+
+      before { articles.unshift(read_more_first) }
+
+      it 'drops the copy, and reads the label as junk, on a Chinese page only', :aggregate_failures do
+        zh = Html2rss::Vocabulary[:zh]
+        result = described_class.call(articles.dup, vocabulary: zh, url:)
+
+        expect(result.articles).not_to include(read_more_first)
+        expect(result.drop_tallies['duplicate_url']).to eq(1)
+        expect([zh, vocabulary].map { described_class.junk_reason('阅读全文', vocabulary: _1) }).to eq([:cta, nil])
+      end
+    end
+
     # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- verdict stub + two scraper cohorts
     context 'with a corroboration page check' do
       subject(:result) { described_class.call(articles, vocabulary:, url:, corroboration:) }
@@ -603,7 +620,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         { title: 'AFP', reason: :credit }
       ].each_with_index do |example, index|
         it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
-          expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
+          expect(described_class.junk_reason(example[:title],
+                                             vocabulary: Html2rss::Vocabulary[:all])).to eq(example[:reason])
         end
 
         # rubocop:disable-next RSpec/ExampleLength -- keep + reason tally contract
@@ -619,7 +637,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
 
       it 'has no junk reason for a missing title' do
-        expect(described_class.junk_reason(nil)).to be_nil
+        expect(described_class.junk_reason(nil, vocabulary: Html2rss::Vocabulary[:all])).to be_nil
       end
 
       it 'drops untitled page-derived items as blank_title', :aggregate_failures do
@@ -675,7 +693,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         rss_item(title: 'First Article Title Here', url: 'https://example.com/a'),
         rss_item(title: 'Second Article Title Here', url: 'https://example.com/b')
       ]
-      audit = described_class.audit_feed_items(items)
+      audit = described_class.audit_feed_items(items, vocabulary:)
 
       expect(audit.warnings).to be_empty
       expect(audit.metrics).to include(item_count: 2, unique_url_count: 2, junk_title_count: 0)
@@ -686,7 +704,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         rss_item(title: 'Story One Title Here', url: 'https://example.com/same'),
         rss_item(title: 'Story Two Title Here', url: 'https://example.com/same')
       ]
-      audit = described_class.audit_feed_items(items)
+      audit = described_class.audit_feed_items(items, vocabulary:)
 
       expect(audit.warnings).to include(:duplicate_urls)
       expect(audit.metrics[:junk_title_count]).to eq(0)
@@ -697,7 +715,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         rss_item(title: 'Story Title Words Here', url: href)
       end
 
-      expect(described_class.audit_feed_items(items).warnings).to include(:duplicate_urls)
+      expect(described_class.audit_feed_items(items, vocabulary:).warnings).to include(:duplicate_urls)
     end
 
     it 'warns on CTA titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -705,14 +723,14 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         rss_item(title: 'Read More', url: 'https://example.com/a'),
         rss_item(title: 'Valid Article Title Here', url: 'https://example.com/b')
       ]
-      audit = described_class.audit_feed_items(items)
+      audit = described_class.audit_feed_items(items, vocabulary:)
 
       expect(audit.warnings).to include(:generic_titles)
       expect(audit.metrics[:junk_title_count]).to eq(1)
     end
 
     it 'warns on short titles', :aggregate_failures do
-      audit = described_class.audit_feed_items([rss_item(title: 'Ok', url: 'https://example.com/a')])
+      audit = described_class.audit_feed_items([rss_item(title: 'Ok', url: 'https://example.com/a')], vocabulary:)
 
       expect(audit.warnings).to include(:short_titles, :low_word_count)
       expect(audit.metrics[:junk_title_count]).to eq(0)
@@ -730,7 +748,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       { title: 'Harbor ferry route returns', reason: nil }
     ].each do |example|
       it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
-        expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
+        expect(described_class.junk_reason(example[:title],
+                                           vocabulary: Html2rss::Vocabulary[:all])).to eq(example[:reason])
       end
     end
 
@@ -739,7 +758,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         rss_item(title: 'Ok', url: 'https://example.com/a'),
         rss_item(title: 'Story Two Title Here', url: 'https://example.com/a')
       ]
-      audit = described_class.audit_feed_items(items)
+      audit = described_class.audit_feed_items(items, vocabulary:)
 
       expect(audit.warnings).to eq(%i[duplicate_urls short_titles low_word_count])
       expect(audit.metrics).to eq(item_count: 2, unique_url_count: 1, junk_title_count: 0,
@@ -750,7 +769,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     end
 
     it 'does not warn about duplicate URLs for a single item', :aggregate_failures do
-      audit = described_class.audit_feed_items([rss_item(title: 'Single Article Title', url: 'https://example.com/a')])
+      audit = described_class.audit_feed_items([rss_item(title: 'Single Article Title', url: 'https://example.com/a')],
+                                               vocabulary:)
 
       expect(audit.warnings).not_to include(:duplicate_urls)
       expect(audit.metrics[:unique_url_count]).to eq(1)
@@ -761,7 +781,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         Html2rss::Article.new(title: 'First Article Title Here'),
         Html2rss::Article.new(title: 'Second Article Title Here')
       ]
-      audit = described_class.audit_feed_items(items)
+      audit = described_class.audit_feed_items(items, vocabulary:)
 
       expect(audit.metrics).to include(item_count: 2, unique_url_count: 0)
       expect(audit.warnings).to include(:duplicate_urls)
@@ -772,7 +792,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         rss_item(title: 'Read More', url: 'https://example.com/a'),
         rss_item(title: 'Two Words', url: 'https://example.com/b')
       ]
-      audit = described_class.audit_feed_items(items)
+      audit = described_class.audit_feed_items(items, vocabulary:)
 
       expect(audit.violations).to eq(cta: 1, low_word_count: 1)
       expect(audit.metrics).to include(junk_title_count: 1, low_word_count: 1, short_title_count: 0)
@@ -782,16 +802,17 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
   describe '.junk_reason' do
     it 'returns nil for a missing or blank title', :aggregate_failures do
-      expect(described_class.junk_reason(nil)).to be_nil
-      expect(described_class.junk_reason("   \t ")).to be_nil
+      expect(described_class.junk_reason(nil, vocabulary: Html2rss::Vocabulary[:all])).to be_nil
+      expect(described_class.junk_reason("   \t ", vocabulary: Html2rss::Vocabulary[:all])).to be_nil
     end
 
     it 'normalizes whitespace before matching' do
-      expect(described_class.junk_reason("  Read \n more  ")).to eq(:cta)
+      expect(described_class.junk_reason("  Read \n more  ", vocabulary: Html2rss::Vocabulary[:all])).to eq(:cta)
     end
 
     it 'returns nil for an acceptable title' do
-      expect(described_class.junk_reason('A Perfectly Normal Headline')).to be_nil
+      expect(described_class.junk_reason('A Perfectly Normal Headline',
+                                         vocabulary: Html2rss::Vocabulary[:all])).to be_nil
     end
   end
 
@@ -820,7 +841,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     it 'counts fragment-only variants of one URL as a duplicate', :aggregate_failures do
       items = [rss_item(title: 'Story One Title Here', url: 'https://example.com/same#top'),
                rss_item(title: 'Story Two Title Here', url: 'https://example.com/same')]
-      audit = described_class.audit_feed_items(items)
+      audit = described_class.audit_feed_items(items, vocabulary:)
 
       expect(audit.metrics[:unique_url_count]).to eq(1)
       expect(audit.warnings).to include(:duplicate_urls)
@@ -828,14 +849,15 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     it 'counts three identical URLs as one duplicate violation', :aggregate_failures do
       items = Array.new(3) { |index| rss_item(title: "Story Number #{index} Title", url: 'https://example.com/same') }
-      audit = described_class.audit_feed_items(items)
+      audit = described_class.audit_feed_items(items, vocabulary:)
 
       expect(audit.metrics[:unique_url_count]).to eq(1)
       expect(audit.violations).to eq(duplicate_urls: 1)
     end
 
     it 'does not warn for a single item' do
-      audit = described_class.audit_feed_items([rss_item(title: 'Only Story Title Here', url: 'https://example.com/a')])
+      audit = described_class.audit_feed_items([rss_item(title: 'Only Story Title Here', url: 'https://example.com/a')],
+                                               vocabulary: Html2rss::Vocabulary[:all])
 
       expect(audit.warnings).not_to include(:duplicate_urls)
     end
