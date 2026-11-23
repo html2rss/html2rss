@@ -50,7 +50,8 @@ module Html2rss
         read_more: [
           'citește mai mult', 'citește mai multe', 'citește mai departe', 'citește tot articolul',
           'citește articolul', 'citește articolul complet', 'citește continuarea', 'citește tot', 'află mai multe',
-          'află mai mult', 'mai multe', 'mai mult', 'vezi mai multe', 'vezi mai mult', 'vezi detalii', 'continuă lectura', 'citește în continuare'
+          'află mai mult', 'mai multe', 'mai mult', 'vezi mai multe', 'vezi mai mult', 'vezi detalii',
+          'continuă lectura', 'citește în continuare'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,

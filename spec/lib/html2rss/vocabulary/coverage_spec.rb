@@ -1409,7 +1409,7 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['Vezi toate', 'Vezi toate articolele', 'Vezi toate știrile', 'Vezi mai multe știri', 'Toate articolele',
        'Toate știrile', 'Citește mai multe știri'].each do |label|
-        expect([ro.utility_chrome?(label), ro.recommended?(label), ro.read_more?(label)]).to eq([false] * 3), label
+        expect([ro.utility_chrome?(label), ro.recommended?(label), ro.read_more?(label)]).to eq([false, false, false]), label
       end
     end
 
