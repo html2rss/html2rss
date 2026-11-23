@@ -15,6 +15,7 @@ RSpec.describe Html2rss::Vocabulary do
   let(:reviewed) do
     english_chrome = 'the page is tagged in another language but carries an English chrome link'
     also_danish = 'the word is also a utility label in Danish, so the Danish page reads it as chrome'
+    also_norwegian = 'the word is also a utility label in Norwegian, so the Norwegian page reads it as chrome'
     shared_word = 'the same word is a utility label in English too: an international word, not a language clash'
     {
       [:en, 'about', :de] => english_chrome, [:en, 'about', :ja] => english_chrome,
@@ -24,6 +25,10 @@ RSpec.describe Html2rss::Vocabulary do
       [:en, 'share', :da] => english_chrome,
       [:de, 'kontakt', :da] => also_danish, [:pl, 'kontakt', :da] => also_danish,
       [:sv, 'kontakt', :da] => also_danish, [:sv, 'kommentarer', :da] => also_danish,
+      [:en, 'share', :no] => english_chrome,
+      [:de, 'kontakt', :no] => also_norwegian, [:pl, 'kontakt', :no] => also_norwegian,
+      [:sv, 'kontakt', :no] => also_norwegian, [:sv, 'kommentarer', :no] => also_norwegian,
+      [:sv, 'om oss', :no] => also_norwegian,
       [:en, 'share', :cs] => english_chrome,
       [:de, 'kontakt', :cs] => shared_word, [:pl, 'kontakt', :cs] => shared_word,
       [:sv, 'kontakt', :cs] => shared_word,
