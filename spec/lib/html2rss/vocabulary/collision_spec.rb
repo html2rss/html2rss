@@ -15,13 +15,14 @@ RSpec.describe Html2rss::Vocabulary do
   let(:reviewed) do
     english_chrome = 'the page is tagged in another language but carries an English chrome link'
     shared_word = 'the same word is a utility label in English too: an international word, not a language clash'
+    shared_scandinavian = 'the word is a utility label in both Swedish and Danish: a shared word, not a language clash'
     {
       [:en, 'about', :de] => english_chrome, [:en, 'about', :ja] => english_chrome,
       [:en, 'contact', :de] => english_chrome, [:en, 'contact', :ja] => english_chrome,
       [:en, 'share', :da] => english_chrome, [:en, 'share', :id] => english_chrome,
       [:en, 'share', :tr] => english_chrome,
       [:de, 'kontakt', :da] => shared_word, [:pl, 'kontakt', :da] => shared_word,
-      [:sv, 'kontakt', :da] => shared_word, [:sv, 'kommentarer', :da] => shared_word,
+      [:sv, 'kontakt', :da] => shared_word, [:sv, 'kommentarer', :da] => shared_scandinavian,
       [:fr, 'contact', :en] => shared_word, [:fr, 'contact', :de] => shared_word,
       [:fr, 'contact', :ja] => shared_word, [:nl, 'contact', :en] => shared_word,
       [:nl, 'contact', :de] => shared_word, [:nl, 'contact', :ja] => shared_word
