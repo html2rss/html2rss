@@ -241,6 +241,103 @@ RSpec.describe Html2rss::RequestService::Response do
         end
       end
     end
+
+    {
+      'gb2312' => '镕', 'gbk' => '镕', 'x-gbk' => '镕', 'gb_2312-80' => '镕', 'GB2312' => '镕', 'X-GBK' => '镕',
+      'big5' => '啫', 'cn-big5' => '啫', 'csbig5' => '啫', 'x-x-big5' => '啫', 'X-X-BIG5' => '啫'
+    }.each do |label, char|
+      {
+        'Content-Type charset' => [{ 'content-type' => "text/html; charset=#{label}" }, ''],
+        'meta charset' => [{ 'content-type' => 'text/html' }, %(<meta charset="#{label}">)]
+      }.each do |source, (header_set, meta)|
+        context "when #{label} HTML via #{source} contains #{char}" do
+          let(:encoding) { char == '啫' ? 'Big5-HKSCS' : 'GB18030' }
+          let(:body) do
+            "<!DOCTYPE html><html><head>#{meta}</head><body><h1>中文#{char}</h1></body></html>"
+              .encode(encoding).force_encoding(Encoding::UTF_8)
+          end
+          let(:headers) { header_set }
+
+          it 'decodes the page fully', :aggregate_failures do
+            expect(parsed_body.at_css('h1').text).to eq("中文#{char}")
+          end
+        end
+      end
+    end
+
+    [
+      ['keeps ‧ (a145) as Big5 maps it', 'big5', 'a145', '‧'],
+      ['keeps € (a3e1) as Big5 maps it', 'big5', 'a3e1', '€'],
+      ['keeps ＼ (a240) as Big5 maps it', 'big5', 'a240', '＼'],
+      ['decodes HKSCS-only 啫 (94dc) fully', 'big5', '94dc', '啫'],
+      ['scrubs a page mixing € and 啫: no single decoder maps both', 'big5', 'a3e194dc', "\uFFFD" * 3],
+      ['decodes big5-hkscs as Big5-HKSCS only: c6a1 is ①, not private use', 'big5-hkscs', 'c6a1', '①'],
+      ['decodes cp950 directly: EUDC byte pair 8140 stays private use', 'cp950', '8140', "\uEEB8"],
+      ['decodes gbk byte 0x80 as €', 'gbk', '80', '€'],
+      ['decodes gbk-only 镕 (e946) under the gb2312 label', 'gb2312', 'e946', '镕'],
+      ['decodes gb2312 with GBK-only byte 0x80 as 中€ (GB2312 fails, GBK takes it)', 'gb2312', 'd6d080', '中€'],
+      ['known limit: gbk page mixing 0x80 and a GB18030 four-byte sequence is scrubbed', 'gbk', 'd6d08081308130',
+       "\uFFFD\u0400\uFFFD0\uFFFD0"],
+      ['known limit: big5 page with a two-code-point HKSCS code (8862) is scrubbed', 'big5', 'a4a48862',
+       "\uFFFD\uFFFD\uFFFDb"],
+      ['scrubs an unresolvable internal label instead of raising', 'internal', 'ffff', "\uFFFD" * 2]
+    ].each do |name, label, hex, expected|
+      context "when a #{label} page contains bytes #{hex}" do
+        let(:body) { "<h1>#{[hex].pack('H*')}</h1>".b.force_encoding(Encoding::UTF_8) }
+        let(:headers) { { 'content-type' => "text/html; charset=#{label}" } }
+
+        it(name) { expect(parsed_body.at_css('h1').text).to eq(expected) }
+      end
+    end
+
+    context 'when windows-1251 HTML is labeled' do
+      let(:body) { '<meta charset="windows-1251"><h1>Привет</h1>'.encode('Windows-1251').force_encoding(Encoding::UTF_8) }
+      let(:headers) { { 'content-type' => 'text/html' } }
+
+      it('still decodes via Encoding.find') { expect(parsed_body.at_css('h1').text).to eq('Привет') }
+    end
+
+    %w[UTF-7 Emacs-Mule EUC-TW Windows-1258].each do |label|
+      {
+        'Content-Type charset' => [{ 'content-type' => "text/html; charset=#{label}" }, ''],
+        'meta charset' => [{ 'content-type' => 'text/html' }, %(<meta charset="#{label}">)]
+      }.each do |source, (header_set, meta)|
+        context "when a #{label} page (no converter) is labeled via #{source}" do
+          let(:body) { "#{meta}<h1>Caffè</h1>" }
+          let(:headers) { header_set }
+
+          it('falls back to the UTF-8 scrub') { expect(parsed_body.at_css('h1').text).to eq('Caffè') }
+        end
+      end
+    end
+
+    %w[UTF-16 UTF-32 ISO-2022-JP].each do |label|
+      context "when a #{label}-labeled page holds invalid #{label} bytes (a UTF-8 body)" do
+        let(:body) { '<h1>Caffè</h1>' }
+        let(:headers) { { 'content-type' => "text/html; charset=#{label}" } }
+
+        it('falls back to the UTF-8 scrub') { expect(parsed_body.at_css('h1').text).to eq('Caffè') }
+      end
+    end
+
+    {
+      'BOM-prefixed UTF-16' => ['UTF-16', '<h1>Caffè</h1>', 'Caffè'],
+      'real ISO-2022-JP' => ['ISO-2022-JP', '<h1>日本語</h1>', '日本語']
+    }.each do |name, (label, html, expected)|
+      context "when #{name} bytes are labeled #{label}" do
+        let(:body) { html.encode(label).force_encoding(Encoding::UTF_8) }
+        let(:headers) { { 'content-type' => "text/html; charset=#{label}" } }
+
+        it('decodes the page') { expect(parsed_body.at_css('h1').text).to eq(expected) }
+      end
+    end
+
+    context 'when the charset label is unknown' do
+      let(:body) { '<h1>Caffè</h1>' }
+      let(:headers) { { 'content-type' => 'text/html; charset=x-nonsense' } }
+
+      it('falls back to UTF-8') { expect(parsed_body.at_css('h1').text).to eq('Caffè') }
+    end
   end
 
   describe '#initialize' do
@@ -426,6 +523,14 @@ RSpec.describe Html2rss::RequestService::Response do
                                      url: Html2rss::Url.from_absolute('https://example.com'))
 
       expect(response.content_type).to eq('')
+    end
+
+    it 'returns the value of a public lookup, nil when absent', :aggregate_failures do
+      response = described_class.new(body: '', headers: { 'X-Test' => 'v' },
+                                     url: Html2rss::Url.from_absolute('https://example.com'))
+
+      expect(response.header('x-test')).to eq('v')
+      expect(response.header('x-other')).to be_nil
     end
 
     it 'prefers an exact-case header key over a case-insensitive match', :aggregate_failures do
