@@ -440,9 +440,11 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
 
     let(:read) do
       { own_cta: %w[Abonneer-xx], new_window: ['Haven (nieuw-xx)'],
-        read_more: ['Lees-xx', 'Meer-xx over-xx "Haven"', 'Haven-vervolg-xx', 'Read more'] }
+        read_more: ['Lees-xx', 'Meer-xx over-xx "Haven"', 'Haven-vervolg-xx', 'Read more', 'Lire la suite de «Port»'] }
     end
-    let(:unread) { { own_cta: ['Abonneer-xx op ons nieuws'], read_more: ['Lees-xx de haven opent weer'] } }
+    let(:unread) do
+      { own_cta: ['Abonneer-xx op ons nieuws'], read_more: ['Lees-xx de haven opent weer', 'Lees-xx over-xx "Haven"'] }
+    end
 
     it 'reads every page pattern through the same scope, with no special case per concept', :aggregate_failures do
       read.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(true)) }
