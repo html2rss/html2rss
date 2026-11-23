@@ -423,6 +423,16 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect([everything.utility_chrome?('关于我们'), everything.recommended?('相关阅读')]).to eq([false, false])
     end
 
+    it 'reads a short count after an own term, never a year', :aggregate_failures do
+      expect(['相关阅读 3', '隐私政策 128', '登录 (3)'].map { zh.utility_chrome?(_1) }).to all(be(true))
+      expect(['相关阅读 2026', '隐私政策 2026', '推荐阅读 2026'].map { zh.utility_chrome?(_1) }).to all(be(false))
+      expect(['相关阅读 2026', '推荐阅读 2026'].map { zh.recommended?(_1) }).to all(be(false))
+    end
+
+    it 'keeps the shared reading of a count, year included', :aggregate_failures do
+      expect(['Contact 12', 'Contact 2026'].map { described_class.new.utility_chrome?(_1) }).to all(be(true))
+    end
+
     it 'reads no trailing word and no opener', :aggregate_failures do
       ['帮助 受灾群众重建家园', '评论 美国大选结果影响全球市场', '相关阅读：港口重新开放'].each do |headline|
         expect(zh.utility_chrome?(headline)).to be(false), headline
