@@ -63,15 +63,20 @@ module Html2rss
 
         # @param alternatives [Array<String>] regex alternatives of a scope's own terms
         # @return [Regexp] the whole text is one term, with wrapping punctuation, symbols or arrows and one short
-        #   count (up to three digits, so a year is a headline), and no other word; +NEVER+ without any alternative
+        #   count inside matching brackets (+(3)+, +[3]+, +（3）+, +［3］+, up to three digits), and no other word: a
+        #   bare trailing number (a year, a numbered column) means the text is no label; +NEVER+ without any
+        #   alternative
         def whole_label(alternatives)
           alternatives = alternatives.reject(&:empty?)
           return NEVER if alternatives.empty?
 
           wrap = '[\s\p{P}\p{S}]*'
-          /\A#{wrap}(?:#{alternatives.join('|')})#{wrap}(?:\d{1,3}#{wrap})?\z/iux
+          /\A#{wrap}(?:#{alternatives.join('|')})#{wrap}(?:#{BRACKETED_COUNT}#{wrap})?\z/iux
         end
       end
+
+      # A count of up to three digits inside matching brackets; an unbalanced bracket is no count.
+      BRACKETED_COUNT = '(?:\(\s*\d{1,3}\s*\)|\[\s*\d{1,3}\s*\]|（\s*\d{1,3}\s*）|［\s*\d{1,3}\s*］)'
 
       # Per reading, the matcher of the terms every page language applies (shared, compiled once) ...
       UNAMBIGUOUS = READINGS.to_h do |reading, concepts|
@@ -94,7 +99,7 @@ module Html2rss
         whole = ->(concepts) { whole_label(concepts.map { scope.own_alternation(_1) }) }
         [scope.code, READINGS.transform_values(&whole).freeze]
       end.freeze
-      private_constant :NEVER, :BIDI_MARKS, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
+      private_constant :NEVER, :BIDI_MARKS, :BRACKETED_COUNT, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
 
       # Zero-width non-joiner and joiner. Inside a word they spell Persian, Urdu and Indic words, so a label
       # holding one is trimmed only at its edges, up to the first and last {LABEL_CHAR}.
