@@ -404,6 +404,38 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
   end
 
+  describe '.call shared class names' do
+    let(:html) do
+      '<html><body><p class="card">a</p><p class="card">b</p><p class=" card ">c</p>' \
+        '<p class="card wide">d</p></body></html>'
+    end
+    let(:cards) { described_class.call(html, vocabulary: all_scope).root.find_all { _1.name == :p } }
+
+    it 'shares one frozen token list between nodes with the same class attribute', :aggregate_failures do
+      first, second, spaced, wide = cards.map { _1.attrs.class_names }
+
+      expect(second).to be(first)
+      expect(first).to eq(%w[card]).and be_frozen
+      expect([spaced, wide]).to eq([%w[card], %w[card wide]])
+      expect(spaced).not_to be(first)
+    end
+
+    it 'keeps shared tokens immutable through every node', :aggregate_failures do
+      first, second = cards
+
+      expect { second.attrs.class_names << 'x' }.to raise_error(FrozenError)
+      expect { first.attrs.class_names.first << 'x' }.to raise_error(FrozenError)
+      expect(second.attrs.class_names).to eq(%w[card])
+    end
+
+    it 'shares nothing between two normalizations', :aggregate_failures do
+      other = described_class.call(html, vocabulary: all_scope).root.find { _1.name == :p }
+
+      expect(other.attrs.class_names).to eq(cards.first.attrs.class_names)
+      expect(other.attrs.class_names).not_to be(cards.first.attrs.class_names)
+    end
+  end
+
   describe '.call input validation' do
     it 'rejects nil and unsupported input', :aggregate_failures do
       expect do

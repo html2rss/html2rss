@@ -98,6 +98,7 @@ module Html2rss
         @parents = {}.compare_by_identity
         @depths = {}.compare_by_identity
         @scopes = {}.compare_by_identity
+        @class_tokens = {}
         @tag_paths = Hash.new { |paths, path| paths[path] = {} }
       end
 
@@ -215,7 +216,7 @@ module Html2rss
           href: nk_node['href'],
           src: nk_node['src'],
           id: nk_node['id'],
-          class_names: nk_node['class']&.split,
+          class_names: class_tokens(nk_node['class']),
           datetime: nk_node['datetime'],
           itemprop: nk_node['itemprop'],
           style: nk_node['style'],
@@ -223,6 +224,16 @@ module Html2rss
           type: nk_node['type'],
           raw: raw_attrs(attr_nodes)
         )
+      end
+
+      # Repeated card classes share one frozen token list. The cache lives and dies with this normalizer and
+      # holds at most one entry per kept node ({MAX_NODES}).
+      #
+      # @return [Array<String>, nil] frozen tokens, +nil+ without a class attribute
+      def class_tokens(class_attr)
+        return unless class_attr
+
+        @class_tokens[class_attr] ||= class_attr.split.each(&:freeze).freeze
       end
 
       # @return [Hash{String => String}, nil] kept attributes with frozen values, +nil+ when none
