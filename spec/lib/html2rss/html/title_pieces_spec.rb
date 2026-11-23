@@ -188,7 +188,8 @@ RSpec.describe Html2rss::Html::TitlePieces do
       [
         '<span>Soort-xx:</span>', '<span>Betaald-xx</span>',
         '<span>Soort-xx:</span><span>12:30</span>', '<span>Betaald-xx</span><span>12:30</span>',
-        '<span>Betaald-xx</span> <span>12:30</span>', '<time>12-mnd-xx</time>', '<a href="/s"><time>12-mnd-xx</time></a>'
+        '<span>Betaald-xx</span> <span>12:30</span>', '<time>12-mnd-xx</time>',
+        '<a href="/s"><time>12-mnd-xx</time></a>'
       ].flat_map { |inner| [%(<a href="/s">#{inner}</a>), inner] }.each do |inner|
         html = %(<article><h2>#{inner}</h2><a href="/s">x</a></article>)
 
