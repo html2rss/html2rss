@@ -317,7 +317,7 @@ module Html2rss
 
     # Rendered links of the page, built once for the page check and sponsorship.
     def page_links
-      @page_links ||= PageLinks.build(page_document, link_resolver:, vocabulary: @vocabulary)
+      @page_links ||= PageLinks.build(page_document, link_resolver:)
     end
 
     def admitted_articles(articles)

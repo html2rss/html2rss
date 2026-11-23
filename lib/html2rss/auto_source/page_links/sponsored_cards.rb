@@ -42,9 +42,8 @@ module Html2rss
         # @param document [SST::Document, nil]
         # @param link_resolver [Scoring::LinkResolver, nil]
         # @param identity [#call] {PageLinks#identity}, the page's one article key for a destination URL
-        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for label text
-        def initialize(document, link_resolver, identity, vocabulary)
-          @vocabulary = vocabulary
+        def initialize(document, link_resolver, identity)
+          @vocabulary = link_resolver.vocabulary if document
           @claims = AnchorClaims.new(link_resolver, identity)
           @linked = Set.new
           @ancestors, @labelled, @links = Array.new(3) { [] }
