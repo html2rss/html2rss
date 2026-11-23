@@ -182,7 +182,8 @@ module Html2rss
           link['href'].to_s.match?(PAGE_LINK_HREF) || text.match?(readings.page_link_text) ||
           text.match?(readings.page_link_label)
       end
-      private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?, :list_pager?, :named_pager?, :page_link?
+      private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?, :list_pager?, :named_pager?,
+                           :page_link?
     end
   end
 end
