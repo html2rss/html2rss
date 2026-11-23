@@ -184,7 +184,8 @@ RSpec.describe Html2rss::Html::TitlePieces do
     end
 
     it 'keeps an own label when only a clock or a bar would be left', :aggregate_failures do
-      ['<span>Betaald-xx</span> 12:30', '<span>Betaald-xx</span>｜<span>12:30</span>'].each do |inner|
+      ['<span>Betaald-xx</span> 12:30 14:15 16:40', '<span>Betaald-xx</span> 12:30',
+       '<span>Betaald-xx</span>｜<span>12:30</span>'].each do |inner|
         html = %(<article><h2>#{inner}</h2><a href="/s">x</a></article>)
 
         expect(headline.call(html, xx)).to match(/Betaald-xx/i), inner

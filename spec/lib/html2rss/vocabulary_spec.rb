@@ -483,6 +483,13 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe '#own?' do
+    it 'is true only for a scope with own terms', :aggregate_failures do
+      expect(described_class[:zh].own?).to be(true)
+      expect(%i[en ja de all].map { described_class[_1].own? }).to all(be(false))
+    end
+  end
+
   describe '.union' do
     it 'is the shared alternatives, widened by the own ones when there are any', :aggregate_failures do
       none = { read_more: '', utility_cta: '' }
