@@ -331,7 +331,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       let(:page_links) do
         cards = hrefs.map { |href| %(<article><a href="#{href}">Story</a></article>) }
         html = "<html><body><main>#{cards.join}</main></body></html>"
-        Html2rss::AutoSource::PageLinks.build(Html2rss::SST::Normalizer.call(html), link_resolver: resolver)
+        Html2rss::AutoSource::PageLinks.build(Html2rss::SST::Normalizer.call(html), link_resolver: resolver,
+                                                                                    vocabulary: Html2rss::Vocabulary[:all])
       end
       let(:article_at) do
         lambda do |path, title = 'A Reasonably Long Story Title'|

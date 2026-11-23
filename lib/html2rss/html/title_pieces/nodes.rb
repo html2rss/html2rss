@@ -19,10 +19,13 @@ module Html2rss
 
         ##
         # @param root [Nokogiri::XML::Node, SST::Node] card root
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for label text
         # @return [Nodes] the reader for the node kind of +root+
-        def self.for(root) = root.instance_of?(SST::Node) ? SstNodes.new : NokogiriNodes.new
+        def self.for(root, vocabulary) = (root.instance_of?(SST::Node) ? SstNodes : NokogiriNodes).new(vocabulary)
 
-        def initialize
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
+        def initialize(vocabulary)
+          @vocabulary = vocabulary
           @words = {}.compare_by_identity
           @elements = {}.compare_by_identity
           @texts = {}.compare_by_identity
@@ -91,14 +94,14 @@ module Html2rss
         # @param node [Nokogiri::XML::Node, SST::Node]
         # @return [Boolean] whether the text of +node+ is a paid-content label
         #   ({LinkDestination::Sponsorship.paid_text?})
-        def paid_label?(node) = LinkDestination::Sponsorship.paid_text?(text(node))
+        def paid_label?(node) = LinkDestination::Sponsorship.paid_text?(text(node), vocabulary: @vocabulary)
 
         ##
         # @param node [Nokogiri::XML::Node, SST::Node]
         # @return [Boolean] whether the text of +node+ is headline noise ({Article::Title.headline_noise_piece?})
         #   or a paid-content label
         def noise?(node)
-          Article::Title.headline_noise_piece?(text(node)) || LinkDestination::Sponsorship.paid_text?(text(node))
+          Article::Title.headline_noise_piece?(text(node)) || paid_label?(node)
         end
       end
       private_constant :Nodes

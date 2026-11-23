@@ -73,7 +73,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads sponsorship labels and a section label', :aggregate_failures do
-      kind = Html2rss::LinkDestination::Sponsorship::LabelText.method(:kind)
+      kind = ->(text) { Html2rss::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
 
       expect(kind.call('Conteúdo patrocinado por Marca')).to eq(:paid_label)
       expect(kind.call('Publieditorial')).to eq(:paid_label)
@@ -153,7 +153,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads sponsorship labels with the ё and е spellings, and an ad word as a whole text', :aggregate_failures do
-      kind = Html2rss::LinkDestination::Sponsorship::LabelText.method(:kind)
+      kind = ->(text) { Html2rss::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
 
       ['На правах рекламы', 'Партнёрский материал', 'ПАРТНЕРСКИЙ МАТЕРИАЛ', 'Партнёрские материалы',
        'Материал партнера', 'Материал партнёра', 'Спонсорский материал', 'Рекламный материал'].each do |label|

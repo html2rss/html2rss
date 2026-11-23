@@ -59,10 +59,12 @@ module Html2rss
     SCOPED_PATTERNS = %i[utility_prefix utility recommended].freeze
 
     # Pattern concepts a {PAGE_ONLY} language may declare besides {SCOPED_PATTERNS}: the call-to-action, read-more
-    # and new-window readers of {LinkDestination::TextClassifier}, which read a scope's own terms as whole labels.
-    # A page-only language declaring any other pattern concept would have a dead term, so the conformance spec
-    # rejects it; a later pull request moves the remaining readers here.
-    PAGE_PATTERNS = %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice].freeze
+    # and new-window readers of {LinkDestination::TextClassifier} and the sponsorship labels of
+    # {LinkDestination::Sponsorship::LabelText}, which read a scope's own terms as whole labels. A concept joins
+    # this list only when every production path that reads it takes the page scope; a page-only language declaring
+    # any other pattern concept would have a dead term, so the conformance spec rejects it.
+    PAGE_PATTERNS = %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice
+                       paid_label ad_word element_label].freeze
 
     # Every concept each language in {ALL} declares.
     CONCEPTS = (WORD_CONCEPTS + PATTERN_CONCEPTS).freeze

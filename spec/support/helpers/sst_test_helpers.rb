@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 module SstTestHelpers
+  # The scope of a page whose language is unknown: every shared term applies.
+  def all_scope = Html2rss::Vocabulary[:all]
+
   def build_node(name: :div, href: nil, class_names: nil, text: '', children: [])
     attrs = Html2rss::SST::Attrs.build(href:, class_names:)
     Html2rss::SST::Node.build(name:, attrs:, own_text: text, children:)

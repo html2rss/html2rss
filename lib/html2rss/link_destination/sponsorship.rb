@@ -74,15 +74,16 @@ module Html2rss
         ##
         # @param node [SST::Node]
         # @param ancestors [Array<SST::Node>] +node+'s ancestors, root first
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the label text
         # @return [Symbol, nil] +:container+, +:label+ or +:paid_label+ when +node+ itself carries an
         #   explicit sponsorship marker, else nil
-        def marker(node, ancestors)
-          return :container if raw_marker?(node.attrs.raw)
+        def marker(node, ancestors, vocabulary:)
+          return :container if raw_marker?(node.attrs.raw, vocabulary)
 
           kind = class_marker(node.attrs.class_names)
           return (kind if visible?(node, ancestors)) if kind
 
-          text_label(node, ancestors)
+          text_label(node, ancestors, vocabulary)
         end
 
         ##
@@ -90,8 +91,9 @@ module Html2rss
         # of plain text such as title pieces; an ad word is left out, as it also names a topic.
         #
         # @param text [String, nil]
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
         # @return [Boolean]
-        def paid_text?(text) = LabelText.kind(text) == :paid_label
+        def paid_text?(text, vocabulary:) = LabelText.kind(text, vocabulary:) == :paid_label
 
         private
 
@@ -133,12 +135,12 @@ module Html2rss
         end
 
         # Most nodes carry no raw attributes, so the empty check skips every lookup.
-        def raw_marker?(raw)
+        def raw_marker?(raw, vocabulary)
           return false if raw.empty?
 
           sponsored_rel?(raw['rel']) ||
             ATTRIBUTE_NAMES.any? { ON_VALUES.include?(raw[_1]&.strip&.downcase) } ||
-            ARIA_NAMES.any? { LabelText.kind(raw[_1], element: false) }
+            ARIA_NAMES.any? { LabelText.kind(raw[_1], vocabulary:, element: false) }
         end
 
         def sponsored_rel?(rel)
@@ -148,10 +150,10 @@ module Html2rss
         end
 
         # The own-text check runs first: it is the cheap filter for every node of the page.
-        def text_label(node, ancestors)
-          return unless LabelText.candidate?(node.own_text)
+        def text_label(node, ancestors, vocabulary)
+          return unless LabelText.candidate?(node.own_text, vocabulary:)
 
-          kind = LabelText.kind(node.visible_text)
+          kind = LabelText.kind(node.visible_text, vocabulary:)
           kind if kind && readable?(node, ancestors, paid: kind == :paid_label)
         end
 

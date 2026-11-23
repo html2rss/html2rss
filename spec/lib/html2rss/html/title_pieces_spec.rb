@@ -7,7 +7,7 @@ RSpec.describe Html2rss::Html::TitlePieces do
         root = Nokogiri::HTML.fragment(html).at_css('article')
         anchor = root.at_css('a[href]')
         source = root.at_css('h1, h2, h3, h4, h5, h6') || anchor
-        [described_class.new(root, source, anchor:), root, source]
+        [described_class.new(root, source, anchor:, vocabulary: all_scope), root, source]
       end
     end
     let(:title_for) do
@@ -49,12 +49,12 @@ RSpec.describe Html2rss::Html::TitlePieces do
 
     it 'takes a marked element as the kicker when the card has no headline source' do
       root = Nokogiri::HTML.fragment('<article><b class="kicker">Transit</b><p>Tram</p></article>').at_css('article')
-      expect(described_class.new(root, nil).kicker_text).to eq('Transit')
+      expect(described_class.new(root, nil, vocabulary: all_scope).kicker_text).to eq('Transit')
     end
 
     it 'finds no kicker without a marked one or a headline source' do
       root = Nokogiri::HTML.fragment('<article><b>Transit</b><p>Tram</p></article>').at_css('article')
-      expect(described_class.new(root, nil).kicker).to be_nil
+      expect(described_class.new(root, nil, vocabulary: all_scope).kicker).to be_nil
     end
 
     it 'reads a heading whose only link is not the selected anchor as a whole' do
@@ -80,7 +80,7 @@ RSpec.describe Html2rss::Html::TitlePieces do
         root = doc.root.find { _1.name == :article }
         anchor = root.find(&:link?)
         source = root.find(&:heading?) || anchor
-        [described_class.new(root, source, anchor:), root, source]
+        [described_class.new(root, source, anchor:, vocabulary: all_scope), root, source]
       end
     end
     let(:title_for) do
@@ -117,7 +117,7 @@ RSpec.describe Html2rss::Html::TitlePieces do
         anchor = Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '/s'), own_text: 'Tram')
         Html2rss::SST::Node.build(name: :h2, children: [kicker, anchor])
       end
-      let(:pieces) { described_class.new(Html2rss::SST::Node.build(name: :article, children: [heading]), heading) }
+      let(:pieces) { described_class.new(Html2rss::SST::Node.build(name: :article, children: [heading]), heading, vocabulary: all_scope) }
 
       it 'judges them by walking the tree', :aggregate_failures do
         expect(pieces.kicker).to equal(kicker)
@@ -127,7 +127,8 @@ RSpec.describe Html2rss::Html::TitlePieces do
       it 'finds no piece before a title piece without parents' do
         title = kicker.with(attrs: kicker.attrs.with(class_names: ['title']), own_text: 'Tram')
         box = heading.with(children: [kicker.with(attrs: Html2rss::SST::Attrs.build), title])
-        bare = described_class.new(Html2rss::SST::Node.build(name: :article, children: [box]), box)
+        bare = described_class.new(Html2rss::SST::Node.build(name: :article, children: [box]), box,
+                                   vocabulary: all_scope)
 
         expect([bare.kicker, bare.headline_text(box)]).to eq([nil, 'Tram'])
       end
