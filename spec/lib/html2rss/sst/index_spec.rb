@@ -189,5 +189,15 @@ RSpec.describe Html2rss::SST::Index do
     it 'is nil for every node when the tree was built without sources' do
       expect(index.node_for(Nokogiri::HTML('<p>x</p>').at_css('p'))).to be_nil
     end
+
+    it 'finds the node built from a parsed node, nil for a dropped or foreign one', :aggregate_failures do
+      parsed = Nokogiri::HTML('<html><body><div id="w"><p>x</p><script>y</script></div></body></html>')
+      tracked = Html2rss::SST::Normalizer.call(parsed, vocabulary: all_scope, items: true)
+
+      found = %w[#w p script].map { tracked.index.node_for(parsed.at_css(_1))&.name }
+
+      expect(found).to eq([:div, :p, nil])
+      expect(tracked.index.node_for(Nokogiri::HTML('<p>x</p>').at_css('p'))).to be_nil
+    end
   end
 end

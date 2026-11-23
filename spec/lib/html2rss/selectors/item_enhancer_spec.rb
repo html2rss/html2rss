@@ -4,9 +4,9 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
   subject(:enhancer) { enhancer_for.call(parsed) }
 
   let(:enhancer_for) do
-    lambda do |page|
-      described_class.new(page, base_url: Html2rss::Url.from_absolute('https://example.com'), time_zone: 'UTC',
-                                vocabulary: all_scope)
+    lambda do |page, time_zone: 'UTC', vocabulary: all_scope|
+      described_class.new(page, base_url: Html2rss::Url.from_absolute('https://example.com'), time_zone:,
+                                vocabulary:)
     end
   end
 
@@ -54,6 +54,22 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
 
       expect(fields[:title]).to eq('Story')
       expect(fields[:url].to_s).to eq('https://example.com/s')
+    end
+
+    it 'reads the item in the page language', :aggregate_failures do
+      page = Nokogiri::HTML('<article><b class="kicker">独自</b><h2><a href="/s">港湾計画を発表した</a></h2></article>')
+      titles = %i[ja zh-Hans-CN].map do |language|
+        enhancer_for.call(page, vocabulary: Html2rss::Vocabulary[language]).fields_for(page.at_css('article'))[:title]
+      end
+
+      expect(titles).to eq(['港湾計画を発表した', '独自: 港湾計画を発表した'])
+    end
+
+    it 'reads a naive leftover date in the channel time zone' do
+      page = Nokogiri::HTML('<body><article><h2><a href="/s">Story</a></h2><span>12 March 2024</span></article></body>')
+      fields = enhancer_for.call(page, time_zone: 'Europe/Berlin').fields_for(page.at_css('article'))
+
+      expect(fields[:published_at].zone).to eq('+01:00')
     end
 
     it 'reads an item inside a noscript, which a browser without script shows' do

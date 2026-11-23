@@ -132,7 +132,17 @@ RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
       'a font-semibold node for an item without an anchor' =>
         ['<div class="card"><div class="font-semibold">Semibold item</div></div>', 'Semibold item'],
       'the kicker alone for a card without heading or anchor' =>
-        ['<article><span class="kicker">Weather</span><p>Storm ahead.</p></article>', 'Weather']
+        ['<article><span class="kicker">Weather</span><p>Storm ahead.</p></article>', 'Weather'],
+      'the first text, not the item own label' =>
+        ['<div class="card" title="Tooltip"><span>Alpha</span><span>Beta</span></div>', 'Alpha'],
+      'the first text, trimmed on both sides' =>
+        ['<div class="card">  Lead text <span>x</span>tail</div>', 'Lead text'],
+      'the first bold node, not the first text, for an item without an anchor' =>
+        ['<div class="card"><span>Lead</span><b>Headline</b></div>', 'Headline'],
+      'the next bold node when the first has only blanks' =>
+        ['<div class="card"><b> </b><span>Lead</span><b>Bold head</b></div>', 'Bold head'],
+      'the first text when the only labelled node has a blank label' =>
+        ['<div class="card"><span title="  ">Alpha</span></div>', 'Alpha']
     }.each do |name, (html, expected)|
       it "is #{name}" do
         expect(item_fields_for(html, item: 'article, .card')[:title]).to eq(expected)
@@ -227,7 +237,22 @@ RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
       'a slug of the title-classed node of an item without heading and link' =>
         ['<div class="card"><p>Intro</p><strong class="title">Fallback Article Title</strong></div>',
          'fallback-article-title'],
-      'nothing for an item without text' => ['<div class="card">   </div>', nil]
+      'nothing for an item without text' => ['<div class="card">   </div>', nil],
+      'the first descendant that has an id, past those without' =>
+        ['<div class="card"><p>x</p><span id="inner">y</span></div>', 'inner'],
+      'a descendant id before the link path' =>
+        ['<div class="card"><p>x</p><a href="/p/1">y</a><span id="inner">z</span></div>', 'inner'],
+      'a hash of the trimmed text when it has no slug characters' =>
+        ['<div class="card">日本語 <span>x</span></div>', Zlib.crc32('日本語').to_s(36)],
+      'the text when the container id is empty' => ['<div class="card" id=""><p>Text here</p></div>', 'text-here'],
+      'a hash of the text trimmed after an empty element' =>
+        ['<div class="card"><span></span> 日本語 </div>', Zlib.crc32('日本語').to_s(36)],
+      'a hash of the text trimmed on its left too' =>
+        ['<div class="card"> 日本語<span>x</span></div>', Zlib.crc32('日本語').to_s(36)],
+      'a slug without a leading separator only' => ['<div class="card"><h2>!Hello</h2></div>', 'hello'],
+      'a slug without a trailing separator only' => ['<div class="card"><h2>Hello!</h2></div>', 'hello'],
+      'the first text when the heading has no text at all' =>
+        ['<div class="card"><h2></h2><p>Body copy</p></div>', 'body-copy']
     }.each do |name, (html, expected)|
       it "is #{name}" do
         expect(id_for.call(html, item: '.card')).to eq(expected)

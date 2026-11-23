@@ -97,7 +97,7 @@ module Html2rss
       # @param parsed_body [Nokogiri::HTML::Document, Nokogiri::XML::Node]
       # @param vocabulary [Vocabulary::Scope]
       # @param items [Boolean] see {.call}
-      def initialize(parsed_body, vocabulary, items: false) # rubocop:disable Metrics/MethodLength -- per-run state
+      def initialize(parsed_body, vocabulary, items:) # rubocop:disable Metrics/MethodLength -- per-run state
         @parsed_body = parsed_body
         @vocabulary = vocabulary
         @items = items

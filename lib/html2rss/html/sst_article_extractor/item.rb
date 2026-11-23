@@ -29,26 +29,24 @@ module Html2rss
         # +aria-label+ (then +title+), else, for an item without an anchor, the first bold or title-classed
         # node with text.
         def heading
-          return @heading if defined?(@heading)
-
-          @heading = heading_tag || labelled_node || (fallback_heading unless @selected_anchor)
+          @heading ||= heading_tag || labelled_node || (fallback_heading unless @selected_anchor)
         end
 
         def heading_tag
           tags = @root.children.flat_map { |child| child.find_all(&:heading?) }
-          select_best_heading(tags) unless tags.empty?
+          select_best_heading(tags)
         end
 
         def labelled_node
           LABEL_ATTRIBUTES.each do |name|
-            hit = descendant { |node| !node.attrs.raw[name].to_s.strip.empty? }
+            hit = descendant { |node| node.attrs.raw[name]&.match?(/\S/) }
             return hit if hit
           end
           nil
         end
 
         def fallback_heading
-          descendant { |node| fallback_heading?(node) && !node.visible_text.to_s.strip.empty? }
+          descendant { |node| fallback_heading?(node) && node.visible_text }
         end
 
         def fallback_heading?(node)
@@ -68,8 +66,8 @@ module Html2rss
           lead = node.lead_text.strip
           return lead unless lead.empty?
 
-          node.children.each_with_index do |child, index|
-            found = first_text(child) || node.tails[index].strip.then { _1 unless _1.empty? }
+          node.children.zip(node.tails).each do |child, tail|
+            found = first_text(child) || tail.strip.then { _1 unless _1.empty? }
             return found if found
           end
           nil
@@ -79,8 +77,8 @@ module Html2rss
         def parse_id_from_dom
           nested = descendant { |node| node.attrs.id }
           candidates = [@root.attrs.id, nested&.attrs&.id]
-          candidates << extract_url&.path if @selected_anchor
-          candidates.compact.reject(&:empty?).first || id_from_text
+          candidates << extract_url&.path
+          candidates.compact.first || id_from_text
         end
 
         def id_from_text
@@ -89,14 +87,11 @@ module Html2rss
         end
 
         def heading_text
-          text = heading&.visible_text
-          text.nil? || text.strip.empty? ? first_text(@root) : text
+          heading&.visible_text || first_text(@root)
         end
 
         def slug(text)
-          slug = text.downcase.gsub(/[^a-z0-9]+/, '-')
-          slug = slug[1..] if slug.start_with?('-')
-          slug = slug[0..-2] if slug.end_with?('-')
+          slug = text.downcase.gsub(/[^a-z0-9]+/, '-').delete_prefix('-').delete_suffix('-')
           slug unless slug.empty?
         end
       end
