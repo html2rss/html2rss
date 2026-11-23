@@ -332,6 +332,69 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Ukrainian labels' do
+    let(:uk) { text.call(:uk) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:uk]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { uk.utility?(label) }, chrome: ->(label) { uk.utility_chrome?(label) },
+        prefix: ->(label) { uk.utility_prefix?(label) }, recommended: ->(label) { uk.recommended?(label) },
+        read_more: ->(label) { uk.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
+      %w[вхід увійти реєстрація пошук підписка підписатися поділитися закрити меню коментарі контакти].push(
+        'про нас', 'про компанію', 'карта сайту', 'політика конфіденційності', 'умови використання', 'Вхід (3)', '[Пошук]'
+      ).each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
+      ['читайте також', 'Читайте також', 'схожі матеріали', 'рекомендовані матеріали', 'вас також може зацікавити']
+        .each { expect(uk.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads the apostrophe spellings of a label alike', :aggregate_failures do
+      ["'", '’', 'ʼ'].each do |mark|
+        expect(uk.utility_chrome?("зворотний зв#{mark}язок")).to be(true), mark
+        expect(uk.recommended?("пов#{mark}язані матеріали")).to be(true), mark
+        expect(uk.utility_chrome?("зв#{mark}яжіться з нами")).to be(true), mark
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Читати далі', 'докладніше', 'Детальніше', 'дізнатися більше'].each do |label|
+        expect([uk.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['підписатися на розсилку', 'Поділіться', 'залишити коментар'].each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps a headline that opens with a label noun a headline', :aggregate_failures do
+      ['Пошук зниклих триває', 'Вхід до міста закрито', 'Реєстрація виборців завершилась', 'Підписка на газети зросла',
+       'Контакти з сусідами рятують', 'Меню шкільних їдалень оновили', 'Коментарі експертів розділились',
+       'Детальніше про реформу розповів міністр', 'Читати далі стане легше: бібліотеки оновили фонд',
+       'Закрити кордон пропонують депутати'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
+      ['Читайте також 2026', 'Рекомендовані матеріали 2026', 'Схожі новини 2026', 'Про нас 2026',
+       'Політика конфіденційності 2026', 'Підписка 2026'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+      expect(uk.recommended?('Схожі матеріали 3')).to be(true)
+    end
+
+    it 'reads the labels on a Ukrainian page only, and the new-window notice', :aggregate_failures do
+      [nil, :ru, :en, :ko].each { expect(text.call(_1).utility_chrome?('Вхід')).to be(false), _1.inspect }
+      expect(uk.utility_chrome?('Вхід (відкриється у новому вікні)')).to be(true)
+      expect(text.call(nil).utility_chrome?('Вхід (відкриється у новому вікні)')).to be(false)
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::Uk.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:uk].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
   describe 'pager nouns' do
     let(:pager) do
       lambda do |label|
