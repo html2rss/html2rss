@@ -873,6 +873,113 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Hungarian labels' do
+    let(:hu) { text.call(:hu) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:hu]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { hu.utility?(label) }, chrome: ->(label) { hu.utility_chrome?(label) },
+        prefix: ->(label) { hu.utility_prefix?(label) }, recommended: ->(label) { hu.recommended?(label) },
+        read_more: ->(label) { hu.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      ['Belépés', 'Bejelentkezés', 'Kijelentkezés', 'Regisztráció', 'Keresés', 'Rólunk', 'Impresszum', 'Kapcsolat',
+       'Médiaajánlat', 'Adatvédelmi tájékoztató', 'Felhasználási feltételek', 'Süti beállítások', 'ÁSZF',
+       'Moderálási szabályzat', 'Hírlevél', 'Menü', 'Címlap', 'Ugrás a tartalomhoz', 'További hírek',
+       'További cikkeink', 'Összes', 'Hozzászólások', 'Megosztás', 'Tovább a rovatra'].each do |item|
+        expect(hu.utility_chrome?(item)).to be(true), item
+      end
+      ['[További hírek]', '← Összes ←', 'Belépés (új ablakban nyílik meg)', "\u200eKeresés\u200e"].each do |item|
+        expect(hu.utility_chrome?(item)).to be(true), item
+      end
+      ['Kapcsolódó cikkek', 'Ajánlott hírek', 'Ez is érdekelhet', 'Olvasd el ezt is'].each do |item|
+        expect(hu.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Tovább', 'Bővebben', 'Olvass tovább', 'Teljes cikk', 'Tudj meg többet'].each do |label|
+        expect([hu.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Iratkozzon fel hírlevelünkre', 'Feliratkozom a hírlevélre', 'Hozzászólás írása',
+       'Oszd meg a cikket'].each do |item|
+        expect(hu.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'reads the labels in upper case, with the double-acute letters and in decomposed form', :aggregate_failures do
+      ['BEJELENTKEZÉS', 'KIJELENTKEZÉS', 'BELÉPÉS', 'KERESÉS', 'RÓLUNK', 'ADATVÉDELMI TÁJÉKOZTATÓ', 'MENÜ',
+       'TOVÁBBI HÍREK', 'HOZZÁSZÓLÁSOK', 'HÍRLEVÉL', 'TOVÁBB A ROVATRA', 'ÖSSZES FRISS HÍR'].each do |label|
+        expect(hu.utility_chrome?(label)).to be(true), label
+      end
+      ['KAPCSOLÓDÓ CIKKEK', 'EZ IS ÉRDEKELHET', 'ÖNNEK AJÁNLJUK', 'OLVASD EL EZT IS'].each do |label|
+        expect(hu.recommended?(label)).to be(true), label
+      end
+      ['TOVÁBB', 'BŐVEBBEN', 'OLVASS TOVÁBB', 'TELJES CIKK'].each { expect(hu.read_more?(_1)).to be(true), _1 }
+      ['Bejelentkezés', 'Önnek ajánljuk', 'Ez is érdekelhet', 'Kövessen minket', 'Bővebben'].each do |label|
+        decomposed = label.unicode_normalize(:nfd)
+        expect(decomposed).not_to eq(label)
+        reads = [hu.utility_chrome?(decomposed), hu.recommended?(decomposed), hu.read_more?(decomposed)]
+        expect(reads).to include(true), label
+      end
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      ['Belépés nélkül is látogatható lesz a kiállítás szombaton', 'Keresés közben megtalálták az eltűnt turistát',
+       'Kapcsolat a két part között: új gyalogoshíd épül', 'Tovább nő a vízállás a Tiszán',
+       'Összes fiókját törölte az önkormányzat a közösségi oldalon', 'Hírlevél helyett papírújság a postaládákban',
+       'Rólunk szól a nyári fesztivál nyitóelőadása', 'Regisztráció nélkül szavazhatnak a helyiek',
+       'Menü az iskolai étkezdében: kevesebb cukor, több zöldség', 'Megosztás helyett közös játék a tavaszi napon',
+       'Bővebben a helyi piac új nyitvatartásáról', 'Impresszum nélkül jelent meg az évkönyv',
+       'BELÉPÉS NÉLKÜL IS LÁTOGATHATÓ LESZ A KIÁLLÍTÁS', 'Kapcsolódó cikkek helyett ajánló: az új kerékpárút',
+       'Ez is érdekelhet minket: a városi könyvtár nyitva marad'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['Kapcsolat 2026', 'Keresés 2026', 'Kapcsolódó cikkek 2026', 'Tovább 2026', 'Belépés 2026', 'Impresszum 2026',
+       'További hírek 2026', 'BEJELENTKEZÉS 2026', 'Tovább 3', 'Keresés 12'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['További hírek (12)', 'Összes [3]', 'Keresés (7)', 'Hozzászólások (12)'].each do |item|
+        expect(hu.utility_chrome?(item)).to be(true), item
+      end
+      ['További hírek 12', 'Összes 3', 'Kapcsolat 2', 'Hozzászólások 140'].each do |label|
+        expect(hu.utility_chrome?(label)).to be(false), label
+      end
+    end
+
+    it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
+      ['Belföld', 'Külföld', 'Sport', 'Gazdaság', 'Vélemény', 'Videó', 'Friss hírek', 'Hirdetés', 'Támogatás',
+       'Profil', 'Folytatás', 'Részletek', 'Karrier', 'Előfizetés', 'Népszerű', 'Legfrissebb'].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'keeps a headline of three Hungarian words above the title floor', :aggregate_failures do
+      ['Éjjeli piac nyit újra', 'Kompmenet változik hétfőtől', 'Aranyár nőtt tovább'].each do |headline|
+        expect(junk_reason.call(headline)).to be_nil, headline
+      end
+    end
+
+    it 'reads the labels on a Hungarian page only', :aggregate_failures do
+      [nil, :ja, :en, :sv, :de, :tr].each do |code|
+        expect(text.call(code).utility_chrome?('Bejelentkezés')).to be(false), code.inspect
+      end
+    end
+
+    it 'declares no type marker or path word of its own', :aggregate_failures do
+      expect(described_class::Hu.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:hu].type_markers).to eq(described_class.words(:type_marker))
+      expect(described_class::SCOPED_WORDS.flat_map { described_class::Hu.terms.fetch(_1) }).to be_empty
+    end
+  end
+
   describe 'Vietnamese labels' do
     let(:vi) { text.call(:vi) }
     let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:vi]) } }
