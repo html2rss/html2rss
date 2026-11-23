@@ -156,6 +156,14 @@ RSpec.describe Html2rss::AutoSource do
             %(<article><h3>Unlinked title with more words</h3><p>text</p><a href="#{path}#{i}">#{label}</a></article>)
           end.join
         },
+        list_story: lambda { |label, story, decoy, order, image|
+          (1..6).map do |i|
+            link = %(<a href="#{story.call(i)}">#{label}</a>)
+            pic = image ? %(<a href="#{story.call(i)}"><img src="/i#{i}.jpg" alt=""></a>) : ''
+            body = order == :before ? decoy + link : link + decoy
+            %(<article>#{pic}<h3>Unlinked headline #{i} with several words</h3><p>Summary</p>#{body}</article>)
+          end.join
+        },
         story_label: lambda { |label, destination|
           later = '<a href="/politics/local-news">Local news</a><a href="/world">World</a>' \
                   '<a href="https://source.example.org/wire/item">Wire service</a>'
@@ -199,6 +207,27 @@ RSpec.describe Html2rss::AutoSource do
       pairs.uniq(&:first).product(%w[/sports /tin-tuc/the-thao]).each do |(code, label), hub|
         found = urls.call(code, pages[:hub_and_story].call(label, hub))
         expect(found.grep(/real-story-slug/).size).to eq(6), "#{code} #{label} #{hub}"
+      end
+    end
+
+    it 'keeps the story a list-level label points at, over a section or source link',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      story = ->(i) { "/news/2026/11/harbour-bridge-reopens-after-storm-#{i}" }
+      decoys = ['<a href="/economy">Economy</a>', '<a href="https://source.example.org/wire/item">Wire service</a>']
+      pairs.uniq(&:first).product(decoys, %i[before after], [false, true]).each do |(code, label), decoy, order, image|
+        found = urls.call(code, pages[:list_story].call(label, story, decoy, order, image))
+        expect(found.map { _1.sub('https://example.com', '') }).to eq((1..6).map(&story)), "#{code} #{order} #{image}"
+      end
+    end
+
+    it 'keeps a slug, section slug or document story a Romanian or Danish list label points at',
+       :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stories = [->(i) { "/harbour-bridge-reopens-after-storm-#{i}" },
+                 ->(i) { "/section/harbour-bridge-reopens-after-storm-#{i}" },
+                 ->(i) { "/section/harbour-bridge-reopens-after-storm-#{i}.html" }]
+      pairs.uniq(&:first).select { %i[ro da].include?(_1.first) }.product(stories).each do |(code, label), story|
+        found = urls.call(code, pages[:list_story].call(label, story, '<a href="/economy">Economy</a>', :after, false))
+        expect(found.map { _1.sub('https://example.com', '') }).to eq((1..6).map(&story)), "#{code} #{story.call(1)}"
       end
     end
 
