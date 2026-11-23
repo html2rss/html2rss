@@ -423,8 +423,10 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect([everything.utility_chrome?('关于我们'), everything.recommended?('相关阅读')]).to eq([false, false])
     end
 
-    it 'reads a short count after an own term, never a year', :aggregate_failures do
-      expect(['相关阅读 3', '隐私政策 128', '登录 (3)'].map { zh.utility_chrome?(_1) }).to all(be(true))
+    it 'reads a bracketed short count after an own term, never a bare number or a year', :aggregate_failures do
+      expect(['相关阅读 (3)', '隐私政策 [128]', '登录 （3）', '更多 ［12］'].map { zh.utility_chrome?(_1) }).to all(be(true))
+      expect(['相关阅读 3', '隐私政策 128', '更多 12', '登录 (3', '登录 3)', '登录 (3]'].map { zh.utility_chrome?(_1) })
+        .to all(be(false))
       expect(['相关阅读 2026', '隐私政策 2026', '推荐阅读 2026'].map { zh.utility_chrome?(_1) }).to all(be(false))
       expect(['相关阅读 2026', '推荐阅读 2026'].map { zh.recommended?(_1) }).to all(be(false))
     end
