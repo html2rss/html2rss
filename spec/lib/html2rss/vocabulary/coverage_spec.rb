@@ -1520,6 +1520,163 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
   end
+
+  describe 'Romanian labels' do
+    let(:ro) { text.call(:ro) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:ro]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { ro.utility?(label) }, chrome: ->(label) { ro.utility_chrome?(label) },
+        prefix: ->(label) { ro.utility_prefix?(label) }, recommended: ->(label) { ro.recommended?(label) },
+        read_more: ->(label) { ro.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      ['Autentificare', 'Autentifică-te', 'Conectare', 'Contul meu', 'Deconectare', 'Căutare', 'Caută',
+       'Despre noi', 'Contact', 'Politica de confidențialitate', 'Termeni și condiții', 'Politica de cookie-uri',
+       'Meniu', 'Comentarii', 'Distribuie',
+       'Sari la conținut'].each do |item|
+        expect(ro.utility_chrome?(item)).to be(true), item
+      end
+      ['[Căutare]', '← Căutare ←', 'Autentificare (se deschide într-o fereastră nouă)',
+       "\u200eCăutare\u200e"].each do |item|
+        expect(ro.utility_chrome?(item)).to be(true), item
+      end
+      ['Articole similare', 'Știri conexe', 'Citește și', 'Te-ar putea interesa'].each do |item|
+        expect(ro.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Citește mai mult', 'Citește articolul complet', 'Află mai multe', 'Citește tot articolul', 'Mai multe',
+       'Mai mult', 'Vezi mai multe', 'Vezi mai mult'].each do |label|
+        expect([ro.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Abonează-te la newsletter', 'Abonează-te', 'Devino membru', 'Lasă un comentariu',
+       'Distribuie articolul'].each do |item|
+        expect(ro.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
+      ['AUTENTIFICARE', 'CONECTARE', 'CĂUTARE', 'DESPRE NOI', 'POLITICA DE CONFIDENȚIALITATE',
+       'TERMENI ȘI CONDIȚII', 'SARI LA CONȚINUT'].each do |label|
+        expect(ro.utility_chrome?(label)).to be(true), label
+      end
+      ['ABONEAZĂ-TE', 'ABONEAZĂ-TE LA NEWSLETTER', 'DEVINO MEMBRU'].each do |label|
+        expect(ro.utility_chrome?(label)).to be(true), label
+      end
+      ['ARTICOLE SIMILARE', 'ȘTIRI CONEXE'].each { expect(ro.recommended?(_1)).to be(true), _1 }
+      ['CITEȘTE MAI MULT', 'AFLĂ MAI MULTE'].each { expect(ro.read_more?(_1)).to be(true), _1 }
+      ['Autentifică-te', 'Căutare', 'Termeni și condiții', 'Știri conexe'].each do |label|
+        decomposed = label.unicode_normalize(:nfd)
+        expect(decomposed).not_to eq(label)
+        expect(ro.utility_chrome?(decomposed) || ro.recommended?(decomposed)).to be(true), label
+      end
+    end
+
+    # Both spellings of s and t with a diacritic occur on real pages: comma-below (U+0219, U+021B) and the legacy
+    # cedilla forms (U+015F, U+0163). The escapes keep the two spellings apart in the source.
+    it 'reads the comma-below and the cedilla spelling of every label with a s or t', :aggregate_failures do
+      ["Termeni \u0219i condi\u021Bii", "Termeni \u015Fi condi\u0163ii", "TERMENI \u0218I CONDI\u021AII",
+       "TERMENI \u015EI CONDI\u0162II", "Politica de confiden\u021Bialitate", "Politica de confiden\u0163ialitate",
+       "Sari la con\u021Binut", "Sari la con\u0163inut",
+       "SARI LA CON\u0162INUT", "SARI LA CON\u021AINUT"].each do |label|
+        expect(ro.utility_chrome?(label)).to be(true), label
+      end
+      ["\u0218tiri conexe", "\u015Etiri conexe", "\u015Ftiri recomandate", "\u0219tiri recomandate"].each do |label|
+        expect(ro.recommended?(label)).to be(true), label
+      end
+      ["Distribuie \u0219tirea", "Distribuie \u015Ftirea", "Distribuie aceast\u0103 \u0219tire",
+       "Distribuie aceast\u0103 \u015Ftire"].each do |label|
+        expect(ro.utility_chrome?(label)).to be(true), label
+      end
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      ['Autentificare dificilă la portalul primăriei, spun cetățenii', 'Căutare cu drone în pădurea din nord',
+       'Contactul dintre delegații a fost reluat după o pauză lungă',
+       'Conectare la internet gratuită în toate parcurile',
+       'Meniu de sărbători mai scump cu un sfert', 'Despre noi și festivalul filmelor scurte',
+       'Citește mai mult despre cetățenii care repară bănci', 'Abonează-te la lectură: biblioteca oferă cărți',
+       'Vezi și revezi: expoziția foto s-a prelungit', 'Distribuie ajutoare un grup de voluntari',
+       'Știri false circulă înainte de alegeri', 'Condiții grele de drum după prima ninsoare',
+       'Mai multe locuri de parcare în centrul vechi', 'Vezi toate trenurile care circulă mâine',
+       'Politica de confidențialitate a orașului, criticată de consilieri',
+       'AUTENTIFICARE DIFICILĂ LA PORTALUL PRIMĂRIEI',
+       'Cont nou pentru fiecare elev din clasa a cincea',
+       'Citește și ascultă: cartea audio a fost lansată'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['Meniu 2026', 'Căutare 2026', 'Articole similare 2026', 'Citește mai mult 2026', 'Autentificare 2026',
+       'Termeni și condiții 2026', 'Mai multe 2026', 'ABONEAZĂ-TE 2026'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['Căutare [3]', 'Meniu (3)', 'Căutare (7)', 'Comentarii (12)'].each do |item|
+        expect(ro.utility_chrome?(item)).to be(true), item
+      end
+      # `contact` keeps the shared reading: one trailing word plus a count, or a year, is chrome.
+      ['Contact direct 12', 'Contact 2026'].each { expect(ro.utility_chrome?(_1)).to be(true), _1 }
+      ['Vezi toate 12', 'Mai multe 3', 'Meniu 2', 'Comentarii 140'].each do |label|
+        expect(ro.utility_chrome?(label)).to be(false), label
+      end
+    end
+
+    it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
+      %w[Politică Sport Externe Actualitate Economie Publicitate Abonare Înregistrare Detalii Redacția Acasă
+         Anterior Următorul].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    # A "more" or "all" label that is chrome empties a card whose only other link it is (the heading is no link).
+    # These stay out of the chrome terms, so the card keeps its item; the bare read-more forms are read-more.
+    it 'reads no "all" or "more" label as chrome, so a card with it as its only link keeps its item',
+       :aggregate_failures do
+      ['Vezi toate', 'Vezi toate articolele', 'Vezi toate știrile', 'Vezi mai multe știri', 'Toate articolele',
+       'Toate știrile', 'Citește mai multe știri'].each do |label|
+        readings = [ro.utility_chrome?(label), ro.recommended?(label), ro.read_more?(label)]
+        expect(readings).to eq([false, false, false]), label
+      end
+    end
+
+    it 'keeps every foreign ambiguous term reading as chrome on a Romanian page, and a longer headline a headline',
+       :aggregate_failures do
+      %w[Dela Teilen Plus Comment].each do |label|
+        expect(ro.utility_chrome?(label)).to be(true), label
+        expect(text.call(nil).utility_chrome?(label)).to be(true), label
+      end
+      ['Plus Piața Nouă s-a redeschis după două decenii', 'Dela Vale prelungește sezonul turistic'].each do |headline|
+        expect(ro.utility_chrome?(headline)).to be(false), headline
+        expect(ro.recommended?(headline)).to be(false), headline
+        expect(ro.read_more?(headline)).to be(false), headline
+      end
+    end
+
+    it 'reads the labels on a Romanian page only', :aggregate_failures do
+      [nil, :ja, :en, :sv, :de, :vi].each do |code|
+        expect(text.call(code).utility_chrome?('Autentificare')).to be(false), code.inspect
+      end
+    end
+
+    it 'declares no type marker or path word of its own', :aggregate_failures do
+      expect(described_class::Ro.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:ro].type_markers).to eq(described_class.words(:type_marker))
+      expect(described_class::SCOPED_WORDS.flat_map { described_class::Ro.terms.fetch(_1) }).to be_empty
+    end
+
+    it 'holds one Regexp per concept, not one per label', :aggregate_failures do
+      %i[utility utility_cta read_more recommended new_window_notice].each do |concept|
+        expect(described_class::Ro.terms.fetch(concept).size).to eq(1), concept
+      end
+    end
+  end
 end
 
 # rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers, RSpec/SpecFilePathFormat

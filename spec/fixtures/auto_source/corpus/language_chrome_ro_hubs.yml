@@ -1,0 +1,10 @@
+case: Eight invented news cards in language "ro" plus six sentence-labelled links to a topic hub and a paid-plan page under foreign topic and plus path words; only the eight headlines are items.
+expected:
+- https://example.com/news/2026/11/story-1
+- https://example.com/news/2026/11/story-2
+- https://example.com/news/2026/11/story-3
+- https://example.com/news/2026/11/story-4
+- https://example.com/news/2026/11/story-5
+- https://example.com/news/2026/11/story-6
+- https://example.com/news/2026/11/story-7
+- https://example.com/news/2026/11/story-8
