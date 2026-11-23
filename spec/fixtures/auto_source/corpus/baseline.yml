@@ -320,6 +320,14 @@ language_chrome_he.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_hi.html:
+  junk: 0
+  real: 15
+  expected: 15
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 language_chrome_it.html:
   junk: 0
   real: 4

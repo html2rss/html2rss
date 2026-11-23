@@ -757,6 +757,82 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Hindi labels' do
+    let(:hi) { text.call(:hi) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:hi]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { hi.utility?(label) }, chrome: ->(label) { hi.utility_chrome?(label) },
+        prefix: ->(label) { hi.utility_prefix?(label) }, recommended: ->(label) { hi.recommended?(label) },
+        read_more: ->(label) { hi.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
+      ['लॉग इन', 'लॉगिन', 'साइन इन', 'सर्च', 'मेन्यू', 'संपर्क करें', 'हमारे बारे में',
+       'प्राइवेसी पॉलिसी', 'गोपनीयता नीति', 'इस्तेमाल की शर्तें', 'सदस्यता', 'सहायता',
+       'न्यूज़लेटर', 'लॉगिन (3)', '[सर्च]', '→ सर्च →'].each do |label|
+        expect(hi.utility_chrome?(label)).to be(true), label
+      end
+      ['संबंधित खबरें', 'यह भी पढ़ें', 'संबंधित लेख', 'संबंधित खबरें (3)'].each do |label|
+        expect(hi.recommended?(label)).to be(true), label
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['और पढ़ें', 'और देखें', 'पूरी खबर पढ़ें', 'विस्तार से पढ़ें', 'अधिक जानें'].each do |label|
+        expect([hi.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['सब्सक्राइब करें', 'सदस्यता लें', 'अभी सब्सक्राइब करें', 'शेयर करें', 'साइन इन करें'].each do |label|
+        expect(hi.utility_chrome?(label)).to be(true), label
+      end
+    end
+
+    it 'keeps a headline that opens with a label word a headline', :aggregate_failures do
+      ['खोज अभियान जारी', 'लॉगिन समस्या से यूजर परेशान', 'सदस्यता अभियान शुरू', 'सहायता राशि जारी करने की मांग',
+       'सर्च इंजन में बदलाव से कारोबारी परेशान', 'संपर्क करें तो मिलेगा मुआवजा',
+       'और पढ़ें कैसे बढ़ें बच्चे', 'मेन्यू में बदलाव पर विवाद', 'हमारे बारे में बोले मुख्यमंत्री',
+       'शेयर करें या नहीं बहस जारी', 'संबंधित खबरें हटाने की मांग पर सुनवाई'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a headline, and a label with a bracketed count chrome', :aggregate_failures do
+      ['संबंधित खबरें 2026', 'यह भी पढ़ें 2026', 'सदस्यता 2026', 'हमारे बारे में 2026', 'प्राइवेसी पॉलिसी 2026',
+       'सब्सक्राइब करें 2026', 'नियम और शर्तें 2026'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+      expect(['संबंधित खबरें (3)', 'संबंधित खबरें [3]'].map { hi.recommended?(_1) }).to all(be(true))
+      bare = ['सर्च 2', 'रजिस्टर 2', 'हमारे बारे में 2', 'संबंधित खबरें 3']
+      expect(bare.map { hi.utility_chrome?(_1) }).to all(be(false))
+    end
+
+    it 'matches a term however its nukta letters are encoded, and holds every term in NFC', :aggregate_failures do
+      precomposed = { "\u0915\u093C" => "\u0958", "\u0916\u093C" => "\u0959", "\u0917\u093C" => "\u095A",
+                      "\u091C\u093C" => "\u095B", "\u0921\u093C" => "\u095C", "\u0922\u093C" => "\u095D",
+                      "\u092B\u093C" => "\u095E", "\u092F\u093C" => "\u095F" }
+      terms = described_class::Hi.terms.values.flatten.grep(String)
+      expect(terms).to all(satisfy { _1 == _1.unicode_normalize(:nfc) })
+      nukta = terms.grep(/\u093C/)
+      expect(nukta).to include('और पढ़ें', 'न्यूज़लेटर')
+      nukta.each do |term|
+        forms = [term.unicode_normalize(:nfd), term.gsub(Regexp.union(precomposed.keys), precomposed)]
+        forms.each { expect(hi.utility_chrome?(_1) || hi.read_more?(_1) || hi.recommended?(_1)).to be(true), _1 }
+      end
+    end
+
+    it 'reads the labels on a Hindi page only, and the new-window notice', :aggregate_failures do
+      [nil, :ja, :en, :zh, :ko].each { expect(text.call(_1).utility_chrome?('लॉगिन')).to be(false), _1.inspect }
+      expect(hi.utility_chrome?('लॉगिन (नई विंडो में खुलता है)')).to be(true)
+      expect(text.call(nil).utility_chrome?('लॉगिन (नई विंडो में खुलता है)')).to be(false)
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::Hi.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:hi].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
   describe 'pager nouns' do
     let(:pager) do
       lambda do |label|
