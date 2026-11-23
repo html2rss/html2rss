@@ -216,8 +216,13 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads Simplified and Traditional chrome labels as whole labels', :aggregate_failures do
       labels.each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
-      ['登录 (3)', '[订阅]', '→ 更多 →', '更多 12'].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
+      ['登录 (3)', '[订阅]', '→ 更多 →', '更多 (12)'].each { expect(zh.utility_chrome?(_1)).to be(true), _1 }
       %w[推荐阅读 推薦閱讀 相关阅读 相關閱讀 猜你喜欢 猜你喜歡].each { expect(zh.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads a bracketed count after a Chinese label as chrome, a bare number as a headline', :aggregate_failures do
+      expect(['更多 (12)', '相关阅读 [3]', '隐私政策 （2）'].map { zh.utility_chrome?(_1) }).to all(be(true))
+      expect(['更多 12', '相关阅读 3', '隐私政策 2'].map { zh.utility_chrome?(_1) }).to all(be(false))
     end
 
     it 'reads Chinese read-more and call-to-action labels as whole labels, as chrome and junk', :aggregate_failures do
@@ -277,6 +282,60 @@ RSpec.describe Html2rss::Vocabulary do
       hint = Html2rss::Syndication::Discovery::PODCAST_PAGE_HINT
 
       %w[直播客户端 主播客串 转播客场 港口播客].each { expect(hint.match?(_1)).to be(false), _1 }
+    end
+  end
+
+  describe 'Korean labels' do
+    let(:ko) { text.call(:ko) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:ko]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { ko.utility?(label) }, chrome: ->(label) { ko.utility_chrome?(label) },
+        prefix: ->(label) { ko.utility_prefix?(label) }, recommended: ->(label) { ko.recommended?(label) },
+        read_more: ->(label) { ko.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
+      %w[로그인 로그아웃 회원가입 검색 이용약관 개인정보처리방침 회사소개 사이트맵 고객센터 뉴스레터 구독 더보기 닫기 공유
+         댓글].each { expect(ko.utility_chrome?(_1)).to be(true), _1 }
+      ['개인정보 처리방침', '본문 바로가기', '로그인 (3)', '[더보기]', '→ 더보기 →'].each { expect(ko.utility_chrome?(_1)).to be(true), _1 }
+      %w[관련기사 추천기사].push('관련 기사', '추천 기사').each { expect(ko.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['기사 전문 보기', '자세히 보기', '전문보기', '계속 읽기'].each do |label|
+        expect([ko.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['구독하기', '뉴스레터 구독하기', '지금 구독하기', '신문구독'].each { expect(ko.utility_chrome?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps a headline that opens with a label word, a particle or a space a headline', :aggregate_failures do
+      ['로그인 오류로 서비스 중단', '구독 경제가 성장한다', '검색 시장 점유율 변화', '더보기 어려운 현실',
+       '댓글 조작 의혹 수사 착수', '공유 오피스 입주율 상승', '닫기 어려운 계약서', '회원가입 절차 간소화 추진',
+       '관련기사 삭제 요구 논란', '자세히 보기 어려운 통계의 함정'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
+      ['추천 기사 2026', '추천 뉴스 2026', '관련 기사 2026', '신문 구독 2026', '무료 구독 2026', '뉴스레터 구독 2026',
+       '회사 소개 2026', '개인정보 처리방침 2026'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+      expect(['관련 기사 (3)', '관련 기사 [3]', '관련 기사 （3）', '관련 기사 ［3］'].map { ko.recommended?(_1) }).to all(be(true))
+      expect(['관련 기사 3', '관련 기사 (3', '관련 기사 3)', '관련 기사 1234'].map { ko.recommended?(_1) }).to all(be(false))
+    end
+
+    it 'reads the labels on a Korean page only, and the new-window notice', :aggregate_failures do
+      [nil, :ja, :en, :zh].each { expect(text.call(_1).utility_chrome?('로그인')).to be(false), _1.inspect }
+      expect(ko.utility_chrome?('로그인 (새 창 열기)')).to be(true)
+      expect(text.call(nil).utility_chrome?('로그인 (새 창 열기)')).to be(false)
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::Ko.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:ko].type_markers).to eq(described_class.words(:type_marker))
     end
   end
 

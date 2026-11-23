@@ -304,6 +304,14 @@ language_chrome_ja.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_ko.html:
+  junk: 0
+  real: 16
+  expected: 16
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 language_chrome_nl.html:
   junk: 0
   real: 4
@@ -340,6 +348,30 @@ language_chrome_sv.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_zh.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_zh_hant.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_zh_kicker.html:
+  junk: 0
+  real: 8
+  expected: 8
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
@@ -972,30 +1004,6 @@ url_dated_cards.html:
   junk: 0
   real: 6
   expected: 6
-  title_misses: 0
-  enclosure_misses: 0
-  image_misses: 0
-  sst_built: true
-language_chrome_zh.html:
-  junk: 0
-  real: 6
-  expected: 6
-  title_misses: 0
-  enclosure_misses: 0
-  image_misses: 0
-  sst_built: true
-language_chrome_zh_hant.html:
-  junk: 0
-  real: 6
-  expected: 6
-  title_misses: 0
-  enclosure_misses: 0
-  image_misses: 0
-  sst_built: true
-language_chrome_zh_kicker.html:
-  junk: 0
-  real: 8
-  expected: 8
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
