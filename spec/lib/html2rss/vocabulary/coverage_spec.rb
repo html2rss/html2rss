@@ -350,11 +350,12 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads chrome and recommended labels as whole labels, in any case', :aggregate_failures do
-      %w[Επικοινωνία ΕΠΙΚΟΙΝΩΝΙΑ Μενού Εγγραφείτε Συνδεθείτε].each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+      %w[Σύνδεση ΣΥΝΔΕΣΗ ΣΎΝΔΕΣΗ Αποσύνδεση Εγγραφή ΕΓΓΡΑΦΗ Αναζήτηση ΑΝΑΖΗΤΗΣΗ Επικοινωνία Συνδρομή Σχόλια Μενού
+         Εγγραφείτε].each { expect(el.utility_chrome?(_1)).to be(true), _1 }
       ['Όροι χρήσης', 'ΟΡΟΙ ΧΡΗΣΗΣ', 'ΌΡΟΙ ΧΡΉΣΗΣ', 'Πολιτική απορρήτου', 'ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ', 'Σχετικά με εμάς',
        'ΟΡΟΙ ΚΑΙ ΠΡΟΫΠΟΘΕΣΕΙΣ', 'Όροι και προϋποθέσεις', 'Επικοινωνία (3)', '[Μενού]']
         .each { expect(el.utility_chrome?(_1)).to be(true), _1 }
-      ['Σχετικά άρθρα', 'ΣΧΕΤΙΚΑ ΑΡΘΡΑ', 'Προτεινόμενα άρθρα', 'Διαβάστε επίσης', 'ΔΙΑΒΑΣΤΕ ΕΠΙΣΗΣ']
+      ['Σχετικά άρθρα', 'ΣΧΕΤΙΚΑ ΑΡΘΡΑ', 'Προτεινόμενα', 'Προτεινόμενα άρθρα', 'Διαβάστε επίσης', 'ΔΙΑΒΑΣΤΕ ΕΠΙΣΗΣ']
         .each { expect(el.recommended?(_1)).to be(true), _1 }
     end
 
@@ -373,6 +374,12 @@ RSpec.describe Html2rss::Vocabulary do
        'Περισσότερα έσοδα από τον τουρισμό φέτος', 'Σχετικά με την απεργία της Τρίτης δήλωσε ο υπουργός',
        'Διαβάστε επίσης ότι η τιμή του ρεύματος πέφτει'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a sports headline that echoes a dropped phrase a headline', :aggregate_failures do
+      ['Πίσω στην κορυφή', 'Ο λογαριασμός μου'].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
       end
     end
 
