@@ -59,10 +59,15 @@ module Html2rss
     SCOPED_PATTERNS = %i[utility_prefix utility recommended].freeze
 
     # Pattern concepts a {PAGE_ONLY} language may declare besides {SCOPED_PATTERNS}: the call-to-action, read-more
-    # and new-window readers of {LinkDestination::TextClassifier}, which read a scope's own terms as whole labels.
-    # A page-only language declaring any other pattern concept would have a dead term, so the conformance spec
-    # rejects it; a later pull request moves the remaining readers here.
-    PAGE_PATTERNS = %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice].freeze
+    # and new-window readers of {LinkDestination::TextClassifier}, the sponsorship labels of
+    # {LinkDestination::Sponsorship::LabelText}, the title concepts of {Article::Title} and the pager concepts of
+    # {SST::Tags}, which read a scope's own terms as whole labels. The podcast concepts stay out: their reader
+    # matches inside URLs and titles, where a short Han term is not precise. A concept joins this list only when
+    # every production path that reads it takes the page scope; a page-only language declaring any other pattern
+    # concept would have a dead term, so the conformance spec rejects it.
+    PAGE_PATTERNS = %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice
+                       paid_label ad_word element_label field_label type_label clock_suffix date_piece
+                       pager_label page_link page_link_label].freeze
 
     # Every concept each language in {ALL} declares.
     CONCEPTS = (WORD_CONCEPTS + PATTERN_CONCEPTS).freeze
@@ -73,7 +78,7 @@ module Html2rss
     # Languages whose terms apply only on a page in that language: they are in no shared table, so +:all+, +ja+ and
     # every other language read exactly what they read without them. A page scope of such a language is +:all+ plus
     # its terms (a Han term has no word boundary, so it is read as a whole label only, see {TextClassifier}).
-    PAGE_ONLY = [Zh, Ko, El].freeze
+    PAGE_ONLY = [Zh, Ko, He, El].freeze
 
     # Every language that has a file, in a fixed order.
     LANGUAGES = (ALL + PAGE_ONLY).freeze
@@ -138,6 +143,33 @@ module Html2rss
       # @param concept [Symbol] a member of {SCOPED_WORDS} or {SCOPED_PATTERNS}
       # @return [Array<String, Regexp>] the terms those languages flag as ambiguous for the concept
       def ambiguous_terms(languages, concept) = languages.flat_map { _1.ambiguous.fetch(concept, NONE) }.uniq.freeze
+
+      ##
+      # The shared terms of every language for a {PAGE_PATTERNS} concept, widened by a scope's own terms.
+      #
+      # @param concept [Symbol] a member of {PAGE_PATTERNS}
+      # @param own [Hash{Symbol => String}] a scope's own alternatives per concept ({Scope#own_alternation})
+      # @return [String] regex alternatives, the shared ones when there are no own terms
+      def union(concept, own) = [alternation(concept), own.fetch(concept)].reject(&:empty?).join('|')
+
+      ##
+      # The one owner of the per-scope reading tables of the page-only concepts: builds one entry per distinct own-term
+      # set (and +key+, when the entry also depends on something else of the scope) at load, so every scope without
+      # own terms shares one entry and nothing is compiled per page.
+      #
+      # @param concepts [Array<Symbol>] the {PAGE_PATTERNS} concepts the reader takes own terms of
+      # @param key [#call, nil] maps a scope to the other fact its entry depends on
+      # @yieldparam own [Hash{Symbol => String}] the scope's own alternatives per concept
+      # @yieldparam scope [Scope]
+      # @yieldreturn [Object] the entry
+      # @return [Hash{Symbol => Object}] the entry of each scope code
+      def by_own_terms(concepts, key: nil)
+        built = {}
+        SCOPES.transform_values do |scope|
+          own = concepts.to_h { [_1, scope.own_alternation(_1)] }
+          built[[key&.call(scope), own]] ||= yield(own, scope)
+        end.freeze
+      end
 
       ##
       # Builds a scope, which keeps only its ambiguous terms (a few per concept); the unambiguous ones are shared.

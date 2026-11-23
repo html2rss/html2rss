@@ -61,12 +61,14 @@ module Html2rss
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
         #   HTML string or already-parsed node (String is parsed once here)
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the pager words that make a
+        #   list or nav chrome
         # @return [Document, nil] +nil+ when no SST nodes survive normalization
         # @raise [InvalidError] when input is nil or unsupported
-        def call(input)
+        def call(input, vocabulary:)
           raise InvalidError, 'input is required' if input.nil?
 
-          new(coerce(input)).call
+          new(coerce(input), vocabulary).call
         end
 
         private
@@ -84,8 +86,10 @@ module Html2rss
       end
 
       # @param parsed_body [Nokogiri::HTML::Document, Nokogiri::XML::Node]
-      def initialize(parsed_body)
+      # @param vocabulary [Vocabulary::Scope]
+      def initialize(parsed_body, vocabulary)
         @parsed_body = parsed_body
+        @vocabulary = vocabulary
         @node_count = 0
         @degraded = false
         @parents = {}.compare_by_identity
@@ -167,7 +171,7 @@ module Html2rss
         @node_count += 1
         tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
-        scope_here = Tags.chrome_scope(nk_node, scope)
+        scope_here = Tags.chrome_scope(nk_node, scope, @vocabulary)
 
         children, lead, tails = normalize_children(nk_children, depth:, path: tag_path, scope: scope_here)
 
