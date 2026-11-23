@@ -11,6 +11,9 @@ module Html2rss
       BLOCK_NAMES = Set[:p, :div, :li, :ul, :ol, :h1, :h2, :h3, :h4, :h5, :h6, :tr, :br].freeze
       # Names skipped when collecting visible text.
       INVISIBLE_NAMES = Set[:svg, :script, :noscript, :style, :template].freeze
+      # Shared roles of an element without a +role+ attribute.
+      NO_ROLES = [].freeze
+      private_constant :NO_ROLES
       # Utility landmark names: peripheral unless chrome (see {.chrome_scope}).
       UTILITY_LANDMARK_NAMES = Set[:nav, :aside, :footer, :menu].freeze
       # Container names ignored as article roots.
@@ -112,9 +115,9 @@ module Html2rss
       # @param element [Nokogiri::XML::Element] element being entered
       # @param scope [Symbol] parent scope: +:page+, +:sectioned+, +:peripheral+, or +:chrome+
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the pager words
+      # @param tag [String] folded tag name of +element+, when the caller already holds it
       # @return [Symbol] scope the element's subtree inherits
-      def self.chrome_scope(element, scope, vocabulary)
-        tag = Html::Probe.tag(element)
+      def self.chrome_scope(element, scope, vocabulary, tag = Html::Probe.tag(element))
         roles = role_tokens(element['role'])
         return :chrome if scope == :chrome || chrome?(element, tag, roles, scope, vocabulary)
         return :peripheral if scope == :peripheral || utility?(tag, roles)
@@ -139,7 +142,7 @@ module Html2rss
       # @return [Boolean]
       def self.page_level_chrome?(tag, role) = page_level?(tag, role_tokens(role))
 
-      def self.role_tokens(role) = role ? role.downcase.split : []
+      def self.role_tokens(role) = role ? role.downcase.split : NO_ROLES
 
       def self.utility?(tag, roles) = UTILITY_LANDMARK.include?(tag) || roles.any? { UTILITY_ROLES.include?(_1) }
 

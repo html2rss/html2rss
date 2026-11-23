@@ -398,6 +398,13 @@ RSpec.describe Html2rss::SST::Normalizer do
       end
     end
 
+    it 'reads the tag it is handed instead of re-deriving it from the element', :aggregate_failures do
+      element = Nokogiri::HTML::DocumentFragment.parse('<div></div>').child
+
+      expect(Html2rss::SST::Tags.chrome_scope(element, :page, all_scope, 'header')).to eq(:chrome)
+      expect(Html2rss::SST::Tags.chrome_scope(element, :page, all_scope)).to eq(:page)
+    end
+
     context 'with a page-only language declaring the pager concepts' do
       let(:xx) do
         terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
