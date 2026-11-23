@@ -136,7 +136,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
           url: be_a(Html2rss::Url),
           image: nil,
           description: nil,
-          id: '/',
+          id: 'ts=deadh0rse',
           published_at: nil,
           enclosures: [] }
       end
@@ -154,7 +154,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
 
       it 'derives the first id from the selected anchor url' do
-        expect(articles.first.id).to eq('/')
+        expect(articles.first.id).to eq('ts=deadh0rse')
       end
 
       it 'derives the second id from the selected anchor url' do
