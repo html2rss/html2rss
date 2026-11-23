@@ -59,7 +59,7 @@ module Html2rss
         podcast_unspaced: NONE,
         type_marker: NONE,
         utility: [
-          'đăng nhập', 'đăng xuất', 'đăng ký', 'tạo tài khoản', 'tìm kiếm', 'về chúng tôi', 'liên hệ',
+          'đăng nhập', 'đăng xuất', 'đăng ký', 'đăng kí', 'tạo tài khoản', 'tìm kiếm', 'về chúng tôi', 'liên hệ',
           'liên hệ quảng cáo', 'liên hệ tòa soạn', 'liên hệ toà soạn', 'thông tin tòa soạn',
           'chính sách bảo mật', 'chính sách quyền riêng tư', 'chính sách cookie', 'điều khoản sử dụng',
           'điều khoản dịch vụ', 'điều khoản và điều kiện', 'trang chủ', 'menu', 'xem thêm', 'xem tất cả',

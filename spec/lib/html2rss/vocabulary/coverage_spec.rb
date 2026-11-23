@@ -886,7 +886,8 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
        :aggregate_failures do
-      ['Đăng nhập', 'Đăng xuất', 'Đăng ký', 'Tạo tài khoản', 'Tìm kiếm', 'Về chúng tôi', 'Liên hệ',
+      ['Đăng nhập', 'Đăng xuất', 'Đăng ký', 'Đăng kí', 'ĐĂNG KÍ',
+       'Tạo tài khoản', 'Tìm kiếm', 'Về chúng tôi', 'Liên hệ',
        'Liên hệ tòa soạn', 'Chính sách bảo mật', 'Điều khoản sử dụng', 'Trang chủ', 'Menu', 'Xem thêm',
        'Xem tất cả', 'Bình luận', 'Chia sẻ', 'Tải ứng dụng', 'Chuyển đến nội dung chính'].each do |item|
         expect(vi.utility_chrome?(item)).to be(true), item
@@ -926,7 +927,8 @@ RSpec.describe Html2rss::Vocabulary do
       ['Đăng nhập cổng dịch vụ công lỗi suốt nửa ngày', 'Tìm kiếm cứu nạn kéo dài suốt đêm',
        'Liên hệ viên chức thị trấn nhận bằng khen', 'Chia sẻ sách cũ giúp quỹ học bổng',
        'Xem thêm lớp vẽ miễn phí mở vào cuối tuần', 'Bình luận viên trẻ giành giải xuất sắc',
-       'Đăng ký cư trú trực tuyến mở lại', 'Về chúng tôi liên hoan phim ngắn khai mạc',
+       'Đăng ký cư trú trực tuyến mở lại', 'Đăng kí cư trú trực tuyến mở lại',
+       'Về chúng tôi liên hoan phim ngắn khai mạc',
        'Trang chủ nhà văn được đặt tên đường', 'Đọc tiếp lời kể của người sống sót',
        'Tin liên quan vụ cháy được công bố', 'ĐĂNG NHẬP CỔNG DỊCH VỤ CÔNG LỖI NỬA NGÀY'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
