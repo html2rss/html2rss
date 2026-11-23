@@ -39,7 +39,8 @@ module Html2rss
         read_more: [
           'číst dále', 'číst více', 'číst dál', 'čtěte více', 'čtěte dále', 'celý článek', 'zobrazit celý článek',
           'přečíst celý článek', 'pokračovat ve čtení', 'přečtěte si více', 'zjistit více', 'více informací',
-          'další informace', 'dočíst se více'
+          'další informace', 'dočíst se více', 'zobrazit všechny', 'zobrazit vše', 'zobrazit více', 'zobrazit další',
+          'načíst další', 'načíst více', 'všechny články', 'všechny zprávy', 'další články', 'další zprávy'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,

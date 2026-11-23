@@ -40,9 +40,10 @@ module Html2rss
           'bu yazıyı paylaş', 'makaleyi paylaş', 'hemen üye ol', 'ücretsiz üye ol'
         ],
         read_more: [
-          'devamını oku', 'devamını okuyun', 'devamı', 'haberin devamı', 'yazının devamı',
-          'daha fazla oku', 'tamamını oku', 'haberin tamamını oku', 'haberi oku', 'yazının tamamını oku',
-          'devamı için tıklayın', 'okumaya devam et', 'okumaya devam edin'
+          'devamını oku', 'devamını okuyun', 'devamı', 'haberin devamı', 'yazının devamı', 'daha fazla oku',
+          'tamamını oku', 'haberin tamamını oku', 'haberi oku', 'yazının tamamını oku', 'devamı için tıklayın',
+          'okumaya devam et', 'okumaya devam edin', 'daha fazla', 'daha fazlası', 'daha fazla göster', 'tümünü gör',
+          'tümünü göster', 'hepsini gör'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,

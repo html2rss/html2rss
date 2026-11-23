@@ -77,28 +77,61 @@ RSpec.describe Html2rss::AutoSource do
   describe 'list-level more labels in a page-only language' do
     let(:dir) { Dir.mktmpdir }
     let(:path) { File.join(dir, 'page.html') }
-    let(:more_labels) do
-      { zh: '更多', ko: '더보기', ar: 'المزيد', fa: 'بیشتر', th: 'ดูเพิ่มเติม', tr: 'daha fazla', id: 'lihat semua',
-        vi: 'xem thêm', cs: 'zobrazit všechny', hu: 'összes hír', ro: 'vezi toate' }
+    let(:pairs) do
+      {
+        zh: %w[查看全部 查看更多 更多],
+        ko: ['더보기'],
+        ar: ['المزيد', 'عرض الكل', 'عرض المزيد'],
+        fa: ['بیشتر', 'مشاهده بیشتر', 'مشاهده همه'],
+        th: %w[ดูเพิ่มเติม ดูเพิ่ม ดูทั้งหมด เพิ่มเติม],
+        tr: ['daha fazla', 'daha fazlası', 'daha fazla göster', 'tümünü gör', 'tümünü göster', 'hepsini gör'],
+        id: [
+          'lihat semua', 'lihat semuanya', 'lihat lainnya', 'lihat lebih banyak', 'lihat berita lainnya',
+          'berita lainnya', 'lainnya'
+        ],
+        vi: ['xem thêm', 'xem tất cả', 'xem toàn bộ'],
+        cs: [
+          'zobrazit všechny', 'zobrazit vše', 'zobrazit více', 'zobrazit další', 'načíst další', 'načíst více',
+          'všechny články', 'všechny zprávy', 'další články', 'další zprávy'
+        ],
+        hu: [
+          'összes', 'összes megtekintése', 'összes hír', 'összes friss hír', 'összes cikk', 'mutasd mindet',
+          'még több hír', 'még több cikk', 'további hírek', 'további cikkek', 'további cikkeink', 'további epizódok',
+          'további tartalmak', 'tovább a rovatra'
+        ],
+        ro: [
+          'vezi toate', 'vezi toate articolele', 'vezi toate știrile', 'vezi mai multe știri', 'toate articolele',
+          'toate știrile', 'citește mai multe știri'
+        ],
+        da: ['se alle', 'se flere', 'flere nyheder']
+      }.flat_map { |code, labels| labels.map { [code, _1] } }
     end
-    let(:card_page) do
-      lambda do |code, label|
+    let(:count) do
+      lambda do |code, label, extra|
         cards = (1..6).map do |i|
           %(<article><h2>Real headline #{i} with several words</h2><p>A summary sentence.</p>) +
             %(<a href="/section/long-article-slug-#{i}#{'.html' if i > 3}">#{label}</a></article>)
         end
-        %(<!doctype html><html lang="#{code}"><body>#{cards.join}</body></html>)
+        File.write(path, %(<!doctype html><html lang="#{code}"><body>#{cards.join}#{extra}</body></html>))
+        AutoSourceCorpus.auto_source(path:, url: 'https://example.com/section/').articles.size
+      end
+    end
+    let(:menu_and_footer) do
+      lambda do |label|
+        %(<div class="menu"><ul><li><a href="/sections">#{label}</a></li></ul></div>) +
+          %(<footer><a href="/archive">#{label}</a></footer>)
       end
     end
 
     after { FileUtils.remove_entry(dir) }
 
-    it 'keeps every card linked by a list-level more label in a page-only language', :aggregate_failures do
-      more_labels.each do |code, label|
-        File.write(path, card_page.call(code, label))
-        items = AutoSourceCorpus.auto_source(path:, url: 'https://example.com/section/').articles
+    it 'keeps every card linked by a list-level more label', :aggregate_failures do
+      pairs.each { |code, label| expect(count.call(code, label, '')).to eq(6), "#{code} #{label}" }
+    end
 
-        expect(items.size).to eq(6), "#{code}: #{items.size} items"
+    it 'adds no item for a menu or footer link with the label', :aggregate_failures do
+      pairs.each do |code, label|
+        expect(count.call(code, label, menu_and_footer.call(label))).to eq(6), "#{code} #{label}"
       end
     end
   end

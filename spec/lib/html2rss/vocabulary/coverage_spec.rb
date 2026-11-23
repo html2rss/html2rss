@@ -735,7 +735,7 @@ RSpec.describe Html2rss::Vocabulary do
     it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
        :aggregate_failures do
       ['เกี่ยวกับเรา 2026', 'นโยบายความเป็นส่วนตัว 2569', 'ข่าวที่เกี่ยวข้อง 2026', 'อ่านต่อ 2026', 'ดูเพิ่มเติม 2026',
-       'ดูทั้งหมด 2569', 'ค้นหา 2026'].each do |label|
+       'แชร์ 2569', 'ค้นหา 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
       ['แชร์ (12)', 'เมนู [3]', 'ค้นหา (7)'].each { expect(th.utility_chrome?(_1)).to be(true), _1 }
@@ -821,7 +821,7 @@ RSpec.describe Html2rss::Vocabulary do
     it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
        :aggregate_failures do
       ['Hakkımızda 2026', 'İletişim 2026', 'İlgili Haberler 2026', 'Devamını Oku 2026', 'Giriş Yap 2026',
-       'Gizlilik Politikası 2026', 'Daha Fazla 2026', 'ÇIKIŞ YAP 2026'].each do |label|
+       'Gizlilik Politikası 2026', 'Menü 2026', 'ÇIKIŞ YAP 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
       ['Menü (12)', 'Paylaş [3]', 'Arama (7)', 'Yorumlar (12)'].each do |item|
@@ -942,7 +942,7 @@ RSpec.describe Html2rss::Vocabulary do
     it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
        :aggregate_failures do
       ['Kapcsolat 2026', 'Keresés 2026', 'Kapcsolódó cikkek 2026', 'Tovább 2026', 'Belépés 2026', 'Impresszum 2026',
-       'További hírek 2026', 'BEJELENTKEZÉS 2026', 'Tovább 3', 'Keresés 12'].each do |label|
+       'Hírlevél 2026', 'BEJELENTKEZÉS 2026', 'Tovább 3', 'Keresés 12'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
       ['Hírlevél (12)', 'Menü [3]', 'Keresés (7)', 'Hozzászólások (12)'].each do |item|
@@ -961,9 +961,15 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'leaves the bare more labels out, so a card linked by one stays a card', :aggregate_failures do
-      ['Még több', 'Mutass többet', 'Továbbiak', 'MÉG TÖBB', 'Még több hír', 'Még több cikk', 'További hírek',
-       'További cikkek', 'Összes', 'Összes hír', 'Tovább a rovatra'].each do |label|
+      ['Még több', 'Mutass többet', 'Továbbiak', 'MÉG TÖBB'].each do |label|
         readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'reads a list-level label as read-more, never chrome, so a card keeps its item', :aggregate_failures do
+      ['Még több hír', 'Még több cikk', 'További hírek', 'További cikkek', 'Összes', 'Összes hír',
+       'Tovább a rovatra'].each do |label|
+        expect([hu.utility_chrome?(label), hu.read_more?(label)]).to eq([false, true]), label
       end
     end
 
@@ -1171,8 +1177,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
-      ['Se alle', 'Se flere', 'Flere nyheder', 'Del', 'Hjælp', 'Annoncering', 'Lyt', 'Seneste nyt',
-       'Mest læste', 'Udland', 'Kultur', 'Debat',
+      ['Del', 'Hjælp', 'Annoncering', 'Lyt', 'Seneste nyt', 'Mest læste', 'Udland', 'Kultur', 'Debat',
        'Erhverv', 'Del 2'].each do |label|
         readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
       end
@@ -1186,8 +1191,10 @@ RSpec.describe Html2rss::Vocabulary do
       expect(da.utility_chrome?('Kontakt mellem skakspillerne forbudt')).to be(false)
     end
 
-    it 'keeps a card whose only link carries a read-more label and not a list-level label', :aggregate_failures do
-      ['Se alle', 'Se flere', 'Flere nyheder'].each { expect(da.utility_chrome?(_1)).to be(false), _1 }
+    it 'reads a list-level label as read-more, never chrome, so a card keeps its item', :aggregate_failures do
+      ['Se alle', 'Se flere', 'Flere nyheder'].each do |label|
+        expect([da.utility_chrome?(label), da.read_more?(label)]).to eq([false, true]), label
+      end
       expect([da.read_more?('Vis mere'), junk_reason.call('Vis mere')]).to eq([true, :cta])
     end
 
@@ -1633,13 +1640,13 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     # A "more" or "all" label that is chrome empties a card whose only other link it is (the heading is no link).
-    # These stay out of the chrome terms, so the card keeps its item; the bare read-more forms are read-more.
-    it 'reads no "all" or "more" label as chrome, so a card with it as its only link keeps its item',
+    # These are read-more labels, not chrome terms, so the card keeps its item.
+    it 'reads an "all" or "more" label as read-more, not chrome, so a card with it as its only link keeps its item',
        :aggregate_failures do
       ['Vezi toate', 'Vezi toate articolele', 'Vezi toate știrile', 'Vezi mai multe știri', 'Toate articolele',
        'Toate știrile', 'Citește mai multe știri'].each do |label|
         readings = [ro.utility_chrome?(label), ro.recommended?(label), ro.read_more?(label)]
-        expect(readings).to eq([false, false, false]), label
+        expect(readings).to eq([false, false, true]), label
       end
     end
 

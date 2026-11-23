@@ -38,8 +38,9 @@ module Html2rss
         ],
         read_more: [
           'baca selengkapnya', 'baca lebih lanjut', 'baca artikel lengkap', 'baca berita selengkapnya',
-          'baca artikel selengkapnya', 'baca lanjutannya', 'lanjutkan membaca', 'selengkapnya',
-          'lihat selengkapnya', 'tonton selengkapnya'
+          'baca artikel selengkapnya', 'baca lanjutannya', 'lanjutkan membaca', 'selengkapnya', 'lihat selengkapnya',
+          'tonton selengkapnya', 'lihat semua', 'lihat semuanya', 'lihat lainnya', 'lihat lebih banyak',
+          'lihat berita lainnya', 'berita lainnya', 'lainnya'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,

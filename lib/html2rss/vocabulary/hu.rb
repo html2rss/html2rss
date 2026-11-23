@@ -17,7 +17,8 @@ module Html2rss
     # +előfizetés+ a subscription story). Some common words stay listed as whole labels by judgment (+menü+,
     # +keresés+, +kapcsolat+, +tovább+): a one-word text equal to one reads as chrome, while a longer
     # headline that opens with one stays a headline. It lists no list-level more or see-all label (+összes hír+,
-    # +további hírek+, +még több cikk+): as a card's only link it would empty the feed. A term whose precision is
+    # +további hírek+, +még több cikk+) as chrome, because as a card's only link it would empty the feed; they are
+    # read-more labels. A term whose precision is
     # unclear is left out.
     Hu = Language.new(
       code: :hu,
@@ -41,11 +42,13 @@ module Html2rss
           'ossza meg a cikket', 'oszd meg ezt a cikket', 'ossza meg ezt a cikket'
         ],
         read_more: [
-          'tovább', 'bővebben', 'olvass tovább', 'olvasson tovább', 'olvasd tovább', 'olvassa tovább',
-          'tovább olvasom', 'tovább a cikkhez', 'tovább a cikkre', 'tovább a teljes cikkhez', 'teljes cikk',
-          'a teljes cikk', 'teljes cikk elolvasása', 'cikk elolvasása', 'elolvasom a cikket', 'tudj meg többet',
-          'tudjon meg többet', 'további részletek', 'részletek megtekintése', 'bővebb információ',
-          'a cikk folytatása', 'cikk folytatása'
+          'tovább', 'bővebben', 'olvass tovább', 'olvasson tovább', 'olvasd tovább', 'olvassa tovább', 'tovább olvasom',
+          'tovább a cikkhez', 'tovább a cikkre', 'tovább a teljes cikkhez', 'teljes cikk', 'a teljes cikk',
+          'teljes cikk elolvasása', 'cikk elolvasása', 'elolvasom a cikket', 'tudj meg többet', 'tudjon meg többet',
+          'további részletek', 'részletek megtekintése', 'bővebb információ', 'a cikk folytatása', 'cikk folytatása',
+          'összes', 'összes megtekintése', 'összes hír', 'összes friss hír', 'összes cikk', 'mutasd mindet',
+          'még több hír', 'még több cikk', 'további hírek', 'további cikkek', 'további cikkeink', 'további epizódok',
+          'további tartalmak', 'tovább a rovatra'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,

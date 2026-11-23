@@ -36,7 +36,7 @@ module Html2rss
         ],
         read_more: [
           'đọc tiếp', 'đọc thêm', 'xem tiếp', 'xem chi tiết', 'đọc toàn bộ bài viết', 'xem toàn bộ bài viết',
-          'đọc tiếp bài viết', 'đọc bài viết', 'xem bài viết'
+          'đọc tiếp bài viết', 'đọc bài viết', 'xem bài viết', 'xem thêm', 'xem tất cả', 'xem toàn bộ'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,
