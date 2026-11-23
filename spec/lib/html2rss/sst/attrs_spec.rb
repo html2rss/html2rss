@@ -67,6 +67,40 @@ RSpec.describe Html2rss::SST::Attrs do
       expect(attrs.raw).to be_frozen
     end
 
+    it 'shares the empty collections for empty input', :aggregate_failures do
+      attrs = described_class.build(class_names: [], raw: {})
+
+      expect(attrs.class_names).to be(described_class.empty.class_names)
+      expect(attrs.raw).to be(described_class.empty.raw)
+    end
+
+    it 'freezes String class names in place, taking ownership of the list', :aggregate_failures do
+      tokens = [+'a', +'b']
+      attrs = described_class.build(class_names: tokens)
+
+      expect(attrs.class_names).to be(tokens)
+      expect(tokens).to be_frozen.and all(be_frozen)
+      expect { attrs.class_names.first << 'x' }.to raise_error(FrozenError)
+    end
+
+    it 'freezes a raw Hash of frozen values in place, taking ownership of it', :aggregate_failures do
+      raw = { 'data-a' => 'x', 'rel' => 'next' }
+      attrs = described_class.build(raw:)
+
+      expect(attrs.raw).to be(raw)
+      expect(raw).to be_frozen
+      expect { attrs.raw['data-a'] << 'x' }.to raise_error(FrozenError)
+    end
+
+    it 'copies a raw Hash that holds unfrozen values, leaving the caller Hash alone', :aggregate_failures do
+      raw = { 'data-a' => +'x' }
+      attrs = described_class.build(raw:)
+
+      expect(attrs.raw).to eq('data-a' => 'x').and be_frozen
+      expect(attrs.raw['data-a']).to be_frozen
+      expect(raw).not_to be_frozen
+    end
+
     it 'stringifies and freezes class names and raw values', :aggregate_failures do
       attrs = described_class.build(class_names: [:x, 3], raw: { 'data-n' => 1 })
 

@@ -209,7 +209,7 @@ module Html2rss
           href: nk_node['href'],
           src: nk_node['src'],
           id: nk_node['id'],
-          class_names: nk_node['class'].to_s.split(/\s+/).reject(&:empty?),
+          class_names: nk_node['class']&.split,
           datetime: nk_node['datetime'],
           itemprop: nk_node['itemprop'],
           style: nk_node['style'],
@@ -219,14 +219,16 @@ module Html2rss
         )
       end
 
+      # @return [Hash{String => String}, nil] kept attributes with frozen values, +nil+ when none
       def raw_attrs(nk_node)
-        nk_node.attribute_nodes.each_with_object({}) do |attr, raw|
-          name = attr.name.to_s
+        raw = nil
+        nk_node.attribute_nodes.each do |attr|
+          name = attr.name
           next if TYPED_ATTR_NAMES.include?(name)
-          next unless name.match?(RAW_ATTR_KEEP)
 
-          raw[name] = attr.value.to_s
+          (raw ||= {})[name] = attr.value.freeze if name.match?(RAW_ATTR_KEEP)
         end
+        raw
       end
 
       # Walks child nodes once, keeping direct text in the slot of the preceding kept child

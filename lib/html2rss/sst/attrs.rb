@@ -23,13 +23,15 @@ module Html2rss
         # @param href [String, nil]
         # @param src [String, nil]
         # @param id [String, nil]
-        # @param class_names [Array<String>, nil]
+        # @param class_names [Array<String>, nil] an Array of Strings is frozen in place, so +Attrs+ takes
+        #   ownership of it
         # @param datetime [String, nil]
         # @param itemprop [String, nil]
         # @param style [String, nil]
         # @param srcset [String, nil]
         # @param type [String, nil]
-        # @param raw [Hash{String => String}, nil]
+        # @param raw [Hash{String => String}, nil] a Hash of frozen Strings is frozen in place, so +Attrs+
+        #   takes ownership of it
         # @return [Attrs]
         # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists
         def build(href: nil, src: nil, id: nil, class_names: nil, datetime: nil, itemprop: nil,
@@ -55,24 +57,38 @@ module Html2rss
         private
 
         def blank_to_nil(value)
-          str = value&.to_s
-          return if str.nil? || str.strip.empty?
+          return if value.nil?
 
-          str.strip.freeze
+          stripped = value.to_s.strip
+          stripped.freeze unless stripped.empty?
         end
 
         def normalize_class_names(class_names)
           case class_names
           when nil then AttrDefaults::EMPTY_CLASS_NAMES
-          when Array then class_names.map { |token| token.to_s.freeze }.freeze
+          when Array then freeze_tokens(class_names)
           else raise InvalidError, "class_names must be an Array, got #{class_names.class}"
           end
+        end
+
+        def freeze_tokens(tokens)
+          return AttrDefaults::EMPTY_CLASS_NAMES if tokens.empty?
+          return tokens.each(&:freeze).freeze if tokens.all?(String)
+
+          tokens.map { |token| token.to_s.freeze }.freeze
+        end
+
+        def freeze_raw(raw)
+          return AttrDefaults::EMPTY_RAW if raw.empty?
+          return raw.freeze if raw.all? { |_, value| value.is_a?(String) && value.frozen? }
+
+          raw.transform_values { |value| value.to_s.freeze }.freeze
         end
 
         def normalize_raw(raw)
           case raw
           when nil then AttrDefaults::EMPTY_RAW
-          when Hash then raw.transform_values { |v| v.to_s.freeze }.freeze
+          when Hash then freeze_raw(raw)
           else raise InvalidError, "raw must be a Hash, got #{raw.class}"
           end
         end

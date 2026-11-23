@@ -90,6 +90,15 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(link.attrs.raw).to eq({})
     end
 
+    it 'splits class names on any whitespace and freezes what it keeps', :aggregate_failures do
+      html = "<html><body><p class=\"a\tb\nc\" data-k=\"v\">x</p><p class=\" \">y</p></body></html>"
+      spaced, blank = described_class.call(html, vocabulary: all_scope).root.find_all { |n| n.name == :p }
+
+      expect(spaced.attrs.class_names).to eq(%w[a b c])
+      expect([spaced.attrs.class_names, *spaced.attrs.class_names, spaced.attrs.raw.values.first]).to all(be_frozen)
+      expect(blank.attrs.class_names).to eq([])
+    end
+
     it 'logs which root fallback was used', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Log).to receive(:warn)
       fallback = lambda do |reason, message|
