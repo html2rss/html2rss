@@ -79,7 +79,7 @@ RSpec.describe Html2rss::AutoSource do
     let(:path) { File.join(dir, 'page.html') }
     let(:more_labels) do
       { zh: '更多', ko: '더보기', ar: 'المزيد', fa: 'بیشتر', th: 'ดูเพิ่มเติม', tr: 'daha fazla', id: 'lihat semua',
-        vi: 'xem thêm', cs: 'zobrazit všechny', hu: 'összes hír' }
+        vi: 'xem thêm', cs: 'zobrazit všechny', hu: 'összes hír', ro: 'vezi toate' }
     end
     let(:card_page) do
       lambda do |code, label|

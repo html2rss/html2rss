@@ -18,13 +18,15 @@ RSpec.describe Html2rss::Vocabulary do
     {
       [:en, 'about', :de] => english_chrome, [:en, 'about', :ja] => english_chrome,
       [:en, 'contact', :de] => english_chrome, [:en, 'contact', :ja] => english_chrome,
-      [:en, 'share', :id] => english_chrome, [:en, 'share', :tr] => english_chrome,
+      [:en, 'contact', :ro] => shared_word, [:en, 'share', :id] => english_chrome,
+      [:en, 'share', :ro] => english_chrome, [:en, 'share', :tr] => english_chrome,
       [:en, 'share', :cs] => english_chrome,
       [:de, 'kontakt', :cs] => shared_word, [:pl, 'kontakt', :cs] => shared_word,
       [:sv, 'kontakt', :cs] => shared_word,
       [:fr, 'contact', :en] => shared_word, [:fr, 'contact', :de] => shared_word,
-      [:fr, 'contact', :ja] => shared_word, [:nl, 'contact', :en] => shared_word,
-      [:nl, 'contact', :de] => shared_word, [:nl, 'contact', :ja] => shared_word
+      [:fr, 'contact', :ja] => shared_word, [:fr, 'contact', :ro] => shared_word,
+      [:nl, 'contact', :en] => shared_word, [:nl, 'contact', :de] => shared_word,
+      [:nl, 'contact', :ja] => shared_word, [:nl, 'contact', :ro] => shared_word
     }
   end
 
