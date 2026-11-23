@@ -472,6 +472,38 @@ language_chrome_nl.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_no.html:
+  junk: 0
+  real: 22
+  expected: 22
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_no_actions.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_no_hubs.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_no_more.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 language_chrome_pl.html:
   junk: 0
   real: 4

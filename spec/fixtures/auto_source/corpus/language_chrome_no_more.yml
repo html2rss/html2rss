@@ -1,0 +1,9 @@
+---
+case: Six invented news cards in language "no", each with a plain heading, a summary and one link labelled with a read-more or list-level "more" label, ending in a long slug or `.html`; all six stay items.
+expected:
+- https://example.com/aktuelt/lang-artikkel-om-fergeplanen
+- https://example.com/aktuelt/lang-artikkel-om-biblioteket.html
+- https://example.com/aktuelt/lang-artikkel-om-torvet
+- https://example.com/aktuelt/lang-artikkel-om-natbussen.html
+- https://example.com/aktuelt/lang-artikkel-om-broen
+- https://example.com/aktuelt/lang-artikkel-om-cykelstien.html

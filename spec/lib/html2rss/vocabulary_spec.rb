@@ -72,7 +72,7 @@ RSpec.describe Html2rss::Vocabulary do
                                                 described_class::Fa, described_class::Hi, described_class::Th,
                                                 described_class::Tr, described_class::Id, described_class::Vi,
                                                 described_class::Cs, described_class::Hu,
-                                                described_class::Ro, described_class::Da])
+                                                described_class::Ro, described_class::Da, described_class::No])
       expect(described_class::LANGUAGES).to eq(languages + described_class::PAGE_ONLY)
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
@@ -214,7 +214,7 @@ RSpec.describe Html2rss::Vocabulary do
     it 'returns one frozen scope per language, plus all, each the identical object on every lookup',
        :aggregate_failures do
       expect(scopes.map(&:code)).to eq(
-        %i[en de fr es it nl pl sv ja pt ru all zh ko he el uk ar fa hi th tr id vi cs hu ro da]
+        %i[en de fr es it nl pl sv ja pt ru all zh ko he el uk ar fa hi th tr id vi cs hu ro da no]
       )
       expect(scopes).to all(be_frozen)
       expect(scopes.map { described_class[_1.code] }).to eq(scopes)
@@ -227,6 +227,21 @@ RSpec.describe Html2rss::Vocabulary do
       expect(described_class['DE_at']).to be(described_class[:de])
       expect(described_class[' Sv-FI ']).to be(described_class[:sv])
       expect(described_class['ja-JP-u-ca-japanese']).to be(described_class[:ja])
+    end
+
+    it 'reads the Norwegian scope for no, nb and nn, with any region, in any case', :aggregate_failures do
+      %w[no no-NO NO NO-no nb nb-NO NB NB-no nn nn-NO NN NN-no nb_NO nn-Latn-NO].each do |tag|
+        expect(described_class[tag]).to be(described_class[:no]), tag
+      end
+      expect([described_class[:nb], described_class[:nn]]).to all(be(described_class[:no]))
+      expect(described_class[:no].code).to eq(:no)
+    end
+
+    it 'maps no other language to a scope it does not own', :aggregate_failures do
+      %w[da sv nl nds nbo no1].each do |tag|
+        expect(described_class[tag]).not_to be(described_class[:no]), tag
+      end
+      expect(described_class['nbo']).to be(described_class[nil])
     end
 
     it 'reduces a script-tagged language to its primary tag', :aggregate_failures do
@@ -268,7 +283,7 @@ RSpec.describe Html2rss::Vocabulary do
       expect(chinese.own_alternation(:utility)).to include('关于我们').and include('關於我們')
       expect(chinese.own_alternation(:recommended)).to include('推荐阅读')
       expect(chinese.type_markers).to be_frozen
-      own = [chinese, *%i[ko he el uk ar fa hi th tr id vi cs hu ro da].map { described_class[_1] }]
+      own = [chinese, *%i[ko he el uk ar fa hi th tr id vi cs hu ro da no].map { described_class[_1] }]
       (described_class::SCOPES.values - own).each do |scope|
         expect(scope.own_alternations.values).to all(eq('')), scope.code.to_s
         expect(scope.own_words.values).to all(be_empty), scope.code.to_s
@@ -306,7 +321,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'gives every other scope, all and ja included, the identical full marker set without Chinese terms',
        :aggregate_failures do
-      own = [chinese, *%i[ko he el uk ar fa hi th tr id vi cs hu ro da].map { described_class[_1] }]
+      own = [chinese, *%i[ko he el uk ar fa hi th tr id vi cs hu ro da no].map { described_class[_1] }]
       others = described_class::SCOPES.values - own
 
       expect(others.map(&:type_markers)).to all(equal(described_class.words(:type_marker)))

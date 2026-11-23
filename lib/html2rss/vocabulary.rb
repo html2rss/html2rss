@@ -79,7 +79,7 @@ module Html2rss
     # Languages whose terms apply only on a page in that language: they are in no shared table, so +:all+, +ja+ and
     # every other language read exactly what they read without them. A page scope of such a language is +:all+ plus
     # its terms (a Han term has no word boundary, so it is read as a whole label only, see {TextClassifier}).
-    PAGE_ONLY = [Zh, Ko, He, El, Uk, Ar, Fa, Hi, Th, Tr, Id, Vi, Cs, Hu, Ro, Da].freeze
+    PAGE_ONLY = [Zh, Ko, He, El, Uk, Ar, Fa, Hi, Th, Tr, Id, Vi, Cs, Hu, Ro, Da, No].freeze
 
     # Every language that has a file, in a fixed order.
     LANGUAGES = (ALL + PAGE_ONLY).freeze
@@ -230,7 +230,11 @@ module Html2rss
                 .merge(PAGE_ONLY.to_h { [_1.code, build_scope(_1.code, ALL, own: [_1])] }).freeze
     ALL_SCOPE = SCOPES.fetch(:all)
     # Every accepted primary tag, as a String or a Symbol, so the usual lookup allocates nothing.
-    BY_TAG = SCOPES.except(:all).flat_map { |code, scope| [[code, scope], [code.name, scope]] }.to_h.freeze
-    private_constant :TAG, :WORDS, :ALTERNATIONS, :UNAMBIGUOUS_WORDS, :UNAMBIGUOUS_ALTERNATIONS, :BY_TAG, :ALL_SCOPE
+    # Tags of a language that reads another language's scope: Norwegian Bokmål and Nynorsk read +no+.
+    TAG_ALIASES = { nb: :no, nn: :no }.freeze
+    BY_TAG = SCOPES.except(:all).merge(TAG_ALIASES.transform_values { SCOPES.fetch(_1) })
+                   .flat_map { |code, scope| [[code, scope], [code.name, scope]] }.to_h.freeze
+    private_constant :TAG, :WORDS, :ALTERNATIONS, :UNAMBIGUOUS_WORDS, :UNAMBIGUOUS_ALTERNATIONS, :BY_TAG,
+                     :TAG_ALIASES, :ALL_SCOPE
   end
 end
