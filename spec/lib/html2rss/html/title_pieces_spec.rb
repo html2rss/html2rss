@@ -164,6 +164,9 @@ RSpec.describe Html2rss::Html::TitlePieces do
       rules = Html2rss::Article::Title::Rules.build(xx.type_markers, own)
       table = Html2rss::Article::Title.const_get(:RULES_BY_SCOPE).merge(zh: rules)
       stub_const('Html2rss::Article::Title::RULES_BY_SCOPE', table)
+      label_text = Html2rss::LinkDestination::Sponsorship::LabelText
+      paid = label_text.build(%i[paid_label ad_word element_label].to_h { [_1, xx.own_alternation(_1)] })
+      stub_const("#{label_text}::BY_SCOPE", label_text.const_get(:BY_SCOPE).merge(zh: paid))
     end
 
     it 'keeps an own date term that stands inside running text', :aggregate_failures do
@@ -184,7 +187,8 @@ RSpec.describe Html2rss::Html::TitlePieces do
        :aggregate_failures do
       [
         '<span>Soort-xx:</span>', '<span>Betaald-xx</span>',
-        '<span>Soort-xx:</span><span>12:30</span>', '<span>Betaald-xx</span><span>12:30</span>'
+        '<span>Soort-xx:</span><span>12:30</span>', '<span>Betaald-xx</span><span>12:30</span>',
+        '<span>Betaald-xx</span> <span>12:30</span>', '<time>12-mnd-xx</time>', '<a href="/s"><time>12-mnd-xx</time></a>'
       ].flat_map { |inner| [%(<a href="/s">#{inner}</a>), inner] }.each do |inner|
         html = %(<article><h2>#{inner}</h2><a href="/s">x</a></article>)
 

@@ -98,6 +98,8 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship::LabelText do
       terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
       terms[:paid_label] = %w[betaald-xx]
       terms[:ad_word] = %w[advertentie-xx]
+      terms[:element_label] = %w[RK-XX]
+      terms[:paid_label] = %w[betaald-xx RK-XX]
       language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
       Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
     end
@@ -111,6 +113,14 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship::LabelText do
     it 'is true for a paid label only an own term states', :aggregate_failures do
       expect(described_class.own_paid?('Betaald-xx', vocabulary: own_scope)).to be(true)
       expect(described_class.own_paid?('Betaald-xx', vocabulary: all_scope)).to be(false)
+    end
+
+    it 'is false for an own paid term that is also an own element label, as the element reading wins' do
+      expect(described_class.own_paid?('RK-XX', vocabulary: own_scope)).to be(false)
+    end
+
+    it 'is false for a shared element label' do
+      expect(described_class.own_paid?('PR', vocabulary: own_scope)).to be(false)
     end
 
     it 'is false for a shared paid label, an own ad word and other text', :aggregate_failures do
