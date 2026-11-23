@@ -273,6 +273,12 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect(['阅读全文 3', '阅读全文 2026', '阅读全文 (1234)'].map { zh.read_more?(_1) }).to all(be(false))
     end
 
+    it 'names an own read-more term, with or without a count, and no shared one', :aggregate_failures do
+      zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
+      expect(['阅读全文', '阅读全文 (3)'].map { zh.own_read_more?(_1) }).to all(be(true))
+      expect([zh.own_read_more?('Read more'), described_class.new.own_read_more?('阅读全文')]).to eq([false, false])
+    end
+
     it 'keeps a shared read-more term with a count unread on every scope', :aggregate_failures do
       zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
       [described_class.new, zh, described_class.new(vocabulary: Html2rss::Vocabulary[:en])].each do |classifier|
@@ -487,6 +493,8 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
     it 'reads every page pattern through the same scope, with no special case per concept', :aggregate_failures do
       read.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(true)) }
       unread.each { |reading, texts| expect(texts.map { readings.fetch(reading).match?(_1) }).to all(be(false)) }
+      expect(readings.fetch(:own_read_more).match?('Lees-xx (3)')).to be(true)
+      expect(readings.fetch(:own_read_more).match?('Read more (3)')).to be(false)
       expect(scope.words(:path_section)).to include('sectie-xx')
     end
 

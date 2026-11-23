@@ -27,7 +27,7 @@ module Html2rss
         return true unless destination_facts
 
         destination_facts.taxonomy_path ||
-          short_utility_label?(text, destination_facts) ||
+          short_utility_label?(text, destination_facts) || own_hub_label?(text, destination_facts, heading_anchor:) ||
           recommended_chrome?(text, destination_facts, heading_anchor:) ||
           (@link_resolver.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
           (@link_resolver.utility_text?(text) && destination_facts.vanity_path) ||
@@ -44,6 +44,17 @@ module Html2rss
           !destination_facts.content_path &&
           !destination_facts.strong_post_suffix &&
           !WordCount.at_least?(text, 4)
+      end
+
+      # A section link labelled with an own read-more term of a page-only language ("see all"): a path of one or two
+      # segments, none a content word or post suffix, ending in a plain word (no hyphen, digit, underscore or dot).
+      # A card whose only link is such a label is lost; a hyphenated hub still passes.
+      def own_hub_label?(text, destination_facts, heading_anchor:)
+        segments = destination_facts.segments
+        return false if heading_anchor || destination_facts.content_path || destination_facts.strong_post_suffix
+        return false unless segments.size.between?(1, 2) && !segments.last.match?(/[-\d_.]/)
+
+        @link_resolver.own_read_more_text?(text)
       end
 
       def recommended_chrome?(text, destination_facts, heading_anchor:)

@@ -147,6 +147,11 @@ module Html2rss
         normalized.match?(@page.fetch(:read_more)) || normalized.match?(@page.fetch(:own_read_more))
       end
 
+      # @param text [String, #to_s] visible anchor text
+      # @return [Boolean] true when the whole text is an own read-more term of a page-only language, bare or with a
+      #   bracketed count; always false on a scope without own terms
+      def own_read_more?(text) = normalize(text).match?(@page.fetch(:own_read_more))
+
       private
 
       def label?(reading, text) = reading_match?(reading, normalize(text))

@@ -106,32 +106,84 @@ RSpec.describe Html2rss::AutoSource do
         da: ['se alle', 'se flere', 'flere nyheder']
       }.flat_map { |code, labels| labels.map { [code, _1] } }
     end
-    let(:count) do
-      lambda do |code, label, extra|
-        cards = (1..6).map do |i|
-          %(<article><h2>Real headline #{i} with several words</h2><p>A summary sentence.</p>) +
-            %(<a href="/section/long-article-slug-#{i}#{'.html' if i > 3}">#{label}</a></article>)
-        end
-        File.write(path, %(<!doctype html><html lang="#{code}"><body>#{cards.join}#{extra}</body></html>))
-        AutoSourceCorpus.auto_source(path:, url: 'https://example.com/section/').articles.size
+    let(:urls) do
+      lambda do |code, body|
+        File.write(path, %(<!doctype html><html lang="#{code}"><body>#{body}</body></html>))
+        AutoSourceCorpus.auto_source(path:, url: 'https://example.com/section/').articles.map { _1.url.to_s }
       end
     end
-    let(:menu_and_footer) do
-      lambda do |label|
-        %(<div class="menu"><ul><li><a href="/sections">#{label}</a></li></ul></div>) +
-          %(<footer><a href="/archive">#{label}</a></footer>)
-      end
+    let(:pages) do
+      story = ->(i) { %(<a href="/section/real-story-slug-#{i}">Open this story right now please</a>) }
+      cards = lambda { |&block|
+        (1..6).map do |i|
+          %(<article><h2>Real headline #{i} with several words</h2>#{block.call(i)}</article>)
+        end.join
+      }
+      real = (1..6).map do |i|
+        %(<h2><a href="/section/real-story-slug-#{i}">Real headline #{i} with several words</a></h2>)
+      end.join
+      {
+        card_only: lambda { |label|
+          cards.call do |i|
+            %(<p>A summary.</p><a href="/section/long-slug-#{i}#{'.html' if i > 3}">#{label}</a>)
+          end
+        },
+        menu_footer: lambda { |label|
+          cards.call { |i| %(<a href="/section/long-slug-#{i}">#{label}</a>) } +
+            %(<div class="menu"><ul><li><a href="/sections">#{label}</a></li></ul></div>) +
+            %(<footer><a href="/archive">#{label}</a></footer>)
+        },
+        hub_and_story: lambda { |label|
+          cards.call do |i|
+            %(<a href="/news-desk/top-stories">#{label}</a>#{story.call(i)})
+          end
+        },
+        image_story: lambda { |label|
+          (1..6).map do |i|
+            %(<article><a href="/section/real-story-slug-#{i}"><img src="/i#{i}.jpg" alt=""></a>) +
+              %(<h2>Real headline #{i} with several words</h2><a href="/sports">#{label}</a></article>)
+          end.join
+        },
+        block: lambda { |label|
+          %(<div class="block"><h2>Section heading for sports here</h2><p>Latest stories from this section.</p>) +
+            %(<a href="/sports">#{label}</a></div>#{real})
+        },
+        head: lambda { |label|
+          %(<div class="head"><h2>Latest world news today here</h2><a href="/world">#{label}</a></div>) + real
+        }
+      }
     end
 
     after { FileUtils.remove_entry(dir) }
 
     it 'keeps every card linked by a list-level more label', :aggregate_failures do
-      pairs.each { |code, label| expect(count.call(code, label, '')).to eq(6), "#{code} #{label}" }
+      pairs.each do |code, label|
+        expect(urls.call(code, pages[:card_only].call(label)).size).to eq(6), "#{code} #{label}"
+      end
     end
 
     it 'adds no item for a menu or footer link with the label', :aggregate_failures do
       pairs.each do |code, label|
-        expect(count.call(code, label, menu_and_footer.call(label))).to eq(6), "#{code} #{label}"
+        expect(urls.call(code, pages[:menu_footer].call(label)).size).to eq(6), "#{code} #{label}"
+      end
+    end
+
+    it 'keeps the story link of a card, never a hub labelled with the term', :aggregate_failures do
+      pairs.uniq(&:first).each do |code, label|
+        found = urls.call(code, pages[:hub_and_story].call(label))
+        expect(found.grep(/real-story-slug/).size).to eq(6), "#{code} #{label}"
+      end
+    end
+
+    it 'produces no item on a hub when the card story link is only an image', :aggregate_failures do
+      pairs.uniq(&:first).each do |code, label|
+        expect(urls.call(code, pages[:image_story].call(label)).grep(/sports/)).to be_empty, "#{code} #{label}"
+      end
+    end
+
+    it 'adds no item for a section block or heading linked by the term', :aggregate_failures do
+      pairs.uniq(&:first).product(%i[block head]).each do |(code, label), kind|
+        expect(urls.call(code, pages[kind].call(label)).size).to eq(6), "#{code} #{label} #{kind}"
       end
     end
   end
