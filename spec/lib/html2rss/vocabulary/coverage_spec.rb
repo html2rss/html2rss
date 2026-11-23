@@ -317,6 +317,13 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
+    it 'keeps an ordinary noun label, a card link text or a sports headline, a headline', :aggregate_failures do
+      %w[Σύνδεση ΣΥΝΔΕΣΗ Αποσύνδεση Εγγραφή ΕΓΓΡΑΦΗ Αναζήτηση Συνδρομή Συνδρομές Σχόλια Ειδοποιήσεις Προτεινόμενα]
+        .push('Πίσω στην κορυφή', 'Ο λογαριασμός μου').each do |label|
+          readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+        end
+    end
+
     it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
       ['추천 기사 2026', '추천 뉴스 2026', '관련 기사 2026', '신문 구독 2026', '무료 구독 2026', '뉴스레터 구독 2026',
        '회사 소개 2026', '개인정보 처리방침 2026'].each do |headline|
@@ -350,11 +357,11 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads chrome and recommended labels as whole labels, in any case', :aggregate_failures do
-      %w[Σύνδεση ΣΥΝΔΕΣΗ ΣΎΝΔΕΣΗ Αποσύνδεση Εγγραφή ΕΓΓΡΑΦΗ Αναζήτηση ΑΝΑΖΗΤΗΣΗ Επικοινωνία Συνδρομή Σχόλια Μενού
-         Συνδεση].each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+      %w[Επικοινωνία ΕΠΙΚΟΙΝΩΝΙΑ Μενού Εγγραφείτε Συνδεθείτε].each { expect(el.utility_chrome?(_1)).to be(true), _1 }
       ['Όροι χρήσης', 'ΟΡΟΙ ΧΡΗΣΗΣ', 'ΌΡΟΙ ΧΡΉΣΗΣ', 'Πολιτική απορρήτου', 'ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ', 'Σχετικά με εμάς',
-       'Σύνδεση (3)', '[Μενού]'].each { expect(el.utility_chrome?(_1)).to be(true), _1 }
-      ['Σχετικά άρθρα', 'ΣΧΕΤΙΚΑ ΑΡΘΡΑ', 'Προτεινόμενα', 'Διαβάστε επίσης', 'ΔΙΑΒΑΣΤΕ ΕΠΙΣΗΣ']
+       'ΟΡΟΙ ΚΑΙ ΠΡΟΫΠΟΘΕΣΕΙΣ', 'Όροι και προϋποθέσεις', 'Επικοινωνία (3)', '[Μενού]']
+        .each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+      ['Σχετικά άρθρα', 'ΣΧΕΤΙΚΑ ΑΡΘΡΑ', 'Προτεινόμενα άρθρα', 'Διαβάστε επίσης', 'ΔΙΑΒΑΣΤΕ ΕΠΙΣΗΣ']
         .each { expect(el.recommended?(_1)).to be(true), _1 }
     end
 
@@ -386,9 +393,9 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads the labels on a Greek page only, and the new-window notice', :aggregate_failures do
-      [nil, :ja, :en, :ko].each { expect(text.call(_1).utility_chrome?('Σύνδεση')).to be(false), _1.inspect }
-      expect(el.utility_chrome?('Σύνδεση (ανοίγει σε νέο παράθυρο)')).to be(true)
-      expect(text.call(nil).utility_chrome?('Σύνδεση (ανοίγει σε νέο παράθυρο)')).to be(false)
+      [nil, :ja, :en, :ko].each { expect(text.call(_1).utility_chrome?('Επικοινωνία')).to be(false), _1.inspect }
+      expect(el.utility_chrome?('Επικοινωνία (ανοίγει σε νέο παράθυρο)')).to be(true)
+      expect(text.call(nil).utility_chrome?('Επικοινωνία (ανοίγει σε νέο παράθυρο)')).to be(false)
     end
 
     it 'declares no type marker of its own', :aggregate_failures do
