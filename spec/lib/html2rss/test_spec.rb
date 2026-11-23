@@ -461,6 +461,15 @@ RSpec.describe Html2rss::Test do
       end
     end
 
+    context 'when the strategy override is invalid' do
+      it 'returns a failed execution Test::Result', :aggregate_failures do
+        result = described_class.call(valid_config, strategy: :nope)
+        expect(result.success).to be(false)
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:execution])
+        expect(result.error_message).to include('Config::InvalidConfig', 'strategy')
+      end
+    end
+
     context 'when live extraction raises a contract error' do
       before do
         pipeline = instance_double(Html2rss::FeedPipeline)

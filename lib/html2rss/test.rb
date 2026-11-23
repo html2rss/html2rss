@@ -171,8 +171,8 @@ module Html2rss
       raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
       return validation_failure_result(validation, raw_config) unless validation.success?
 
-      config = build_test_config(raw_config, strategy, params)
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      config = build_test_config(raw_config, strategy, params)
       execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, compare_enhance:, sample_limit:)
     rescue Html2rss::ContractError
       raise
