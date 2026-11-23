@@ -25,7 +25,6 @@ RSpec.describe Html2rss::SST::Node do
       expect(img).to be_image
       expect(nav).to be_utility_landmark
       expect(parent_div.run_count).to be >= 1
-      expect(parent_div.text_density).to be_a(Float)
       expect(parent_div.descendants).to include(link)
       expect(parent_div.count_descendants).to eq(2)
       expect(parent_div.count_descendants(&:link?)).to eq(1)
@@ -135,9 +134,8 @@ RSpec.describe Html2rss::SST::Node do
       expect(div.visible_text(exclude: [div.children.first])).to eq('a b')
     end
 
-    it 'counts words and link density from visible text', :aggregate_failures do
+    it 'counts words from visible text' do
       expect(div.run_count).to eq(4)
-      expect(div.text_density).to eq(2.0)
     end
 
     it 'reads run counts through the document index' do
@@ -154,7 +152,6 @@ RSpec.describe Html2rss::SST::Node do
 
       expect(node.visible_text).to eq("one\ntwo")
       expect(node.run_count).to eq(2)
-      expect(described_class.build(name: :span, own_text: 'one two three').text_density).to be(3.0)
     end
   end
 end

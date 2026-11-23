@@ -146,7 +146,7 @@ Whether a follow-up may leave the page origin. Owned by `RequestService::Policy`
 
 ## Request Budget
 
-Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion); `budget_for` remains a thin alias. `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds` / `#effective_timeout_ms`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.
+Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion). `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.
 
 ## HTML-ness
 
@@ -266,7 +266,7 @@ Supported pagination strategy names and factory classes live in `RequestSession:
 
 Module guide: `lib/html2rss/selectors/README.md`.
 
-Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::OptionSpec` (name, type, required). `Config::SelectorsValidator::Selector`, `Selectors::OptionSpec.for` / `expectation_for`, and `Selectors::SchemaExport` consume that contract; post-processor `Base` enforces `OPTIONS` plus optional `VALUE_TYPE` at runtime. Extractors run as `new(xml, **config)`.
+Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::OptionSpec` (name, type, required). `Config::SelectorsValidator::Selector`, `Selectors::OptionSpec.for`, and `Selectors::SchemaExport` consume that contract; post-processor `Base` enforces `OPTIONS` plus optional `VALUE_TYPE` at runtime. Extractors run as `new(xml, **config)`.
 
 ## Error handling
 

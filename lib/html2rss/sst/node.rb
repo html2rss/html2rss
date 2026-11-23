@@ -159,14 +159,6 @@ module Html2rss
         index ? index.memo_run_count(self) : WordCount.runs(visible_text)
       end
 
-      ##
-      # @return [Float] letter/digit runs per descendant link
-      def text_density
-        runs = run_count
-        links = count_descendants(&:link?)
-        links.zero? ? runs.to_f : runs.to_f / links
-      end
-
       protected
 
       def collect_matching(found, &block)

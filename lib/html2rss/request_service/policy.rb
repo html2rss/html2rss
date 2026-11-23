@@ -191,8 +191,5 @@ module Html2rss
         raise UnsupportedUrlScheme, "Follow-up downgraded from https to http for #{url}"
       end
     end
-
-    # Shared immutable policy instance used for default request execution.
-    Policy::DEFAULT_POLICY = Policy.new
   end
 end

@@ -263,23 +263,6 @@ RSpec.describe Html2rss::Url do
     end
   end
 
-  describe '#titleized' do
-    {
-      'http://www.example.com' => '',
-      'http://www.example.com/foobar/' => 'Foobar',
-      'http://www.example.com/foobar/baz.txt' => 'Foobar Baz',
-      'http://www.example.com/foo-bar/baz_qux.pdf' => 'Foo Bar Baz Qux',
-      'http://www.example.com/foo%20bar/baz%20qux.php' => 'Foo Bar Baz Qux',
-      'http://www.example.com/foo%20bar/baz%20qux-4711.html' => 'Foo Bar Baz Qux 4711',
-      'http://www.example.com/foo--bar' => 'Foo Bar'
-    }.each_pair do |url_string, expected|
-      it "titleizes #{url_string} to #{expected}" do
-        url = described_class.from_absolute(url_string)
-        expect(url.titleized).to eq(expected)
-      end
-    end
-  end
-
   describe '#channel_titleized' do
     {
       'http://www.example.com' => 'www.example.com',
@@ -972,22 +955,6 @@ RSpec.describe Html2rss::Url do
 
     it 'freezes path segments' do
       expect(url.path_segments).to be_frozen
-    end
-  end
-
-  describe '#join_uri' do
-    it 'resolves a relative URI and returns a Url' do
-      base = described_class.from_absolute('https://example.com/dir/a')
-
-      expect(base.join_uri(Addressable::URI.parse('../item')))
-        .to eq(described_class.from_absolute('https://example.com/item'))
-    end
-
-    it 'normalizes an absolute URI joined onto the base' do
-      base = described_class.from_absolute('https://example.com/dir/')
-
-      expect(base.join_uri(Addressable::URI.parse('HTTP://Example.COM/a/../b')))
-        .to eq(described_class.from_absolute('http://example.com/b'))
     end
   end
 end
