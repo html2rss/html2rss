@@ -173,7 +173,8 @@ module Html2rss
       def transcode_html(bytes, charset)
         html_encodings_for(charset).each do |encoding|
           return bytes.dup.force_encoding(encoding).encode(Encoding::UTF_8)
-        rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+        rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError,
+               Encoding::ConverterNotFoundError
           # try the next candidate
         end
         utf8_scrub(bytes)

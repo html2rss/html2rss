@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Html::ArticleRules::Description do
+  let(:vocabulary) { Html2rss::Vocabulary[nil] }
+
   describe '.date_core' do
     it 'strips a known type-chip suffix after a dash', :aggregate_failures do
       expect(described_class.date_core('12 March 2024 - News article')).to eq('12 March 2024')
@@ -62,26 +64,56 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
 
   describe '.keep?' do
     it 'drops a Telenor-shaped type-chip date line' do
-      expect(described_class.keep?('Press release • 16 juli, 2026')).to be(false)
+      expect(described_class.keep?('Press release • 16 juli, 2026', vocabulary:)).to be(false)
     end
 
     ['Read more', 'Weiterlesen', 'Lire la suite', 'Find out more', 'Meer informatie', 'Más información'].each do |line|
       it "drops the read-more line #{line.inspect}" do
-        expect(described_class.keep?(line)).to be(false)
+        expect(described_class.keep?(line, vocabulary:)).to be(false)
       end
     end
 
     it 'keeps a longer read-more sentence' do
-      expect(described_class.keep?('Read more about the trial')).to be(true)
+      expect(described_class.keep?('Read more about the trial', vocabulary:)).to be(true)
     end
 
     it 'keeps a teaser that follows a clock, not the whole line as date chrome', :aggregate_failures do
-      expect(described_class.keep?('12 March 2024 - 10:00 Team announces a new reactor design')).to be(true)
-      expect(described_class.keep?('12 March 2024 | 10:00 Team announces a new reactor design')).to be(true)
+      expect(described_class.keep?('12 March 2024 - 10:00 Team announces a new reactor design',
+                                   vocabulary:)).to be(true)
+      expect(described_class.keep?('12 March 2024 | 10:00 Team announces a new reactor design',
+                                   vocabulary:)).to be(true)
     end
 
     it 'still drops a Nokia-shaped pipe clock line as description chrome' do
-      expect(described_class.keep?('August 06 , 2026 | 13:00 PM Europe/Amsterdam')).to be(false)
+      expect(described_class.keep?('August 06 , 2026 | 13:00 PM Europe/Amsterdam', vocabulary:)).to be(false)
+    end
+
+    it 'drops the Japanese type chips 独自 and 写真 on a Japanese or unlabeled page, not on a Chinese one',
+       :aggregate_failures do
+      %w[独自 写真].product([nil, :ja, :en]).each do |chip, lang|
+        expect(described_class.keep?(chip, vocabulary: Html2rss::Vocabulary[lang])).to be(false), "#{chip} #{lang}"
+      end
+      %w[独自 写真].each { expect(described_class.keep?(_1, vocabulary: Html2rss::Vocabulary[:zh])).to be(true), _1 }
+      expect(described_class.keep?('速報', vocabulary: Html2rss::Vocabulary[:zh])).to be(false)
+    end
+
+    it 'peels a 独自 or 写真 chip beside a date on every page, in both orders and with every separator',
+       :aggregate_failures do
+      %w[独自 写真].product([' - ', ' | ', ' • ']).flat_map { |w, sep| ["2024-03-12#{sep}#{w}", "#{w}#{sep}2024-03-12"] }
+               .each do |line|
+        expect([described_class.date_core(line), described_class.date_shaped?(line)]).to eq(['2024-03-12', true]), line
+        expect(described_class.keep?(line, vocabulary: Html2rss::Vocabulary[:zh])).to be(false), line
+      end
+    end
+
+    it 'sets published_at from such a chip on a Chinese page, and leaves it out of the description',
+       :aggregate_failures do
+      zh = Html2rss::Vocabulary[:zh]
+      line = '独自 | 2026-11-10'
+
+      expect(Html2rss::Html::ArticleRules::Date.earliest([], leftover_lines: [line], time_zone: 'UTC'))
+        .to eq(DateTime.parse('2026-11-10T00:00:00Z'))
+      expect(described_class.from_lines([line, 'Kept dek'], vocabulary: zh)).to eq('Kept dek')
     end
   end
 end

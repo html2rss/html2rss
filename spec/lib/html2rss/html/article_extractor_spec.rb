@@ -4,9 +4,10 @@ require 'nokogiri'
 
 RSpec.describe Html2rss::Html::ArticleExtractor do
   subject(:article_hash) do
-    described_class.call(article_tag, base_url: 'https://example.com', selected_anchor:, time_zone: 'UTC')
+    described_class.call(article_tag, **page, selected_anchor:, time_zone: 'UTC')
   end
 
+  let(:page) { { base_url: 'https://example.com', vocabulary: Html2rss::Vocabulary[nil] } }
   let(:selected_anchor) { Html2rss::Html::Navigator.main_anchor_for(article_tag) }
 
   describe 'leftover hygiene' do
@@ -16,7 +17,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
         tag = Nokogiri::HTML.fragment(html).at_css(item_selector)
         described_class.call(
           tag,
-          base_url: 'https://example.com',
+          **page,
           selected_anchor: Html2rss::Html::Navigator.main_anchor_for(tag),
           time_zone: extractor_time_zone
         )
@@ -177,7 +178,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     subject(:article_hash) do
       described_class.call(
         article_tag,
-        base_url: 'https://example.com',
+        **page,
         selected_anchor: nil
       )
     end
@@ -237,7 +238,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'uses no anchor and UTC by default', :aggregate_failures do
-      extracted = described_class.call(article_tag, base_url: 'https://example.com')
+      extracted = described_class.call(article_tag, **page)
       expect(extracted[:url]).to be_nil
       expect(extracted[:title]).to eq('Feb 24')
       expect(extracted[:published_at].to_s).to eq('2024-02-24T12:00:00+00:00')
@@ -258,7 +259,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     let(:item) { card.at_css('h3') }
 
     it 'takes the summary and date from the parent card', :aggregate_failures do
-      extracted = described_class.call(item, base_url: 'https://example.com', selected_anchor: item.at_css('a'))
+      extracted = described_class.call(item, **page, selected_anchor: item.at_css('a'))
       expect(extracted[:description]).to eq('Card summary text')
       expect(extracted[:published_at].to_s).to eq('2024-02-24T12:00:00+00:00')
     end
@@ -278,7 +279,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'does not take the summary from a parent holding several headings', :aggregate_failures do
       item = crowded.at_css('h3')
-      extracted = described_class.call(item, base_url: 'https://example.com', selected_anchor: item.at_css('a'))
+      extracted = described_class.call(item, **page, selected_anchor: item.at_css('a'))
       expect(extracted[:description]).to be_nil
       expect(extracted[:published_at]).to be_nil
     end
@@ -297,7 +298,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'walks past a wrapper whose only child is the heading', :aggregate_failures do
       item = thin_card.at_css('h3')
-      extracted = described_class.call(item, base_url: 'https://example.com', selected_anchor: item.at_css('a'))
+      extracted = described_class.call(item, **page, selected_anchor: item.at_css('a'))
       expect(extracted[:description]).to eq('Card summary text')
       expect(extracted[:published_at].to_s).to eq('2024-02-24T12:00:00+00:00')
     end
@@ -316,7 +317,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'walks past wrappers that contain the heading item', :aggregate_failures do
       item = nested_card.at_css('h3')
-      extracted = described_class.call(item, base_url: 'https://example.com', selected_anchor: item.at_css('a'))
+      extracted = described_class.call(item, **page, selected_anchor: item.at_css('a'))
       expect(extracted[:description]).to eq('Card summary text')
     end
   end
@@ -333,7 +334,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'keeps the container item without walking to the parent card', :aggregate_failures do
-      extracted = described_class.call(plain_card.at_css('.item'), base_url: 'https://example.com')
+      extracted = described_class.call(plain_card.at_css('.item'), **page)
       expect(extracted[:published_at]).to be_nil
       expect(extracted[:description]).to be_nil
     end
@@ -352,7 +353,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'walks from a bare anchor item to the parent card', :aggregate_failures do
       anchor = anchor_card.at_css('a')
-      extracted = described_class.call(anchor, base_url: 'https://example.com', selected_anchor: anchor)
+      extracted = described_class.call(anchor, **page, selected_anchor: anchor)
       expect(extracted[:description]).to eq('Card summary text')
       expect(extracted[:published_at].to_s).to eq('2024-02-24T12:00:00+00:00')
     end
@@ -370,7 +371,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'does not walk when the item already carries a date', :aggregate_failures do
       item = dated_card.at_css('h3')
-      extracted = described_class.call(item, base_url: 'https://example.com', selected_anchor: item.at_css('a'))
+      extracted = described_class.call(item, **page, selected_anchor: item.at_css('a'))
       expect(extracted[:description]).to be_nil
       expect(extracted[:published_at].to_s).to eq('2024-02-24T12:00:00+00:00')
     end
@@ -382,7 +383,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'strips the fragment and surrounding whitespace from the selected anchor href' do
-      extracted = described_class.call(href_tag, base_url: 'https://example.com', selected_anchor: href_tag.at_css('a'))
+      extracted = described_class.call(href_tag, **page, selected_anchor: href_tag.at_css('a'))
       expect(extracted[:url].to_s).to eq('https://example.com/article/42')
     end
   end
@@ -390,13 +391,13 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
   shared_examples 'link-less card has no url' do
     it 'returns no url for a card with a generated id but no anchor' do
       story_tag = Nokogiri::HTML.fragment('<article id="plain"><h2>Plain Story</h2></article>').at_css('article')
-      extracted = described_class.call(story_tag, base_url: 'https://example.com')
+      extracted = described_class.call(story_tag, **page)
       expect(extracted.values_at(:id, :url)).to eq(['plain', nil])
     end
 
     it 'returns no url for an anchor with an empty href' do
       tag = Nokogiri::HTML.fragment('<article><a href=""><h2>Story</h2></a></article>').at_css('article')
-      extracted = described_class.call(tag, base_url: 'https://example.com', selected_anchor: tag.at_css('a'))
+      extracted = described_class.call(tag, **page, selected_anchor: tag.at_css('a'))
       expect(extracted[:url]).to be_nil
     end
   end
@@ -414,7 +415,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'returns every attribute with resolved values', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      extracted = described_class.call(rich_tag, base_url: 'https://example.com',
+      extracted = described_class.call(rich_tag, **page,
                                                  selected_anchor: rich_tag.at_css('h2 a'))
       expect(extracted.keys).to contain_exactly(:title, :url, :image, :description, :id, :published_at, :enclosures,
                                                 :categories)
@@ -432,7 +433,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
   shared_examples 'kicker title' do
     it 'returns the headline unchanged when there is no kicker' do
       article_tag = Nokogiri::HTML.fragment('<article><h3>Headline Text</h3></article>').at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Headline Text')
+      expect(described_class.call(article_tag, **page)[:title]).to eq('Headline Text')
     end
 
     it 'prefixes a trimmed kicker when the headline does not already contain it' do # rubocop:disable RSpec/ExampleLength
@@ -441,7 +442,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       )
                                   .at_css('article')
       expect(described_class.call(article_tag,
-                                  base_url: 'https://example.com')[:title]).to eq('Politics: Headline Text')
+                                  **page)[:title]).to eq('Politics: Headline Text')
     end
 
     it 'does not prefix a kicker that the headline already opens with' do
@@ -449,14 +450,14 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
         '<article><span class="kicker">Harbor</span><h3>Harbor roundup today</h3></article>'
       )
                                   .at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Harbor roundup today')
+      expect(described_class.call(article_tag, **page)[:title]).to eq('Harbor roundup today')
     end
 
     it 'keeps a kicker that the headline only mentions further in' do
       article_tag = Nokogiri::HTML.fragment(
         '<article><span class="kicker">Harbor</span><h3>New harbor ferry</h3></article>'
       ).at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title])
+      expect(described_class.call(article_tag, **page)[:title])
         .to eq('Harbor: New harbor ferry')
     end
 
@@ -464,14 +465,14 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       article_tag = Nokogiri::HTML.fragment(
         '<article><h3><span class="kicker">Update</span><span class="headline">Ferry returns</span></h3></article>'
       ).at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Update: Ferry returns')
+      expect(described_class.call(article_tag, **page)[:title]).to eq('Update: Ferry returns')
     end
 
     it 'adds no prefix when the kicker wraps the heading' do
       article_tag = Nokogiri::HTML.fragment(
         '<article><div class="overline-block"><h3>Ferry returns</h3><p>Four new stops open.</p></div></article>'
       ).at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Ferry returns')
+      expect(described_class.call(article_tag, **page)[:title]).to eq('Ferry returns')
     end
 
     it 'drops clock and type-label noise from the kicker and headline' do
@@ -479,7 +480,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
         '<article><span class="kicker"><time>19:47</time> Harbor :</span>' \
         '<h3><span class="sr-only">Article type: Video</span> Ferry returns</h3></article>'
       ).at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Harbor: Ferry returns')
+      expect(described_class.call(article_tag, **page)[:title]).to eq('Harbor: Ferry returns')
     end
   end
 
@@ -495,7 +496,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'excludes the selected anchor text from the description' do
-      extracted = described_class.call(read_more_tag, base_url: 'https://example.com',
+      extracted = described_class.call(read_more_tag, **page,
                                                       selected_anchor: read_more_tag.at_css('a'))
       expect(extracted[:description]).to eq('Body text')
     end
@@ -515,7 +516,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'does not walk to a parent holding several headings even when they share one link', :aggregate_failures do
       item = bare_card.at_css('h3')
-      extracted = described_class.call(item, base_url: 'https://example.com', selected_anchor: item.at_css('a'))
+      extracted = described_class.call(item, **page, selected_anchor: item.at_css('a'))
       expect(extracted[:description]).to be_nil
       expect(extracted[:published_at]).to be_nil
     end
@@ -528,7 +529,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'drops the fragment from the selected anchor href' do
-      extracted = described_class.call(fragment_tag, base_url: 'https://example.com',
+      extracted = described_class.call(fragment_tag, **page,
                                                      selected_anchor: fragment_tag.at_css('a'))
       expect(extracted[:url].to_s).to eq('https://example.com/article/42')
     end
@@ -538,13 +539,13 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     let(:span_tag) { Nokogiri::HTML.fragment('<article><span>Alpha</span> Beta</article>').at_css('article') }
 
     it 'uses the first visible text node as the fallback title' do
-      extracted = described_class.call(span_tag, base_url: 'https://example.com')
+      extracted = described_class.call(span_tag, **page)
       expect(extracted[:title]).to eq('Alpha')
     end
 
     it 'derives no fallback title from an article without text' do
       empty_tag = Nokogiri::HTML.fragment('<article><img src="x.jpg"></article>').at_css('article')
-      expect(described_class.call(empty_tag, base_url: 'https://example.com')[:title]).to be_nil
+      expect(described_class.call(empty_tag, **page)[:title]).to be_nil
     end
   end
 
@@ -555,7 +556,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'uses the selected anchor text as the title when there is no heading' do
-      extracted = described_class.call(anchor_only_tag, base_url: 'https://example.com',
+      extracted = described_class.call(anchor_only_tag, **page,
                                                         selected_anchor: anchor_only_tag.at_css('a'))
       expect(extracted[:title]).to eq('Anchor Story')
     end
@@ -570,7 +571,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'excludes the selected inline anchor text from the description' do
-      extracted = described_class.call(inline_tag, base_url: 'https://example.com',
+      extracted = described_class.call(inline_tag, **page,
                                                    selected_anchor: inline_tag.at_css('a'))
       expect(extracted[:description]).to eq('Body text')
     end
@@ -585,7 +586,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
 
     it 'drops a body line that repeats the title' do
-      extracted = described_class.call(title_line_tag, base_url: 'https://example.com',
+      extracted = described_class.call(title_line_tag, **page,
                                                        selected_anchor: title_line_tag.at_css('a'))
       expect(extracted[:description]).to eq('Rich description text')
     end
@@ -605,7 +606,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'takes categories from the parent card after walking to it' do
       item = category_card.at_css('h3')
-      extracted = described_class.call(item, base_url: 'https://example.com', selected_anchor: item.at_css('a'))
+      extracted = described_class.call(item, **page, selected_anchor: item.at_css('a'))
       expect(extracted[:categories]).to include('Politics')
     end
   end
@@ -616,7 +617,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
         '<article><h3>Headline</h3><span class="category">Politics</span><p>Body</p></article>'
       )
                               .at_css('article')
-      expect(described_class.call(article, base_url: 'https://example.com')[:categories]).to include('Politics')
+      expect(described_class.call(article, **page)[:categories]).to include('Politics')
     end
   end
 
@@ -633,7 +634,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'walks past a landmark wrapper to the parent card' do
       item = landmark_card.at_css('h3')
-      extracted = described_class.call(item, base_url: 'https://example.com', selected_anchor: item.at_css('a'))
+      extracted = described_class.call(item, **page, selected_anchor: item.at_css('a'))
       expect(extracted[:description]).to eq('Card summary text')
     end
   end
@@ -646,18 +647,18 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     let(:article_tag) { Nokogiri::HTML.fragment('<article><p>Body text</p></article>').at_css('article') }
 
     it 'requires an article tag' do
-      expect { described_class.new(nil, base_url: 'https://example.com') }
+      expect { described_class.new(nil, **page) }
         .to raise_error(Html2rss::Html::InvalidError, 'article_tag is required')
     end
 
     it 'resolves urls against the base url and selected anchor it was given' do
       tag = Nokogiri::HTML.fragment('<article><h2><a href="/news/7">Story</a></h2></article>').at_css('article')
-      extracted = described_class.new(tag, base_url: 'https://example.com', selected_anchor: tag.at_css('a')).call
+      extracted = described_class.new(tag, **page, selected_anchor: tag.at_css('a')).call
       expect(extracted[:url].to_s).to eq('https://example.com/news/7')
     end
 
     it 'builds with the optional arguments defaulted', :aggregate_failures do
-      extracted = described_class.new(article_tag, base_url: 'https://example.com').call
+      extracted = described_class.new(article_tag, **page).call
       expect(extracted[:url]).to be_nil
       expect(extracted[:title]).to eq('Body text')
     end
@@ -678,7 +679,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
         lambda do |html|
           tag = Nokogiri::HTML.fragment(html).at_css('article')
           selected_anchor = Html2rss::Html::Navigator.main_anchor_for(tag)
-          described_class.call(tag, base_url: 'https://example.com', selected_anchor:)[:title]
+          described_class.call(tag, **page, selected_anchor:)[:title]
         end
       end
     end
@@ -693,20 +694,20 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
   describe '#generate_id' do
     it 'derives the id from the heading slug when the DOM has no id' do
       article_tag = Nokogiri::HTML.fragment('<article><h2>Plain Heading</h2></article>').at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:id]).to eq('plain-heading')
+      expect(described_class.call(article_tag, **page)[:id]).to eq('plain-heading')
     end
 
     it 'uses the selected anchor path as id when the article has no id' do
       article_tag = Nokogiri::HTML.fragment('<article><h2><a href="/article/42">Correct Story</a></h2></article>')
                                   .at_css('article')
-      extracted = described_class.call(article_tag, base_url: 'https://example.com',
+      extracted = described_class.call(article_tag, **page,
                                                     selected_anchor: article_tag.at_css('a'))
       expect(extracted[:id]).to eq('/article/42')
     end
 
     it 'falls back to the first visible text' do
       article_tag = Nokogiri::HTML.fragment("<article>\n  Some plain text description.\n</article>").at_css('article')
-      extracted = described_class.call(article_tag, base_url: 'https://example.com')
+      extracted = described_class.call(article_tag, **page)
       expect(extracted[:id]).to eq('some-plain-text-description')
     end
   end
@@ -721,7 +722,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
         lambda do |html|
           tag = Nokogiri::HTML.fragment(html).at_css('article')
           selected_anchor = Html2rss::Html::Navigator.main_anchor_for(tag)
-          described_class.call(tag, base_url: 'https://example.com', selected_anchor:)[:title]
+          described_class.call(tag, **page, selected_anchor:)[:title]
         end
       end
     end
@@ -730,7 +731,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       article_tag = Nokogiri::HTML.fragment('<article><span class="kicker">Weather</span><p>Storm ahead.</p></article>')
                                   .at_css('article')
 
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Weather')
+      expect(described_class.call(article_tag, **page)[:title]).to eq('Weather')
     end
   end
 
@@ -743,7 +744,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     it_behaves_like 'fallback span title'
 
     it 'uses the first non-blank text node' do
-      extracted = described_class.call(article_tag, base_url: 'https://example.com')
+      extracted = described_class.call(article_tag, **page)
       expect(extracted[:title]).to eq('Plain fallback words')
     end
   end
@@ -754,7 +755,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
         '<article><strong class="title">Fallback Article Title</strong><p>Some body text.</p></article>'
       )
                           .at_css('article')
-      expect(described_class.call(tag, base_url: 'https://example.com')[:title])
+      expect(described_class.call(tag, **page)[:title])
         .to eq('Fallback Article Title')
     end
   end
@@ -781,7 +782,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       messages = []
       allow(Html2rss::Log).to receive(:debug) { |&block| messages << block.call }
       item = Nokogiri::HTML('<html><body></body></html>').create_element('h3')
-      extracted = described_class.call(item, base_url: 'https://example.com')
+      extracted = described_class.call(item, **page)
       expect(extracted[:published_at]).to be_nil
       expect(messages).to include('parent-walk abort at ')
     end
@@ -806,7 +807,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
           <p>Card summary text</p>
         </div>
       HTML
-      described_class.call(crowded.at_css('h3'), base_url: 'https://example.com', selected_anchor: crowded.at_css('a'))
+      described_class.call(crowded.at_css('h3'), **page, selected_anchor: crowded.at_css('a'))
       expect(messages).to include('parent-walk abort at div')
     end
   end
@@ -831,7 +832,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     it 'resolves enclosure urls against the base url' do
       article_tag = Nokogiri::HTML.fragment('<article><img src="/pics/rich.jpg" alt="Rich"></article>')
                                   .at_css('article')
-      extracted = described_class.call(article_tag, base_url: 'https://example.com')
+      extracted = described_class.call(article_tag, **page)
       expect(extracted[:enclosures].map { |enclosure| enclosure[:url].to_s })
         .to eq(['https://example.com/pics/rich.jpg'])
     end

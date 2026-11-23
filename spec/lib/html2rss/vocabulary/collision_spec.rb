@@ -26,7 +26,7 @@ RSpec.describe Html2rss::Vocabulary do
 
   # Language code => the anchor texts of its corpus pages.
   let(:link_texts) do
-    codes = described_class::ALL.map { _1.code.to_s }
+    codes = described_class::LANGUAGES.map { _1.code.to_s }
     pages = Dir[File.expand_path('../../../fixtures/auto_source/corpus/*.html', __dir__)]
     pages.each_with_object(Hash.new { |hash, key| hash[key] = Set.new }) do |path, texts|
       doc = Nokogiri::HTML(File.read(path))
@@ -61,7 +61,7 @@ RSpec.describe Html2rss::Vocabulary do
   end
 
   it 'reads the corpus pages of every vocabulary language' do
-    expect(link_texts.keys).to match_array(described_class::ALL.map { _1.code.to_s })
+    expect(link_texts.keys).to match_array(described_class::LANGUAGES.map { _1.code.to_s })
   end
 
   it 'finds a term of one language that reads as chrome in the link text of another language', :aggregate_failures do

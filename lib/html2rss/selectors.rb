@@ -53,8 +53,10 @@ module Html2rss
     # @param response [RequestService::Response] The response object.
     # @param selectors [Hash] A hash of CSS selectors.
     # @param time_zone [String] Time zone string used for date parsing.
-    def initialize(response, selectors:, time_zone:)
+    # @param vocabulary [Vocabulary::Scope] the page language's scope; the response's own language by default
+    def initialize(response, selectors:, time_zone:, vocabulary: Vocabulary[Channel.language_for(response)])
       @response = response
+      @vocabulary = vocabulary
       @url = response.base_url
       @selectors = selectors
       @time_zone = time_zone
@@ -248,7 +250,8 @@ module Html2rss
         article_tag,
         base_url: @url,
         selected_anchor:,
-        time_zone: @time_zone
+        time_zone: @time_zone,
+        vocabulary: @vocabulary
       )
       return article_hash unless extracted
 
