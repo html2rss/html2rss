@@ -32,6 +32,7 @@ RSpec.describe Html2rss::FeedResolution::Probe do
     expect(scored.articles_count).to eq(2)
     expect(scored.score).to eq(Html2rss::FeedResolution::Scorer.score_feed(articles_count: 2))
     expect(scored.url.to_s).to eq('https://example.com/feed.xml')
+    expect(scored.response).to be(feed_response)
   end
 
   it 'scores HTML follow-ups via PageRecon assessment' do
@@ -55,7 +56,7 @@ RSpec.describe Html2rss::FeedResolution::Probe do
 
     expect(scored).to have_attributes(
       url: candidate_url, articles_count: expected.articles_count,
-      score: Html2rss::FeedResolution::Scorer.score_assessment(expected)
+      score: Html2rss::FeedResolution::Scorer.score_assessment(expected), response: html_response
     )
   end
 

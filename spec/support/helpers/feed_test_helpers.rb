@@ -45,7 +45,8 @@ module FeedTestHelpers
     Html2rss::FeedResolution::Probe::Scored.new(
       url: Html2rss::Url.from_absolute(url),
       score:,
-      articles_count:
+      articles_count:,
+      response: nil
     )
   end
   alias scored scored_probe

@@ -3,7 +3,9 @@
 Backend-only entry URL tournament: when the pasted URL is a weak homepage/hub
 (or NativeFeed-majority extract), probe same-origin listing/feed candidates and
 sticky-rewrite the scrape URL only when the retry extract yields items
-(`try_apply!` `:succeeded`) before AutoFallback escalates strategies.
+before AutoFallback escalates strategies. `FeedResolution.call` only decides and returns a `Result`;
+`AutoFallback` owns the attempt: it records the diagnostic, extracts the winner's already fetched probe
+response (no second fetch), and keeps the new URL sticky only when that extract yields items.
 
 Goal: best **article listing** for AutoSource. A native feed may still win the
 tournament on item count (feed-as-means) — intentional.
@@ -18,7 +20,8 @@ tournament on item count (feed-as-means) — intentional.
 | Cheap probe + score + winner pick                                                          | `FeedResolution::Probe` + `FeedResolution::Scorer`         |
 | Typed entry_resolution options                                                             | `FeedResolution::Options`                                  |
 | Wire-safe resolution diag (`applied` = tournament win, not sticky URL)                     | `FeedResolution::Diag`                                     |
-| Public `call` → `Result`; retry orchestration (sticky `ScrapeTarget` only on `:succeeded`) | `FeedResolution` (`try_apply!`)                            |
+| Public `call` → `Result` or `nil` (no tournament); probe cap from the slots it is handed   | `FeedResolution`                                           |
+| Attempt lifecycle: slots left for a later strategy, Diag, retry extract, sticky target     | `FeedPipeline::AutoFallback`                               |
 | Page surface for policy/scoring                                                            | `PageRecon::Assessment` + `Html2rss::SurfaceCategory`      |
 | Native feed discover/parse                                                                 | `Syndication` (not this module)                            |
 
@@ -36,7 +39,8 @@ Resolve when eligible config **and** not blocked **and** any of:
 - surface `weak?`, or
 - ≥50% of articles have `scraper == AutoSource::Scraper::NativeFeed` (`native * 2 >= size`; empty → false).
 
-`FeedResolution.call` / `Runner` take **`articles:`** (Array) — not `articles_count:`.
+`FeedResolution.call` takes **`articles:`** (Array) — not `articles_count:` — and **`slots:`**, the request slots it may spend
+(`AutoFallback` passes the budget left minus one when a later strategy exists). Probes = `min(max_probes, slots)`; no slot, no tournament.
 
 ## Non-goals
 
