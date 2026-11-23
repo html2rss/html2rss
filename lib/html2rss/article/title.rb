@@ -19,6 +19,9 @@ module Html2rss
     # A Japanese headline may open with a bracket label (+【速報】+, +＜動画＞+): one naming a content type
     # ({TYPE_MARKERS}) is removed, any other leading bracket text becomes the kicker ({LEADING_BRACKET}).
     #
+    # Pieces and kickers are matched without bidi marks ({LinkDestination::TextClassifier.strip_bidi}); the
+    # title keeps its text.
+    #
     # Headline text is never noise-stripped: +20:15 Uhr: Neuer Krimi+ or +9:41 is the time+ is a real
     # headline. Teaser noise in a headline is told apart by structure instead ({Html::TitlePieces}):
     # date and time elements leave wherever they sit outside running text, elements that are only a
@@ -128,7 +131,7 @@ module Html2rss
         def compose(headline, kicker: nil, vocabulary: Vocabulary[nil])
           rules = RULES_BY_SCOPE.fetch(vocabulary.code)
           head, top = peel_bracket(trim(headline, LEADING_SEPARATORS), trim(kicker, rules.kicker_noise), rules.markers)
-          return head if top.nil? || rules.markers.include?(top.downcase)
+          return head if top.nil? || rules.markers.include?(read(top).to_s.downcase)
           return top unless head
           return head if prefixed?(head, top)
 
@@ -140,7 +143,7 @@ module Html2rss
         #
         # @param text [String, nil] visible text of one element or chip
         # @return [Boolean]
-        def clock_piece?(text) = collapse(text).to_s.match?(CLOCK_PIECE)
+        def clock_piece?(text) = read(text).to_s.match?(CLOCK_PIECE)
 
         ##
         # Whether a piece of text is only a calendar date or a date with a clock time (+11月12日 16:42+).
@@ -148,7 +151,7 @@ module Html2rss
         #
         # @param text [String, nil] visible text of one headline descendant element
         # @return [Boolean]
-        def date_piece?(text) = collapse(text).to_s.match?(DATE_PIECE)
+        def date_piece?(text) = read(text).to_s.match?(DATE_PIECE)
 
         ##
         # Whether one element inside a headline is teaser noise on its own: only a clock time or only a
@@ -158,7 +161,7 @@ module Html2rss
         # @param text [String, nil] visible text of one headline descendant element
         # @return [Boolean]
         def headline_noise_piece?(text)
-          piece = collapse(text).to_s
+          piece = read(text).to_s
           piece.match?(CLOCK_PIECE) || piece.match?(DATE_PIECE) || piece.match?(LABEL_PIECE)
         end
 
@@ -171,12 +174,16 @@ module Html2rss
         # @param vocabulary [Vocabulary::Scope] the page language's scope (see {.compose})
         # @return [Boolean]
         def noise_piece?(text, vocabulary: Vocabulary[nil])
-          piece = collapse(text)
+          piece = read(text)
           piece.nil? || piece.match?(LABEL_PIECE) || piece.match?(CLOCK_PIECE) ||
             RULES_BY_SCOPE.fetch(vocabulary.code).markers.include?(piece.downcase)
         end
 
         private
+
+        # The text as matching reads it: bidi marks gone first, so marks set off by spaces collapse away too
+        # ({.collapse} keeps them in a title). A marks-only text reads as blank.
+        def read(text) = collapse(LinkDestination::TextClassifier.strip_bidi(text.to_s))
 
         def trim(text, prefix)
           return unless (collapsed = collapse(text))

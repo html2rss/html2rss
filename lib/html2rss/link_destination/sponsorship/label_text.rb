@@ -13,7 +13,7 @@ module Html2rss
         # A whole label, optionally wrapped in punctuation or separators ("Anzeige |", "[Sponsored]",
         # "Publicité:", "【広告】"), in two groups. +paid+ states paid content; +ad+ is an ad word, which also
         # names the advertising trade. Paid attribution ("Sponsored by …") may name the sponsor in up to five
-        # words. Texts are read in NFC, so a decomposed accent matches too.
+        # words. Texts are read in NFC, so a decomposed accent matches too, and without bidi marks.
         LABEL_PATTERN = /
           \A[\s\u00A0\p{P}|]*(?:(?<paid>#{Vocabulary.alternation(:paid_label)})|
           (?<ad>#{Vocabulary.alternation(:ad_word)}))[\s\u00A0\p{P}|]*\z
@@ -32,7 +32,7 @@ module Html2rss
           def kind(text, element: true)
             return if text.nil?
 
-            text = text.unicode_normalize
+            text = TextClassifier.strip_bidi(text.unicode_normalize)
             return :label if element && text.match?(ELEMENT_LABEL)
 
             match = LABEL_PATTERN.match(text)
@@ -45,7 +45,7 @@ module Html2rss
           # @param text [String]
           # @return [Boolean]
           def candidate?(text)
-            text = text.unicode_normalize
+            text = TextClassifier.strip_bidi(text.unicode_normalize)
             text.match?(LABEL_PATTERN) || text.match?(ELEMENT_LABEL_WORD)
           end
         end

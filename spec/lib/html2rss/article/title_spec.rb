@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Article::Title do
+  # Direction marks around a piece: LRM/RLM, ALM, RLE..PDF, RLI..PDI.
+  bidi_wrappers = [[0x200F, 0x200F], [0x061C], [0x202B, 0x202C], [0x2067, 0x2069], [0x200E]].map do |codes|
+    "#{[codes.first].pack('U')}%s#{[codes[1]].compact.pack('U*')}"
+  end.freeze
   describe '.collapse' do
     it 'returns the title in NFC' do
       expect(described_class.collapse("Stra\u0308ße")).to eq("Str\u00E4ße")
@@ -179,6 +183,23 @@ RSpec.describe Html2rss::Article::Title do
 
       expect(described_class.compose(title)).to eq(title)
     end
+
+    it 'drops a kicker that is only a marker wrapped in marks and keeps the headline verbatim' do
+      rlm = [0x200F].pack('U')
+      headline = "#{rlm}Headline#{rlm}"
+      expect(described_class.compose(headline, kicker: "#{rlm}Video#{rlm}")).to eq(headline)
+    end
+
+    it 'keeps a ZWNJ inside a Persian word, and the marks, in the output' do
+      rlm = [0x200F].pack('U')
+      kicker = "#{rlm}kicker#{rlm}"
+      expect(described_class.compose("a#{[0x200C].pack('U')}b", kicker:)).to eq("#{kicker}: a#{[0x200C].pack('U')}b")
+    end
+
+    it 'composes a blank bracket label as before, without raising', :aggregate_failures do
+      expect(described_class.compose('【 】Headline')).to eq(' : Headline')
+      expect(described_class.compose("＜\u3000＞Headline")).to eq(' : Headline')
+    end
   end
 
   describe '.clock_piece?' do
@@ -190,6 +211,16 @@ RSpec.describe Html2rss::Article::Title do
       it "is #{expected} for #{text.inspect}" do
         expect(described_class.clock_piece?(text)).to be(expected)
       end
+    end
+
+    bidi_wrappers.each do |wrapper|
+      it "reads a clock wrapped in #{wrapper.inspect}" do
+        expect(described_class.clock_piece?(format(wrapper, '10:00'))).to be(true)
+      end
+    end
+
+    it 'reads a clock set off from its marks by spaces' do
+      expect(described_class.clock_piece?("#{[0x200F].pack('U')} 10:00 #{[0x200F].pack('U')}")).to be(true)
     end
   end
 
@@ -209,6 +240,13 @@ RSpec.describe Html2rss::Article::Title do
         expect(described_class.headline_noise_piece?(text)).to be(expected)
       end
     end
+
+    bidi_wrappers.each do |wrapper|
+      it "reads a date and a label wrapped in #{wrapper.inspect}", :aggregate_failures do
+        expect(described_class.headline_noise_piece?(format(wrapper, '11月12日 16:42'))).to be(true)
+        expect(described_class.headline_noise_piece?(format(wrapper, 'Section:'))).to be(true)
+      end
+    end
   end
 
   describe '.date_piece?' do
@@ -218,6 +256,12 @@ RSpec.describe Html2rss::Article::Title do
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
         expect(described_class.date_piece?(text)).to be(expected)
+      end
+    end
+
+    bidi_wrappers.each do |wrapper|
+      it "reads a date wrapped in #{wrapper.inspect}" do
+        expect(described_class.date_piece?(format(wrapper, '11月12日'))).to be(true)
       end
     end
   end
@@ -257,6 +301,22 @@ RSpec.describe Html2rss::Article::Title do
       it "is #{expected} for #{text.inspect}" do
         expect(described_class.noise_piece?(text)).to be(expected)
       end
+    end
+
+    bidi_wrappers.each do |wrapper|
+      it "reads a marker, label and clock wrapped in #{wrapper.inspect}", :aggregate_failures do
+        expect(described_class.noise_piece?(format(wrapper, 'Video'))).to be(true)
+        expect(described_class.noise_piece?(format(wrapper, 'Section:'))).to be(true)
+        expect(described_class.noise_piece?(format(wrapper, '10:00'))).to be(true)
+        expect(described_class.noise_piece?(format(wrapper, 'Conflict'))).to be(false)
+      end
+    end
+
+    it 'reads marks set off by spaces, and marks alone, like the clean form', :aggregate_failures do
+      rlm = [0x200F].pack('U')
+      expect(described_class.noise_piece?("#{rlm} Video")).to be(true)
+      expect(described_class.noise_piece?("#{rlm} 10:00 #{rlm}")).to be(true)
+      expect(described_class.noise_piece?(rlm)).to be(true)
     end
   end
 

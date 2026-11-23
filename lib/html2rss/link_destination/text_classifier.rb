@@ -12,6 +12,11 @@ module Html2rss
       # fixed to UTF-8 (+/u+): a pure-ASCII regexp would be recompiled, and allocate, on each non-ASCII text.
       NEVER = /(?!)/u
 
+      # Direction marks and embedding/isolate controls (LRM, RLM, ALM, LRE..RLO, LRI..PDI): they render nothing and
+      # change no letter, so a label ("\u200FContact\u200F") is read without them ({.strip_bidi}). Only the
+      # label text is read this way; extracted titles and descriptions keep them.
+      BIDI_MARKS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/
+
       # The three label readings, as the alternatives of each scoped concept: a prefix, a whole text, a
       # recommendation. A utility label is a utility word or a recommendation label.
       READINGS = {
@@ -28,6 +33,13 @@ module Html2rss
         # @param vocabulary [Vocabulary::Scope] the page language's scope ({Vocabulary.[]})
         # @return [TextClassifier]
         def for(vocabulary) = SHARED.fetch(vocabulary.code)
+
+        # The one owner of reading a label without direction marks ({BIDI_MARKS}). Text without a mark is
+        # returned as is, so the common case allocates nothing.
+        #
+        # @param text [String]
+        # @return [String] +text+ without bidi marks
+        def strip_bidi(text) = text.match?(BIDI_MARKS) ? text.gsub(BIDI_MARKS, '') : text
 
         ##
         # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
@@ -82,17 +94,13 @@ module Html2rss
         whole = ->(concepts) { whole_label(concepts.map { scope.own_alternation(_1) }) }
         [scope.code, READINGS.transform_values(&whole).freeze]
       end.freeze
-      private_constant :NEVER, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
+      private_constant :NEVER, :BIDI_MARKS, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
 
-      # Direction marks and embedding/isolate controls (LRM, RLM, ALM, LRE..RLO, LRI..PDI): they render nothing and
-      # change no letter, so a label ("\u200FContact\u200F") is read without them. Only the label text is
-      # read this way; extracted titles and descriptions keep them.
-      BIDI_MARKS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/
       # Zero-width non-joiner and joiner. Inside a word they spell Persian, Urdu and Indic words, so a label
       # holding one is trimmed only at its edges, up to the first and last {LABEL_CHAR}.
       JOINER = /[\u200C\u200D]/
       LABEL_CHAR = /[^\s\u200C\u200D]/
-      private_constant :BIDI_MARKS, :JOINER, :LABEL_CHAR
+      private_constant :JOINER, :LABEL_CHAR
 
       # @param memoize [Boolean] remember normalized texts for this instance; opt in only for an instance
       #   scoped to one extraction, never for a shared constant
@@ -153,8 +161,7 @@ module Html2rss
 
       def compute_normal(string)
         text = string.unicode_normalize(:nfc)
-        text = text.gsub(BIDI_MARKS, '') if text.match?(BIDI_MARKS)
-        text = text.sub(@page.fetch(:new_window), '')
+        text = self.class.strip_bidi(text).sub(@page.fetch(:new_window), '')
         text.match?(JOINER) ? trim_edges(text) : text
       end
 
