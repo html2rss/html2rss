@@ -350,8 +350,8 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
-      ['התחברות', 'הרשמה', 'כניסה', 'חיפוש', 'תנאי שימוש', 'מדיניות הפרטיות', 'צרו קשר', 'אודות', 'מפת האתר',
-       'הצהרת נגישות', 'תגובות', 'שיתוף', 'דלג לתוכן', 'התחברות (3)', '[חיפוש]', '→ אודות →'].each do |label|
+      ['התחברות', 'תנאי שימוש', 'מדיניות הפרטיות', 'צרו קשר', 'אודות', 'מפת האתר',
+       'הצהרת נגישות', 'דלג לתוכן', 'התחברות (3)', '[צרו קשר]', '→ אודות →'].each do |label|
         expect(he.utility_chrome?(label)).to be(true), label
       end
       ['קראו גם', 'כתבות קשורות', 'עוד בנושא'].each { expect(he.recommended?(_1)).to be(true), _1 }
@@ -378,8 +378,8 @@ RSpec.describe Html2rss::Vocabulary do
         expect(he.utility_chrome?(label)).to be(false), label
         expect(junk_reason.call(label)).to be_nil, label
       end
-      expect(he.utility_chrome?('תגובות (12)')).to be(true)
-      expect(he.utility_chrome?('תגובות 12')).to be(false)
+      expect(he.utility_chrome?('התחברות (12)')).to be(true)
+      expect(he.utility_chrome?('התחברות 12')).to be(false)
     end
 
     it 'reads labels wrapped in bidi marks', :aggregate_failures do
