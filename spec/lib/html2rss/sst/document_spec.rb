@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::SST::Document do
-  let(:document) { Html2rss::SST::Normalizer.call('<html><body><p>x</p></body></html>') }
+  let(:document) { Html2rss::SST::Normalizer.call('<html><body><p>x</p></body></html>', vocabulary: all_scope) }
   let(:root) { document.root }
   let(:index) { document.index }
 

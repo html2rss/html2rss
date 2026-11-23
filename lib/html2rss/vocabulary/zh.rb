@@ -7,7 +7,7 @@ module Html2rss
     # word boundary and a headline may open with any label word, so a label term is read as a whole text only (no
     # trailing word, no headline opener, see {LinkDestination::TextClassifier}). Only the concepts read through a
     # {Scope} are listed (path words, label words, the call to action and read-more); the others stay +NONE+ until
-    # their readers take the page scope. A term whose precision is unclear is left out.
+    # a term of clear precision is added. A term whose precision is unclear is left out.
     Zh = Language.new(
       code: :zh,
       terms: {

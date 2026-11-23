@@ -114,7 +114,7 @@ RSpec.describe Html2rss::SST::Text do
     '<span>a<b>b</b></span>c' => 'a b c'
   }.each do |html, text|
     it "reads #{html.inspect} as #{text.inspect}" do
-      node = Html2rss::SST::Normalizer.call("<html><body><h3>#{html}</h3></body></html>").root.find { _1.name == :h3 }
+      node = Html2rss::SST::Normalizer.call("<html><body><h3>#{html}</h3></body></html>", vocabulary: all_scope).root.find { _1.name == :h3 }
 
       expect(extract.call(node)).to eq(text)
     end
@@ -128,7 +128,7 @@ RSpec.describe Html2rss::SST::Text do
 
   it 'passes the separator and exclusions down to nested children', :aggregate_failures do
     html = '<html><body><div><section><p>One</p><p>Two</p><p id="x">Drop</p></section></div></body></html>'
-    root = Html2rss::SST::Normalizer.call(html).root
+    root = Html2rss::SST::Normalizer.call(html, vocabulary: all_scope).root
     div = root.find { _1.name == :div }
 
     expect(extract.call(div, separator: ' | ')).to eq('One | Two | Drop')

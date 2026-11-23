@@ -12,13 +12,14 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'strips script tags from the tree' do
-      doc = described_class.call(simple_html)
+      doc = described_class.call(simple_html, vocabulary: all_scope)
       expect(doc.root.find { |n| n.name == :script }).to be_nil
     end
 
     it 'keeps a noscript only as the file links inside it, as chrome with invisible text', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       doc = described_class.call('<html><body><article><h2>Episode</h2><noscript><p>Listen <a href="/a.mp3">Get</a>' \
-                                 '<a href="/page">Page</a><img src="/i.jpg"></p></noscript></article></body></html>')
+                                 '<a href="/page">Page</a><img src="/i.jpg"></p></noscript></article></body></html>',
+                                 vocabulary: all_scope)
       noscript = doc.root.find { |n| n.name == :noscript }
 
       expect(noscript.children.map { [_1.name, _1.attrs.href] }).to eq([[:a, '/a.mp3']])
@@ -28,21 +29,21 @@ RSpec.describe Html2rss::SST::Normalizer do
 
     it 'strips other hidden containers even when they hold file links' do
       doc = described_class.call('<html><body><p>x</p><template><a href="/t.mp3">T</a></template>' \
-                                 '<svg><a href="/s.mp3">S</a></svg></body></html>')
+                                 '<svg><a href="/s.mp3">S</a></svg></body></html>', vocabulary: all_scope)
 
       expect(doc.root.find_all { |n| n.name != :html && n.name != :body && n.name != :p }).to be_empty
     end
 
     it 'strips a noscript without file links', :aggregate_failures do
       doc = described_class.call('<html><body><p>x</p><noscript><a href="/page">Page</a><img src="/i.jpg">' \
-                                 '</noscript></body></html>')
+                                 '</noscript></body></html>', vocabulary: all_scope)
 
       expect(doc.root.find { |n| n.name == :noscript }).to be_nil
       expect(doc.node_count).to eq(3)
     end
 
     it 'builds typed Attrs on nodes', :aggregate_failures do
-      doc = described_class.call(simple_html)
+      doc = described_class.call(simple_html, vocabulary: all_scope)
       article = doc.root.find { |n| n.name == :article }
 
       expect(article.attrs).to be_a(Html2rss::SST::Attrs)
@@ -52,7 +53,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     it 'maps typed attributes and keeps only allowlisted raw attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       html = '<html><body><div id="i" class=" a  b " datetime="2020" itemprop="x" style="c:d" srcset="s 1x" ' \
              'type="t" data-k="v" aria-label="L" role="r" width="3" onclick="x">q</div></body></html>'
-      div = described_class.call(html).root.find { |n| n.name == :div }
+      div = described_class.call(html, vocabulary: all_scope).root.find { |n| n.name == :div }
 
       expect(div.attrs.to_h).to eq(
         href: nil, src: nil, id: 'i', class_names: %w[a b], datetime: '2020', itemprop: 'x', style: 'c:d',
@@ -62,27 +63,28 @@ RSpec.describe Html2rss::SST::Normalizer do
 
     it 'keeps hidden and aria-hidden for sponsorship markers but no attribute that only starts with hidden' do
       html = '<html><body><span class="ad-label" hidden aria-hidden="true" hiddenx="1">q</span></body></html>'
-      span = described_class.call(html).root.find { |n| n.name == :span }
+      span = described_class.call(html, vocabulary: all_scope).root.find { |n| n.name == :span }
 
       expect(span.attrs.raw).to eq('hidden' => '', 'aria-hidden' => 'true')
     end
 
     it 'keeps rel for sponsorship markers but no attribute that only starts with rel' do
       html = '<html><body><a href="/x" rel="sponsored nofollow" release="1">q</a></body></html>'
-      link = described_class.call(html).root.find { |n| n.name == :a }
+      link = described_class.call(html, vocabulary: all_scope).root.find { |n| n.name == :a }
 
       expect(link.attrs.raw).to eq('rel' => 'sponsored nofollow')
     end
 
     it 'maps href and src onto typed attrs', :aggregate_failures do
-      doc = described_class.call('<html><body><a href="/post">Post</a><img src="/cover.png"></body></html>')
+      doc = described_class.call('<html><body><a href="/post">Post</a><img src="/cover.png"></body></html>',
+                                 vocabulary: all_scope)
 
       expect(doc.root.find { |n| n.name == :a }.attrs.href).to eq('/post')
       expect(doc.root.find { |n| n.name == :img }.attrs.src).to eq('/cover.png')
     end
 
     it 'does not copy typed attributes into the raw hash' do
-      link = described_class.call('<html><body><a href="/x" id="y">q</a></body></html>').root
+      link = described_class.call('<html><body><a href="/x" id="y">q</a></body></html>', vocabulary: all_scope).root
                             .find { |n| n.name == :a }
 
       expect(link.attrs.raw).to eq({})
@@ -94,11 +96,11 @@ RSpec.describe Html2rss::SST::Normalizer do
         { event_name: 'sst.normalizer.root_fallback', reason:, message: }.to_json
       end
 
-      described_class.call(Nokogiri::XML('<root><body><p>x</p></body></root>'))
+      described_class.call(Nokogiri::XML('<root><body><p>x</p></body></root>'), vocabulary: all_scope)
       expect(Html2rss::Log).to have_received(:warn)
         .with(fallback.call('body', 'sst.normalizer root fallback: body'))
 
-      described_class.call(Nokogiri::XML('<root><div>x</div></root>'))
+      described_class.call(Nokogiri::XML('<root><div>x</div></root>'), vocabulary: all_scope)
       expect(Html2rss::Log).to have_received(:warn)
         .with(fallback.call('first_element_child', 'sst.normalizer root fallback: first element child'))
     end
@@ -106,15 +108,17 @@ RSpec.describe Html2rss::SST::Normalizer do
     it 'returns nil when the parsed input has no element to root the tree', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Log).to receive(:warn)
 
-      expect(described_class.call(Nokogiri::XML('<!-- c -->'))).to be_nil
+      expect(described_class.call(Nokogiri::XML('<!-- c -->'), vocabulary: all_scope)).to be_nil
       expect(Html2rss::Log).to have_received(:warn).with(
         { event_name: 'sst.normalizer.root_fallback', reason: 'self',
           message: 'sst.normalizer root fallback: self' }.to_json
       )
     end
 
-    it 'indexes the exact parent instance even for structurally identical siblings', :aggregate_failures do
-      doc = described_class.call('<html><body><div><p>x</p></div><div><p>x</p></div></body></html>')
+    it 'indexes the exact parent instance even for structurally identical siblings', # rubocop:disable RSpec/ExampleLength
+       :aggregate_failures do
+      doc = described_class.call('<html><body><div><p>x</p></div><div><p>x</p></div></body></html>',
+                                 vocabulary: all_scope)
       body = doc.root.find { |n| n.name == :body }
       first_div, second_div = body.children
 
@@ -125,26 +129,26 @@ RSpec.describe Html2rss::SST::Normalizer do
     it 'does not log a root fallback for a regular html document' do
       allow(Html2rss::Log).to receive(:warn)
 
-      described_class.call('<html><body><p>x</p></body></html>')
+      described_class.call('<html><body><p>x</p></body></html>', vocabulary: all_scope)
       expect(Html2rss::Log).not_to have_received(:warn)
     end
 
     it 'indexes parent relationships' do
-      doc = described_class.call(simple_html)
+      doc = described_class.call(simple_html, vocabulary: all_scope)
       article = doc.root.find { |n| n.name == :article }
       expect(doc.index.parent_of(article.children.first)).to eq(article)
     end
 
     it 'accepts an already-parsed Nokogiri node without re-wrapping' do
       node = Nokogiri::HTML(simple_html)
-      expect(described_class.call(node).root.find { |n| n.name == :article }).not_to be_nil
+      expect(described_class.call(node, vocabulary: all_scope).root.find { |n| n.name == :article }).not_to be_nil
     end
 
     it 'normalizes HTML fragments from the first element child', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       fragment = Nokogiri::HTML.fragment('<article><a href="/p">Post</a></article>')
       allow(Html2rss::Log).to receive(:warn)
 
-      doc = described_class.call(fragment)
+      doc = described_class.call(fragment, vocabulary: all_scope)
 
       expect(doc.root.name).to eq(:article)
       expect(doc.root.find { |n| n.name == :a }).not_to be_nil
@@ -155,7 +159,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       body = Nokogiri::HTML('<html><body><script>evil()</script></body></html>').at_css('body')
       allow(Html2rss::Log).to receive(:warn)
 
-      doc = described_class.call(body)
+      doc = described_class.call(body, vocabulary: all_scope)
 
       expect(doc.root.name).to eq(:body)
       expect(Html2rss::Log).to have_received(:warn).with(/root fallback: self/)
@@ -166,7 +170,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       allow(Html2rss::Log).to receive(:warn)
 
       html = '<html><body><div><div><div><p>x</p></div></div></div></body></html>'
-      doc = described_class.call(html)
+      doc = described_class.call(html, vocabulary: all_scope)
 
       expect(doc.degraded).to be(true)
       expect(Html2rss::Log).to have_received(:warn).with(
@@ -181,7 +185,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     it 'drops non-semantic tags once the node ceiling is reached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
       allow(Html2rss::Log).to receive(:warn)
-      doc = described_class.call('<html><body><span>x</span><p>y</p></body></html>')
+      doc = described_class.call('<html><body><span>x</span><p>y</p></body></html>', vocabulary: all_scope)
 
       expect(doc.degraded).to be(true)
       expect(doc.root.find { |node| node.name == :span }).to be_nil
@@ -192,14 +196,14 @@ RSpec.describe Html2rss::SST::Normalizer do
       stub_const('Html2rss::SST::Normalizer::MAX_NODES', 2)
       allow(Html2rss::Log).to receive(:warn)
 
-      doc = described_class.call('<html><body><article>x</article></body></html>')
+      doc = described_class.call('<html><body><article>x</article></body></html>', vocabulary: all_scope)
 
       expect(doc.degraded).to be(true)
     end
 
     it 'records path, depth, chrome, text, and node count', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       html = '<html><body><header><a href="/home">Home</a></header><article><p>Post</p></article></body></html>'
-      doc = described_class.call(html)
+      doc = described_class.call(html, vocabulary: all_scope)
       header = doc.root.find { |node| node.name == :header }
       article = doc.root.find { |node| node.name == :article }
       paragraph = article.children.first
@@ -216,13 +220,13 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.index.ignored_chrome?(article)).to be(false)
 
       text = Nokogiri::HTML.fragment('just text').child
-      expect(described_class.call(text)).to be_nil
+      expect(described_class.call(text, vocabulary: all_scope)).to be_nil
     end
 
     %w[article section aside main].each do |section|
       it "keeps header, its link, and footer inside #{section} out of chrome" do # rubocop:disable RSpec/ExampleLength
         doc = described_class.call("<html><body><#{section}><header><a href=\"/p\">P</a></header>" \
-                                   "<footer>F</footer></#{section}></body></html>")
+                                   "<footer>F</footer></#{section}></body></html>", vocabulary: all_scope)
         header = doc.root.find { _1.name == :header }
         nodes = [header, header.children.first, doc.root.find { _1.name == :footer }]
         chrome = nodes.map { doc.index.ignored_chrome?(_1) }
@@ -232,15 +236,17 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'keeps page-level header and footer as chrome', :aggregate_failures do
-      doc = described_class.call('<html><body><header>H</header><div><footer>F</footer></div></body></html>')
+      doc = described_class.call('<html><body><header>H</header><div><footer>F</footer></div></body></html>',
+                                 vocabulary: all_scope)
 
       expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :header })).to be(true)
       expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :footer })).to be(true)
     end
 
-    it 'keeps chrome for headers under a page-level nav or footer', :aggregate_failures do
+    it 'keeps chrome for headers under a page-level nav or footer', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       doc = described_class.call('<html><body><div><nav><header id="n">N</header></nav></div><footer>' \
-                                 '<article><header id="f"><a href="/f">F</a></header></article></footer></body></html>')
+                                 '<article><header id="f"><a href="/f">F</a></header></article></footer></body></html>',
+                                 vocabulary: all_scope)
       chrome = %w[n f].map { |id| doc.index.ignored_chrome?(doc.root.find { _1.attrs.id == id }) }
 
       expect(chrome).to eq([true, true])
@@ -248,7 +254,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'scopes nav and ARIA roles like header/footer, keeping pagers chrome' do # rubocop:disable RSpec/ExampleLength
-      doc = described_class.call(<<~HTML)
+      doc = described_class.call(<<~HTML, vocabulary: all_scope)
         <html><body>
           <div role="navigation"><a id="role_nav" href="/a">A</a></div>
           <div role="Dialog Alert"><a id="role_dialog" href="/b">B</a></div>
@@ -312,7 +318,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       '<ul class="pagination"><li><a href="/a">Dernier</a></li></ul>' => false
     }.each do |markup, chrome|
       it "treats #{markup[0, 60]}... inside main as chrome: #{chrome}" do
-        doc = described_class.call("<html><body><main>#{markup}</main></body></html>")
+        doc = described_class.call("<html><body><main>#{markup}</main></body></html>", vocabulary: all_scope)
         list = doc.root.find { _1.name == :main }.children.first
 
         expect(doc.index.ignored_chrome?(list)).to be(chrome)
@@ -320,7 +326,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'records peripheral scope for utility landmarks that are not chrome' do # rubocop:disable RSpec/ExampleLength
-      doc = described_class.call(<<~HTML)
+      doc = described_class.call(<<~HTML, vocabulary: all_scope)
         <html><body>
           <aside><header><a id="aside_header" href="/a">A</a></header></aside>
           <div role="complementary"><a id="complementary" href="/b">B</a></div>
@@ -341,7 +347,8 @@ RSpec.describe Html2rss::SST::Normalizer do
 
   describe '.call text order' do
     it 'keeps text between inline children in the visible text', :aggregate_failures do
-      document = described_class.call('<html><body><p>Hello <b>big</b> world<script>x</script>!</p></body></html>')
+      document = described_class.call('<html><body><p>Hello <b>big</b> world<script>x</script>!</p></body></html>',
+                                      vocabulary: all_scope)
       para = document.root.find { _1.name == :p }
 
       expect(para).to have_attributes(own_text: 'Hello  world!', lead_text: 'Hello ', tails: [' world!'])
@@ -351,8 +358,10 @@ RSpec.describe Html2rss::SST::Normalizer do
 
   describe '.call input validation' do
     it 'rejects nil and unsupported input', :aggregate_failures do
-      expect { described_class.call(nil) }.to raise_error(Html2rss::SST::InvalidError, 'input is required')
-      expect { described_class.call(42) }
+      expect do
+        described_class.call(nil, vocabulary: all_scope)
+      end.to raise_error(Html2rss::SST::InvalidError, 'input is required')
+      expect { described_class.call(42, vocabulary: all_scope) }
         .to raise_error(Html2rss::SST::InvalidError, 'expected String or Nokogiri::XML::Node, got Integer')
     end
   end
@@ -385,7 +394,51 @@ RSpec.describe Html2rss::SST::Normalizer do
       it "maps #{markup} under #{scope} to #{expected}" do
         element = Nokogiri::HTML::DocumentFragment.parse(markup).child
 
-        expect(Html2rss::SST::Tags.chrome_scope(element, scope.to_sym)).to eq(expected)
+        expect(Html2rss::SST::Tags.chrome_scope(element, scope.to_sym, all_scope)).to eq(expected)
+      end
+    end
+
+    context 'with a page-only language declaring the pager concepts' do
+      let(:xx) do
+        terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
+        terms.merge!(pager_label: %w[bladeren-xx], page_link: %w[volgende-xx], page_link_label: %w[vorige-xx])
+        language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
+        Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+      end
+      let(:chrome_under) do
+        lambda do |markup, scope|
+          element = Nokogiri::HTML::DocumentFragment.parse(markup).child
+          Html2rss::SST::Tags.chrome_scope(element, :sectioned, scope)
+        end
+      end
+
+      before do
+        own = %i[pager_label page_link page_link_label].to_h { [_1, xx.own_alternation(_1)] }
+        by_scope = Html2rss::SST::Tags::PagerReadings::BY_SCOPE
+        stub_const('Html2rss::SST::Tags::PagerReadings::BY_SCOPE',
+                   by_scope.merge(zh: Html2rss::SST::Tags::PagerReadings.build(own)))
+      end
+
+      it 'reads an own pager noun as a whole aria-label, on its own page only', :aggregate_failures do
+        nav = '<nav aria-label="Bladeren-xx"></nav>'
+
+        expect(chrome_under.call(nav, xx)).to eq(:chrome)
+        expect(chrome_under.call(nav, all_scope)).to eq(:peripheral)
+        expect(chrome_under.call('<nav aria-label="Bladeren-xx lijst"></nav>', xx)).to eq(:peripheral)
+      end
+
+      it 'reads own previous and next words as page links of a labelled list', :aggregate_failures do
+        list = '<ul aria-label="pagination"><li><a>Volgende-xx</a></li><li><a>Vorige-xx</a></li></ul>'
+
+        expect(chrome_under.call(list, xx)).to eq(:chrome)
+        expect(chrome_under.call(list, all_scope)).to eq(:sectioned)
+      end
+
+      it 'leaves every shared scope on the one shared reading', :aggregate_failures do
+        readings = Html2rss::SST::Tags::PagerReadings.const_get(:BY_SCOPE)
+
+        %i[en ja de all].each { expect(readings.fetch(_1)).to be(readings.fetch(:en)) }
+        expect(readings.fetch(:zh)).not_to be(readings.fetch(:en))
       end
     end
 

@@ -109,7 +109,7 @@ RSpec.describe Html2rss::SST::Node do
 
   describe 'traversal and text metrics' do
     let(:document) do
-      Html2rss::SST::Normalizer.call(
+      document_for(
         '<html><body><div><p>one two</p><a href="/a">a</a><a href="/b">b</a><a href="#x">skip</a></div></body></html>'
       )
     end

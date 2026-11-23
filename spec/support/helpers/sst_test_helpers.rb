@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 module SstTestHelpers
+  # The scope of a page whose language is unknown: every shared term applies.
+  def all_scope = Html2rss::Vocabulary[:all]
+
   def build_node(name: :div, href: nil, class_names: nil, text: '', children: [])
     attrs = Html2rss::SST::Attrs.build(href:, class_names:)
     Html2rss::SST::Node.build(name:, attrs:, own_text: text, children:)
@@ -28,13 +31,15 @@ module SstTestHelpers
     build_segment(root:, link:, position:)
   end
 
+  def usable_card?(node) = Html2rss::Html::Navigator.usable_card_parent?(node, vocabulary: all_scope)
+
   def document_for(html)
-    Html2rss::SST::Normalizer.call(html)
+    Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)
   end
 
   # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity -- test segment fixture builder
   def segment_for(html, href: '/news/story')
-    doc = Html2rss::SST::Normalizer.call(html)
+    doc = Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)
     root = doc.root.find { |n| n.name == :article } || doc.root.find { |n| n.name == :div }
     link = root.find { |n| n.link? && n.attrs.href == href } || root.find(&:link?)
     Html2rss::AutoSource::Segment.build(root_node: root, primary_link: link, strategy: :semantic, position: 0)

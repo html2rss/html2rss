@@ -28,6 +28,12 @@ module Html2rss
       # @param concept [Symbol] a member of {Vocabulary::SCOPED_PATTERNS} or {Vocabulary::PAGE_PATTERNS}
       # @return [String] regex alternatives of the terms only a page in this language applies, empty when none
       def own_alternation(concept) = own_alternations.fetch(concept)
+
+      # @return [Boolean] whether a page-only language adds terms to this scope
+      def own?
+        own_alternations.each_value { return true unless _1.empty? }
+        false
+      end
     end
   end
 end

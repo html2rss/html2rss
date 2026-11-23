@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::SST::Index do
   let(:document) do
-    Html2rss::SST::Normalizer.call(
+    document_for(
       '<html><body><div id="w"><p>Hello <b>big</b> world</p><nav><a href="/n">Nav</a></nav></div></body></html>'
     )
   end
@@ -37,8 +37,8 @@ RSpec.describe Html2rss::SST::Index do
 
   describe '#peripheral?' do
     it 'flags nodes inside a non-chrome utility landmark only', :aggregate_failures do
-      doc = Html2rss::SST::Normalizer.call('<html><body><aside><a href="/a">A</a></aside>' \
-                                           '<nav><a href="/n">N</a></nav><p><a href="/p">P</a></p></body></html>')
+      doc = document_for('<html><body><aside><a href="/a">A</a></aside>' \
+                         '<nav><a href="/n">N</a></nav><p><a href="/p">P</a></p></body></html>')
       aside_link, nav_link, plain_link = doc.root.find_all(&:link?)
 
       expect([aside_link, nav_link, plain_link].map { doc.index.peripheral?(_1) }).to eq([true, false, false])
@@ -64,8 +64,7 @@ RSpec.describe Html2rss::SST::Index do
     end
 
     it 'tells identical-looking siblings apart' do
-      first, second = Html2rss::SST::Normalizer.call('<html><body><p>Same</p><p>Same</p></body></html>')
-                                               .root.find_all { _1.name == :p }
+      first, second = document_for('<html><body><p>Same</p><p>Same</p></body></html>').root.find_all { _1.name == :p }
       expect(described_class.descendant_or_self?(first, second)).to be(false)
     end
 
@@ -91,7 +90,7 @@ RSpec.describe Html2rss::SST::Index do
     end
 
     it 'returns nil at a root that has no parent and no html element' do
-      body_root = Html2rss::SST::Normalizer.call(Nokogiri::HTML('<html><body><p>x</p></body></html>').at_css('body'))
+      body_root = document_for(Nokogiri::HTML('<html><body><p>x</p></body></html>').at_css('body'))
       paragraph = body_root.root.find { |node| node.name == :p }
 
       expect(body_root.index.parent_until(paragraph, ->(node) { node.name == :table })).to be_nil
@@ -123,14 +122,14 @@ RSpec.describe Html2rss::SST::Index do
     end
 
     it 'ignores punctuation and counts numbers as words' do
-      parsed = Html2rss::SST::Normalizer.call('<html><body><p>Hello, 42 world!</p></body></html>')
+      parsed = document_for('<html><body><p>Hello, 42 world!</p></body></html>')
       paragraph = parsed.root.find { |node| node.name == :p }
 
       expect(parsed.index.memo_run_count(paragraph)).to eq(3)
     end
 
     it 'counts zero words for a node without visible text' do
-      parsed = Html2rss::SST::Normalizer.call('<html><body><p></p></body></html>')
+      parsed = document_for('<html><body><p></p></body></html>')
       paragraph = parsed.root.find { |node| node.name == :p }
 
       expect(parsed.index.memo_run_count(paragraph)).to eq(0)

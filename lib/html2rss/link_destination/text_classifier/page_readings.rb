@@ -48,7 +48,7 @@ module Html2rss
           # @return [Hash{Symbol => Regexp}] +:cta+ (the shared call to action), +:own_cta+ (the own terms as whole
           #   labels), +:read_more+ and +:new_window+ (the shared terms widened by the own ones)
           def build(own)
-            union = ->(concept) { [Vocabulary.alternation(concept), own.fetch(concept)].reject(&:empty?).join('|') }
+            union = ->(concept) { Vocabulary.union(concept, own) }
             {
               cta: UTILITY_CTA,
               own_cta: TextClassifier.whole_label([own.fetch(:utility_cta)]),
@@ -60,13 +60,7 @@ module Html2rss
         end
 
         # Per scope code; scopes with the same own terms share one entry.
-        BY_SCOPE = begin
-          built = {}
-          Vocabulary::SCOPES.transform_values do |scope|
-            own = Vocabulary::PAGE_PATTERNS.to_h { [_1, scope.own_alternation(_1)] }
-            built[own] ||= build(own)
-          end.freeze
-        end
+        BY_SCOPE = Vocabulary.by_own_terms(Vocabulary::PAGE_PATTERNS) { |own, _scope| build(own) }
         private_constant :UTILITY_CTA, :NEW_WINDOW, :READ_MORE
       end
     end
