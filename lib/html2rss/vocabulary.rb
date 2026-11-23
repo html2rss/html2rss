@@ -73,7 +73,7 @@ module Html2rss
     # Languages whose terms apply only on a page in that language: they are in no shared table, so +:all+, +ja+ and
     # every other language read exactly what they read without them. A page scope of such a language is +:all+ plus
     # its terms (a Han term has no word boundary, so it is read as a whole label only, see {TextClassifier}).
-    PAGE_ONLY = [Zh].freeze
+    PAGE_ONLY = [Zh, Ko].freeze
 
     # Every language that has a file, in a fixed order.
     LANGUAGES = (ALL + PAGE_ONLY).freeze

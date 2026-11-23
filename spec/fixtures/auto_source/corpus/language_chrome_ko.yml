@@ -1,0 +1,10 @@
+---
+case: Seven invented news cards (four short headlines, three open with a chrome word and a particle or space), account, privacy and subscription shortcuts, in language "ko"; only the seven headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/login-error-outage
+- https://example.com/news/2026/11/subscription-economy
+- https://example.com/news/2026/11/search-market-share
+- https://example.com/news/2026/11/hard-to-see-reality
