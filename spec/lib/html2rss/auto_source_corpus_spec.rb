@@ -103,7 +103,8 @@ RSpec.describe Html2rss::AutoSource do
           'vezi toate', 'vezi toate articolele', 'vezi toate știrile', 'vezi mai multe știri', 'toate articolele',
           'toate știrile', 'citește mai multe știri'
         ],
-        da: ['se alle', 'se flere', 'flere nyheder']
+        da: ['se alle', 'se flere', 'flere nyheder'],
+        he: ['קראו עוד'], el: ['διαβάστε περισσότερα'], uk: ['читати далі'], hi: ['और पढ़ें']
       }.flat_map { |code, labels| labels.map { [code, _1] } }
     end
     let(:urls) do
@@ -148,6 +149,20 @@ RSpec.describe Html2rss::AutoSource do
           intro = %(<div class="block"><h2>Section heading for sports here</h2><p>Latest stories from this section.</p>)
           %(#{intro}<a href="/sports">#{label}</a></div>#{real})
         },
+        query_id: lambda { |label, path|
+          (1..6).map do |i|
+            %(<article><h3>Unlinked title with more words</h3><p>text</p><a href="#{path}#{i}">#{label}</a></article>)
+          end.join
+        },
+        story_label: lambda { |label|
+          decoys = ['<a href="/people/jane-doe">Jane Doe</a>', '<a href="/politics/local-news">Local news</a>',
+                    '<a href="https://source.example.org/wire/item">Wire service</a>']
+          (1..6).map do |i|
+            heading = '<h3>Unlinked title with more words</h3>'
+            story = %(#{heading}<a href="/a/2024/05/council-approves-budget-#{i}">#{label}</a>)
+            %(<article>#{i.odd? ? decoys[i % 3] + story : story + decoys[i % 3]}</article>)
+          end.join
+        },
         head: lambda { |label|
           %(<div class="head"><h2>Latest world news today here</h2><a href="/world">#{label}</a></div>) + real
         }
@@ -172,6 +187,19 @@ RSpec.describe Html2rss::AutoSource do
       pairs.uniq(&:first).each do |code, label|
         found = urls.call(code, pages[:hub_and_story].call(label))
         expect(found.grep(/real-story-slug/).size).to eq(6), "#{code} #{label}"
+      end
+    end
+
+    it 'keeps a label that points at a story, beside an author link in either order', :aggregate_failures do
+      pairs.uniq(&:first).each do |code, label|
+        found = urls.call(code, pages[:story_label].call(label))
+        expect(found.grep(/council-approves-budget/).size).to eq(6), "#{code} #{label}"
+      end
+    end
+
+    it 'keeps a card whose only link carries the label and an identifying query', :aggregate_failures do
+      pairs.uniq(&:first).product(%w[/read?id= /view?id= /detail?id= /show?aid=]).each do |(code, label), path|
+        expect(urls.call(code, pages[:query_id].call(label, path)).size).to eq(6), "#{code} #{path}"
       end
     end
 

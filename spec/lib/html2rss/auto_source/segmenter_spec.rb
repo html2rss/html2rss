@@ -149,40 +149,72 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
   end
 
   describe '.call with an own read-more label' do
-    let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[:vi]) }
+    let(:labels) do
+      { vi: 'xem tất cả', zh: '更多', tr: 'daha fazla', cs: 'zobrazit všechny', hu: 'összes hír', ro: 'vezi toate',
+        da: 'se alle', he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें' }
+    end
     let(:hrefs) do
-      lambda do |card|
-        html = (1..3).map do |i|
-          "<article>#{card.call(i)}</article>"
-        end.join
+      lambda do |code, card|
+        html = (1..6).map { |i| "<article>#{card.call(i, labels.fetch(code))}</article>" }.join
+        resolver = Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[code])
         segments = described_class.call(document_for("<html><body>#{html}</body></html>"),
                                         base_url: 'https://example.com', strategy: :semantic, link_resolver: resolver)
         segments.map { _1.primary_link.attrs.href }
       end
     end
+    let(:scenarios) do
+      dated = ->(i) { "/a/2024/05/council-approves-budget-#{i}" }
+      slug = ->(i) { "/section/real-story-slug-#{i}" }
+      decoys = ['<a href="/people/jane-doe">Jane Doe</a>', '<a href="/politics/local-news">Local news</a>',
+                '<a href="https://source.example.org/wire/item">Wire service</a>']
+      with_decoy = decoys.product(%i[before after]).map do |decoy, order|
+        card = lambda do |i, label|
+          story = %(<h3>Unlinked title</h3><a href="#{dated.call(i)}">#{label}</a>)
+          order == :before ? decoy + story : story + decoy
+        end
+        ["story label #{order} #{decoy[9, 8]}", card, dated]
+      end
+      hubs = %w[/sports /tin-tuc/the-thao].map do |hub|
+        card = lambda do |i, label|
+          %(<h2>Real headline #{i} with several words</h2><a href="#{hub}">#{label}</a>) +
+            %(<a href="#{slug.call(i)}">Open this story right now please</a>)
+        end
+        ["hub #{hub}", card, slug]
+      end
+      with_decoy + hubs
+    end
 
-    it 'never picks the labelled link over the story link', :aggregate_failures do
-      story = lambda { |i|
-        %(<h2>Real headline #{i} with several words</h2><a href="/news-desk/top-stories">Xem tất cả</a>) +
-          %(<a href="/section/story-#{i}">Open this story</a>)
-      }
+    it 'keeps the story link of every card, whatever labelled link sits beside it', :aggregate_failures do
+      labels.each_key do |code|
+        scenarios.each do |name, card, story|
+          expect(hrefs.call(code, card)).to eq((1..6).map(&story)), "#{code} #{name}"
+        end
+      end
+    end
 
-      expect(hrefs.call(story)).to eq(%w[/section/story-1 /section/story-2 /section/story-3])
+    it 'produces no hub item when the story link is only an image', :aggregate_failures do
+      card = lambda do |i, label|
+        %(<a href="/section/real-story-slug-#{i}"><img src="/i#{i}.jpg" alt=""></a><h2>Headline #{i}</h2>) +
+          %(<a href="/sports">#{label}</a>)
+      end
+
+      expect(labels.keys.map { hrefs.call(_1, card) }).to all(satisfy { |found| found.none?('/sports') })
     end
 
     it 'keeps the labelled link when it is the only link of the card' do
-      expect(hrefs.call(lambda { |i|
-        %(<h2>Real headline #{i} with several words</h2><a href="/news-desk/top-#{i}">Xem tất cả</a>)
-      }))
-        .to eq(%w[/news-desk/top-1 /news-desk/top-2 /news-desk/top-3])
+      card = lambda { |i, label|
+        %(<h2>Real headline #{i} with several words</h2><a href="/news-desk/top-#{i}">#{label}</a>)
+      }
+
+      expect(hrefs.call(:vi, card)).to eq((1..6).map { "/news-desk/top-#{_1}" })
     end
 
     it 'keeps a heading link that carries the label text' do
-      card = lambda { |i|
-        %(<a href="/news-desk/top-#{i}">Xem thêm</a><h2><a href="/section/story-#{i}">Xem tất cả</a></h2>)
+      card = lambda { |i, label|
+        %(<a href="/news-desk/top-#{i}">Xem thêm</a><h2><a href="/section/story-#{i}">#{label}</a></h2>)
       }
 
-      expect(hrefs.call(card)).to all(start_with('/section/story-'))
+      expect(hrefs.call(:vi, card)).to all(start_with('/section/story-'))
     end
   end
 

@@ -22,6 +22,12 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
               '/news/2024/summary'].map { noise.call(_1) }).to all(be(false))
     end
 
+    it 'keeps a link with an identifying query eligible, and reads a tracking-only query as a hub',
+       :aggregate_failures do
+      expect(%w[/read?id=123 /view?id=1 /detail?id=1 /show?aid=1].map { noise.call(_1) }).to all(be(false))
+      expect(noise.call('/sports?utm_source=x')).to be(true)
+    end
+
     it 'keeps a heading anchor, a shared label and an ordinary text eligible', :aggregate_failures do
       expect(noise.call('/sports', heading_anchor: true)).to be(false)
       expect(noise.call('/sports', 'Read more')).to be(false)

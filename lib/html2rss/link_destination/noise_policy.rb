@@ -55,7 +55,13 @@ module Html2rss
         return false if heading_anchor || destination_facts.content_path
         return false unless segments.size.between?(1, 2) && !segments.last.match?(/[-\d_.]/)
 
-        @link_resolver.own_read_more_text?(text)
+        @link_resolver.own_read_more_text?(text) && !identifying_query?(destination_facts)
+      end
+
+      # A query beyond tracking parameters ("/read?id=123") identifies a page, so the link is no section hub.
+      def identifying_query?(destination_facts)
+        url = destination_facts.url
+        !url.query.nil? && !url.without_tracking_params.query.nil?
       end
 
       def recommended_chrome?(text, destination_facts, heading_anchor:)
