@@ -1,0 +1,22 @@
+case: Twenty invented news cards in language "id" (four short headlines, eight that open with or contain a label word or a foreign ambiguous word, eight that end in a year after a label word, on a non-content path), upper and mixed case chrome, account, privacy and subscription shortcuts; only the twenty headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/night-bus-route
+- https://example.com/news/2026/11/login-outage
+- https://example.com/news/2026/11/subscription-economy
+- https://example.com/news/2026/11/more-than-expected
+- https://example.com/news/2026/11/contact-network
+- https://example.com/news/2026/11/about-us-festival
+- https://example.com/news/2026/11/plus-arcade
+- https://example.com/news/2026/11/dela-valley
+- https://example.com/news/2026/11/exit-ramp
+- https://example.com/story-1
+- https://example.com/story-2
+- https://example.com/story-3
+- https://example.com/story-4
+- https://example.com/story-5
+- https://example.com/story-6
+- https://example.com/story-7
+- https://example.com/story-8

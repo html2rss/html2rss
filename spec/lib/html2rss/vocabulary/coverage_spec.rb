@@ -975,6 +975,103 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Indonesian labels' do
+    let(:id) { text.call(:id) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:id]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { id.utility?(label) }, chrome: ->(label) { id.utility_chrome?(label) },
+        prefix: ->(label) { id.utility_prefix?(label) }, recommended: ->(label) { id.recommended?(label) },
+        read_more: ->(label) { id.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      ['Masuk', 'Daftar', 'Cari', 'Pencarian', 'Tentang Kami', 'Hubungi Kami', 'Kontak', 'Pedoman Media Siber',
+       'Info Iklan', 'Kebijakan Privasi', 'Syarat dan Ketentuan', 'Peta Situs', 'Pusat Bantuan', 'Menu',
+       'Tutup Menu', 'Beranda', 'Lihat Semua', 'Lihat Berita Lainnya', 'Berita Lainnya', 'Komentar', 'Bagikan',
+       'Ikuti Kami', 'LIHAT SEMUA', 'TENTANG KAMI'].each do |item|
+        expect(id.utility_chrome?(item)).to be(true), item
+      end
+      ['[Lihat Semua]', '← Lihat Semua ←', 'Masuk (buka di tab baru)', "\u200eCari\u200e"].each do |item|
+        expect(id.utility_chrome?(item)).to be(true), item
+      end
+      ['Berita Terkait', 'Artikel Terkait', 'Baca Juga', 'Rekomendasi untuk Anda', 'Anda Mungkin Suka'].each do |item|
+        expect(id.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Baca Selengkapnya', 'BACA SELENGKAPNYA', 'Selengkapnya', 'Lihat Selengkapnya', 'Tonton Selengkapnya',
+       'Lanjutkan Membaca'].each do |label|
+        expect([id.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Berlangganan Newsletter', 'Daftar Sekarang', 'Tulis Komentar', 'Bagikan Artikel Ini'].each do |item|
+        expect(id.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      ['Masuk bursa, saham pelabuhan naik tajam', 'Daftar harga tiket kapal feri naik bulan depan',
+       'Cari tahu jadwal kapal malam di dermaga', 'Pencarian nelayan hilang dihentikan sementara',
+       'Tentang kami dan pasar malam di alun-alun', 'Kontak fisik dilarang dalam turnamen catur',
+       'Menu berbuka murah dijual di pasar tengah', 'Lainnya masih menunggu giliran di loket',
+       'Komentar warga soal jalan baru membanjiri kantor', 'Bagikan sembako dilakukan serentak di kecamatan',
+       'Beranda tua di tepi pelabuhan dipugar', 'Baca juga buku anak di perpustakaan keliling',
+       'Berlangganan koran digital naik dua kali lipat', 'Selengkapnya soal tarif bus ada di rapat dewan',
+       'MASUK BURSA, SAHAM PELABUHAN NAIK TAJAM'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['Tentang Kami 2026', 'Hubungi Kami 2026', 'Berita Terkait 2026', 'Baca Selengkapnya 2026', 'Masuk Akun 2026',
+       'Kebijakan Privasi 2026', 'Lihat Semua 2026', 'Cari 2026', 'Pusat Bantuan 2026'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['Lihat Semua (12)', 'Lihat Semua [3]', 'Pencarian (7)', 'Komentar (12)'].each do |item|
+        expect(id.utility_chrome?(item)).to be(true), item
+      end
+      ['Lihat Semua 12', 'Lihat Semua 3', 'Tentang Kami 2', 'Komentar 140'].each do |label|
+        expect(id.utility_chrome?(label)).to be(false), label
+      end
+    end
+
+    it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
+      %w[Nasional Bola Ekonomi Otomotif Bantuan Iklan Redaksi Karir Berlangganan Indeks Sebelumnya Berikutnya
+         Terpopuler].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'keeps every foreign ambiguous term reading as chrome on an Indonesian page, and a longer headline a headline',
+       :aggregate_failures do
+      %w[Dela Teilen Plus Comment].each do |label|
+        expect(id.utility_chrome?(label)).to be(true), label
+        expect(text.call(nil).utility_chrome?(label)).to be(true), label
+      end
+      ['Plus Pasar Baru dibuka lagi di tengah kota', 'Dela Lembah wisata diperpanjang musimnya'].each do |headline|
+        expect(id.utility_chrome?(headline)).to be(false), headline
+        expect(id.recommended?(headline)).to be(false), headline
+        expect(id.read_more?(headline)).to be(false), headline
+      end
+    end
+
+    it 'reads the labels on an Indonesian page only', :aggregate_failures do
+      [nil, :ja, :en, :sv, :de, :tr].each do |code|
+        expect(text.call(code).utility_chrome?('Tentang Kami')).to be(false), code.inspect
+      end
+    end
+
+    it 'declares no type marker or path word of its own', :aggregate_failures do
+      expect(described_class::Id.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:id].type_markers).to eq(described_class.words(:type_marker))
+      expect(described_class::SCOPED_WORDS.flat_map { described_class::Id.terms.fetch(_1) }).to be_empty
+    end
+  end
+
   describe 'Hindi labels' do
     let(:hi) { text.call(:hi) }
     let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:hi]) } }
