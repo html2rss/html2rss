@@ -373,7 +373,7 @@ RSpec.describe Html2rss::Vocabulary do
         .each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
     end
 
-    it 'reads an ordinary noun as no label of its own, so a card whose only link is that noun stays', :aggregate_failures do
+    it 'reads an ordinary noun as no label, so a card whose only link is that noun stays', :aggregate_failures do
       %w[пошук коментарі реєстрація підписка вхід].each do |noun|
         [noun, noun.capitalize].each do |label|
           readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }

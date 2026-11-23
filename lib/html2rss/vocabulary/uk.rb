@@ -10,7 +10,8 @@ module Html2rss
     # +ʼ+). Only the concepts read through a {Scope} are listed (label words, the call to action, read-more and the
     # new-window notice); the others stay +NONE+ until their readers take the page scope. It lists no type marker
     # (stripping a short kicker could leave a headline below the title floor), no section name, no bare
-    # +реклама+ and no ordinary noun a card's only link may be (+пошук+, +коментарі+, +реєстрація+, +підписка+, +вхід+) (the trade is also news). A term whose precision is unclear is left out.
+    # +реклама+ (the trade is also news) and no ordinary noun a card's only link may be (+пошук+, +коментарі+,
+    # +реєстрація+, +підписка+, +вхід+). A term whose precision is unclear is left out.
     Uk = Language.new(
       code: :uk,
       terms: {
