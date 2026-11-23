@@ -1,0 +1,11 @@
+---
+case: Eight invented news cards in language "vi", each with a heading link, a summary and an action row of a comment link to the same article and a share link, on a flat path; all eight headlines stay items.
+expected:
+- https://example.com/tin/story-1
+- https://example.com/tin/story-2
+- https://example.com/tin/story-3
+- https://example.com/tin/story-4
+- https://example.com/tin/story-5
+- https://example.com/tin/story-6
+- https://example.com/tin/story-7
+- https://example.com/tin/story-8
