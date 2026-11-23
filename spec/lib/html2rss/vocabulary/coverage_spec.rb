@@ -312,6 +312,14 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
+    it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
+      ['추천 기사 2026', '추천 뉴스 2026', '관련 기사 2026', '신문 구독 2026', '무료 구독 2026', '뉴스레터 구독 2026',
+       '회사 소개 2026', '개인정보 처리방침 2026'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+      expect(ko.recommended?('관련 기사 3')).to be(true)
+    end
+
     it 'reads the labels on a Korean page only, and the new-window notice', :aggregate_failures do
       [nil, :ja, :en, :zh].each { expect(text.call(_1).utility_chrome?('로그인')).to be(false), _1.inspect }
       expect(ko.utility_chrome?('로그인 (새 창 열기)')).to be(true)

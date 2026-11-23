@@ -1,5 +1,5 @@
 ---
-case: Seven invented news cards (four short headlines, three open with a chrome word and a particle or space), account, privacy and subscription shortcuts, in language "ko"; only the seven headlines are items.
+case: Fifteen invented news cards (four short headlines, three open with a chrome word and a particle or space, eight end in a year after a label word on a non-content path), account, privacy and subscription shortcuts, in language "ko"; only the fifteen headlines are items.
 expected:
 - https://example.com/news/2026/11/harbor-ferry-timetable
 - https://example.com/news/2026/11/library-weekend-hours
@@ -8,3 +8,11 @@ expected:
 - https://example.com/news/2026/11/subscription-economy
 - https://example.com/news/2026/11/search-market-share
 - https://example.com/news/2026/11/hard-to-see-reality
+- https://example.com/story-1
+- https://example.com/story-2
+- https://example.com/story-3
+- https://example.com/story-4
+- https://example.com/story-5
+- https://example.com/story-6
+- https://example.com/story-7
+- https://example.com/story-8
