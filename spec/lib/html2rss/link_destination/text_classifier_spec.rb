@@ -478,7 +478,7 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       terms[:read_more_suffix] = [/-vervolg-xx/]
       terms[:new_window_notice] = [/nieuw-xx/]
       language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
-      Html2rss::Vocabulary.build_scope(:xx, Html2rss::Vocabulary::ALL, own: [language])
+      Html2rss::Vocabulary.build_scope(:xx, Html2rss::Vocabulary::SHARED_LANGUAGES, own: [language])
     end
     let(:readings) do
       described_class::PageReadings.build(Html2rss::Vocabulary::PAGE_PATTERNS.to_h { [_1, scope.own_alternation(_1)] })
@@ -512,14 +512,14 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
 
     it 'leaves the shared alternations exactly the terms of the shared languages', :aggregate_failures do
       Html2rss::Vocabulary::PAGE_PATTERNS.each do |concept|
-        terms = Html2rss::Vocabulary::ALL.flat_map { _1.terms.fetch(concept) }
+        terms = Html2rss::Vocabulary::SHARED_LANGUAGES.flat_map { _1.terms.fetch(concept) }
 
         expect(Html2rss::Vocabulary.alternation(concept)).to eq(Html2rss::Vocabulary.compile(terms)), concept.to_s
       end
     end
 
     it 'gives no shared scope an own term', :aggregate_failures do
-      (Html2rss::Vocabulary::ALL.map(&:code) + %i[all]).each do |code|
+      (Html2rss::Vocabulary::SHARED_LANGUAGES.map(&:code) + %i[all]).each do |code|
         own = Html2rss::Vocabulary::PAGE_PATTERNS.map { Html2rss::Vocabulary::SCOPES.fetch(code).own_alternation(_1) }
 
         expect(own).to all(eq('')), code.to_s

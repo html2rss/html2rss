@@ -33,7 +33,7 @@ RSpec.describe Html2rss::Vocabulary do
   describe 'path words' do
     it 'are read on a page in their own language, for every language and every word concept',
        :aggregate_failures do
-      described_class::ALL.each do |language|
+      described_class::SHARED_LANGUAGES.each do |language|
         path_readers.each do |concept, reader|
           language.terms.fetch(concept).each do |term|
             expect(reader.call(language.code, term)).to be(true), "#{language.code} #{concept} #{term.inspect}"
@@ -43,7 +43,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'leaves a slug without such a word as it was', :aggregate_failures do
-      described_class::ALL.each do |language|
+      described_class::SHARED_LANGUAGES.each do |language|
         expect(path_readers.fetch(:path_media).call(language.code, 'harbor')).to be(false)
         expect(path_readers.fetch(:path_non_article).call(language.code, 'harbor')).to be(false)
         expect(path_readers.fetch(:path_deep_post_context).call(language.code, 'harbor')).to be(false)

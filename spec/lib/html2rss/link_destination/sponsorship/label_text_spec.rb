@@ -101,7 +101,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship::LabelText do
       terms[:element_label] = %w[RK-XX]
       terms[:paid_label] = %w[betaald-xx RK-XX]
       language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
-      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::SHARED_LANGUAGES, own: [language])
     end
 
     before do

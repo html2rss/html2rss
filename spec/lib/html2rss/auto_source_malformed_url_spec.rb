@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource do
-  subject(:articles) { described_class.new(response, described_class::DEFAULT_CONFIG, request_session: nil).articles }
+  subject(:articles) do
+    described_class.new(response, described_class::DEFAULT_CONFIG,
+                        request_session: nil, vocabulary: Html2rss::Vocabulary[nil]).articles
+  end
 
   let(:response) do
     Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/html' },

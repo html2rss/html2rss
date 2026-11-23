@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Html::ArticleRules::Category do
-  let(:vocabulary) { Html2rss::Vocabulary[nil] }
-
   describe 'constants' do
     it 'keeps a single vocabulary home used by both adapters' do
       expect(Html2rss::Html::ArticleExtractor::CategoryExtractor::CATEGORY_TERMS)
@@ -24,20 +22,6 @@ RSpec.describe Html2rss::Html::ArticleRules::Category do
     it 'is case-insensitive and false for no classes', :aggregate_failures do
       expect(described_class.class_match?(%w[Post-TAGS])).to be(true)
       expect(described_class.class_match?([])).to be(false)
-    end
-  end
-
-  describe '.add_split_text!' do
-    it 'splits newline-delimited labels and drops chrome values', :aggregate_failures do
-      categories = Set.new
-      described_class.add_split_text!(categories, "Politics\n\nRead more\nLaunch", vocabulary:)
-      expect(categories).to contain_exactly('Politics', 'Launch')
-    end
-
-    it 'keeps News taxonomy values while dropping CTA and date chrome', :aggregate_failures do
-      categories = Set.new
-      described_class.add_split_text!(categories, "News\nRead more\n12 March 2024\nInformatietype:", vocabulary:)
-      expect(categories).to contain_exactly('News')
     end
   end
 end

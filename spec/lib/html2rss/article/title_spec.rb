@@ -393,7 +393,7 @@ RSpec.describe Html2rss::Article::Title do
       terms.merge!(field_label: %w[rubriek-xx], type_label: %w[soort-xx], clock_suffix: %w[uur-xx],
                    date_piece: [/\d{1,2}-mnd-xx|\d{1,2}:\d{2}/])
       language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
-      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::SHARED_LANGUAGES, own: [language])
     end
     let(:own_only) { { vocabulary: xx, date_element: true } }
 

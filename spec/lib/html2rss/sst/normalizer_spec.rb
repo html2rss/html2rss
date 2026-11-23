@@ -403,7 +403,7 @@ RSpec.describe Html2rss::SST::Normalizer do
         terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
         terms.merge!(pager_label: %w[bladeren-xx], page_link: %w[volgende-xx], page_link_label: %w[vorige-xx])
         language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
-        Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+        Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::SHARED_LANGUAGES, own: [language])
       end
       let(:chrome_under) do
         lambda do |markup, scope|

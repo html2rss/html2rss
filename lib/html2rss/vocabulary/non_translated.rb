@@ -4,7 +4,7 @@ module Html2rss
   module Vocabulary
     # Path words that are not language vocabulary: structural page parts (menu, sidebar) and commercial
     # topics (casino, vpn, dating) that mark a destination as page chrome whatever the page's language. They
-    # are not part of any language in {ALL}.
+    # are not part of any language in {SHARED_LANGUAGES}.
     module NonTranslated
       # Structural page-part words.
       STRUCTURAL = Set.new(

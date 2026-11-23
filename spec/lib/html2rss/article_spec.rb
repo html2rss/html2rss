@@ -86,37 +86,18 @@ RSpec.describe Html2rss::Article do
       expect(described_class.new.media?).to be(false)
     end
 
-    it 'composes the kicker and headline into the title when the caller opts in' do
-      article = described_class.new(title: "Ferry\nreturns", kicker: 'Harbor :', compose_title: true)
-
-      expect(article.title).to eq('Harbor: Ferry returns')
-    end
-
-    it 'composes with the page language scope, and stores nothing of it', :aggregate_failures do
-      zh = Html2rss::Vocabulary['zh-Hant']
-      chinese = described_class.new(title: '見出しの本文', kicker: '独自', compose_title: true, vocabulary: zh)
-
-      expect(chinese.title).to eq('独自: 見出しの本文')
-      expect(described_class.new(title: '見出しの本文', kicker: '独自', compose_title: true).title).to eq('見出しの本文')
-      expect(chinese.instance_variables).not_to include(:@vocabulary)
-    end
-
-    it 'keeps the title verbatim apart from whitespace by default', :aggregate_failures do
+    it 'keeps the title verbatim apart from whitespace', :aggregate_failures do
       expect(described_class.new(title: '10:00 Budget vote').title).to eq('10:00 Budget vote')
       expect(described_class.new(title: 'Video: Harbor tour').title).to eq('Video: Harbor tour')
-      expect(described_class.new(title: "  Ferry\n returns ", kicker: 'Harbor').title).to eq('Ferry returns')
+      expect(described_class.new(title: "  Ferry\n returns ").title).to eq('Ferry returns')
     end
 
-    it 'keeps the composed title across copies and Marshal round-trips', :aggregate_failures do
-      article = described_class.new(title: '– Ferry returns', kicker: 'Harbor -', url: 'https://example.com/a',
-                                    compose_title: true)
+    it 'keeps a composed title across copies and Marshal round-trips', :aggregate_failures do
+      title = described_class::Title.compose('– Ferry returns', kicker: 'Harbor -', vocabulary: Html2rss::Vocabulary[nil])
+      article = described_class.new(title:, url: 'https://example.com/a')
 
       expect(article.with_url('https://example.com/b').title).to eq('Harbor: Ferry returns')
       expect(Marshal.load(Marshal.dump(article)).title).to eq('Harbor: Ferry returns')
-    end
-
-    it 'leaves the title nil when only a kicker is given' do
-      expect(described_class.new(kicker: 'Harbor', url: 'https://example.com/a').title).to be_nil
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- one constructor input per reader

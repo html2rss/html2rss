@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::PageLinks do
-  subject(:page_links) { described_class.build(document, link_resolver:, vocabulary: Html2rss::Vocabulary[:all]) }
+  subject(:page_links) { described_class.build(document, link_resolver:) }
 
   let(:link_resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com/news/') }
   let(:document) { Html2rss::SST::Normalizer.call(html, vocabulary: all_scope) }

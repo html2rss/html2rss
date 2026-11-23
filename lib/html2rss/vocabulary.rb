@@ -6,7 +6,7 @@ module Html2rss
   # read-more phrases, type markers, pager nouns. It owns the terms and one compiler; every decision (junk,
   # score, kind) stays in the module that reads the term.
   #
-  # One frozen file per language ({ALL}), each mapping every concept in {CONCEPTS} to its terms or {NONE}.
+  # One frozen file per language ({SHARED_LANGUAGES}), each mapping every concept in {CONCEPTS} to its terms or {NONE}.
   # A concept is read in one of two ways:
   #
   # - a *word* concept ({WORD_CONCEPTS}) holds exact strings, read through {.words} (path segments, type
@@ -32,8 +32,8 @@ module Html2rss
   # closed, so a page can never add an entry. Every other concept reads all languages.
   module Vocabulary
     # A concept a language does not use. Explicit, so a missing concept is an error and an empty one is not. Every
-    # human-language concept has terms in every language in {ALL}; the cells that may be NONE are listed in the
-    # conformance spec: the suffix reading (only Japanese has it) and the topic lead-ins (Japanese has none),
+    # human-language concept has terms in every language in {SHARED_LANGUAGES}; the cells that may be NONE are listed
+    # in the conformance spec: the suffix reading (only Japanese has it) and the topic lead-ins (Japanese has none),
     # +page_link+ (English only), and a clock suffix, a date piece and an element label (one language each).
     NONE = [].freeze
 
@@ -70,11 +70,11 @@ module Html2rss
                        new_window_notice paid_label ad_word element_label field_label type_label clock_suffix date_piece
                        pager_label page_link page_link_label].freeze
 
-    # Every concept each language in {ALL} declares.
+    # Every concept each language in {SHARED_LANGUAGES} declares.
     CONCEPTS = (WORD_CONCEPTS + PATTERN_CONCEPTS).freeze
 
     # The languages, in a fixed order.
-    ALL = [En, De, Fr, Es, It, Nl, Pl, Sv, Ja, Pt, Ru].freeze
+    SHARED_LANGUAGES = [En, De, Fr, Es, It, Nl, Pl, Sv, Ja, Pt, Ru].freeze
 
     # Languages whose terms apply only on a page in that language: they are in no shared table, so +:all+, +ja+ and
     # every other language read exactly what they read without them. A page scope of such a language is +:all+ plus
@@ -82,7 +82,7 @@ module Html2rss
     PAGE_ONLY = [Zh, Ko, He, El, Uk, Ar, Fa, Hi, Th, Tr, Id, Vi, Cs, Hu, Ro, Da, No, Fi].freeze
 
     # Every language that has a file, in a fixed order.
-    LANGUAGES = (ALL + PAGE_ONLY).freeze
+    LANGUAGES = (SHARED_LANGUAGES + PAGE_ONLY).freeze
 
     # A language tag: a primary subtag, then region/script subtags (+de+, +de-AT+, +zh_Hant_TW+).
     TAG = /\A([a-z]{2,3})(?:[-_][a-z0-9]{1,8})*\z/i
@@ -96,10 +96,9 @@ module Html2rss
       # @param lang [String, Symbol, nil] the page language, as {Html2rss::Channel} resolves it
       # @return [Scope] one of the {SCOPES}; the identical frozen object on every call
       def [](lang)
-        case lang
-        in String | Symbol then BY_TAG.fetch(lang) { BY_TAG.fetch(lang.to_s.strip[TAG, 1]&.downcase, ALL_SCOPE) }
-        else ALL_SCOPE
-        end
+        return ALL_SCOPE if lang.nil?
+
+        BY_TAG.fetch(lang) { BY_TAG.fetch(lang.to_s.strip[TAG, 1]&.downcase, ALL_SCOPE) }
       end
 
       ##
@@ -209,25 +208,28 @@ module Html2rss
     end
 
     WORDS = (WORD_CONCEPTS - SCOPED_WORDS).to_h do |concept|
-      [concept, Set.new(ALL.flat_map { _1.terms.fetch(concept) }).freeze]
+      [concept, Set.new(SHARED_LANGUAGES.flat_map { _1.terms.fetch(concept) }).freeze]
     end.freeze
     ALTERNATIONS = (PATTERN_CONCEPTS - SCOPED_PATTERNS).to_h do |concept|
-      [concept, compile(ALL.flat_map { _1.terms.fetch(concept) })]
+      [concept, compile(SHARED_LANGUAGES.flat_map { _1.terms.fetch(concept) })]
     end.freeze
 
     UNAMBIGUOUS_WORDS = SCOPED_WORDS.to_h do |concept|
-      terms = ALL.flat_map { _1.terms.fetch(concept) } - ambiguous_terms(ALL, concept)
+      terms = SHARED_LANGUAGES.flat_map { _1.terms.fetch(concept) } - ambiguous_terms(SHARED_LANGUAGES, concept)
       [concept, Set.new(terms).freeze]
     end.freeze
     UNAMBIGUOUS_ALTERNATIONS = SCOPED_PATTERNS.to_h do |concept|
-      [concept, compile(ALL.flat_map { _1.terms.fetch(concept) } - ambiguous_terms(ALL, concept))]
+      terms = SHARED_LANGUAGES.flat_map { _1.terms.fetch(concept) } - ambiguous_terms(SHARED_LANGUAGES, concept)
+      [concept, compile(terms)]
     end.freeze
 
-    # One shared, frozen scope per language in {ALL}, plus +:all+ (every ambiguous term applies) and one per {PAGE_ONLY}
-    # language: +:all+ plus that language's own terms.
-    SCOPES = ALL.to_h { [_1.code, build_scope(_1.code, [_1])] }
-                .merge(all: build_scope(:all, ALL))
-                .merge(PAGE_ONLY.to_h { [_1.code, build_scope(_1.code, ALL, own: [_1])] }).freeze
+    # One shared, frozen scope per language in {SHARED_LANGUAGES}, plus +:all+ (every ambiguous term applies) and
+    # one per {PAGE_ONLY} language: +:all+ plus that language's own terms.
+    SCOPES = begin
+      shared = SHARED_LANGUAGES.to_h { [_1.code, build_scope(_1.code, [_1])] }
+      page_only = PAGE_ONLY.to_h { [_1.code, build_scope(_1.code, SHARED_LANGUAGES, own: [_1])] }
+      shared.merge(all: build_scope(:all, SHARED_LANGUAGES)).merge(page_only).freeze
+    end
     ALL_SCOPE = SCOPES.fetch(:all)
     # Every accepted primary tag, as a String or a Symbol, so the usual lookup allocates nothing.
     # Tags of a language that reads another language's scope: Norwegian Bokmål and Nynorsk read +no+.

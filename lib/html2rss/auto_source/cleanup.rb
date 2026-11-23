@@ -54,7 +54,8 @@ module Html2rss
       ].freeze
       private_constant :JUNK_TITLE_RULES
 
-      # Owner of the read-more vocabulary ("Read more", "More about X" in nine languages): a +:cta+ title.
+      # Owner of the read-more vocabulary ("Read more", "More about X" in every {Vocabulary::LANGUAGES}
+      # language): a +:cta+ title.
 
       # Minimum present-title length before short-title warnings.
       MIN_TITLE_LENGTH = 4
@@ -105,30 +106,12 @@ module Html2rss
         # @param page_links [#call, nil] lazy source of the page's {PageLinks}: the one article identity
         #   ({PageLinks#identity}), the placement params dropped from item URLs, and the sponsorship check
         # @return [Result] cleaned articles and frozen drop tallies
-        # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
+        # rubocop:disable-next Metrics/ParameterLists -- the admission inputs stay explicit
         def call(articles, url:, vocabulary:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
                  keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil,
                  feed_url: nil)
-          Log.debug "Cleanup: start with #{articles.size} articles"
-          tallies = Hash.new(0)
-
-          reject_invalid!(articles, tallies)
-          if corroboration
-            reject_uncorroborated!(articles, corroboration, tallies)
-            canonicalize_urls!(articles, corroboration)
-          end
-          identity = page_identity(page_links)
-          drop_placement_params!(articles, page_links)
-          deduplicate_by_url!(articles, tallies, identity, vocabulary)
-          reject_sponsored!(articles, page_links, tallies) unless keep_sponsored
-          keep_only_http_urls!(articles, tallies)
-          reject_self_links!(articles, url, tallies, identity)
-          reject_different_domain!(articles, url, feed_url, tallies) unless keep_different_domain
-          reject_excluded_destinations!(articles, tallies, vocabulary)
-          reject_low_quality_titles!(articles, tallies, vocabulary)
-
-          Log.debug "Cleanup: end with #{articles.size} articles"
-          Result.new(articles:, drop_tallies: tallies.freeze)
+          new(articles, identity: page_identity(page_links), vocabulary:)
+            .admit(url:, feed_url:, corroboration:, page_links:, keep_different_domain:, keep_sponsored:)
         end
 
         # First matching junk reason for a title, or nil when the title is acceptable.
@@ -226,158 +209,10 @@ module Html2rss
           )
         end
 
-        def reject_invalid!(articles, tallies)
-          tally_reject!(articles, tallies, 'invalid') { |article| !article.valid? }
-        end
-
-        # Tallies each non-keep verdict (+chrome_only+, +not_on_page+, +unlikely+) as its reason;
-        # the truthy tally count rejects the item.
-        def reject_uncorroborated!(articles, corroboration, tallies)
-          cohorts = articles.group_by(&:scraper)
-          articles.reject! do |article|
-            verdict = corroboration.verdict(article, cohort: cohorts.fetch(article.scraper))
-            next if verdict == :keep
-
-            tallies[verdict.to_s] += 1
-          end
-        end
-
-        # Kept structured items take the rendered anchor's URL, so dedupe merges them with the
-        # heuristic copy and the feed links the page's canonical form.
-        def canonicalize_urls!(articles, corroboration)
-          articles.map! do |article|
-            canonical = corroboration.canonical_url(article)
-            canonical ? article.with_url(canonical) : article
-          end
-        end
-
         # The page's one article key ({PageLinks#identity}, which ignores the page's placement params);
         # the plain {Url#article_identity} without a page.
         def page_identity(page_links)
           ->(url) { page_links ? page_links.call.identity(url) : url.article_identity }
-        end
-
-        # Items carry the page's form of their URL, without the placement params that put one story in
-        # several slots, so the item guid stays one stable form.
-        def drop_placement_params!(articles, page_links)
-          return unless page_links
-
-          articles.map! do |article|
-            url = page_links.call.without_placement(article.url)
-            url.equal?(article.url) ? article : article.with_url(url)
-          end
-        end
-
-        # One item per article identity: the first copy wins and later copies fill only the fields it
-        # lacks ({Article#merge}), so a native feed item keeps its date, guid and title and takes the
-        # page card's image. A read-more titled copy always loses to a copy with a real title: the
-        # link text is chrome, the other copy carries the headline.
-        def deduplicate_by_url!(articles, tallies, identity, vocabulary)
-          reject_read_more_copies!(articles, tallies, identity, vocabulary)
-          kept = articles.each_with_object({}) do |article, by_identity|
-            key = identity.call(article.url)
-            by_identity[key] = by_identity[key]&.merge(article) || article
-          end
-          folded = articles.size - kept.size
-          tallies['duplicate_url'] += folded if folded.positive?
-          articles.replace(kept.values)
-        end
-
-        # Items the page marks as sponsored ({PageLinks#sponsored?}), whatever their source: a paid
-        # post in the site's own feed is as sponsored as its card. Item text and URL paths are never read.
-        def reject_sponsored!(articles, page_links, tallies)
-          return unless page_links
-
-          tally_reject!(articles, tallies, 'sponsored') { |article| page_links.call.sponsored?(article.url) }
-        end
-
-        def keep_only_http_urls!(articles, tallies)
-          tally_reject!(articles, tallies, 'bad_scheme') do |article|
-            !VALID_SCHEMES.include?(article.url&.scheme)
-          end
-        end
-
-        def reject_self_links!(articles, base_url, tallies, identity)
-          source_identity = identity.call(base_url)
-          tally_reject!(articles, tallies, 'self_link') do |article|
-            identity.call(article.url) == source_identity
-          end
-        end
-
-        # Items link to the page's domain. A followed native feed's own items may also link to the feed's
-        # domain (a podcast platform's episode pages) or be their own audio/video file, which hosted podcasts
-        # serve from a third-party CDN; every other item keeps the rule.
-        def reject_different_domain!(articles, base_url, feed_url, tallies)
-          page_domain = base_url.domain
-          tally_reject!(articles, tallies, 'different_domain') do |article|
-            article.url.domain != page_domain && !followed_feed_exempt?(article, feed_url)
-          end
-        end
-
-        # A followed feed's item is exempt when it links to the feed's domain, or when its URL is its own
-        # audio/video file on any domain, whether the feed linked that file or the item is a link-less episode
-        # that took the file as its URL ({Syndication::Parser#article}).
-        def followed_feed_exempt?(article, feed_url)
-          return false unless feed_url && article.scraper == Scraper::NativeFeed
-
-          article.url.domain == feed_url.domain ||
-            article.enclosures.any? { |enclosure| enclosure.media? && enclosure.url == article.url }
-        end
-
-        # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).
-        # PathClassifier owns route facts; Cleanup owns feed-item admission.
-        def reject_excluded_destinations!(articles, tallies, vocabulary)
-          tally_reject!(articles, tallies, 'excluded_destination') do |article|
-            excluded_destination?(article.url, vocabulary)
-          end
-        end
-
-        def excluded_destination?(url, vocabulary)
-          facts = LinkDestination::DestinationFacts.build(url, vocabulary:)
-          return true if facts.high_confidence_junk_path || facts.high_confidence_utility_destination
-
-          facts.utility_path && !facts.content_path && !facts.strong_post_suffix
-        end
-
-        # Drops untitled page-derived items and junk/unnatural titles — blanking a bad title would
-        # hide bad extraction as "unknown" and admit empty items. A publisher-declared item may be
-        # untitled (microblog feed posts) and is kept. {Article} collapses a blank title to nil.
-        def reject_low_quality_titles!(articles, tallies, vocabulary)
-          articles.reject! do |article|
-            reason = title_reject_reason(article, vocabulary)
-            tallies[reason] += 1 if reason
-            reason
-          end
-        end
-
-        def title_reject_reason(article, vocabulary)
-          title = article.title
-          if title.nil?
-            'blank_title' if Scraper::PAGE_SCRAPERS.include?(article.scraper)
-          else
-            junk_reason(title, vocabulary:)&.to_s || ('low_word_count' unless WordCount.at_least?(title, MIN_WORDS))
-          end
-        end
-
-        def reject_read_more_copies!(articles, tallies, identity, vocabulary)
-          real = articles.reject { |article| read_more_title?(article, vocabulary) }
-          titled = real.to_set { |a| identity.call(a.url) }
-          tally_reject!(articles, tallies, 'duplicate_url') do |article|
-            read_more_title?(article, vocabulary) && titled.include?(identity.call(article.url))
-          end
-        end
-
-        def read_more_title?(article, vocabulary)
-          article.title && junk_reason(article.title, vocabulary:) == :cta
-        end
-
-        def tally_reject!(articles, tallies, reason)
-          articles.reject! do |article|
-            next false unless yield(article)
-
-            tallies[reason] += 1
-            true
-          end
         end
 
         def feed_item_as_article(item)
@@ -397,6 +232,196 @@ module Html2rss
 
         def normalize_title(title)
           title.to_s.strip.gsub(/\s+/, ' ')
+        end
+      end
+
+      private_class_method :new
+
+      # @param articles [Array<Article>] the candidates, filtered in place
+      # @param identity [#call] the page's one article key for a URL
+      # @param vocabulary [Vocabulary::Scope] the page language's scope
+      def initialize(articles, identity:, vocabulary:)
+        @articles = articles
+        @identity = identity
+        @vocabulary = vocabulary
+        @tallies = Hash.new(0)
+      end
+
+      # Runs the ordered reject pipeline once; see {.call} for each input.
+      #
+      # @param url [Html2rss::Url]
+      # @param feed_url [Html2rss::Url, nil]
+      # @param corroboration [Corroboration, nil]
+      # @param page_links [#call, nil]
+      # @param keep_different_domain [Boolean]
+      # @param keep_sponsored [Boolean]
+      # @return [Result] cleaned articles and frozen drop tallies
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
+      def admit(url:, feed_url:, corroboration:, page_links:, keep_different_domain:, keep_sponsored:)
+        Log.debug "Cleanup: start with #{articles.size} articles"
+
+        reject_invalid!
+        if corroboration
+          reject_uncorroborated!(corroboration)
+          canonicalize_urls!(corroboration)
+        end
+        drop_placement_params!(page_links)
+        deduplicate_by_url!
+        reject_sponsored!(page_links) unless keep_sponsored
+        keep_only_http_urls!
+        reject_self_links!(url)
+        reject_different_domain!(url, feed_url) unless keep_different_domain
+        reject_excluded_destinations!
+        reject_low_quality_titles!
+
+        Log.debug "Cleanup: end with #{articles.size} articles"
+        Result.new(articles:, drop_tallies: tallies.freeze)
+      end
+
+      private
+
+      attr_reader :articles, :identity, :tallies, :vocabulary
+
+      def junk_reason(title) = self.class.junk_reason(title, vocabulary:)
+
+      def reject_invalid!
+        tally_reject!('invalid') { |article| !article.valid? }
+      end
+
+      # Tallies each non-keep verdict (+chrome_only+, +not_on_page+, +unlikely+) as its reason;
+      # the truthy tally count rejects the item.
+      def reject_uncorroborated!(corroboration)
+        cohorts = articles.group_by(&:scraper)
+        articles.reject! do |article|
+          verdict = corroboration.verdict(article, cohort: cohorts.fetch(article.scraper))
+          next if verdict == :keep
+
+          tallies[verdict.to_s] += 1
+        end
+      end
+
+      # Kept structured items take the rendered anchor's URL, so dedupe merges them with the
+      # heuristic copy and the feed links the page's canonical form.
+      def canonicalize_urls!(corroboration)
+        articles.map! do |article|
+          canonical = corroboration.canonical_url(article)
+          canonical ? article.with_url(canonical) : article
+        end
+      end
+
+      # Items carry the page's form of their URL, without the placement params that put one story in
+      # several slots, so the item guid stays one stable form.
+      def drop_placement_params!(page_links)
+        return unless page_links
+
+        articles.map! do |article|
+          url = page_links.call.without_placement(article.url)
+          url.equal?(article.url) ? article : article.with_url(url)
+        end
+      end
+
+      # One item per article identity: the first copy wins and later copies fill only the fields it
+      # lacks ({Article#merge}), so a native feed item keeps its date, guid and title and takes the
+      # page card's image. A read-more titled copy always loses to a copy with a real title: the
+      # link text is chrome, the other copy carries the headline.
+      def deduplicate_by_url!
+        reject_read_more_copies!
+        kept = merged_copies
+        folded = articles.size - kept.size
+        tallies['duplicate_url'] += folded if folded.positive?
+        articles.replace(kept)
+      end
+
+      def merged_copies = articles.group_by { identity.call(_1.url) }.values.map { |copies| copies.reduce(:merge) }
+
+      # Items the page marks as sponsored ({PageLinks#sponsored?}), whatever their source: a paid
+      # post in the site's own feed is as sponsored as its card. Item text and URL paths are never read.
+      def reject_sponsored!(page_links)
+        return unless page_links
+
+        tally_reject!('sponsored') { |article| page_links.call.sponsored?(article.url) }
+      end
+
+      def keep_only_http_urls!
+        tally_reject!('bad_scheme') { |article| !VALID_SCHEMES.include?(article.url&.scheme) }
+      end
+
+      def reject_self_links!(base_url)
+        source_identity = identity.call(base_url)
+        tally_reject!('self_link') { |article| identity.call(article.url) == source_identity }
+      end
+
+      # Items link to the page's domain. A followed native feed's own items may also link to the feed's
+      # domain (a podcast platform's episode pages) or be their own audio/video file, which hosted podcasts
+      # serve from a third-party CDN; every other item keeps the rule.
+      def reject_different_domain!(base_url, feed_url)
+        page_domain = base_url.domain
+        tally_reject!('different_domain') do |article|
+          article.url.domain != page_domain && !followed_feed_exempt?(article, feed_url)
+        end
+      end
+
+      # A followed feed's item is exempt when it links to the feed's domain, or when its URL is its own
+      # audio/video file on any domain, whether the feed linked that file or the item is a link-less episode
+      # that took the file as its URL ({Syndication::Parser#article}).
+      def followed_feed_exempt?(article, feed_url)
+        return false unless feed_url && article.scraper == Scraper::NativeFeed
+
+        article.url.domain == feed_url.domain ||
+          article.enclosures.any? { |enclosure| enclosure.media? && enclosure.url == article.url }
+      end
+
+      # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).
+      # PathClassifier owns route facts; Cleanup owns feed-item admission.
+      def reject_excluded_destinations!
+        tally_reject!('excluded_destination') { |article| excluded_destination?(article.url) }
+      end
+
+      def excluded_destination?(url)
+        facts = LinkDestination::DestinationFacts.build(url, vocabulary:)
+        return true if facts.high_confidence_junk_path || facts.high_confidence_utility_destination
+
+        facts.utility_path && !facts.content_path && !facts.strong_post_suffix
+      end
+
+      # Drops untitled page-derived items and junk/unnatural titles — blanking a bad title would
+      # hide bad extraction as "unknown" and admit empty items. A publisher-declared item may be
+      # untitled (microblog feed posts) and is kept. {Article} collapses a blank title to nil.
+      def reject_low_quality_titles!
+        articles.reject! do |article|
+          reason = title_reject_reason(article)
+          tallies[reason] += 1 if reason
+          reason
+        end
+      end
+
+      def title_reject_reason(article)
+        title = article.title
+        if title.nil?
+          'blank_title' if Scraper::PAGE_SCRAPERS.include?(article.scraper)
+        else
+          junk_reason(title)&.to_s || ('low_word_count' unless WordCount.at_least?(title, MIN_WORDS))
+        end
+      end
+
+      def reject_read_more_copies!
+        real = articles.reject { |article| read_more_title?(article) }
+        titled = real.to_set { |a| identity.call(a.url) }
+        tally_reject!('duplicate_url') do |article|
+          read_more_title?(article) && titled.include?(identity.call(article.url))
+        end
+      end
+
+      def read_more_title?(article)
+        article.title && junk_reason(article.title) == :cta
+      end
+
+      def tally_reject!(reason)
+        articles.reject! do |article|
+          next false unless yield(article)
+
+          tallies[reason] += 1
+          true
         end
       end
     end

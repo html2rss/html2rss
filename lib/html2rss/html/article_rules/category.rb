@@ -33,31 +33,6 @@ module Html2rss
             class_names.any? { |token| class_token_match?(token) }
           end
 
-          ##
-          # @param categories [Set<String>]
-          # @param text [String, nil]
-          # @param vocabulary [Vocabulary::Scope] the page language's scope
-          # @param title [String, nil]
-          # @return [void]
-          def add_text!(categories, text, vocabulary:, title: nil)
-            value = text.to_s.strip
-            return if value.empty? || !Description.keep?(value, vocabulary:, title:, type_chips: false)
-
-            categories.add(value)
-          end
-
-          ##
-          # @param categories [Set<String>]
-          # @param text [String, nil]
-          # @param vocabulary [Vocabulary::Scope] the page language's scope
-          # @param title [String, nil]
-          # @return [void]
-          def add_split_text!(categories, text, vocabulary:, title: nil)
-            return unless text
-
-            text.split(/\n+/).each { |line| add_text!(categories, line, vocabulary:, title:) }
-          end
-
           private
 
           def class_token_match?(token)

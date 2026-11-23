@@ -18,7 +18,7 @@ module Html2rss
     #   name the sponsor in up to five words). It also counts on a heading or a topic chip, and
     #   {AutoSource::PageLinks} lets it head a section.
     #
-    # Both text vocabularies are one closed multilingual set (en, de, fr, es, it, nl, pl, sv, ja).
+    # Both text vocabularies are one closed multilingual set ({Vocabulary::LANGUAGES}).
     # Attribution alone ("Presented by", "In Kooperation mit", "proposé par", "In collaborazione con", "提供")
     # states no payment and is no label, nor is "Partners" (an editorial word).
     #

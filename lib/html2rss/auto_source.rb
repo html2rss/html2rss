@@ -112,14 +112,13 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
     # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
-    # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope, resolved once here and shared by
-    #   every classifier of this run; the page's own language ({Channel.language_for}) by default
+    # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope, resolved by the caller once and
+    #   shared by every classifier of this run
     # @option opts [Integer] :limit max articles to keep; later tiers stop once this many survive Cleanup
     # @option opts [Hash] :scraper scraper configuration map
     # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
-    def initialize(response, opts = DEFAULT_CONFIG, request_session: nil,
-                   vocabulary: Vocabulary[Channel.language_for(response)])
+    def initialize(response, opts = DEFAULT_CONFIG, vocabulary:, request_session: nil)
       @vocabulary = vocabulary
       @parsed_body = response.parsed_body
       @body = response.body
@@ -304,7 +303,7 @@ module Html2rss
     def page_document
       return @page_document if defined?(@page_document)
 
-      @page_document = (SST::Normalizer.call(parsed_body, vocabulary: @vocabulary) unless json_response?)
+      @page_document = (SST::Normalizer.call(parsed_body, vocabulary:) unless json_response?)
     end
 
     def link_resolver
@@ -317,7 +316,7 @@ module Html2rss
 
     # Rendered links of the page, built once for the page check and sponsorship.
     def page_links
-      @page_links ||= PageLinks.build(page_document, link_resolver:, vocabulary: @vocabulary)
+      @page_links ||= PageLinks.build(page_document, link_resolver:)
     end
 
     def admitted_articles(articles)
@@ -350,10 +349,16 @@ module Html2rss
         # Hash items carry publisher-declared or structured titles: verbatim (collapse only), except an item
         # with an explicit +kicker+, which composes +Kicker: Headline+. Heuristic scrapers yield Articles
         # composed by Html::SstArticleExtractor.
-        Article.new(**item, compose_title: item.key?(:kicker), scraper: instance.class, vocabulary:)
+        Article.new(**composed_title(item), scraper: instance.class)
       else
         raise ScraperContractError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
       end
+    end
+
+    def composed_title(item)
+      return item unless item.key?(:kicker)
+
+      item.except(:kicker).merge(title: Article::Title.compose(item[:title], kicker: item[:kicker], vocabulary:))
     end
 
     def cleanup_options

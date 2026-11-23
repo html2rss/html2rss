@@ -3,11 +3,11 @@
 # rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
 
 RSpec.describe Html2rss::Vocabulary do
-  let(:languages) { described_class::ALL }
+  let(:languages) { described_class::SHARED_LANGUAGES }
   let(:flags) { Regexp::IGNORECASE | Regexp::EXTENDED | Regexp::MULTILINE }
   let(:bare) { /(?<!\\)[[:space:]#]/ }
 
-  describe '::ALL' do
+  describe '::SHARED_LANGUAGES' do
     # Every (concept, language) cell that holds no term, and nothing else: a human-language concept has terms in
     # all eleven shared languages. A suffix reading exists only in Japanese (the topic comes first there, so Japanese
     # has no lead-in either; Russian has none because its bare "more" and "about" are ordinary headline openers),
@@ -50,7 +50,7 @@ RSpec.describe Html2rss::Vocabulary do
         expect(declared - read_by_scope).to be_empty, "#{language.code} declares #{declared - read_by_scope}"
         expect(language.terms.keys).to match_array(described_class::CONCEPTS)
         expect(language.ambiguous).to be_empty
-        expect(described_class::ALL).not_to include(language)
+        expect(described_class::SHARED_LANGUAGES).not_to include(language)
       end
     end
 
@@ -311,12 +311,12 @@ RSpec.describe Html2rss::Vocabulary do
     it 'takes the plain words from the page-only language, so another one keeps 独自 and 写真', :aggregate_failures do
       other = described_class::Language.new(code: :xx, plain_words: Set['速報'].freeze,
                                             terms: described_class::Zh.terms.merge(type_marker: %w[xx-tag]).freeze)
-      scope = described_class.build_scope(:xx, described_class::ALL, own: [other])
+      scope = described_class.build_scope(:xx, described_class::SHARED_LANGUAGES, own: [other])
 
       expect(scope.type_markers).to include('独自', '写真', 'xx-tag')
       expect(scope.type_markers).to be_frozen
       expect(scope.type_markers).not_to include('速報')
-      expect(described_class.build_scope(:yy, described_class::ALL, own: []).type_markers)
+      expect(described_class.build_scope(:yy, described_class::SHARED_LANGUAGES, own: []).type_markers)
         .to be(described_class.words(:type_marker))
     end
 
@@ -334,7 +334,7 @@ RSpec.describe Html2rss::Vocabulary do
     # The tables of every language but Chinese are what the eleven shared language files compile to: a Chinese term
     # is in no shared table, so +all+, +ja+ and every other language read the same terms as before Chinese existed.
     it 'adds no Chinese term to a shared table, to the all scope or to any other language scope', :aggregate_failures do
-      shared = described_class::ALL
+      shared = described_class::SHARED_LANGUAGES
       terms = ->(concept) { shared.flat_map { _1.terms.fetch(concept) } }
 
       (described_class::PATTERN_CONCEPTS - described_class::SCOPED_PATTERNS).each do |concept|
@@ -517,7 +517,8 @@ RSpec.describe Html2rss::Vocabulary do
 
       expect(shared).to include('contact', 'subscribe')
       expect(shared).not_to include('dela', 'plus')
-      every = described_class.compile(described_class::ALL.flat_map { _1.terms.fetch(:utility) }).split('|')
+      terms = described_class::SHARED_LANGUAGES.flat_map { _1.terms.fetch(:utility) }
+      every = described_class.compile(terms).split('|')
 
       expect((shared + flagged).uniq).to match_array(every.uniq)
     end

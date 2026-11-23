@@ -56,9 +56,9 @@ module Html2rss
       ##
       # How the pager concepts ({Vocabulary::PAGE_PATTERNS}: +pager_label+, +page_link+, +page_link_label+) are
       # read: one precompiled set of matchers per page scope, built at load. The shared terms are every language of
-      # {Vocabulary::ALL}; a {Vocabulary::PAGE_ONLY} language adds its own, read as whole labels only (a Han term
-      # has no word boundary). Scopes with the same own terms (every shared language and +:all+ have none) share
-      # one entry, so a scope without own terms reads exactly the shared terms.
+      # {Vocabulary::SHARED_LANGUAGES}; a {Vocabulary::PAGE_ONLY} language adds its own, read as whole labels only
+      # (a Han term has no word boundary). Scopes with the same own terms (every shared language and +:all+ have
+      # none) share one entry, so a scope without own terms reads exactly the shared terms.
       module PagerReadings
         # The matchers of one scope: pager nouns, page-link wording and whole page-link labels.
         Readings = Data.define(:pager_label, :page_link_text, :page_link_label)

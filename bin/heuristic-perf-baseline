@@ -40,7 +40,7 @@ def run_auto_source(parsed_body, body)
     url:
   )
   response.instance_variable_set(:@parsed_body, parsed_body)
-  Html2rss::AutoSource.new(response).articles.size
+  Html2rss::AutoSource.new(response, vocabulary: Html2rss::Vocabulary[Html2rss::Channel.language_for(response)]).articles.size
 end
 
 root = File.expand_path('..', __dir__)

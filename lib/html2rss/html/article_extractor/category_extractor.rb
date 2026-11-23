@@ -39,15 +39,15 @@ module Html2rss
         # @param article_tag [Nokogiri::XML::Element] The article element
         # @param vocabulary [Vocabulary::Scope] the page language's scope
         # @param title [String, nil]
-        # @return [Set<String>] Set of category strings
+        # @return [ArticleRules::Category::Collector] collector holding the category strings
         def self.extract_all_categories(article_tag, vocabulary:, title:)
-          Set.new.tap do |categories|
-            extract_element_data_categories!(categories, article_tag, vocabulary:, title:)
+          ArticleRules::Category::Collector.new(vocabulary:, title:).tap do |collector|
+            extract_element_data_categories!(collector, article_tag)
             article_tag.css(CATEGORY_SELECTORS.join(',')).each do |element|
               if ArticleRules::Category.class_match?(element['class'].to_s.split)
-                extract_text_categories!(categories, element, vocabulary:, title:)
+                extract_text_categories!(collector, element)
               end
-              extract_element_data_categories!(categories, element, vocabulary:, title:)
+              extract_element_data_categories!(collector, element)
             end
           end
         end
@@ -55,51 +55,43 @@ module Html2rss
         ##
         # Extracts categories from data attributes of a single element.
         #
-        # @param categories [Set<String>] Accumulator set
+        # @param collector [ArticleRules::Category::Collector] Accumulator
         # @param element [Nokogiri::XML::Element] metadata element that may contain category links
-        # @param vocabulary [Vocabulary::Scope] the page language's scope
-        # @param title [String, nil]
         # @return [void]
-        def self.extract_element_data_categories!(categories, element, vocabulary:, title:)
+        def self.extract_element_data_categories!(collector, element)
           element.attributes.each_value do |attr|
             next unless ArticleRules::Category.attr_name_match?(attr.name)
 
-            ArticleRules::Category.add_text!(categories, attr.value, vocabulary:, title:)
+            collector.add(attr.value)
           end
         end
 
         ##
         # Extracts text-based categories from elements, splitting content into discrete values.
         #
-        # @param categories [Set<String>] Accumulator set
+        # @param collector [ArticleRules::Category::Collector] Accumulator
         # @param element [Nokogiri::XML::Element] metadata element whose text may contain delimiters
-        # @param vocabulary [Vocabulary::Scope] the page language's scope
-        # @param title [String, nil]
         # @return [void]
-        def self.extract_text_categories!(categories, element, vocabulary:, title:)
+        def self.extract_text_categories!(collector, element)
           return if category_container?(element)
 
           anchors = element.name == 'a' ? [element] : element.css('a').to_a
           if anchors.any?
-            anchors.each { |node| add_text_to_categories!(categories, node, vocabulary:, title:) }
+            anchors.each { |node| add_text_to_categories!(collector, node) }
             return
           end
 
-          ArticleRules::Category.add_split_text!(
-            categories, Navigator.extract_visible_text(element), vocabulary:, title:
-          )
+          collector.add_split(Navigator.extract_visible_text(element))
         end
 
         ##
-        # Adds the visible text of the given element to the categories set.
+        # Adds the visible text of the given element to the collector.
         #
-        # @param categories [Set<String>] Accumulator set
+        # @param collector [ArticleRules::Category::Collector] Accumulator
         # @param element [Nokogiri::XML::Element] The element to extract text from
-        # @param vocabulary [Vocabulary::Scope] the page language's scope
-        # @param title [String, nil]
         # @return [void]
-        def self.add_text_to_categories!(categories, element, vocabulary:, title:)
-          ArticleRules::Category.add_text!(categories, Navigator.extract_visible_text(element), vocabulary:, title:)
+        def self.add_text_to_categories!(collector, element)
+          collector.add(Navigator.extract_visible_text(element))
         end
 
         def self.category_container?(element)

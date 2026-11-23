@@ -7,8 +7,8 @@ module Html2rss
   # Article is a simple data object representing an article extracted from a page.
   #
   # Article owns the title via {Article::Title}. Every title is whitespace-collapsed; callers that extract titles
-  # from heuristic card markup opt in with +compose_title: true+ to join +kicker+ to +title+ (the headline) and strip
-  # noise. Configured selector titles and publisher-declared headlines (feeds, structured data) stay verbatim.
+  # from heuristic card markup compose them first ({Title.compose}), with the page language they hold. Configured
+  # selector titles and publisher-declared headlines (feeds, structured data) stay verbatim.
   #
   # Description and enclosure wire presentation live in {FeedBuilder::ItemPresentation}.
   class Article # rubocop:disable Metrics/ClassLength -- one reader per article attribute
@@ -24,8 +24,6 @@ module Html2rss
 
     # @param id [String, nil] stable article identifier
     # @param title [String, nil] article headline
-    # @param kicker [String, nil] kicker / eyebrow text composed into the title (not stored); used only with
-    #   +compose_title+
     # @param description [String, nil] raw extracted description/content (not feed-rendered HTML)
     # @param url [String, Html2rss::Url, nil] canonical article URL
     # @param image [String, Html2rss::Url, nil] image URL for description / JSON Feed +image+; without one, the
@@ -37,14 +35,10 @@ module Html2rss
     # @param categories [Array<String>, nil] category labels
     # @param scraper [Class, nil] scraper class that produced the article
     # @param media [Boolean, nil] whether the item is an audio/video object (not an article)
-    # @param compose_title [Boolean] opt in to kicker joining and noise stripping; default keeps the title verbatim
-    # @param vocabulary [Vocabulary::Scope] the page language's scope, read only by +compose_title+ (see
-    #   {Title.compose}); not stored
-    # rubocop:disable-next Metrics/ParameterLists -- fourteen article inputs stay explicit
-    def initialize(id: nil, title: nil, kicker: nil, description: nil, url: nil, image: nil, author: nil, guid: nil,
-                   published_at: nil, enclosures: nil, categories: nil, scraper: nil, media: nil, compose_title: false,
-                   vocabulary: Vocabulary[nil])
-      title = compose_title ? Title.compose(title, kicker:, vocabulary:) : Title.collapse(title)
+    # rubocop:disable-next Metrics/ParameterLists -- twelve article inputs stay explicit
+    def initialize(id: nil, title: nil, description: nil, url: nil, image: nil, author: nil, guid: nil,
+                   published_at: nil, enclosures: nil, categories: nil, scraper: nil, media: nil)
+      title = Title.collapse(title)
       image = first_image(enclosures) unless present?(image)
       @to_h = { id:, title:, description:, url:, image:, author:, guid:, published_at:,
                 enclosures:, categories:, scraper:, media: }.compact.transform_values { freeze_option(_1) }.freeze
