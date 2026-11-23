@@ -20,8 +20,11 @@ module Html2rss
             return id_from_dom if id_from_dom
 
             heading_text = resolve_heading_text(article_tag, heading)
-            slug = generate_slug(heading_text) if heading_text && !heading_text.strip.empty?
-            slug || generate_content_hash(article_tag)
+            if heading_text
+              generate_slug(heading_text) || crc36(heading_text)
+            else
+              generate_content_hash(article_tag)
+            end
           end
 
           private
@@ -54,8 +57,10 @@ module Html2rss
 
           def generate_content_hash(article_tag)
             text = Navigator::TextExtractor.call(article_tag).to_s.strip
-            Zlib.crc32(text).to_s(36) unless text.empty?
+            crc36(text) unless text.empty?
           end
+
+          def crc36(text) = Zlib.crc32(text).to_s(36)
         end
       end
     end

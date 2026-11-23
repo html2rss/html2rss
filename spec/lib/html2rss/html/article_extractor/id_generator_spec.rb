@@ -78,6 +78,14 @@ RSpec.describe Html2rss::Html::ArticleExtractor::IdGenerator do
       expect(ids.uniq.size).to eq(1)
     end
 
+    it 'keeps a non-ASCII heading id stable while the card text around it changes', :aggregate_failures do
+      cards = ['3 ч назад', '5 ч назад'].map { |age| Nokogiri::HTML(%(<div><h2>日本語の見出し</h2>#{age}</div>)).at_css('div') }
+      ids = cards.map { |card| described_class.call(card, heading: card.at_css('h2'), url: nil, selected_anchor: nil) }
+
+      expect(ids.first).to eq(Zlib.crc32('日本語の見出し').to_s(36))
+      expect(ids.uniq.size).to eq(1)
+    end
+
     it 'uses the first non-blank text node when the heading is blank', :aggregate_failures do
       container = Nokogiri::HTML('<div class="card"><h2>   </h2><p>  Body text  </p></div>').at_css('.card')
       heading = container.at_css('h2')
