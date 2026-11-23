@@ -1198,11 +1198,11 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['Autentificare', 'Autentifică-te', 'Conectare', 'Contul meu', 'Deconectare', 'Căutare', 'Caută',
        'Despre noi', 'Contact', 'Politica de confidențialitate', 'Termeni și condiții', 'Politica de cookie-uri',
-       'Meniu', 'Mai multe', 'Vezi toate', 'Vezi toate știrile', 'Comentarii', 'Distribuie',
+       'Meniu', 'Comentarii', 'Distribuie',
        'Sari la conținut'].each do |item|
         expect(ro.utility_chrome?(item)).to be(true), item
       end
-      ['[Mai multe]', '← Vezi toate ←', 'Autentificare (se deschide într-o fereastră nouă)',
+      ['[Căutare]', '← Căutare ←', 'Autentificare (se deschide într-o fereastră nouă)',
        "\u200eCăutare\u200e"].each do |item|
         expect(ro.utility_chrome?(item)).to be(true), item
       end
@@ -1212,7 +1212,8 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
-      ['Citește mai mult', 'Citește articolul complet', 'Află mai multe', 'Citește tot articolul'].each do |label|
+      ['Citește mai mult', 'Citește articolul complet', 'Află mai multe', 'Citește tot articolul', 'Mai multe',
+       'Mai mult', 'Vezi mai multe', 'Vezi mai mult'].each do |label|
         expect([ro.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
       end
       ['Abonează-te la newsletter', 'Abonează-te', 'Devino membru', 'Lasă un comentariu',
@@ -1223,7 +1224,7 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
       ['AUTENTIFICARE', 'CONECTARE', 'CĂUTARE', 'DESPRE NOI', 'POLITICA DE CONFIDENȚIALITATE',
-       'TERMENI ȘI CONDIȚII', 'VEZI TOATE ȘTIRILE'].each do |label|
+       'TERMENI ȘI CONDIȚII', 'SARI LA CONȚINUT'].each do |label|
         expect(ro.utility_chrome?(label)).to be(true), label
       end
       ['ABONEAZĂ-TE', 'ABONEAZĂ-TE LA NEWSLETTER', 'DEVINO MEMBRU'].each do |label|
@@ -1243,8 +1244,8 @@ RSpec.describe Html2rss::Vocabulary do
     it 'reads the comma-below and the cedilla spelling of every label with a s or t', :aggregate_failures do
       ["Termeni \u0219i condi\u021Bii", "Termeni \u015Fi condi\u0163ii", "TERMENI \u0218I CONDI\u021AII",
        "TERMENI \u015EI CONDI\u0162II", "Politica de confiden\u021Bialitate", "Politica de confiden\u0163ialitate",
-       "Sari la con\u021Binut", "Sari la con\u0163inut", "Vezi toate \u0219tirile", "Vezi toate \u015Ftirile",
-       "VEZI TOATE \u015ETIRILE", "VEZI TOATE \u0218TIRILE"].each do |label|
+       "Sari la con\u021Binut", "Sari la con\u0163inut",
+       "SARI LA CON\u0162INUT", "SARI LA CON\u021AINUT"].each do |label|
         expect(ro.utility_chrome?(label)).to be(true), label
       end
       ["\u0218tiri conexe", "\u015Etiri conexe", "\u015Ftiri recomandate", "\u0219tiri recomandate"].each do |label|
@@ -1279,9 +1280,11 @@ RSpec.describe Html2rss::Vocabulary do
        'Termeni și condiții 2026', 'Mai multe 2026', 'ABONEAZĂ-TE 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['Vezi toate (12)', 'Mai multe [3]', 'Căutare (7)', 'Comentarii (12)'].each do |item|
+      ['Căutare [3]', 'Meniu (3)', 'Căutare (7)', 'Comentarii (12)'].each do |item|
         expect(ro.utility_chrome?(item)).to be(true), item
       end
+      # `contact` keeps the shared reading: one trailing word plus a count, or a year, is chrome.
+      ['Contact direct 12', 'Contact 2026'].each { expect(ro.utility_chrome?(_1)).to be(true), _1 }
       ['Vezi toate 12', 'Mai multe 3', 'Meniu 2', 'Comentarii 140'].each do |label|
         expect(ro.utility_chrome?(label)).to be(false), label
       end
@@ -1291,6 +1294,16 @@ RSpec.describe Html2rss::Vocabulary do
       %w[Politică Sport Externe Actualitate Economie Publicitate Abonare Înregistrare Detalii Redacția Acasă
          Anterior Următorul].each do |label|
         readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    # A "more" or "all" label that is chrome empties a card whose only other link it is (the heading is no link).
+    # These stay out of the chrome terms, so the card keeps its item; the bare read-more forms are read-more.
+    it 'reads no "all" or "more" label as chrome, so a card with it as its only link keeps its item',
+       :aggregate_failures do
+      ['Vezi toate', 'Vezi toate articolele', 'Vezi toate știrile', 'Vezi mai multe știri', 'Toate articolele',
+       'Toate știrile', 'Citește mai multe știri'].each do |label|
+        expect([ro.utility_chrome?(label), ro.recommended?(label), ro.read_more?(label)]).to eq([false] * 3), label
       end
     end
 

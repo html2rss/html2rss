@@ -1,0 +1,8 @@
+case: Six invented news cards in language "ro" whose heading is no link and whose only link is a "more" or "all" label to the article, on a flat path; all six stay items.
+expected:
+- https://example.com/stiri/story-1
+- https://example.com/stiri/story-2
+- https://example.com/stiri/story-3
+- https://example.com/stiri/story-4
+- https://example.com/stiri/story-5
+- https://example.com/stiri/story-6

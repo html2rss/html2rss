@@ -14,7 +14,12 @@ module Html2rss
     # headline (+publicitate+ is advertising, +abonare+ a subscription story, +înregistrare+ a recording, +detalii+
     # details, +redacția+ the editorial staff, +acasă+ "at home"). Some common words stay listed as whole labels by
     # judgment (+contact+, +meniu+, +caută+, +comentarii+): a one-word text equal to one reads as chrome, while a
-    # longer headline that opens with one stays a headline. A term whose precision is unclear is left out.
+    # longer headline that opens with one stays a headline. A bracketed count after an own label is chrome; a bare
+    # count or a year after one is a headline. +contact+ also keeps the shared English, French and Dutch reading (one
+    # trailing word plus a count), so "Contact direct 12" and "Contact 2026" are chrome. No "more" or "all" label is a
+    # chrome term (+vezi toate+, +toate știrile+): a chrome link that is a card's only link empties the card, so
+    # +mai multe+, +mai mult+, +vezi mai multe+ and +vezi mai mult+ are read-more labels instead. A term whose
+    # precision is unclear is left out.
     #
     # Romanian writes +ș+ and +ț+ two ways, both common on real pages: comma-below (U+0219, U+021B) and the legacy
     # cedilla forms (U+015F, U+0163). Each label is written once with the comma-below letters and expanded below
@@ -45,7 +50,7 @@ module Html2rss
         read_more: [
           'citește mai mult', 'citește mai multe', 'citește mai departe', 'citește tot articolul',
           'citește articolul', 'citește articolul complet', 'citește continuarea', 'citește tot', 'află mai multe',
-          'află mai mult', 'vezi detalii', 'continuă lectura', 'citește în continuare'
+          'află mai mult', 'mai multe', 'mai mult', 'vezi mai multe', 'vezi mai mult', 'vezi detalii', 'continuă lectura', 'citește în continuare'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,
@@ -76,9 +81,7 @@ module Html2rss
           'politică de confidențialitate', 'politica de cookie', 'politica de cookies', 'politica de cookie-uri',
           'setări cookie', 'setări cookie-uri', 'gestionează cookie-urile', 'termeni și condiții',
           'termenii și condițiile', 'harta site-ului', 'harta site', 'întrebări frecvente', 'meniu', 'meniul',
-          'pagina principală', 'mai multe', 'mai mult', 'vezi mai multe', 'vezi mai mult', 'vezi toate',
-          'vezi toate articolele', 'vezi toate știrile', 'vezi mai multe știri', 'toate articolele',
-          'toate știrile', 'citește mai multe știri', 'comentarii', 'comentează', 'distribuie', 'partajează',
+          'pagina principală', 'comentarii', 'comentează', 'distribuie', 'partajează',
           'urmărește-ne', 'descarcă aplicația', 'sari la conținut', 'treci la conținut', 'salt la conținut',
           'sari la conținutul principal', 'treci la conținutul principal'
         ],
