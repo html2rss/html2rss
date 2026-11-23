@@ -387,11 +387,11 @@ RSpec.describe Html2rss::Article::Title do
     end
   end
 
-  describe 'a page-only language declaring the title concepts' do
+  shared_context 'with a page-only title language' do
     let(:xx) do
       terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
       terms.merge!(field_label: %w[rubriek-xx], type_label: %w[soort-xx], clock_suffix: %w[uur-xx],
-                   date_piece: [/\d{1,2}-mnd-xx/])
+                   date_piece: [/\d{1,2}-mnd-xx|\d{1,2}:\d{2}/])
       language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
       Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
     end
@@ -403,10 +403,15 @@ RSpec.describe Html2rss::Article::Title do
       table = described_class.const_get(:RULES_BY_SCOPE).merge(zh: described_class::Rules.build(xx.type_markers, own))
       stub_const("#{described_class}::RULES_BY_SCOPE", table)
     end
+  end
+
+  describe '.compose with a page-only language' do
+    include_context 'with a page-only title language'
 
     it 'strips an own label and clock suffix from a kicker, and no one else does', :aggregate_failures do
       expect(described_class.compose('Haven', kicker: 'Rubriek-xx: Sport', vocabulary: xx)).to eq('Sport: Haven')
       expect(described_class.compose('Haven', kicker: '10:30 uur-xx | Sport', vocabulary: xx)).to eq('Sport: Haven')
+      expect(described_class.compose('Haven', kicker: 'Soort-xx: Video Sport', vocabulary: xx)).to eq('Sport: Haven')
       expect(described_class.compose('Haven', kicker: 'Rubriek-xx: Sport', vocabulary: all_scope))
         .to eq('Rubriek-xx: Sport: Haven')
     end
@@ -414,22 +419,40 @@ RSpec.describe Html2rss::Article::Title do
     it 'never empties a title: a kicker that is only an own label stays', :aggregate_failures do
       expect(described_class.compose(nil, kicker: 'Rubriek-xx:', vocabulary: xx)).to eq('Rubriek-xx')
       expect(described_class.compose(nil, kicker: 'Rubriek-xx:', vocabulary: all_scope)).to eq('Rubriek-xx')
+      expect(described_class.compose(nil, kicker: nil, vocabulary: xx)).to be_nil
     end
+  end
 
-    it 'reads an own label as a whole piece, an own date only on a date or time element', :aggregate_failures do
+  describe '.noise_piece? and .date_piece? with a page-only language' do
+    include_context 'with a page-only title language'
+
+    it 'reads an own label as a whole piece, an own date only as a standalone chip', :aggregate_failures do
       expect(described_class.noise_piece?('Soort-xx:', vocabulary: xx)).to be(true)
       expect(described_class.noise_piece?('Soort-xx:', vocabulary: all_scope)).to be(false)
       expect(described_class.date_piece?('12-mnd-xx', **own_only)).to be(true)
       expect(described_class.date_piece?('12-mnd-xx', vocabulary: xx, date_element: false)).to be(false)
       expect(described_class.date_piece?('12-mnd-xx', vocabulary: all_scope, date_element: true)).to be(false)
     end
+  end
 
-    it 'tells a piece that is noise only through an own term', :aggregate_failures do
+  describe '.own_noise_piece? with a page-only language' do
+    include_context 'with a page-only title language'
+
+    it 'tells a piece that is noise only through an own term', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       expect(described_class.own_noise_piece?('12-mnd-xx', **own_only)).to be(true)
       expect(described_class.own_noise_piece?('Soort-xx:', vocabulary: xx, date_element: false)).to be(true)
       expect(described_class.own_noise_piece?('10:30', **own_only)).to be(false)
       expect(described_class.own_noise_piece?('Section:', **own_only)).to be(false)
+      expect([nil, '', '  '].map { described_class.own_noise_piece?(_1, **own_only) }).to all(be(false))
       expect(described_class.own_noise_piece?('Soort-xx:', vocabulary: all_scope, date_element: true)).to be(false)
+    end
+
+  
+      rlm = [0x200F].pack('U')
+
+      expect(described_class.own_noise_piece?("#{rlm}Soort-xx:#{rlm}", vocabulary: xx, date_element: false)).to be(true)
+      expect(described_class.own_noise_piece?('Soort-xx:', vocabulary: Html2rss::Vocabulary[:en], date_element: false))
+        .to be(false)
     end
   end
 end

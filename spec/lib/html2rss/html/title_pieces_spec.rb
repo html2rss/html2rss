@@ -185,8 +185,8 @@ RSpec.describe Html2rss::Html::TitlePieces do
       [
         '<span>Soort-xx:</span>', '<span>Betaald-xx</span>',
         '<span>Soort-xx:</span><span>12:30</span>', '<span>Betaald-xx</span><span>12:30</span>'
-      ].each do |inner|
-        html = %(<article><h2><a href="/s">#{inner}</a></h2></article>)
+      ].flat_map { |inner| [%(<a href="/s">#{inner}</a>), inner] }.each do |inner|
+        html = %(<article><h2>#{inner}</h2><a href="/s">x</a></article>)
 
         expect(headline.call(html, xx)).not_to be_nil, inner
       end

@@ -52,8 +52,7 @@ module Html2rss
           # @param vocabulary [Vocabulary::Scope] the page language's scope
           # @return [Boolean] whether +text+ states paid content only through a term of a page-only language
           def own_paid?(text, vocabulary:)
-            reading = BY_SCOPE.fetch(vocabulary.code)
-            !reading.equal?(SHARED) && kind_in(reading, text, true) == :paid_label &&
+            kind_in(BY_SCOPE.fetch(vocabulary.code), text, true) == :paid_label &&
               kind_in(SHARED, text, true) != :paid_label
           end
 

@@ -482,6 +482,44 @@ RSpec.describe Html2rss::Vocabulary do
       expect((shared + flagged).uniq).to match_array(every.uniq)
     end
   end
+
+  describe '.union' do
+    it 'is the shared alternatives, widened by the own ones when there are any', :aggregate_failures do
+      none = { read_more: '', utility_cta: '' }
+
+      expect(described_class.union(:read_more, none)).to eq(described_class.alternation(:read_more))
+      expect(described_class.union(:read_more, { read_more: 'lees-xx' }))
+        .to eq("#{described_class.alternation(:read_more)}|lees-xx")
+      expect(described_class.union(:utility_cta, none)).not_to include('|lees-xx')
+    end
+  end
+
+  describe '.by_own_terms' do
+    it 'builds one entry per distinct own-term set and key, shared by every scope without own terms',
+       :aggregate_failures do
+      calls = []
+      table = described_class.by_own_terms(%i[read_more]) { |own, scope| (calls << [own, scope.code]).size }
+
+      expect(table.keys).to eq(described_class::SCOPES.keys)
+      expect(table.values.uniq.size).to eq(calls.size)
+      expect(calls.size).to be < described_class::SCOPES.size
+      expect(table).to be_frozen
+      expect(table.fetch(:en)).to equal(table.fetch(:all))
+    end
+
+    it 'tells scopes apart by the key too', :aggregate_failures do
+      by_code = described_class.by_own_terms(%i[read_more], key: :code.to_proc) { |_own, scope| scope.code }
+
+      expect(by_code).to eq(described_class::SCOPES.keys.to_h { [_1, _1] })
+    end
+
+    it 'reads the own terms of a page-only scope', :aggregate_failures do
+      own = nil
+      described_class.by_own_terms(%i[read_more]) { |terms, scope| own = terms if scope.code == :zh }
+
+      expect(own.fetch(:read_more)).to include('阅读全文')
+    end
+  end
 end
 
 # rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers

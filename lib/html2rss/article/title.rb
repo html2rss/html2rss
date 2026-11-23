@@ -156,7 +156,7 @@ module Html2rss
           rules = RULES_BY_SCOPE.fetch(vocabulary.code)
           composed = join(headline, kicker, rules)
           # An own term never empties a title: without it, the kicker text would have stayed.
-          composed.nil? && rules.own? ? join(headline, kicker, rules.bare) : composed
+          composed.nil? && rules.own? ? join(nil, kicker, rules.bare) : composed
         end
 
         ##

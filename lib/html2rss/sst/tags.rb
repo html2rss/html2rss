@@ -78,7 +78,7 @@ module Html2rss
               page_link_text: /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:#{Vocabulary.alternation(:page_link)})\b.*)\z/im,
               page_link_label: WHOLE.call([Vocabulary.union(:page_link_label, own), own.fetch(:page_link)]
                                             .reject(&:empty?).join('|'))
-            ).freeze
+            )
           end
 
           private

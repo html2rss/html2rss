@@ -58,29 +58,65 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship::LabelText do
     end
   end
 
-  describe 'a page-only language declaring the sponsorship concepts' do
-    let(:xx) do
-      terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
-      terms.merge!(paid_label: %w[betaald-xx], ad_word: %w[advertentie-xx], element_label: %w[RK-XX])
-      language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
-      Html2rss::Vocabulary.build_scope(:xx, Html2rss::Vocabulary::ALL, own: [language])
+  describe '.build' do
+    let(:concepts) { %i[paid_label ad_word element_label] }
+    let(:none) { concepts.to_h { [_1, ''] } }
+    let(:own) do
+      described_class.build(paid_label: 'betaald-xx', ad_word: 'advertentie-xx', element_label: 'RK-XX')
     end
-    let(:own) { described_class.build(%i[paid_label ad_word element_label].to_h { [_1, xx.own_alternation(_1)] }) }
 
-    it 'reads each own term as a whole label through the same readings', :aggregate_failures do
+    it 'reads each own term as a whole label next to the shared ones', # rubocop:disable RSpec/ExampleLength
+       :aggregate_failures do
       expect(own.label.match('Betaald-xx')[:paid]).to eq('Betaald-xx')
       expect(own.label.match('[advertentie-xx]')[:ad]).to eq('advertentie-xx')
+      expect(own.label.match('Sponsored')[:paid]).to eq('Sponsored')
+      expect(own.element_label).to be_a(Regexp)
       expect(own.element_label.match?('RK-XX')).to be(true)
+      expect(own.element_label.match?('PR')).to be(true)
       expect(own.element_label_word.match?('de RK-XX')).to be(true)
       expect(own.label.match?('Betaald-xx nieuws')).to be(false)
     end
 
-    it 'leaves every shared scope on one reading without own terms', :aggregate_failures do
-      shared = described_class.const_get(:BY_SCOPE).fetch(:all)
+    it 'adds nothing without own terms', :aggregate_failures do
+      shared = described_class.build(none)
 
-      %i[en ja de].each { expect(described_class.const_get(:BY_SCOPE).fetch(_1)).to be(shared) }
       expect(shared.label.match?('Betaald-xx')).to be(false)
-      expect(described_class.const_get(:BY_SCOPE).fetch(:zh)).to be(shared)
+      expect(shared.label.match('Sponsored')[:paid]).to eq('Sponsored')
+      expect(shared.element_label.match?('PR')).to be(true)
+      expect(shared.element_label_word.match?('RK-XX')).to be(false)
+    end
+
+    it 'shares one reading between every scope without own terms', :aggregate_failures do
+      table = described_class.const_get(:BY_SCOPE)
+
+      %i[en ja de all zh].each { expect(table.fetch(_1)).to be(table.fetch(:en)) }
+    end
+  end
+
+  describe '.own_paid?' do
+    let(:own_scope) do
+      terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
+      terms[:paid_label] = %w[betaald-xx]
+      terms[:ad_word] = %w[advertentie-xx]
+      language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
+      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+    end
+
+    before do
+      own = %i[paid_label ad_word element_label].to_h { [_1, own_scope.own_alternation(_1)] }
+      stub_const("#{described_class}::BY_SCOPE",
+                 described_class.const_get(:BY_SCOPE).merge(zh: described_class.build(own)))
+    end
+
+    it 'is true for a paid label only an own term states', :aggregate_failures do
+      expect(described_class.own_paid?('Betaald-xx', vocabulary: own_scope)).to be(true)
+      expect(described_class.own_paid?('Betaald-xx', vocabulary: all_scope)).to be(false)
+    end
+
+    it 'is false for a shared paid label, an own ad word and other text', :aggregate_failures do
+      ['Sponsored', 'Advertentie-xx', 'Betaald-xx nieuws', nil].each do |text|
+        expect(described_class.own_paid?(text, vocabulary: own_scope)).to be(false), text.inspect
+      end
     end
   end
 end
