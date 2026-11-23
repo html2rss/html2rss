@@ -1,0 +1,11 @@
+---
+case: Eight invented news cards in language "fi", each with a heading link, a summary and an action row of a foreign comment link to the same article and a share link, on a flat path; all eight headlines stay items.
+expected:
+- https://example.com/uutiset/story-1
+- https://example.com/uutiset/story-2
+- https://example.com/uutiset/story-3
+- https://example.com/uutiset/story-4
+- https://example.com/uutiset/story-5
+- https://example.com/uutiset/story-6
+- https://example.com/uutiset/story-7
+- https://example.com/uutiset/story-8

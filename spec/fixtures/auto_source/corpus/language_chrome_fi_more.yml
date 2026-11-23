@@ -1,0 +1,9 @@
+---
+case: Six invented news cards in language "fi", each with a plain heading, a summary and one link labelled with a read-more or list-level "more" label, ending in a long slug or `.html`; all six stay items.
+expected:
+- https://example.com/uutiset/lang-artikkeli-lauttavuoroista
+- https://example.com/uutiset/lang-artikkeli-kirjastosta.html
+- https://example.com/uutiset/lang-artikkeli-torista
+- https://example.com/uutiset/lang-artikkeli-yobussista.html
+- https://example.com/uutiset/lang-artikkeli-sillasta
+- https://example.com/uutiset/lang-artikkeli-pyoratiesta.html

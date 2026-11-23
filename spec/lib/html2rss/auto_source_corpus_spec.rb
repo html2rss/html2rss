@@ -103,13 +103,17 @@ RSpec.describe Html2rss::AutoSource do
           'vezi toate', 'vezi toate articolele', 'vezi toate știrile', 'vezi mai multe știri', 'toate articolele',
           'toate știrile', 'citește mai multe știri'
         ],
-        da: ['se alle', 'se flere', 'flere nyheder']
+        da: ['se alle', 'se flere', 'flere nyheder'],
+        fi: [
+          'näytä kaikki', 'katso kaikki', 'näytä lisää', 'lisää uutisia', 'kaikki uutiset',
+          'kaikki artikkelit'
+        ]
       }.flat_map { |code, labels| labels.map { [code, _1] } }
     end
     let(:true_pairs) do
       {
         vi: 'đọc tiếp', zh: '阅读全文', tr: 'devamını oku', cs: 'číst dále', hu: 'tovább', ro: 'citește mai mult',
-        da: 'læs mere', he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें'
+        da: 'læs mere', fi: 'lue lisää', he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें'
       }
     end
     let(:urls) do

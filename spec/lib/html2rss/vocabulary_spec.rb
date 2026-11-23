@@ -72,7 +72,8 @@ RSpec.describe Html2rss::Vocabulary do
                                                 described_class::Fa, described_class::Hi, described_class::Th,
                                                 described_class::Tr, described_class::Id, described_class::Vi,
                                                 described_class::Cs, described_class::Hu,
-                                                described_class::Ro, described_class::Da])
+                                                described_class::Ro, described_class::Da,
+                                                described_class::Fi])
       expect(described_class::LANGUAGES).to eq(languages + described_class::PAGE_ONLY)
       expect(languages).to all(be_a(described_class::Language))
       expect(languages).to be_frozen
