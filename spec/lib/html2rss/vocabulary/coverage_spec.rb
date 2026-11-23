@@ -332,6 +332,64 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Greek labels' do
+    let(:el) { text.call(:el) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:el]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { el.utility?(label) }, chrome: ->(label) { el.utility_chrome?(label) },
+        prefix: ->(label) { el.utility_prefix?(label) }, recommended: ->(label) { el.recommended?(label) },
+        read_more: ->(label) { el.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, in any case', :aggregate_failures do
+      %w[Σύνδεση ΣΥΝΔΕΣΗ ΣΎΝΔΕΣΗ Αποσύνδεση Εγγραφή ΕΓΓΡΑΦΗ Αναζήτηση ΑΝΑΖΗΤΗΣΗ Επικοινωνία Συνδρομή Σχόλια Μενού
+         Συνδεση].each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+      ['Όροι χρήσης', 'ΟΡΟΙ ΧΡΗΣΗΣ', 'ΌΡΟΙ ΧΡΉΣΗΣ', 'Πολιτική απορρήτου', 'ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ', 'Σχετικά με εμάς',
+       'Σύνδεση (3)', '[Μενού]'].each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+      ['Σχετικά άρθρα', 'ΣΧΕΤΙΚΑ ΑΡΘΡΑ', 'Προτεινόμενα', 'Διαβάστε επίσης', 'ΔΙΑΒΑΣΤΕ ΕΠΙΣΗΣ']
+        .each { expect(el.recommended?(_1)).to be(true), _1 }
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Διαβάστε περισσότερα', 'ΔΙΑΒΑΣΤΕ ΠΕΡΙΣΣΟΤΕΡΑ', 'Περισσότερα', 'Διαβάστε ολόκληρο το άρθρο'].each do |label|
+        expect([el.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Εγγραφή στο newsletter', 'ΕΓΓΡΑΦΗ ΣΤΟ NEWSLETTER', 'Κάντε συνδρομή', 'Γίνετε συνδρομητής']
+        .each { expect(el.utility_chrome?(_1)).to be(true), _1 }
+    end
+
+    it 'keeps a headline that opens with a label word a headline', :aggregate_failures do
+      ['Αναζήτηση για τους αγνοούμενους', 'Σύνδεση του δικτύου με την Κρήτη', 'Εγγραφή μαθητών στα σχολεία',
+       'Επικοινωνία με τους ορειβάτες διακόπηκε', 'Συνδρομή στα μέσα μεταφοράς ακριβαίνει',
+       'Σχόλια του πρωθυπουργού για την οικονομία', 'Όροι χρήσης της γης αλλάζουν στα νησιά',
+       'Περισσότερα έσοδα από τον τουρισμό φέτος', 'Σχετικά με την απεργία της Τρίτης δήλωσε ο υπουργός',
+       'Διαβάστε επίσης ότι η τιμή του ρεύματος πέφτει'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year a headline, and a label with a short count chrome', :aggregate_failures do
+      ['Σχετικά άρθρα 2026', 'Προτεινόμενα άρθρα 2026', 'Διαβάστε επίσης 2026', 'Όροι χρήσης 2026',
+       'Πολιτική απορρήτου 2026', 'Διαβάστε περισσότερα 2026', 'Κάντε συνδρομή 2026'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+      expect(el.recommended?('Σχετικά άρθρα 3')).to be(true)
+    end
+
+    it 'reads the labels on a Greek page only, and the new-window notice', :aggregate_failures do
+      [nil, :ja, :en, :ko].each { expect(text.call(_1).utility_chrome?('Σύνδεση')).to be(false), _1.inspect }
+      expect(el.utility_chrome?('Σύνδεση (ανοίγει σε νέο παράθυρο)')).to be(true)
+      expect(text.call(nil).utility_chrome?('Σύνδεση (ανοίγει σε νέο παράθυρο)')).to be(false)
+    end
+
+    it 'declares no type marker of its own', :aggregate_failures do
+      expect(described_class::El.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:el].type_markers).to eq(described_class.words(:type_marker))
+    end
+  end
+
   describe 'pager nouns' do
     let(:pager) do
       lambda do |label|

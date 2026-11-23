@@ -1,0 +1,19 @@
+---
+case: Sixteen invented news cards (eight headlines, five of them open with a label word; eight end in a year after a label on a non-content path), account, privacy, terms and subscription shortcuts, in language "el"; only the sixteen headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/missing-search
+- https://example.com/news/2026/11/grid-link-crete
+- https://example.com/news/2026/11/school-enrolment
+- https://example.com/news/2026/11/contact-lost
+- https://example.com/news/2026/11/subscription-prices
+- https://example.com/story-1
+- https://example.com/story-2
+- https://example.com/story-3
+- https://example.com/story-4
+- https://example.com/story-5
+- https://example.com/story-6
+- https://example.com/story-7
+- https://example.com/story-8
