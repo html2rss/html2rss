@@ -1220,6 +1220,118 @@ RSpec.describe Html2rss::Vocabulary do
     end
   end
 
+  describe 'Finnish labels' do
+    let(:fi) { text.call(:fi) }
+    let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:fi]) } }
+    let(:readers) do
+      {
+        utility: ->(label) { fi.utility?(label) }, chrome: ->(label) { fi.utility_chrome?(label) },
+        prefix: ->(label) { fi.utility_prefix?(label) }, recommended: ->(label) { fi.recommended?(label) },
+        read_more: ->(label) { fi.read_more?(label) }, junk: ->(label) { !junk_reason.call(label).nil? }
+      }
+    end
+
+    it 'reads chrome and recommended labels as whole labels, with a small count or wrapping marks',
+       :aggregate_failures do
+      ['Kirjaudu sisään', 'Kirjaudu ulos', 'Rekisteröidy', 'Luo tunnus', 'Hae', 'Haku', 'Ota yhteyttä',
+       'Yhteystiedot', 'Asiakaspalvelu', 'Tietoa meistä', 'Tietosuoja', 'Tietosuojaseloste', 'Tietosuojalauseke',
+       'Tietosuojakuvaus', 'Evästekäytännöt', 'Evästeasetukset', 'Käyttöehdot', 'Käyttö- ja sopimusehdot',
+       'Usein kysytyt kysymykset', 'Valikko', 'Sulje valikko', 'Etusivu', 'Kommentit', 'Seuraa meitä',
+       'Siirry pääsisältöön', 'Hyppää sisältöön', 'Saavutettavuusseloste'].each do |item|
+        expect(fi.utility_chrome?(item)).to be(true), item
+      end
+      ['[Haku]', '← Haku ←', 'Kirjaudu sisään (avautuu uuteen ikkunaan)', '‎Haku‎'].each do |item|
+        expect(fi.utility_chrome?(item)).to be(true), item
+      end
+      ['Lue myös', 'Katso myös', 'Samasta aiheesta', 'Aiheeseen liittyvät jutut', 'Muut lukivat myös'].each do |item|
+        expect(fi.recommended?(item)).to be(true), item
+      end
+    end
+
+    it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
+      ['Lue lisää', 'Lue lisää tästä', 'Lue koko juttu', 'Lue koko artikkeli', 'Lue koko uutinen',
+       'Lue loppuun', 'Jatka lukemista'].each do |label|
+        expect([fi.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
+      end
+      ['Tilaa uutiskirje', 'Tilaa lehti', 'Ryhdy tilaajaksi', 'Kirjoita kommentti', 'Jaa artikkeli'].each do |item|
+        expect(fi.utility_chrome?(item)).to be(true), item
+      end
+    end
+
+    it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
+      ['KIRJAUDU SISÄÄN', 'HAKU', 'TIETOA MEISTÄ', 'TIETOSUOJASELOSTE', 'KÄYTTÖEHDOT', 'OTA YHTEYTTÄ',
+       'SIIRRY SISÄLTÖÖN'].each do |label|
+        expect(fi.utility_chrome?(label)).to be(true), label
+      end
+      ['LUE MYÖS', 'KATSO MYÖS'].each { expect(fi.recommended?(_1)).to be(true), _1 }
+      ['LUE LISÄÄ', 'LUE KOKO ARTIKKELI'].each { expect(fi.read_more?(_1)).to be(true), _1 }
+      ['Kirjaudu sisään', 'Tietoa meistä', 'Käyttöehdot', 'Evästekäytännöt', 'Lue myös'].each do |label|
+        decomposed = label.unicode_normalize(:nfd)
+        expect(fi.utility_chrome?(decomposed) || fi.recommended?(decomposed)).to be(true), label
+      end
+      expect('Käyttöehdot'.unicode_normalize(:nfd)).not_to eq('Käyttöehdot')
+      expect(fi.read_more?('Lue lisää'.unicode_normalize(:nfd))).to be(true)
+    end
+
+    it 'keeps a headline that opens with or contains a label word a headline', :aggregate_failures do
+      ['Kirjaudu sisään -ongelma lamautti kaupungin palvelut puoleksi päiväksi',
+       'Hae apua ei tarvinnut: kirjasto avautui aamulla jo seitsemältä',
+       'Lue lisää kiinnostaa kaikkia kirjastossa, kertoo lainaustilasto',
+       'Haku kadonneen kalastajan jälkeen keskeytettiin huonon sään takia',
+       'Ota yhteyttä rannan asukkaisiin, pyytää kaupunki naapurustolta',
+       'Tietoa meistä kertoo uusi näyttely, joka avautuu satamassa tänään',
+       'Valikko uusiutuu: koulun ruokala tarjoaa nyt kasvisvaihtoehdon',
+       'Lue myös naapurin puutarha, joka voitti vuoden kukkapenkin palkinnon',
+       'KIRJAUDU SISÄÄN -ONGELMA LAMAUTTI KAUPUNGIN PALVELUT'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
+    end
+
+    it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
+       :aggregate_failures do
+      ['Kirjaudu sisään 2026', 'Haku 2026', 'Lue lisää 2026', 'Tietoa meistä 2026', 'Tietosuojaseloste 2026',
+       'Lue myös 2026', 'Ota yhteyttä 2026', 'Käyttöehdot 2026', 'Käyttö- ja sopimusehdot 2026',
+       'Katso myös 2026', 'Usein kysytyt kysymykset 2026'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['Ota yhteyttä 12', 'Haku 3', 'Kirjaudu sisään 2', 'Tietoa meistä 3', 'Lue lisää 112'].each do |label|
+        readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
+      end
+      ['Ota yhteyttä (12)', 'Haku [3]', 'Haku (7)', 'Kommentit (12)'].each do |item|
+        expect(fi.utility_chrome?(item)).to be(true), item
+      end
+      ['Lue lisää (3)', 'Lue lisää [3]'].each { expect(fi.read_more?(_1)).to be(true), _1 }
+    end
+
+    it 'leaves out every section, pager, imperative and plausible-headline label', :aggregate_failures do
+      ['Tilaa', 'Jaa', 'Kommentoi', 'Etsi', 'Kuuntele', 'Pelaa', 'Luetuimmat', 'Uusimmat', 'Kotimaa', 'Ulkomaat',
+       'Urheilu', 'Talous', 'Kulttuuri', 'Mainos', 'Osa 2'].each do |label|
+        readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
+      end
+    end
+
+    it 'reads a list-level label as read-more, never chrome, so a card keeps its item', :aggregate_failures do
+      ['Näytä kaikki', 'Katso kaikki', 'Näytä lisää', 'Lisää uutisia', 'Kaikki uutiset', 'Kaikki artikkelit',
+       'Lue lisää aiheesta', 'Aiheesta lisää', 'Näytä kaikki (3)', 'Katso kaikki [3]'].each do |label|
+        expect([fi.utility_chrome?(label), fi.utility?(label), fi.read_more?(label)]).to eq([false, false, true]), label
+      end
+      expect(described_class::Fi.terms.fetch(:utility) + described_class::Fi.terms.fetch(:utility_cta))
+        .not_to include(*described_class::Fi.terms.fetch(:list_more))
+    end
+
+    it 'reads the labels on a Finnish page only', :aggregate_failures do
+      [nil, :ja, :en, :sv, :de, :id].each do |code|
+        expect(text.call(code).utility_chrome?('Kirjaudu sisään')).to be(false), code.inspect
+      end
+    end
+
+    it 'declares no type marker or path word of its own', :aggregate_failures do
+      expect(described_class::Fi.terms.fetch(:type_marker)).to be_empty
+      expect(described_class[:fi].type_markers).to eq(described_class.words(:type_marker))
+      expect(described_class::SCOPED_WORDS.flat_map { described_class::Fi.terms.fetch(_1) }).to be_empty
+    end
+  end
+
   describe 'Norwegian labels' do
     let(:no) { text.call(:no) }
     let(:junk_reason) { ->(label) { Html2rss::AutoSource::Cleanup.junk_reason(label, vocabulary: described_class[:no]) } }

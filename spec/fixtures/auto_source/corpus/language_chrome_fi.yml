@@ -1,0 +1,25 @@
+---
+case: Twenty-two invented news cards in language "fi" (four short headlines, eight that open with a label word, ten that end in a year or a bare number after a label word, on a non-content path), upper and mixed case chrome, account, privacy and subscription shortcuts, bracketed counts; only the twenty-two headlines are items.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/market-square-opens
+- https://example.com/news/2026/11/night-bus-route
+- https://example.com/news/2026/11/login-outage
+- https://example.com/news/2026/11/search-rescue
+- https://example.com/news/2026/11/more-than-expected
+- https://example.com/news/2026/11/search-missing
+- https://example.com/news/2026/11/contact-network
+- https://example.com/news/2026/11/about-us-festival
+- https://example.com/news/2026/11/menu-news
+- https://example.com/news/2026/11/read-also
+- https://example.com/story-1
+- https://example.com/story-2
+- https://example.com/story-3
+- https://example.com/story-4
+- https://example.com/story-5
+- https://example.com/story-6
+- https://example.com/story-7
+- https://example.com/story-8
+- https://example.com/story-9
+- https://example.com/story-10

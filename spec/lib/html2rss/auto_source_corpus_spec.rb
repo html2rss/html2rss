@@ -104,13 +104,18 @@ RSpec.describe Html2rss::AutoSource do
           'toate știrile', 'citește mai multe știri'
         ],
         da: ['se alle', 'se flere', 'flere nyheder'],
-        no: ['se alle', 'vis alle', 'se flere', 'flere nyheter', 'flere saker', 'alle nyheter', 'alle saker']
+        no: ['se alle', 'vis alle', 'se flere', 'flere nyheter', 'flere saker', 'alle nyheter', 'alle saker'],
+        fi: [
+          'näytä kaikki', 'katso kaikki', 'näytä lisää', 'lisää uutisia', 'kaikki uutiset',
+          'kaikki artikkelit', 'lue lisää aiheesta', 'aiheesta lisää'
+        ]
       }.flat_map { |code, labels| labels.map { [code, _1] } }
     end
     let(:true_pairs) do
       {
         vi: 'đọc tiếp', zh: '阅读全文', tr: 'devamını oku', cs: 'číst dále', hu: 'tovább', ro: 'citește mai mult',
-        da: 'læs mere', no: 'les mer', he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें'
+        da: 'læs mere', no: 'les mer', fi: 'lue lisää',
+        he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें'
       }
     end
     let(:urls) do

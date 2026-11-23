@@ -151,11 +151,13 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
   describe '.call with an own read-more or list-level label' do
     let(:labels) do
       { vi: 'đọc tiếp', zh: '阅读全文', tr: 'devamını oku', cs: 'číst dále', hu: 'tovább', ro: 'citește mai mult',
-        da: 'læs mere', no: 'les mer', he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें' }
+        da: 'læs mere', no: 'les mer', fi: 'lue lisää',
+        he: 'קראו עוד', el: 'διαβάστε περισσότερα', uk: 'читати далі', hi: 'और पढ़ें' }
     end
     let(:list_labels) do
       { vi: 'xem tất cả', zh: '更多', tr: 'daha fazla', cs: 'zobrazit všechny', hu: 'összes hír', ro: 'vezi toate',
-        da: 'se alle', no: 'se alle', ko: '더보기', ar: 'عرض الكل', fa: 'مشاهده همه', th: 'ดูทั้งหมด', id: 'lihat semua' }
+        da: 'se alle', no: 'se alle', fi: 'näytä kaikki',
+        ko: '더보기', ar: 'عرض الكل', fa: 'مشاهده همه', th: 'ดูทั้งหมด', id: 'lihat semua' }
     end
     let(:hrefs) do
       lambda do |code, card, table = labels|

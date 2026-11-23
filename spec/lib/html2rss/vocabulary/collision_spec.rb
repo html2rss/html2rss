@@ -30,6 +30,7 @@ RSpec.describe Html2rss::Vocabulary do
       [:sv, 'kontakt', :no] => also_norwegian, [:sv, 'kommentarer', :no] => also_norwegian,
       [:sv, 'om oss', :no] => also_norwegian,
       [:en, 'share', :cs] => english_chrome,
+      [:en, 'share', :fi] => english_chrome,
       [:de, 'kontakt', :cs] => shared_word, [:pl, 'kontakt', :cs] => shared_word,
       [:sv, 'kontakt', :cs] => shared_word,
       [:fr, 'contact', :en] => shared_word, [:fr, 'contact', :de] => shared_word,
