@@ -840,18 +840,24 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'reads a foreign ambiguous term of another language as a headline on a Turkish page', :aggregate_failures do
-      everything = text.call(nil)
+    it 'keeps every foreign ambiguous term reading as chrome on a Turkish page, and a longer headline a headline',
+       :aggregate_failures do
+      %w[Dela Teilen Plus Comment].each do |label|
+        expect(tr.utility_chrome?(label)).to be(true), label
+        expect(text.call(nil).utility_chrome?(label)).to be(true), label
+      end
       ['Plus Çarşısı yeniden kapılarını açtı', 'Dela Vadisi turizm sezonunu uzattı',
        'Über Köprüsü trafiğe kapatıldı'].each do |headline|
-        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
-        expect(junk_reason.call(headline)).to be_nil
+        expect(tr.utility_chrome?(headline)).to be(false), headline
+        expect(tr.recommended?(headline)).to be(false), headline
+        expect(tr.read_more?(headline)).to be(false), headline
       end
-      %w[Dela Teilen Plus Comment].each do |label|
-        expect(tr.utility_chrome?(label)).to be(false), label
-        expect(everything.utility_chrome?(label)).to be(true), label
-      end
-      expect(everything.utility_prefix?('Plus Çarşısı yeniden kapılarını açtı')).to be(true)
+    end
+
+    it 'reads a dotless i label with a dotted i, but not a label missing its other Turkish letters',
+       :aggregate_failures do
+      ['Hakkimizda', 'KAYIT OL', 'kayit ol', 'HAKKIMIZDA'].each { expect(tr.utility_chrome?(_1)).to be(true), _1 }
+      ['Iletisim', 'CIKIS YAP'].each { expect(tr.utility_chrome?(_1)).to be(false), _1 }
     end
 
     it 'reads the labels on a Turkish page only', :aggregate_failures do

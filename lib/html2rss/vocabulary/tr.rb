@@ -2,24 +2,24 @@
 
 module Html2rss
   module Vocabulary
-    # Turkish. It is {PAGE_ONLY} and Latin script ({Language#latin}): its terms apply on a page whose language
-    # resolves to +tr+, and nowhere else, and its scope reads no ambiguous term of another language. Turkish attaches
-    # suffixes to nouns ("girişimcilerin", "iletişimde"), so no term is read as a prefix or a substring: each label
-    # is listed whole, read as a whole text only (no trailing word, no headline opener, see
+    # Turkish. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +tr+, and nowhere else. Turkish
+    # attaches suffixes to nouns ("girişimcilerin", "iletişimde"), so no term is read as a prefix or a substring: each
+    # label is listed whole, read as a whole text only (no trailing word, no headline opener, see
     # {LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed (label words, the call
     # to action, read-more, recommended and the new-window notice); the others stay +NONE+ until their readers take
-    # the page scope. It lists no type marker (stripping a short kicker could leave a headline below the title
-    # floor), no section name (+gündem+, +spor+ and +ekonomi+ are topics a feed may carry), no pager label, no path
-    # word, and no label that is also a plausible short headline (+giriş+ is an introduction, +çıkış+ an exit,
-    # +bülten+ a news bulletin, +yardım+ aid, +abonelik+ a subscription story, +ara+ a pause). A term whose
-    # precision is unclear is left out.
+    # the page scope. It lists no type marker (stripping a short kicker could leave a headline below the title floor),
+    # no section name (+gündem+, +spor+ and +ekonomi+ are topics a feed may carry), no pager label, no path word, and
+    # no label that is also a plausible short headline (+giriş+ is an introduction, +çıkış+ an exit, +bülten+ a news
+    # bulletin, +yardım+ aid, +abonelik+ a subscription story, +ara+ a pause). A term whose precision is unclear is
+    # left out.
     #
-    # Turkish has a dotted and a dotless i: the capital of +i+ is +İ+ and the capital of +ı+ is +I+, and the
-    # case-insensitive match folds neither pair ("GİRİŞ YAP" and "ÇIKIŞ YAP" match no lowercase term). Each label is
-    # written in lowercase and expanded below, so every +i+ also reads +İ+ and every +ı+ also reads +I+.
+    # Turkish has a dotted and a dotless i, and the case-insensitive match folds neither pair: +İ+ does not match
+    # +i+ and +ı+ does not match +I+ ("GİRİŞ YAP" and "ÇIKIŞ YAP" match no lowercase term). Each label is written in
+    # lowercase and expanded below into one fragment per concept, so every +i+ also reads +İ+ and every +ı+ also
+    # reads +I+. Because +I+ folds to +i+, a label with a dotless i also reads its dotted spelling ("hakkimizda"),
+    # while a label typed without its other Turkish letters ("Iletisim", "CIKIS YAP") is not read.
     Tr = Language.new(
       code: :tr,
-      latin: true,
       terms: {
         path_section: NONE,
         path_article: NONE,
@@ -81,7 +81,8 @@ module Html2rss
           'ilginizi çekebilir', 'bunları da okuyun', 'bunu da oku', 'sizin için seçtiklerimiz'
         ]
       }.transform_values do |labels|
-        labels.map { |label| Regexp.new(label.split.map { _1.gsub('i', '(?:i|İ)').gsub('ı', '(?:ı|I)') }.join('\s+')) }
+        fold = ->(word) { word.gsub('i', '(?:i|İ)').gsub('ı', '(?:ı|I)') }
+        labels.empty? ? labels : [Regexp.new(labels.map { _1.split.map(&fold).join('\s+') }.join('|'))]
       end.freeze
     )
   end
