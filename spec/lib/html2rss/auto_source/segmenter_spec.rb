@@ -392,6 +392,48 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
     end
   end
 
+  describe Html2rss::AutoSource::Segmenter::PrimaryLink, 'scoring a list-level label' do
+    let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[:vi]) }
+    let(:picked) do
+      lambda do |body|
+        document = document_for("<html><body><article>#{body}</article></body></html>")
+        segmenter = Html2rss::AutoSource::Segmenter.new(document, base_url: 'https://example.com',
+                                                                  strategy: :semantic, link_resolver: resolver)
+        described_class.new(segmenter).select(document.root.find { _1.name == :article })&.attrs&.href
+      end
+    end
+    let(:decoy) { '<a href="/economy">Economy</a>' }
+
+    it 'scores a label to a destination with story evidence like any link, so the story beats a section link',
+       :aggregate_failures do
+      expect([picked.call(%(<a href="/news/story">Xem tất cả</a>#{decoy})),
+              picked.call(%(#{decoy}<a href="/news/story">Xem tất cả</a>))]).to eq(%w[/news/story /news/story])
+      %w[/x/48213 /x/harbour-bridge-reopens /x/aa--bb].each do |path|
+        expect(picked.call(%(<a href="#{path}">Xem tất cả</a>) + decoy)).to eq(path), path
+      end
+    end
+
+    it 'scores a label to a destination without story evidence 0, below any other link', :aggregate_failures do
+      %w[/world/asia/europe /x/a-b /x/plain /].each do |path|
+        label = %(<a href="#{path}">Xem tất cả</a>)
+
+        expect([picked.call(label + decoy), picked.call(decoy + label)]).to eq(%w[/economy /economy]), path
+      end
+    end
+
+    it 'keeps a label as the only link, and ranks a plain link before a label on an equal footing',
+       :aggregate_failures do
+      expect(picked.call('<a href="/world/asia/europe">Xem tất cả</a>')).to eq('/world/asia/europe')
+      expect(picked.call('<a href="/world/asia/europe">Xem tất cả</a><a href="/x/plain">Plain</a>')).to eq('/x/plain')
+    end
+
+    it 'keeps the full score of a label inside a heading' do
+      body = '<h2><a href="/world/asia/europe">Xem tất cả</a></h2>'
+
+      expect(picked.call(decoy + body)).to eq('/world/asia/europe')
+    end
+  end
+
   describe Html2rss::AutoSource::Segmenter::PrimaryLink, 'scoring and ordering' do
     let(:document) { document_for(html) }
     let(:segmenter) { Html2rss::AutoSource::Segmenter.new(document, base_url: 'https://example.com', strategy: :semantic) }
