@@ -176,6 +176,13 @@ RSpec.describe Html2rss::SST::Index do
       expect { described_class.for_node!(unbound) }.to raise_error(described_class::InvalidError, /<span>/)
       expect(described_class::InvalidError).to be < Html2rss::ContractError
     end
+
+    it 'raises once the document that held the index has been collected' do
+      orphan = orphan_node_for('<html><body><a href="/p">Post</a></body></html>')
+      3.times { GC.start }
+
+      expect { described_class.for_node!(orphan) }.to raise_error(described_class::InvalidError, /collected/)
+    end
   end
 
   describe '#node_for' do

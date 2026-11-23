@@ -243,46 +243,68 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.degraded).to be(true)
     end
 
-    it 'never degrades without a node ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
-      allow(Html2rss::Log).to receive(:warn)
-      html = '<html><body><span>x</span><p>y</p></body></html>'
-
-      doc = described_class.call(html, vocabulary: all_scope, max_nodes: nil)
-
-      expect(doc.degraded).to be(false)
-      expect(doc.root.find { |node| node.name == :span }).not_to be_nil
-      expect(Html2rss::Log).not_to have_received(:warn)
-    end
-
-    it 'logs a fallback root at debug, not warn, when the caller expects one', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      allow(Html2rss::Log).to receive(:warn)
-      allow(Html2rss::Log).to receive(:debug)
-      fragment = Nokogiri::HTML5.fragment('<object><a href="/p">Post</a></object>')
-
-      described_class.call(fragment, vocabulary: all_scope, expected_root: true)
-
-      expect(Html2rss::Log).not_to have_received(:warn)
-      expect(Html2rss::Log).to have_received(:debug).with(/first element child/)
-    end
-
-    context 'when tracking sources' do
-      let(:parsed) { Nokogiri::HTML('<html><body><article><a href="/p">Post</a><script>x()</script></article></body></html>') }
+    context 'when normalizing for items' do
+      let(:parsed) do
+        Nokogiri::HTML(<<~HTML)
+          <html><body><article><a href="/p">Post</a><script>x()</script>
+          <noscript><img src="/p.png"></noscript></article></body></html>
+        HTML
+      end
 
       it 'maps each parsed node to its SST node and drops the stripped ones', :aggregate_failures do
-        doc = described_class.call(parsed, vocabulary: all_scope, sources: true)
-        link = doc.root.find(&:link?)
+        doc = described_class.call(parsed, vocabulary: all_scope, items: true)
 
-        expect(doc.index.node_for(parsed.at_css('a'))).to equal(link)
+        expect(doc.index.node_for(parsed.at_css('a'))).to equal(doc.root.find(&:link?))
         expect(doc.index.node_for(parsed.at_css('script'))).to be_nil
       end
 
-      it 'allocates no map unless asked, so a plain document carries none', :aggregate_failures do
-        doc = described_class.call(parsed, vocabulary: all_scope)
+      it 'keeps the content of a noscript, which auto-source drops', :aggregate_failures do
+        items = described_class.call(parsed, vocabulary: all_scope, items: true)
+        heuristic = described_class.call(parsed, vocabulary: all_scope)
 
-        expect(doc.index.node_for(parsed.at_css('a'))).to be_nil
-        expect(doc.index.instance_variable_get(:@sources)).to be_nil
+        expect(items.root.find(&:image?)&.attrs&.src).to eq('/p.png')
+        expect(heuristic.root.find(&:image?)).to be_nil
       end
+
+      it 'never degrades at the node ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
+        allow(Html2rss::Log).to receive(:warn)
+
+        doc = described_class.call('<html><body><span>x</span><p>y</p></body></html>', vocabulary: all_scope,
+                                                                                       items: true)
+
+        expect(doc.degraded).to be(false)
+        expect(doc.root.find { |node| node.name == :span }).not_to be_nil
+        expect(Html2rss::Log).not_to have_received(:warn)
+      end
+
+      it 'logs a fallback root at debug, not warn', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        allow(Html2rss::Log).to receive(:warn)
+        allow(Html2rss::Log).to receive(:debug)
+        fragment = Nokogiri::HTML5.fragment('<object><a href="/p">Post</a></object>')
+
+        described_class.call(fragment, vocabulary: all_scope, items: true)
+
+        expect(Html2rss::Log).not_to have_received(:warn)
+        expect(Html2rss::Log).to have_received(:debug).with(/first element child/)
+      end
+
+      it 'normalizes only the first root of a fragment with several', :aggregate_failures do
+        fragment = Nokogiri::HTML5.fragment('<p><a href="/a">A</a></p><p><a href="/b">B</a></p>')
+
+        doc = described_class.call(fragment, vocabulary: all_scope, items: true)
+
+        expect(doc.index.node_for(fragment.css('a').first)).not_to be_nil
+        expect(doc.index.node_for(fragment.css('a').last)).to be_nil
+      end
+    end
+
+    it 'allocates no node map unless normalizing for items', :aggregate_failures do
+      parsed = Nokogiri::HTML('<html><body><a href="/p">Post</a></body></html>')
+      doc = described_class.call(parsed, vocabulary: all_scope)
+
+      expect(doc.index.node_for(parsed.at_css('a'))).to be_nil
+      expect(doc.index.instance_variable_get(:@sources)).to be_nil
     end
 
     it 'records path, depth, chrome, text, and node count', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

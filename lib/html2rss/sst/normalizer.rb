@@ -11,7 +11,8 @@ module Html2rss
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
-      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links (see {#kept_children}).
+      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links, or all its content for
+      # items (see {#kept_children}).
       STRIPPED_TAGS = Set['script', 'style', 'noscript', 'iframe', 'svg', 'template'].freeze
 
       # Kept when MAX_NODES forces semantic-tag-only degrade.
@@ -30,6 +31,7 @@ module Html2rss
           src |
           srcset |
           poster\z |
+          title\z |
           style |
           datetime |
           itemprop |
@@ -66,17 +68,16 @@ module Html2rss
         #   HTML string or already-parsed node (String is parsed once here)
         # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the pager words that make a
         #   list or nav chrome
-        # @param sources [Boolean] record which Nokogiri node each SST node came from, for
-        #   {Index#node_for}; off keeps the map unallocated
-        # @param max_nodes [Integer, nil] ceiling past which normalization degrades; +nil+ never degrades
-        # @param expected_root [Boolean] the caller parsed a fragment, so a fallback root is logged at debug,
-        #   not warn
+        # @param items [Boolean] normalize for items a selector config picked in the parsed page ({Selectors}),
+        #   not for the heuristic: record which parsed node each SST node came from ({Index#node_for}), never
+        #   degrade at {MAX_NODES}, keep the content of a +noscript+, and log a fallback root at debug (the page may
+        #   be a parsed fragment). Off allocates no node map.
         # @return [Document, nil] +nil+ when no SST nodes survive normalization
         # @raise [InvalidError] when input is nil or unsupported
-        def call(input, vocabulary:, sources: false, max_nodes: MAX_NODES, expected_root: false)
+        def call(input, vocabulary:, items: false)
           raise InvalidError, 'input is required' if input.nil?
 
-          new(coerce(input), vocabulary, sources:, max_nodes:, expected_root:).call
+          new(coerce(input), vocabulary, items:).call
         end
 
         private
@@ -95,15 +96,12 @@ module Html2rss
 
       # @param parsed_body [Nokogiri::HTML::Document, Nokogiri::XML::Node]
       # @param vocabulary [Vocabulary::Scope]
-      # @param sources [Boolean] see {.call}
-      # @param max_nodes [Integer, nil] see {.call}
-      # @param expected_root [Boolean] see {.call}
-      def initialize(parsed_body, vocabulary, sources: false, max_nodes: MAX_NODES, expected_root: false) # rubocop:disable Metrics/MethodLength -- per-run state
+      # @param items [Boolean] see {.call}
+      def initialize(parsed_body, vocabulary, items: false) # rubocop:disable Metrics/MethodLength -- per-run state
         @parsed_body = parsed_body
         @vocabulary = vocabulary
-        @sources = ({}.compare_by_identity if sources)
-        @max_nodes = max_nodes
-        @expected_root = expected_root
+        @items = items
+        @sources = ({}.compare_by_identity if items)
         @node_count = 0
         @degraded = false
         @parents = {}.compare_by_identity
@@ -146,7 +144,7 @@ module Html2rss
       def log_root_fallback(reason, root)
         message = "sst.normalizer root fallback: #{reason.tr('_', ' ')}"
         payload = { event_name: 'sst.normalizer.root_fallback', reason:, message: }.to_json
-        @expected_root ? Html2rss::Log.debug(payload) : Html2rss::Log.warn(payload)
+        @items ? Html2rss::Log.debug(payload) : Html2rss::Log.warn(payload)
         root
       end
 
@@ -188,13 +186,13 @@ module Html2rss
       end
 
       def degrade_when_full
-        return unless @max_nodes && @node_count >= @max_nodes && !@degraded
+        return unless !@items && @node_count >= MAX_NODES && !@degraded
 
         @degraded = true
         Log.warn({
           event_name: 'sst.normalizer.max_nodes',
-          max_nodes: @max_nodes,
-          message: "sst.normalizer MAX_NODES=#{@max_nodes} breached; degrading to semantic-tag-only"
+          max_nodes: MAX_NODES,
+          message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
         }.to_json)
       end
 
@@ -206,7 +204,7 @@ module Html2rss
       #
       # @return [Nokogiri::XML::Node, Array<Nokogiri::XML::Node>, nil]
       def kept_children(nk_node, tag)
-        return nk_node unless STRIPPED_TAGS.include?(tag)
+        return nk_node if !STRIPPED_TAGS.include?(tag) || (@items && tag == 'noscript')
         return unless tag == 'noscript'
 
         links = nk_node.xpath('.//a[@href]').select { Html::ArticleRules::Enclosure.file_link?(_1['href']) }
