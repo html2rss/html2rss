@@ -39,8 +39,8 @@ module Html2rss
         def self.options_key = :meta_oembed
 
         # @param _opts [Hash] unused options
-        # @return [Integer]
-        def self.request_slots(_opts = {}) = 0
+        # @return [Integer] one slot for the optional oEmbed follow-up fetch
+        def self.request_slots(_opts = {}) = 1
 
         class << self
           # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document

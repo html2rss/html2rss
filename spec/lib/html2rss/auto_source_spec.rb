@@ -97,6 +97,19 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 
+  describe '.request_slots_for' do
+    let(:scrapers) { described_class::DEFAULT_CONFIG.fetch(:scraper) }
+    let(:without_oembed) { { scraper: scrapers.merge(meta_oembed: { enabled: false }) } }
+
+    it 'reserves one slot for an enabled meta_oembed and none when disabled', :aggregate_failures do
+      enabled = described_class.request_slots_for(described_class::DEFAULT_CONFIG)
+      disabled = described_class.request_slots_for(without_oembed)
+
+      expect(enabled - disabled).to eq(1)
+      expect(described_class::Scraper::MetaOembed.request_slots).to eq(1)
+    end
+  end
+
   describe '#articles' do
     subject(:articles) { auto_source.articles }
 

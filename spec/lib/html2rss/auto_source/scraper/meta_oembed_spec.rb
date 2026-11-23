@@ -52,9 +52,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
   end
 
   describe '.request_slots' do
-    it 'reserves no request slots for any options', :aggregate_failures do
-      expect(described_class.request_slots).to eq(0)
-      expect(described_class.request_slots(max_requests: 5)).to eq(0)
+    it 'reserves the one oEmbed follow-up slot for any options', :aggregate_failures do
+      expect(described_class.request_slots).to eq(1)
+      expect(described_class.request_slots(max_requests: 5)).to eq(1)
     end
   end
 
