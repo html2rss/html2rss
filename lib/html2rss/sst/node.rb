@@ -8,6 +8,10 @@ module Html2rss
     # Immutable simplified semantic tree node. Predicates and traversal live on
     # the type so Scoring/Segmenter never touch Nokogiri.
     class Node
+      # Matches what +String#strip+ removes, so a blank name is found without copying it.
+      BLANK_NAME = /\A[\0\s]*\z/
+      private_constant :BLANK_NAME
+
       ##
       # @param name [Symbol, String]
       # @param attrs [Attrs, nil]
@@ -40,7 +44,7 @@ module Html2rss
       private_class_method :freeze_texts
 
       def self.coerce_name(name)
-        raise InvalidError, 'name is required' if name.nil? || name.to_s.strip.empty?
+        raise InvalidError, 'name is required' if name.nil? || name.to_s.match?(BLANK_NAME)
 
         name.to_sym
       end

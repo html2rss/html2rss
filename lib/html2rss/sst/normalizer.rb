@@ -205,6 +205,9 @@ module Html2rss
       end
 
       def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength
+        attr_nodes = nk_node.attribute_nodes
+        return Attrs.empty if attr_nodes.empty?
+
         Attrs.build(
           href: nk_node['href'],
           src: nk_node['src'],
@@ -215,14 +218,14 @@ module Html2rss
           style: nk_node['style'],
           srcset: nk_node['srcset'],
           type: nk_node['type'],
-          raw: raw_attrs(nk_node)
+          raw: raw_attrs(attr_nodes)
         )
       end
 
       # @return [Hash{String => String}, nil] kept attributes with frozen values, +nil+ when none
-      def raw_attrs(nk_node)
+      def raw_attrs(attr_nodes)
         raw = nil
-        nk_node.attribute_nodes.each do |attr|
+        attr_nodes.each do |attr|
           name = attr.name
           next if TYPED_ATTR_NAMES.include?(name)
 

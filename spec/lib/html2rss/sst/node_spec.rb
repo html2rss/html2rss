@@ -41,6 +41,13 @@ RSpec.describe Html2rss::SST::Node do
       expect { described_class.build(name: '  ') }.to raise_error(Html2rss::SST::InvalidError, 'name is required')
     end
 
+    it 'rejects every blank name that String#strip would empty', :aggregate_failures do
+      ['', nil, " \t\r\n\f\v", "\0", " \0 "].each do |name|
+        expect { described_class.build(name:) }.to raise_error(Html2rss::SST::InvalidError, 'name is required')
+      end
+      expect(described_class.build(name: "\0a").name).to be(:"\x00a")
+    end
+
     it 'defaults missing attrs, children and text to empty values', :aggregate_failures do
       node = described_class.build(name: :span)
 

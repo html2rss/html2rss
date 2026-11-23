@@ -99,6 +99,14 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(blank.attrs.class_names).to eq([])
     end
 
+    it 'gives an element without attributes the shared empty attrs', :aggregate_failures do
+      html = '<html><body><p>x</p><p onclick="x">y</p></body></html>'
+      bare, unkept = described_class.call(html, vocabulary: all_scope).root.find_all { |n| n.name == :p }
+
+      expect(bare.attrs).to be(Html2rss::SST::Attrs.empty)
+      expect(unkept.attrs).to eq(Html2rss::SST::Attrs.empty)
+    end
+
     it 'logs which root fallback was used', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Log).to receive(:warn)
       fallback = lambda do |reason, message|
