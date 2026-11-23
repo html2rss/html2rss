@@ -89,9 +89,9 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
     # @return [Html2rss::Vocabulary::Language] the head's language; needs html2rss loaded
     # @raise [Failure] when the head's vocabulary has no such language
     def language(code)
-      Html2rss::Vocabulary::ALL.find { _1.code == code.to_sym } ||
+      Html2rss::Vocabulary::LANGUAGES.find { _1.code == code.to_sym } ||
         raise(Failure, "unknown language #{code.inspect}: the vocabulary has " \
-                       "#{Html2rss::Vocabulary::ALL.map { _1.code.to_s }.join(', ')}")
+                       "#{Html2rss::Vocabulary::LANGUAGES.map { _1.code.to_s }.join(', ')}")
     end
 
     # ----- worker: measure one tree -----

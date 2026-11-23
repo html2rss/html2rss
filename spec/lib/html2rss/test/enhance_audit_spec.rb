@@ -3,6 +3,7 @@
 # rubocop:disable RSpec/ExampleLength, RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
 RSpec.describe Html2rss::Test::EnhanceAudit do
   let(:time_zone) { 'UTC' }
+  let(:vocabulary) { Html2rss::Vocabulary[nil] }
 
   describe '.probe' do
     context 'with stubbed enhance pairs' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- shared stub wiring
@@ -11,7 +12,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
       let(:engine) { instance_double(Html2rss::Selectors) }
       let(:plain_item) { Nokogiri::HTML.fragment('<li>x</li>').children.first }
       let(:pairs) { [] }
-      let(:slice) { described_class.probe(response:, selectors:, time_zone:) }
+      let(:slice) { described_class.probe(response:, selectors:, time_zone:, vocabulary:) }
 
       before do
         allow(Html2rss::Selectors).to receive(:new).and_return(engine)
@@ -19,9 +20,10 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
       end
 
       it 'returns nil without an items selector', :aggregate_failures do
-        expect(described_class.probe(response:, selectors: nil, time_zone:)).to be_nil
-        expect(described_class.probe(response:, selectors: { items: {} }, time_zone:)).to be_nil
-        expect(described_class.probe(response:, selectors: { title: { selector: 'h2' } }, time_zone:)).to be_nil
+        expect(described_class.probe(response:, selectors: nil, time_zone:, vocabulary:)).to be_nil
+        expect(described_class.probe(response:, selectors: { items: {} }, time_zone:, vocabulary:)).to be_nil
+        expect(described_class.probe(response:, selectors: { title: { selector: 'h2' } }, time_zone:,
+                                     vocabulary:)).to be_nil
       end
 
       it 'audits linked items only' do
@@ -33,7 +35,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
       it 'builds the selector engine from the response, selectors and time zone' do
         slice
 
-        expect(Html2rss::Selectors).to have_received(:new).with(response, selectors:, time_zone:)
+        expect(Html2rss::Selectors).to have_received(:new).with(response, selectors:, time_zone:, vocabulary:)
       end
 
       context 'when no items are enhanced' do
@@ -124,6 +126,17 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
 
           it 'warns accordingly' do
             expect(slice.warnings - [:enhance_no_op]).to eq(expected)
+          end
+        end
+      end
+
+      %w[独自 写真].product([[:ja, true], [:zh, false]]).each do |chip, (lang, flagged)|
+        context "with the description #{chip} on a #{lang} page" do
+          let(:vocabulary) { Html2rss::Vocabulary[lang] }
+          let(:pairs) { [[{}, { description: chip }, plain_item]] }
+
+          it 'warns only where it is a type marker' do
+            expect(slice.warnings.include?(:enhance_category_only_description)).to be(flagged)
           end
         end
       end
@@ -224,14 +237,14 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
     it 'returns nil without an items selector', :aggregate_failures do
       response = enhance_audit_response('rich_card.html')
 
-      expect(described_class.compare(response:, selectors: nil, time_zone:)).to be_nil
-      expect(described_class.compare(response:, selectors: { items: {} }, time_zone:)).to be_nil
+      expect(described_class.compare(response:, selectors: nil, time_zone:, vocabulary:)).to be_nil
+      expect(described_class.compare(response:, selectors: { items: {} }, time_zone:, vocabulary:)).to be_nil
     end
 
     it 'compares enhance off against on and reports the delta', :aggregate_failures do
       response = enhance_audit_response('rich_card.html')
-      off = described_class.compare(response:, selectors:, time_zone:)
-      probed = described_class.probe(response:, selectors:, time_zone:).enhance_gains
+      off = described_class.compare(response:, selectors:, time_zone:, vocabulary:)
+      probed = described_class.probe(response:, selectors:, time_zone:, vocabulary:).enhance_gains
 
       expect(off[:enhance_off]).to eq(item_count: 2, descriptions_filled: 0)
       expect(off[:enhance_on]).to eq(item_count: 2, descriptions_filled: probed.descriptions_added)
@@ -241,7 +254,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
 
     it 'does not mutate the caller selectors' do
       response = enhance_audit_response('rich_card.html')
-      described_class.compare(response:, selectors:, time_zone:)
+      described_class.compare(response:, selectors:, time_zone:, vocabulary:)
 
       expect(selectors[:items]).to eq(selector: 'article.card', enhance: false)
     end
@@ -250,7 +263,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
       response = enhance_audit_response('no_op.html')
       no_op = { items: { selector: 'div.item', enhance: false }, title: { selector: '.title' },
                 url: { selector: '.url', extractor: 'href' }, description: { selector: '.desc' } }
-      result = described_class.compare(response:, selectors: no_op, time_zone:)
+      result = described_class.compare(response:, selectors: no_op, time_zone:, vocabulary:)
 
       expect(result[:delta]).to include(descriptions_gained: 0, no_op: true)
       expect(result[:enhance_off]).to eq(result[:enhance_on])
@@ -258,7 +271,8 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
 
     it 'falls back to empty gains when the probe yields nothing', :aggregate_failures do
       allow(described_class).to receive(:probe).and_return(nil)
-      result = described_class.compare(response: enhance_audit_response('rich_card.html'), selectors:, time_zone:)
+      result = described_class.compare(response: enhance_audit_response('rich_card.html'), selectors:, time_zone:,
+                                       vocabulary:)
 
       expect(result[:delta]).to include(
         keys_added: { title: 0, url: 0, description: 0, published_at: 0, categories: 0, author: 0, image: 0,

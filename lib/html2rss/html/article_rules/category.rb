@@ -36,11 +36,12 @@ module Html2rss
           ##
           # @param categories [Set<String>]
           # @param text [String, nil]
+          # @param vocabulary [Vocabulary::Scope] the page language's scope
           # @param title [String, nil]
           # @return [void]
-          def add_text!(categories, text, title: nil)
+          def add_text!(categories, text, vocabulary:, title: nil)
             value = text.to_s.strip
-            return if value.empty? || !Description.keep?(value, title:, type_chips: false)
+            return if value.empty? || !Description.keep?(value, vocabulary:, title:, type_chips: false)
 
             categories.add(value)
           end
@@ -48,12 +49,13 @@ module Html2rss
           ##
           # @param categories [Set<String>]
           # @param text [String, nil]
+          # @param vocabulary [Vocabulary::Scope] the page language's scope
           # @param title [String, nil]
           # @return [void]
-          def add_split_text!(categories, text, title: nil)
+          def add_split_text!(categories, text, vocabulary:, title: nil)
             return unless text
 
-            text.split(/\n+/).each { |line| add_text!(categories, line, title:) }
+            text.split(/\n+/).each { |line| add_text!(categories, line, vocabulary:, title:) }
           end
 
           private

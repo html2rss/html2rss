@@ -3,6 +3,8 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
+  let(:vocabulary) { Html2rss::Vocabulary[nil] }
+
   describe '.call' do
     let(:html) { Nokogiri::HTML.fragment(html_content) }
     let(:article_tag) { html.at_css('article') }
@@ -19,7 +21,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts categories from elements with category-related class tokens' do
-        expect(described_class.call(article_tag)).to contain_exactly('Politics', 'Technology', 'Science')
+        expect(described_class.call(article_tag, vocabulary:)).to contain_exactly('Politics', 'Technology', 'Science')
       end
     end
 
@@ -35,7 +37,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts categories from topic/theme/subject class tokens' do
-        expect(described_class.call(article_tag)).to contain_exactly('Politics', 'Tech', 'Science')
+        expect(described_class.call(article_tag, vocabulary:)).to contain_exactly('Politics', 'Tech', 'Science')
       end
     end
 
@@ -52,7 +54,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'does not treat layout classes as categories' do
-        expect(described_class.call(article_tag)).to eq([])
+        expect(described_class.call(article_tag, vocabulary:)).to eq([])
       end
     end
 
@@ -67,7 +69,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'does not add the item root visible text as a category' do
-        expect(described_class.call(article_tag)).to eq([])
+        expect(described_class.call(article_tag, vocabulary:)).to eq([])
       end
     end
 
@@ -83,7 +85,8 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts categories from data attributes' do
-        expect(described_class.call(article_tag)).to contain_exactly('World News', 'Breaking', 'Current Events')
+        expect(described_class.call(article_tag,
+                                    vocabulary:)).to contain_exactly('World News', 'Breaking', 'Current Events')
       end
     end
 
@@ -99,7 +102,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts categories from direct attributes' do
-        expect(described_class.call(article_tag)).to contain_exactly('Finance', 'Markets', 'Economy')
+        expect(described_class.call(article_tag, vocabulary:)).to contain_exactly('Finance', 'Markets', 'Economy')
       end
     end
 
@@ -120,7 +123,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts text from individual anchor tags within category containers' do
-        expect(described_class.call(article_tag)).to contain_exactly('Technology', 'AI', 'Ruby', 'Rails')
+        expect(described_class.call(article_tag, vocabulary:)).to contain_exactly('Technology', 'AI', 'Ruby', 'Rails')
       end
     end
 
@@ -135,7 +138,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts text from the category anchor tags directly' do
-        expect(described_class.call(article_tag)).to contain_exactly('Gadgets', 'Hardware')
+        expect(described_class.call(article_tag, vocabulary:)).to contain_exactly('Gadgets', 'Hardware')
       end
     end
 
@@ -152,7 +155,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'does not split the container full text into categories' do
-        expect(described_class.call(article_tag)).to eq([])
+        expect(described_class.call(article_tag, vocabulary:)).to eq([])
       end
     end
 
@@ -168,7 +171,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'returns unique categories' do
-        expect(described_class.call(article_tag)).to eq(['Politics'])
+        expect(described_class.call(article_tag, vocabulary:)).to eq(['Politics'])
       end
     end
 
@@ -182,7 +185,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'uses only the data attribute value, not the element text' do
-        expect(described_class.call(article_tag)).to eq(['Politics'])
+        expect(described_class.call(article_tag, vocabulary:)).to eq(['Politics'])
       end
     end
 
@@ -199,7 +202,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'drops title-echo values from root, nested data, text and anchor paths' do
-        expect(described_class.call(article_tag, title: 'Breaking News')).to eq(['Politics'])
+        expect(described_class.call(article_tag, vocabulary:, title: 'Breaking News')).to eq(['Politics'])
       end
     end
 
@@ -218,7 +221,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'keeps News taxonomy chips and drops CTA, date, and field-label values' do
-        expect(described_class.call(article_tag)).to contain_exactly('News', 'Valid Tag')
+        expect(described_class.call(article_tag, vocabulary:)).to contain_exactly('News', 'Valid Tag')
       end
     end
 
@@ -233,13 +236,13 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'returns an empty array' do
-        expect(described_class.call(article_tag)).to eq([])
+        expect(described_class.call(article_tag, vocabulary:)).to eq([])
       end
     end
 
     context 'when article_tag is nil' do
       it 'returns an empty array' do
-        expect(described_class.call(nil)).to eq([])
+        expect(described_class.call(nil, vocabulary:)).to eq([])
       end
     end
 
@@ -251,7 +254,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'ignores the article root class text', :aggregate_failures do
-        expect(described_class.call(article_tag)).to eq([])
+        expect(described_class.call(article_tag, vocabulary:)).to eq([])
       end
     end
 
@@ -266,7 +269,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'uses the anchor text directly', :aggregate_failures do
-        expect(described_class.call(article_tag)).to contain_exactly('Politics', 'Technology')
+        expect(described_class.call(article_tag, vocabulary:)).to contain_exactly('Politics', 'Technology')
       end
     end
 
@@ -280,7 +283,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'does not treat the container as a category', :aggregate_failures do
-        expect(described_class.call(article_tag)).to eq([])
+        expect(described_class.call(article_tag, vocabulary:)).to eq([])
       end
     end
 
@@ -295,7 +298,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'drops values equal to the article title', :aggregate_failures do
-        expect(described_class.call(article_tag, title: 'Election Results Tonight')).to eq(['Politics'])
+        expect(described_class.call(article_tag, vocabulary:, title: 'Election Results Tonight')).to eq(['Politics'])
       end
     end
 
@@ -309,7 +312,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'uses only the data attribute value', :aggregate_failures do
-        expect(described_class.call(article_tag)).to eq(['Economy'])
+        expect(described_class.call(article_tag, vocabulary:)).to eq(['Economy'])
       end
     end
   end

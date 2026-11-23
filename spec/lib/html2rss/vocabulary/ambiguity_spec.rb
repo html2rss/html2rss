@@ -98,13 +98,14 @@ RSpec.describe Html2rss::Vocabulary do
       expect(text.call(:zh).utility?('Dela Cruz wins election')).to be(true)
     end
 
-    it 'reads the Han title markers as markers in every scope but its own', :aggregate_failures do
+    it 'keeps the Japanese words 独自 and 写真 as title markers in every scope but its own', :aggregate_failures do
       noise = ->(marker, lang) { Html2rss::Article::Title.noise_piece?(marker, vocabulary: described_class[lang]) }
 
       [nil, :all, :ja, :en, :de, :sv, 'ja-JP', 'en-US'].product(%w[独自 写真]).each do |lang, marker|
         expect(noise.call(marker, lang)).to be(true), "#{marker} #{lang.inspect}"
       end
-      %w[独自 写真].each { expect(noise.call(_1, :zh)).to be(false) }
+      %w[独自 写真].product(%i[zh zh-Hant zh-Hans-CN]).each { |marker, lang| expect(noise.call(marker, lang)).to be(false) }
+      %w[速報 動画].each { expect(noise.call(_1, :zh)).to be(true) }
     end
   end
 
