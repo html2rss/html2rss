@@ -132,6 +132,7 @@ module Html2rss
       # @param parsed_body [Nokogiri::HTML::Document]
       # @param opts [Hash] full scraper options map
       # @param url [Html2rss::Url, String]
+      # @param vocabulary [Vocabulary::Scope] the page language's scope, read by the native feed discovery
       # @param request_session [Html2rss::RequestSession, nil]
       # @param body [String, nil]
       # @param document [SST::Document, nil]

@@ -60,6 +60,7 @@ module Html2rss
       # has no word boundary). Scopes with the same own terms (every shared language and +:all+ have none) share
       # one entry, so a scope without own terms reads exactly the shared terms.
       module PagerReadings
+        # The matchers of one scope: pager nouns, page-link wording and whole page-link labels.
         Readings = Data.define(:pager_label, :page_link_text, :page_link_label)
 
         # Whole text of one own term, wrapped in punctuation only.

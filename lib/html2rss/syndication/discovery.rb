@@ -29,6 +29,7 @@ module Html2rss
       # are read unspaced: a hint inside a URL or title has no whole label to match. Scopes with the same own
       # terms (every shared language and +:all+) share one entry.
       module PodcastReadings
+        # The two hints of one scope.
         Readings = Data.define(:page_hint, :audio_hint)
 
         class << self
