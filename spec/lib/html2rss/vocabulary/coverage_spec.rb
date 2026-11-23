@@ -393,7 +393,13 @@ RSpec.describe Html2rss::Vocabulary do
        'Політика конфіденційності 2026', 'Підписка 2026'].each do |headline|
         readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
       end
-      expect(uk.recommended?('Схожі матеріали 3')).to be(true)
+      expect(uk.recommended?('Схожі матеріали (3)')).to be(true)
+    end
+
+    it 'keeps a label followed by a bare count a headline', :aggregate_failures do
+      ['Умови використання 2', 'Політика конфіденційності: 100', 'Схожі матеріали 3'].each do |headline|
+        readers.each { |name, reader| expect(reader.call(headline)).to be(false), "#{name}: #{headline}" }
+      end
     end
 
     it 'reads the labels on a Ukrainian page only, and the new-window notice', :aggregate_failures do
