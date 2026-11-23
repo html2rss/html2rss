@@ -372,13 +372,14 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'keeps a label followed by a year a title and reads a label with a small count as chrome', :aggregate_failures do
+    it 'keeps a label followed by a year a title and reads a bracketed count as chrome', :aggregate_failures do
       ['תנאי שימוש 2026', 'מדיניות פרטיות 2026', 'כתבות קשורות 2026', 'קראו גם 2026',
        'הצהרת נגישות 2026'].each do |label|
         expect(he.utility_chrome?(label)).to be(false), label
         expect(junk_reason.call(label)).to be_nil, label
       end
-      expect(he.utility_chrome?('תגובות 12')).to be(true)
+      expect(he.utility_chrome?('תגובות (12)')).to be(true)
+      expect(he.utility_chrome?('תגובות 12')).to be(false)
     end
 
     it 'reads labels wrapped in bidi marks', :aggregate_failures do
