@@ -41,7 +41,7 @@ module Html2rss
 
     # Selector keys that may be copied onto an Article (PROVIDED_KEYS + mapped aliases).
     SELECTABLE_SELECTOR_KEYS = Set[*(Html2rss::Article::PROVIDED_KEYS + SELECTOR_TO_ARTICLE_KEY.keys)].freeze
-    # ArticleExtractor keys that enhance can fill. Skip the extractor when all are already present.
+    # Item keys that enhance can fill. Skip the extractor when all are already present.
     ENHANCEABLE_KEYS = %i[title url description published_at enclosures categories].freeze
     # Per-field extraction plan compiled once from the static selector config.
     CompiledField = Data.define(:name, :article_key, :config, :extractor_class, :post_process_steps, :special)
@@ -61,7 +61,7 @@ module Html2rss
       @selectors = selectors
       @time_zone = time_zone
       @rss_item_attributes = @selectors.keys.select { SELECTABLE_SELECTOR_KEYS.include?(_1) }
-      @parsed_body = nil
+      @parsed_body = @item_enhancer = nil
       @unlinked_count = 0
       @compiled_fields = compile_selector_fields
       @compiled_item_fields = @rss_item_attributes.filter_map { @compiled_fields[_1] }
@@ -190,7 +190,7 @@ module Html2rss
 
     ##
     # Whether +selectors.items.enhance+ is on: each matched item node fills fields that explicit
-    # selectors left empty (see {ENHANCEABLE_KEYS}) via {Html::ArticleExtractor}, using only the
+    # selectors left empty (see {ENHANCEABLE_KEYS}) via {ItemEnhancer}, using only the
     # item's own markup and making no extra requests.
     #
     # @return [Boolean]
@@ -242,17 +242,10 @@ module Html2rss
       Url.resolve_web(value, base_url) || value
     end
 
-    def enhance_article_hash(article_hash, article_tag) # rubocop:disable Metrics/MethodLength -- merge extracted keys
+    def enhance_article_hash(article_hash, article_tag)
       return article_hash if enhanceable_fields_present?(article_hash)
 
-      selected_anchor = Html2rss::Html::Navigator.main_anchor_for(article_tag)
-      extracted = Html2rss::Html::ArticleExtractor.call(
-        article_tag,
-        base_url: @url,
-        selected_anchor:,
-        time_zone: @time_zone,
-        vocabulary: @vocabulary
-      )
+      extracted = item_enhancer.fields_for(article_tag)
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|
@@ -260,6 +253,10 @@ module Html2rss
 
         hash[key] = value
       end
+    end
+
+    def item_enhancer
+      @item_enhancer ||= ItemEnhancer.new(parsed_body, base_url: @url, time_zone: @time_zone, vocabulary: @vocabulary)
     end
 
     def enhanceable_fields_present?(article_hash)

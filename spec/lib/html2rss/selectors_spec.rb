@@ -524,14 +524,20 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
-    context 'when extractor returns nil' do
-      before do
-        allow(Html2rss::Html::ArticleExtractor).to receive(:call).and_return(nil)
+    context 'when the item has no SST node' do
+      let(:selectors) do
+        { items: { selector: 'template article', enhance: true }, title: { selector: 'h1' },
+          url: { selector: 'a', extractor: 'href' } }
+      end
+      let(:body) do
+        '<html><body><template><article><h1>Hidden</h1><a href="/hidden">More</a></article></template></body></html>'
       end
 
-      it 'returns the baseline unchanged' do
+      it 'returns the baseline unchanged and still lists the item', :aggregate_failures do
         baseline, enhanced, = instance.each_enhance_pair.first
+
         expect(enhanced).to eq(baseline)
+        expect(instance.articles.map(&:title)).to eq(['Hidden'])
       end
     end
 
@@ -580,12 +586,12 @@ RSpec.describe Html2rss::Selectors do
         }
       end
 
-      it 'does not call ArticleExtractor and keeps the baseline', :aggregate_failures do
-        allow(Html2rss::Html::ArticleExtractor).to receive(:call)
+      it 'does not read the item and keeps the baseline', :aggregate_failures do
+        allow(Html2rss::Html::SstArticleExtractor::Item).to receive(:call)
 
         _baseline, enhanced, = instance.each_enhance_pair.first
 
-        expect(Html2rss::Html::ArticleExtractor).not_to have_received(:call)
+        expect(Html2rss::Html::SstArticleExtractor::Item).not_to have_received(:call)
         expect(enhanced).to include(:title, :url, :description)
       end
     end
