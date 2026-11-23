@@ -394,6 +394,14 @@ RSpec.describe Html2rss::Test do
         )
       end
 
+      it 'reports an execution failure when the config cannot be built', :aggregate_failures do
+        allow(Html2rss::Config).to receive(:from_hash).and_raise(Html2rss::Error, 'bad config')
+        result = described_class.call(valid_config)
+
+        expect(result).to have_attributes(success: false, failure_kind: Html2rss::Test::FailureKind[:execution])
+        expect(result.duration_seconds).to be_a(Float)
+      end
+
       describe 'url mismatch detection' do # rubocop:disable RSpec/NestedGroups
         it 'falls back to the entry url when the scrape url is empty', :aggregate_failures do
           allow(fake_feed_result.status).to receive_messages(scrape_url: '', entry_url: 'https://example.com/other')
@@ -458,6 +466,15 @@ RSpec.describe Html2rss::Test do
         expect(result.error_message).to include('network failure')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:execution])
         expect(result.response_body).to be_nil
+      end
+    end
+
+    context 'when the strategy override is invalid' do
+      it 'returns a failed execution Test::Result', :aggregate_failures do
+        result = described_class.call(valid_config, strategy: :nope)
+        expect(result.success).to be(false)
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:execution])
+        expect(result.error_message).to include('Config::InvalidConfig', 'strategy')
       end
     end
 

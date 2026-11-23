@@ -51,13 +51,39 @@ RSpec.describe Html2rss::Html::ArticleExtractor::IdGenerator do
       expect(id).to eq('hello-world')
     end
 
-    it 'returns nil when the heading slug is empty', :aggregate_failures do
+    it 'slugifies the given heading rather than the first text node' do
+      container = Nokogiri::HTML('<div class="card"><p>Intro</p><h2>Headline Here</h2></div>').at_css('.card')
+
+      id = described_class.call(container, heading: container.at_css('h2'), url: nil, selected_anchor: nil)
+
+      expect(id).to eq('headline-here')
+    end
+
+    it 'falls back to the content hash when the heading slug is empty', :aggregate_failures do
       container = Nokogiri::HTML('<div class="card"><h2>!!!</h2></div>').at_css('.card')
       heading = container.at_css('h2')
 
       id = described_class.call(container, heading:, url: nil, selected_anchor: nil)
 
-      expect(id).to be_nil
+      expect(id).to eq(Zlib.crc32('!!!').to_s(36))
+    end
+
+    it 'gives a non-ASCII heading a stable non-nil id', :aggregate_failures do
+      container = Nokogiri::HTML('<div class="card"><h2>日本語の見出し</h2></div>').at_css('.card')
+      heading = container.at_css('h2')
+
+      ids = Array.new(2) { described_class.call(container, heading:, url: nil, selected_anchor: nil) }
+
+      expect(ids.first).to match(/\A[0-9a-z]+\z/)
+      expect(ids.uniq.size).to eq(1)
+    end
+
+    it 'keeps a non-ASCII heading id stable while the card text around it changes', :aggregate_failures do
+      cards = ['3 ч назад', '5 ч назад'].map { |age| Nokogiri::HTML(%(<div><h2>日本語の見出し</h2>#{age}</div>)).at_css('div') }
+      ids = cards.map { |card| described_class.call(card, heading: card.at_css('h2'), url: nil, selected_anchor: nil) }
+
+      expect(ids.first).to eq(Zlib.crc32('日本語の見出し').to_s(36))
+      expect(ids.uniq.size).to eq(1)
     end
 
     it 'uses the first non-blank text node when the heading is blank', :aggregate_failures do

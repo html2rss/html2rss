@@ -55,6 +55,23 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       end
     end
 
+    context 'when meta_oembed is toggled and max_requests is omitted' do
+      let(:config) { Html2rss::Config.from_hash(raw_config) }
+      let(:without_oembed) do
+        scrapers = raw_config[:auto_source].fetch(:scraper).merge(meta_oembed: { enabled: false })
+        Html2rss::Config.from_hash(raw_config.merge(auto_source: raw_config[:auto_source].merge(scraper: scrapers)))
+      end
+
+      it 'grows the raw baseline by exactly one slot and keeps the effective clamp', :aggregate_failures do
+        with = described_class.baseline_request_budget_for(config)
+        without = described_class.baseline_request_budget_for(without_oembed)
+
+        expect(with - without).to eq(1)
+        expect(described_class.from_config(without_oembed).max_requests).to eq(request_ceiling)
+        expect(runtime_policy.max_requests).to eq(request_ceiling)
+      end
+    end
+
     context 'when strategy is auto and max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :auto)) }
 

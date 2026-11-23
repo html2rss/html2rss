@@ -253,7 +253,7 @@ module Html2rss
       end
 
       def probe_candidates(candidates)
-        probe = Probe.new(request_session: session, origin_url: entry_url)
+        probe = Probe.new(request_session: session, origin_url: entry_url, channel: config.channel)
         candidates.filter_map { |url| probe.call(url) }
       end
 

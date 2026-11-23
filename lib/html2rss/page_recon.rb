@@ -136,9 +136,10 @@ module Html2rss
     #
     # @param response [Html2rss::RequestService::Response]
     # @param url [String, Html2rss::Url]
+    # @param channel [Hash{Symbol => Object}] channel overrides; an explicit +:language+ wins over the page's
     # @return [Assessment]
-    def self.assess(response:, url:)
-      new(response:, url:).assess
+    def self.assess(response:, url:, channel: {})
+      new(response:, url:, channel:).assess
     end
 
     ##
@@ -164,9 +165,11 @@ module Html2rss
     ##
     # @param response [Html2rss::RequestService::Response]
     # @param url [String, Html2rss::Url]
-    def initialize(response:, url:)
+    # @param channel [Hash{Symbol => Object}] channel overrides (+:language+)
+    def initialize(response:, url:, channel: {})
       @response = response
       @url = url
+      @channel = channel
     end
 
     ##
@@ -220,7 +223,7 @@ module Html2rss
 
     private
 
-    attr_reader :response, :url
+    attr_reader :response, :url, :channel
 
     def feed_assessment
       Assessment.new(
@@ -266,7 +269,7 @@ module Html2rss
     end
 
     # The page language's scope, resolved once per recon and shared by every classifier it runs.
-    def vocabulary = @vocabulary ||= Vocabulary[Channel.language_for(response)]
+    def vocabulary = @vocabulary ||= Vocabulary[Channel.language_for(response, channel)]
 
     def sst_document
       Html2rss::SST::Normalizer.call(response.body, vocabulary:)

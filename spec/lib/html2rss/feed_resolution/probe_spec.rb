@@ -51,7 +51,12 @@ RSpec.describe Html2rss::FeedResolution::Probe do
 
     scored = probe.call(candidate_url)
 
-    expect(scored).to have_attributes(url: candidate_url, articles_count: be >= 1)
+    expected = Html2rss::PageRecon.assess(response: html_response, url: candidate_url)
+
+    expect(scored).to have_attributes(
+      url: candidate_url, articles_count: expected.articles_count,
+      score: Html2rss::FeedResolution::Scorer.score_assessment(expected)
+    )
   end
 
   it 'follows up on the candidate url for the entry-resolution relation' do
@@ -68,6 +73,36 @@ RSpec.describe Html2rss::FeedResolution::Probe do
     expect(session).to have_received(:follow_up).with(
       hash_including(url: candidate_url, relation: :entry_resolution, origin_url: Html2rss::Url.from_absolute(origin_url))
     )
+  end
+
+  context 'with the candidate page language' do
+    let(:html_response) do
+      Html2rss::RequestService::Response.new(
+        body: '<!DOCTYPE html><html lang="en"><body><article><h2><a href="/a">Alpha</a></h2></article></body></html>',
+        headers: { 'content-type' => 'text/html' },
+        url: candidate_url,
+        status: 200
+      )
+    end
+
+    before do
+      allow(session).to receive(:follow_up).and_return(html_response)
+      allow(Html2rss::Vocabulary).to receive(:[]).and_call_original
+    end
+
+    it 'scores under the configured channel language even when the page declares another', :aggregate_failures do
+      described_class.new(request_session: session, origin_url:, channel: { language: 'sv' }).call(candidate_url)
+
+      expect(Html2rss::Vocabulary).to have_received(:[]).with('sv').at_least(:once)
+      expect(Html2rss::Vocabulary).not_to have_received(:[]).with('en')
+    end
+
+    it 'resolves the language per response when none is configured', :aggregate_failures do
+      probe.call(candidate_url)
+
+      expect(Html2rss::Vocabulary).to have_received(:[]).with('en').at_least(:once)
+      expect(Html2rss::Vocabulary).not_to have_received(:[]).with('sv')
+    end
   end
 
   it 'rejects an origin URL that is not absolute' do

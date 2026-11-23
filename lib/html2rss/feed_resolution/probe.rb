@@ -14,7 +14,9 @@ module Html2rss
       ##
       # @param request_session [Html2rss::RequestSession]
       # @param origin_url [String, Html2rss::Url]
-      def initialize(request_session:, origin_url:)
+      # @param channel [Hash{Symbol => Object}] channel overrides; an explicit +:language+ applies to every candidate
+      def initialize(request_session:, origin_url:, channel: {})
+        @channel = channel
         @request_session = request_session
         @origin_url = Url.from_absolute(origin_url)
       end
@@ -37,7 +39,7 @@ module Html2rss
 
       private
 
-      attr_reader :request_session, :origin_url
+      attr_reader :request_session, :origin_url, :channel
 
       def score_response(response) # rubocop:disable Metrics/MethodLength -- feed vs HTML branches
         if response.feed_response?
@@ -49,7 +51,7 @@ module Html2rss
           )
         end
 
-        assessment = PageRecon.assess(response:, url: response.url)
+        assessment = PageRecon.assess(response:, url: response.url, channel:)
         Scored.new(
           url: response.url,
           score: Scorer.score_assessment(assessment),

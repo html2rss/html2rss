@@ -212,6 +212,40 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     end
   end
 
+  describe 'url-derived id' do
+    subject(:id_for) do
+      lambda do |href|
+        html = %(<article><h2><a href="#{href}">Story Title</a></h2><p>Useful context paragraph here.</p></article>)
+        described_class.call(segment_for(html, href:), base_url: 'https://example.com')&.id
+      end
+    end
+
+    it 'keeps the path as id on a root-path query URL (the guid already hashes the url)', :aggregate_failures do
+      expect(id_for.call('/?p=123')).to eq('/')
+      expect(id_for.call('/?p=124')).to eq('/')
+    end
+
+    it 'keeps the path as id on non-root URLs' do
+      expect(id_for.call('/a?p=1')).to eq('/a')
+    end
+
+    it 'emits no article when the primary link resolves to no URL' do
+      expect(id_for.call('http://')).to be_nil
+    end
+
+    it 'prefers a nested DOM id over the link path' do
+      html = '<article><h2 id="headline"><a href="/news/story">Story Title</a></h2><p>Useful context.</p></article>'
+
+      expect(described_class.call(segment_for(html), base_url: 'https://example.com').id).to eq('headline')
+    end
+
+    it 'skips an empty DOM id and falls back to the link path' do
+      html = '<article id=""><h2><a href="/news/story">Story Title</a></h2><p>Useful context here.</p></article>'
+
+      expect(described_class.call(segment_for(html), base_url: 'https://example.com').id).to eq('/news/story')
+    end
+  end
+
   it 'extracts core article fields from an SST segment', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <html><body>

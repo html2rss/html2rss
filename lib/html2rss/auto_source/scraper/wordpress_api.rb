@@ -137,11 +137,19 @@ module Html2rss
         end
 
         def article_title(post)
-          rendered_text(post.dig(:title, :rendered))
+          rendered_text(rendered_field(post, :title))
         end
 
         def article_description(post)
-          rendered_html(post.dig(:content, :rendered)) || rendered_html(post.dig(:excerpt, :rendered))
+          rendered_html(rendered_field(post, :content)) || rendered_html(rendered_field(post, :excerpt))
+        end
+
+        # Only Hash fields carry `rendered`; a String or other malformed field yields nil.
+        def rendered_field(post, key)
+          case post[key]
+          in { rendered: } then rendered
+          else nil
+          end
         end
 
         def article_published_at(post)
