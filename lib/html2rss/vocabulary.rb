@@ -77,7 +77,9 @@ module Html2rss
 
     # Languages whose terms apply only on a page in that language: they are in no shared table, so +:all+, +ja+ and
     # every other language read exactly what they read without them. A page scope of such a language is +:all+ plus
-    # its terms (a Han term has no word boundary, so it is read as a whole label only, see {TextClassifier}).
+    # its terms (a Han term has no word boundary, so it is read as a whole label only, see {TextClassifier}); a
+    # Latin-script one ({Language#latin}) is every shared language's unambiguous terms plus its terms, with no
+    # foreign ambiguous term.
     PAGE_ONLY = [Zh, Ko, He, El, Uk, Ar, Fa, Hi, Th].freeze
 
     # Every language that has a file, in a fixed order.
@@ -176,9 +178,11 @@ module Html2rss
       #
       # @param code [Symbol] the language code, or +:all+
       # @param languages [Array<Language>] the languages in scope
-      # @param own [Array<Language>] {PAGE_ONLY} languages whose terms apply on this page only
+      # @param own [Array<Language>] {PAGE_ONLY} languages whose terms apply on this page only; a Latin-script one
+      #   ({Language#latin}) leaves the foreign +languages+ out of the ambiguous terms
       # @return [Scope]
       def build_scope(code, languages, own: [])
+        languages = NONE if own.any?(&:latin)
         words = SCOPED_WORDS.to_h { [_1, ambiguous_terms(languages, _1)] }
         alternations = SCOPED_PATTERNS.to_h { [_1, compile(ambiguous_terms(languages, _1))] }
         Scope.new(code:, ambiguous_words: words.freeze, alternations: alternations.freeze,

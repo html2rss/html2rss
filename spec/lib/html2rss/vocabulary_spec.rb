@@ -359,6 +359,10 @@ RSpec.describe Html2rss::Vocabulary do
     it 'default to none for a language that declares none' do
       expect(described_class::Language.new(code: :xx, terms: {}).ambiguous).to eq({}).and be_frozen
     end
+
+    it 'default to a non-Latin script' do
+      expect(described_class::Language.new(code: :xx, terms: {}).latin).to be(false)
+    end
   end
 
   describe '.ambiguous_terms' do
@@ -403,6 +407,46 @@ RSpec.describe Html2rss::Vocabulary do
       expect(scope.ambiguous_words.fetch(:path_media)).to eq([])
       expect(scope.ambiguous_alternation(:utility)).to eq('dela|s[\'’]x|zed')
       expect(scope.ambiguous_alternation(:recommended)).to eq('')
+    end
+
+    it 'reads every foreign ambiguous term on a non-Latin page-only scope, as before', :aggregate_failures do
+      everything = described_class[nil]
+
+      expect(described_class::PAGE_ONLY.map(&:latin)).to all(be(false))
+      described_class::PAGE_ONLY.each do |language|
+        page = described_class[language.code]
+
+        expect(page.ambiguous_words).to eq(everything.ambiguous_words), language.code.to_s
+        expect(page.alternations).to eq(everything.alternations), language.code.to_s
+      end
+      expect(described_class[:sv].ambiguous_alternation(:utility)).to include('dela')
+      expect(described_class[:de].ambiguous_alternation(:utility)).not_to include('dela')
+    end
+
+    it 'reads no foreign ambiguous term on a Latin-script page-only scope, and keeps its own terms',
+       :aggregate_failures do
+      own = described_class::Language.new(code: :zz, terms: described_class::Th.terms, latin: true)
+      page = described_class.build_scope(:zz, [one, two], own: [own])
+      plain = described_class.build_scope(:zz, [one, two], own: [described_class::Th])
+
+      expect(page.ambiguous_words.values).to all(be_empty)
+      expect(page.alternations.values).to all(eq(''))
+      expect(page.ambiguous_words.keys).to eq(described_class::SCOPED_WORDS)
+      expect(page.alternations.keys).to eq(described_class::SCOPED_PATTERNS)
+      expect(page.own_alternation(:utility)).to include('เข้าสู่ระบบ')
+      expect(plain.ambiguous_alternation(:utility)).to eq('dela|s[\'’]x|zed')
+      expect(plain.ambiguous_words.fetch(:path_vanity)).to eq(%w[plus])
+      expect([page.own_words, page.own_alternations, page.type_markers])
+        .to eq([plain.own_words, plain.own_alternations, plain.type_markers])
+    end
+
+    it 'reads the unambiguous shared terms on a Latin-script page-only scope', :aggregate_failures do
+      own = described_class::Language.new(code: :zz, terms: described_class::Th.terms, latin: true)
+      page = described_class.build_scope(:zz, [one, two], own: [own])
+      shared = described_class.unambiguous_words(:path_taxonomy)
+
+      expect(page.words(:path_taxonomy)).to be(shared)
+      expect(page.words(:path_vanity)).not_to include('plus')
     end
   end
 
