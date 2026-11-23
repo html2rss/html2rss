@@ -164,4 +164,23 @@ RSpec.describe Html2rss::SST::Index do
       expect(described_class.for_node(Html2rss::SST::Node.build(name: :span))).to be_nil
     end
   end
+
+  describe '.for_node!' do
+    it 'returns the index of a bound node' do
+      expect(described_class.for_node!(nav_link)).to be(index)
+    end
+
+    it 'raises the owner contract error for a node without a live index', :aggregate_failures do
+      unbound = Html2rss::SST::Node.build(name: :span)
+
+      expect { described_class.for_node!(unbound) }.to raise_error(described_class::InvalidError, /<span>/)
+      expect(described_class::InvalidError).to be < Html2rss::ContractError
+    end
+  end
+
+  describe '#node_for' do
+    it 'is nil for every node when the tree was built without sources' do
+      expect(index.node_for(Nokogiri::HTML('<p>x</p>').at_css('p'))).to be_nil
+    end
+  end
 end

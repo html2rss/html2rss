@@ -6,6 +6,9 @@ module Html2rss
     # Parent/depth indices for an SST tree. Built once by the Normalizer so
     # Scoring/Segmenter never need Nokogiri ancestor walks.
     class Index
+      # Raised when an SST node has no live index: its {Document} was collected, or it never had one.
+      class InvalidError < Html2rss::ContractError; end
+
       # Weak node→index bindings so +Node#visible_text+ can memoize without call-site churn.
       NODE_BINDINGS = ObjectSpace::WeakMap.new
 
@@ -13,6 +16,15 @@ module Html2rss
       # @param node [Node]
       # @return [Index, nil]
       def self.for_node(node) = NODE_BINDINGS[node]
+
+      ##
+      # @param node [Node]
+      # @return [Index]
+      # @raise [InvalidError] when +node+ has no live index. The index lives only as long as its {Document}, so
+      #   a caller that reads relationships keeps the document strongly referenced.
+      def self.for_node!(node)
+        for_node(node) || raise(InvalidError, "no live index for <#{node.name}>: its SST document was collected")
+      end
 
       ##
       # Whether +node+ is +ancestor+ or inside it: parent pointers when +node+ is indexed, else a
@@ -33,11 +45,13 @@ module Html2rss
       # @param parents [Hash{Node => Node, nil}]
       # @param depths [Hash{Node => Integer}]
       # @param scopes [Hash{Node => Symbol}] {Tags.chrome_scope} of each node
-      def initialize(root:, parents:, depths:, scopes:)
+      # @param sources [Hash{Nokogiri::XML::Node => Node}, nil] SST node of each parsed node, +nil+ when not tracked
+      def initialize(root:, parents:, depths:, scopes:, sources: nil)
         @root = root
         @parents = parents
         @depths = depths
         @scopes = scopes
+        @sources = sources
         @visible_text = {}.compare_by_identity
         @run_count = {}.compare_by_identity
         bind_tree(root)
@@ -49,6 +63,13 @@ module Html2rss
       # @param node [Node]
       # @return [Node, nil]
       def parent_of(node) = @parents[node]
+
+      ##
+      # The SST node built from +source+, when the {Normalizer} ran with +sources: true+.
+      #
+      # @param source [Nokogiri::XML::Node]
+      # @return [Node, nil] +nil+ for a node the tree dropped (script, template, ...) or when not tracked
+      def node_for(source) = @sources&.[](source)
 
       ##
       # @param node [Node]

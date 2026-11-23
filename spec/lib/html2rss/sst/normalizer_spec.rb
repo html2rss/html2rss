@@ -243,6 +243,48 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.degraded).to be(true)
     end
 
+    it 'never degrades without a node ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
+      allow(Html2rss::Log).to receive(:warn)
+      html = '<html><body><span>x</span><p>y</p></body></html>'
+
+      doc = described_class.call(html, vocabulary: all_scope, max_nodes: nil)
+
+      expect(doc.degraded).to be(false)
+      expect(doc.root.find { |node| node.name == :span }).not_to be_nil
+      expect(Html2rss::Log).not_to have_received(:warn)
+    end
+
+    it 'logs a fallback root at debug, not warn, when the caller expects one', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Log).to receive(:warn)
+      allow(Html2rss::Log).to receive(:debug)
+      fragment = Nokogiri::HTML5.fragment('<object><a href="/p">Post</a></object>')
+
+      described_class.call(fragment, vocabulary: all_scope, expected_root: true)
+
+      expect(Html2rss::Log).not_to have_received(:warn)
+      expect(Html2rss::Log).to have_received(:debug).with(/first element child/)
+    end
+
+    context 'when tracking sources' do
+      let(:parsed) { Nokogiri::HTML('<html><body><article><a href="/p">Post</a><script>x()</script></article></body></html>') }
+
+      it 'maps each parsed node to its SST node and drops the stripped ones', :aggregate_failures do
+        doc = described_class.call(parsed, vocabulary: all_scope, sources: true)
+        link = doc.root.find(&:link?)
+
+        expect(doc.index.node_for(parsed.at_css('a'))).to equal(link)
+        expect(doc.index.node_for(parsed.at_css('script'))).to be_nil
+      end
+
+      it 'allocates no map unless asked, so a plain document carries none', :aggregate_failures do
+        doc = described_class.call(parsed, vocabulary: all_scope)
+
+        expect(doc.index.node_for(parsed.at_css('a'))).to be_nil
+        expect(doc.index.instance_variable_get(:@sources)).to be_nil
+      end
+    end
+
     it 'records path, depth, chrome, text, and node count', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       html = '<html><body><header><a href="/home">Home</a></header><article><p>Post</p></article></body></html>'
       doc = described_class.call(html, vocabulary: all_scope)

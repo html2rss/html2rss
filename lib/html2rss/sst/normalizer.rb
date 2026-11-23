@@ -66,12 +66,17 @@ module Html2rss
         #   HTML string or already-parsed node (String is parsed once here)
         # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the pager words that make a
         #   list or nav chrome
+        # @param sources [Boolean] record which Nokogiri node each SST node came from, for
+        #   {Index#node_for}; off keeps the map unallocated
+        # @param max_nodes [Integer, nil] ceiling past which normalization degrades; +nil+ never degrades
+        # @param expected_root [Boolean] the caller parsed a fragment, so a fallback root is logged at debug,
+        #   not warn
         # @return [Document, nil] +nil+ when no SST nodes survive normalization
         # @raise [InvalidError] when input is nil or unsupported
-        def call(input, vocabulary:)
+        def call(input, vocabulary:, sources: false, max_nodes: MAX_NODES, expected_root: false)
           raise InvalidError, 'input is required' if input.nil?
 
-          new(coerce(input), vocabulary).call
+          new(coerce(input), vocabulary, sources:, max_nodes:, expected_root:).call
         end
 
         private
@@ -90,9 +95,15 @@ module Html2rss
 
       # @param parsed_body [Nokogiri::HTML::Document, Nokogiri::XML::Node]
       # @param vocabulary [Vocabulary::Scope]
-      def initialize(parsed_body, vocabulary)
+      # @param sources [Boolean] see {.call}
+      # @param max_nodes [Integer, nil] see {.call}
+      # @param expected_root [Boolean] see {.call}
+      def initialize(parsed_body, vocabulary, sources: false, max_nodes: MAX_NODES, expected_root: false) # rubocop:disable Metrics/MethodLength -- per-run state
         @parsed_body = parsed_body
         @vocabulary = vocabulary
+        @sources = ({}.compare_by_identity if sources)
+        @max_nodes = max_nodes
+        @expected_root = expected_root
         @node_count = 0
         @degraded = false
         @parents = {}.compare_by_identity
@@ -109,14 +120,13 @@ module Html2rss
         root = normalize_element(root_nk, depth: 0, path: '', scope: :page)
         return unless root
 
-        index = Index.new(root:, parents: @parents, depths: @depths, scopes: @scopes)
+        index = Index.new(root:, parents: @parents, depths: @depths, scopes: @scopes, sources: @sources)
         Document.build(root:, index:, degraded: @degraded, node_count: @node_count)
       end
 
       private
 
       # @return [Nokogiri::XML::Node]
-      # rubocop:disable-next Metrics/MethodLength -- explicit root discovery fallback chain
       def resolve_root_nk
         parsed = @parsed_body
 
@@ -124,31 +134,20 @@ module Html2rss
         return html if html
 
         body = parsed.at_css('body')
-        if body
-          Html2rss::Log.warn({
-            event_name: 'sst.normalizer.root_fallback',
-            reason: 'body',
-            message: 'sst.normalizer root fallback: body'
-          }.to_json)
-          return body
-        end
+        return log_root_fallback('body', body) if body
 
         first = parsed.element_children.find { |child| element_root?(child) }
-        if first
-          Html2rss::Log.warn({
-            event_name: 'sst.normalizer.root_fallback',
-            reason: 'first_element_child',
-            message: 'sst.normalizer root fallback: first element child'
-          }.to_json)
-          return first
-        end
+        return log_root_fallback('first_element_child', first) if first
 
-        Html2rss::Log.warn({
-          event_name: 'sst.normalizer.root_fallback',
-          reason: 'self',
-          message: 'sst.normalizer root fallback: self'
-        }.to_json)
-        parsed
+        log_root_fallback('self', parsed)
+      end
+
+      # @return [Nokogiri::XML::Node] +root+, after logging the fallback that chose it
+      def log_root_fallback(reason, root)
+        message = "sst.normalizer root fallback: #{reason.tr('_', ' ')}"
+        payload = { event_name: 'sst.normalizer.root_fallback', reason:, message: }.to_json
+        @expected_root ? Html2rss::Log.debug(payload) : Html2rss::Log.warn(payload)
+        root
       end
 
       def element_root?(node)
@@ -175,21 +174,27 @@ module Html2rss
         own_text = join_text(tails.shift, tails)
 
         node = Node.build(name: tag, attrs:, own_text:, children:, tag_path:, tails:)
+        index_node(node, nk_node, depth, scope_here)
+      end
+
+      # Records the index entries of +node+ and its children, and returns +node+.
+      def index_node(node, nk_node, depth, scope)
         @depths[node] = depth
-        @scopes[node] = scope_here
-        children.each { |child| @parents[child] = node }
+        @sources[nk_node] = node if @sources
+        @scopes[node] = scope
+        node.children.each { |child| @parents[child] = node }
 
         node
       end
 
       def degrade_when_full
-        return unless @node_count >= MAX_NODES && !@degraded
+        return unless @max_nodes && @node_count >= @max_nodes && !@degraded
 
         @degraded = true
         Log.warn({
           event_name: 'sst.normalizer.max_nodes',
-          max_nodes: MAX_NODES,
-          message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
+          max_nodes: @max_nodes,
+          message: "sst.normalizer MAX_NODES=#{@max_nodes} breached; degrading to semantic-tag-only"
         }.to_json)
       end
 
