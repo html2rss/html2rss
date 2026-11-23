@@ -288,6 +288,14 @@ language_chrome_da_hubs.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_da_more.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 language_chrome_de.html:
   junk: 0
   real: 4

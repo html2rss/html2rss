@@ -990,12 +990,12 @@ RSpec.describe Html2rss::Vocabulary do
        :aggregate_failures do
       ['Log ind', 'Log på', 'Log ud', 'Opret bruger', 'Opret konto', 'Søg', 'Søgning', 'Om os', 'Tip os',
        'Kundeservice', 'Privatlivspolitik', 'Persondatapolitik', 'Cookiepolitik', 'Cookieindstillinger',
-       'Vilkår og betingelser', 'Ofte stillede spørgsmål', 'Menu', 'Åbn menu', 'Forside', 'Se alle', 'Se flere',
-       'Vis mere', 'Flere nyheder', 'Kommentarer', 'Følg os', 'Spring til indhold',
+       'Vilkår og betingelser', 'Ofte stillede spørgsmål', 'Menu', 'Åbn menu', 'Forside', 'Kommentarer',
+       'Følg os', 'Spring til indhold',
        'Gå til hovedindhold'].each do |item|
         expect(da.utility_chrome?(item)).to be(true), item
       end
-      ['[Søg]', '← Se alle ←', 'Log ind (åbner i nyt vindue)', '‎Søg‎'].each do |item|
+      ['[Søg]', '← Søg ←', 'Log ind (åbner i nyt vindue)', '‎Søg‎'].each do |item|
         expect(da.utility_chrome?(item)).to be(true), item
       end
       ['Relaterede artikler', 'Relaterede historier', 'Læs også', 'Se også', 'Anbefalet til dig'].each do |item|
@@ -1004,7 +1004,8 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
-      ['Læs mere', 'Læs mere her', 'Læs hele artiklen', 'Læs videre', 'Læs resten', 'Se mere'].each do |label|
+      ['Læs mere', 'Læs mere her', 'Læs hele artiklen', 'Læs videre', 'Læs resten', 'Se mere',
+       'Vis mere'].each do |label|
         expect([da.read_more?(label), junk_reason.call(label)]).to eq([true, :cta]), label
       end
       ['Tilmeld dig nyhedsbrev', 'Køb abonnement', 'Bliv abonnent', 'Skriv en kommentar', 'Del artiklen'].each do |item|
@@ -1013,7 +1014,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads the labels in upper case and in decomposed form', :aggregate_failures do
-      ['LOG IND', 'SØG', 'OM OS', 'PRIVATLIVSPOLITIK', 'VILKÅR OG BETINGELSER', 'SE ALLE',
+      ['LOG IND', 'SØG', 'OM OS', 'PRIVATLIVSPOLITIK', 'VILKÅR OG BETINGELSER', 'TIP OS',
        'GÅ TIL INDHOLD'].each do |label|
         expect(da.utility_chrome?(label)).to be(true), label
       end
@@ -1039,19 +1040,20 @@ RSpec.describe Html2rss::Vocabulary do
     it 'keeps a label followed by a year or a bare number a headline, and reads a bracketed count as chrome',
        :aggregate_failures do
       ['Log ind 2026', 'Søg 2026', 'Læs mere 2026', 'Om os 2026', 'Privatlivspolitik 2026',
-       'Relaterede artikler 2026', 'Se alle 2026', 'Vilkår og betingelser 2026'].each do |label|
+       'Relaterede artikler 2026', 'Tip os 2026', 'Vilkår og betingelser 2026'].each do |label|
         readers.each_value { |reader| expect(reader.call(label)).to be(false), label }
       end
-      ['Se alle 12', 'Søg 3', 'Log ind 2', 'Om os 3'].each do |label|
+      ['Tip os 12', 'Søg 3', 'Log ind 2', 'Om os 3'].each do |label|
         expect(da.utility_chrome?(label)).to be(false), label
       end
-      ['Se alle (12)', 'Se alle [3]', 'Søg (7)', 'Kommentarer (12)'].each do |item|
+      ['Tip os (12)', 'Søg [3]', 'Søg (7)', 'Kommentarer (12)'].each do |item|
         expect(da.utility_chrome?(item)).to be(true), item
       end
     end
 
     it 'leaves out every section, pager and plausible-headline label', :aggregate_failures do
-      ['Del', 'Hjælp', 'Annoncering', 'Lyt', 'Seneste nyt', 'Mest læste', 'Udland', 'Kultur', 'Debat',
+      ['Se alle', 'Se flere', 'Flere nyheder', 'Del', 'Hjælp', 'Annoncering', 'Lyt', 'Seneste nyt',
+       'Mest læste', 'Udland', 'Kultur', 'Debat',
        'Erhverv', 'Del 2'].each do |label|
         readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
       end
@@ -1063,6 +1065,11 @@ RSpec.describe Html2rss::Vocabulary do
         expect([da.utility_chrome?(label), text.call(:all).utility_chrome?(label)]).to eq([true, true]), label
       end
       expect(da.utility_chrome?('Kontakt mellem skakspillerne forbudt')).to be(false)
+    end
+
+    it 'keeps a card whose only link carries a read-more label and not a list-level label', :aggregate_failures do
+      ['Se alle', 'Se flere', 'Flere nyheder'].each { expect(da.utility_chrome?(_1)).to be(false), _1 }
+      expect([da.read_more?('Vis mere'), junk_reason.call('Vis mere')]).to eq([true, :cta])
     end
 
     it 'reads the labels on a Danish page only', :aggregate_failures do

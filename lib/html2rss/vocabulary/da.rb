@@ -12,9 +12,14 @@ module Html2rss
     # headline below the title floor), no section name (+udland+, +kultur+, +debat+ and +erhverv+ are topics a feed
     # may carry), no pager label, no path word, and not the bare labels judged too likely to be a headline (+del+ is
     # a part of a series, +hjælp+ is aid, +annoncering+ advertising, +lyt+ an imperative that opens headlines,
-    # +seneste nyt+ and +mest læste+ are sections). Some common words stay listed as whole labels by judgment
-    # (+kontakt+, +søg+, +menu+, +kommentarer+): a one-word text equal to one reads as chrome, while a longer
-    # headline that opens with one stays a headline. A term whose precision is unclear is left out.
+    # +seneste nyt+ and +mest læste+ are sections, +se alle+, +se flere+ and +flere nyheder+ are list-level "more"
+    # labels that would empty a card whose only link carries one; +vis mere+ is listed as a read-more label). Some
+    # common words stay listed as whole labels by judgment (+kontakt+, +søg+, +menu+, +kommentarer+): a one-word
+    # text equal to one reads as chrome, while a longer headline that opens with one stays a headline, and a
+    # label followed by a year or a bare number stays a headline for every Danish-owned term. The exception is
+    # +kontakt+ and +kommentarer+, which also keep the German, Polish and Swedish readings every scope shares, so
+    # +Kontakt 2026+, +Kommentarer 2026+, +Kontakt Danmark 2026+ and +Kommentarer fra 2026+ read as chrome. A term
+    # whose precision is unclear is left out.
     Da = Language.new(
       code: :da,
       terms: {
@@ -38,7 +43,7 @@ module Html2rss
         ],
         read_more: [
           'læs mere', 'læs mere her', 'læs hele artiklen', 'læs hele historien', 'læs videre', 'læs resten',
-          'læs resten af artiklen', 'læs flere', 'se mere'
+          'læs resten af artiklen', 'læs flere', 'se mere', 'vis mere'
         ],
         topic_lead: NONE,
         topic_preposition: NONE,
@@ -65,9 +70,8 @@ module Html2rss
           'log ind', 'log på', 'log ud', 'opret bruger', 'opret konto', 'søg', 'søgning', 'kontakt', 'kontakt os',
           'om os', 'tip os', 'kundeservice', 'privatlivspolitik', 'persondatapolitik', 'cookiepolitik',
           'cookieindstillinger', 'cookie-indstillinger', 'vilkår og betingelser', 'handelsbetingelser',
-          'brugerbetingelser', 'ofte stillede spørgsmål', 'menu', 'luk menu', 'åbn menu', 'forside', 'se alle',
-          'se flere', 'vis mere', 'flere nyheder', 'kommentarer', 'følg os', 'spring til indhold',
-          'gå til indhold', 'gå til hovedindhold'
+          'brugerbetingelser', 'ofte stillede spørgsmål', 'menu', 'luk menu', 'åbn menu', 'forside', 'kommentarer',
+          'følg os', 'spring til indhold', 'gå til indhold', 'gå til hovedindhold'
         ],
         recommended: [
           'relaterede artikler', 'relaterede historier', 'relaterede nyheder', 'læs også', 'se også',
