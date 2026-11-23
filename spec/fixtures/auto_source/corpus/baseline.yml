@@ -264,6 +264,30 @@ language_chrome_ar.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+language_chrome_cs.html:
+  junk: 0
+  real: 20
+  expected: 20
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_cs_actions.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+language_chrome_cs_hubs.html:
+  junk: 0
+  real: 8
+  expected: 8
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 language_chrome_da.html:
   junk: 0
   real: 22

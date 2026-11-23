@@ -23,6 +23,9 @@ RSpec.describe Html2rss::Vocabulary do
       [:en, 'share', :tr] => english_chrome,
       [:de, 'kontakt', :da] => also_danish, [:pl, 'kontakt', :da] => also_danish,
       [:sv, 'kontakt', :da] => also_danish, [:sv, 'kommentarer', :da] => also_danish,
+      [:en, 'share', :cs] => english_chrome,
+      [:de, 'kontakt', :cs] => shared_word, [:pl, 'kontakt', :cs] => shared_word,
+      [:sv, 'kontakt', :cs] => shared_word,
       [:fr, 'contact', :en] => shared_word, [:fr, 'contact', :de] => shared_word,
       [:fr, 'contact', :ja] => shared_word, [:nl, 'contact', :en] => shared_word,
       [:nl, 'contact', :de] => shared_word, [:nl, 'contact', :ja] => shared_word
