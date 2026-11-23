@@ -9,8 +9,8 @@ module Html2rss
     # opener, see {LinkDestination::TextClassifier}). A label with an apostrophe lists its three spellings (+'+, +’+,
     # +ʼ+). Only the concepts read through a {Scope} are listed (label words, the call to action, read-more and the
     # new-window notice); the others stay +NONE+ until their readers take the page scope. It lists no type marker
-    # (stripping a short kicker could leave a headline below the title floor), no section name, no bare
-    # +реклама+ and no ordinary noun a card's only link may be (+пошук+, +коментарі+, +реєстрація+, +підписка+, +вхід+) (the trade is also news). A term whose precision is unclear is left out.
+    # (stripping a short kicker could leave a headline below the title floor), no section name and no bare
+    # +реклама+ (the trade is also news). A term whose precision is unclear is left out.
     Uk = Language.new(
       code: :uk,
       terms: {
@@ -53,9 +53,9 @@ module Html2rss
         podcast_unspaced: NONE,
         type_marker: NONE,
         utility: [
-          'про нас', 'про компанію', 'про проєкт', 'про проект', 'про сайт', 'про редакцію', 'контакти',
-          'увійти', 'вийти', 'підписатися', 'поділитися', 'закрити', 'меню',
-          'карта сайту', 'політика конфіденційності', 'умови використання',
+          'про нас', 'про компанію', 'про проєкт', 'про проект', 'про сайт', 'про редакцію', 'контакти', 'вхід',
+          'увійти', 'вийти', 'реєстрація', 'пошук', 'підписка', 'підписатися', 'поділитися', 'закрити', 'меню',
+          'коментарі', 'карта сайту', 'політика конфіденційності', 'умови використання',
           'правила користування', 'угода користувача', 'публічна оферта', 'для рекламодавців'
         ],
         recommended: [

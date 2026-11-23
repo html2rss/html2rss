@@ -350,9 +350,9 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads chrome and recommended labels as whole labels', :aggregate_failures do
-      %w[увійти підписатися поділитися закрити меню контакти].push(
+      %w[вхід увійти реєстрація пошук підписка підписатися поділитися закрити меню коментарі контакти].push(
         'про нас', 'про компанію', 'карта сайту', 'політика конфіденційності', 'умови використання',
-        'Контакти (3)', '[Контакти]'
+        'Вхід (3)', '[Пошук]'
       ).each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
       ['читайте також', 'Читайте також', 'схожі матеріали', 'рекомендовані матеріали', 'вас також може зацікавити']
         .each { expect(uk.recommended?(_1)).to be(true), _1 }
@@ -371,14 +371,6 @@ RSpec.describe Html2rss::Vocabulary do
       end
       ['підписатися на розсилку', 'Поділіться', 'залишити коментар']
         .each { expect(uk.utility_chrome?(_1)).to be(true), _1 }
-    end
-
-    it 'reads an ordinary noun as no label of its own, so a card whose only link is that noun stays', :aggregate_failures do
-      %w[пошук коментарі реєстрація підписка вхід].each do |noun|
-        [noun, noun.capitalize].each do |label|
-          readers.each { |name, reader| expect(reader.call(label)).to be(false), "#{name}: #{label}" }
-        end
-      end
     end
 
     it 'keeps a headline that opens with a label noun a headline', :aggregate_failures do
@@ -411,9 +403,9 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads the labels on a Ukrainian page only, and the new-window notice', :aggregate_failures do
-      [nil, :ru, :en, :ko].each { expect(text.call(_1).utility_chrome?('Контакти')).to be(false), _1.inspect }
-      expect(uk.utility_chrome?('Контакти (відкриється у новому вікні)')).to be(true)
-      expect(text.call(nil).utility_chrome?('Контакти (відкриється у новому вікні)')).to be(false)
+      [nil, :ru, :en, :ko].each { expect(text.call(_1).utility_chrome?('Вхід')).to be(false), _1.inspect }
+      expect(uk.utility_chrome?('Вхід (відкриється у новому вікні)')).to be(true)
+      expect(text.call(nil).utility_chrome?('Вхід (відкриється у новому вікні)')).to be(false)
     end
 
     it 'declares no type marker of its own', :aggregate_failures do
