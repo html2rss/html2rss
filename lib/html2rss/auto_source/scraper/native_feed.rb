@@ -41,8 +41,10 @@ module Html2rss
         ##
         # @param parsed_body [Nokogiri::HTML::Document]
         # @param url [String, Html2rss::Url]
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the podcast words
         # @param request_session [Html2rss::RequestSession, nil]
-        def initialize(parsed_body, url:, request_session: nil)
+        def initialize(parsed_body, url:, vocabulary:, request_session: nil)
+          @vocabulary = vocabulary
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
           @request_session = request_session
@@ -88,7 +90,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session
+        attr_reader :parsed_body, :url, :request_session, :vocabulary
 
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- discovery + parse + structured warn
         def fetch_feed
@@ -97,6 +99,7 @@ module Html2rss
           response = Syndication::Discovery.best_feed_response(
             page_url: url,
             request_session:,
+            vocabulary:,
             parsed_body:,
             max_probes: self.class.request_slots
           )

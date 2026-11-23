@@ -7,8 +7,8 @@ module Html2rss
     #
     # Ports configs +probe_rss+ path/alternate logic onto {RequestSession#follow_up}.
     # Head alternates keep document order within two groups: those whose title or URL
-    # hints audio ({AUDIO_HINT}) and the rest. On a page that shows podcast signals
-    # ({PODCAST_PAGE_HINT} in its URL host, path or +<title>+, an +og:type+ matching {MEDIA_OG_TYPE},
+    # hints audio ({PodcastReadings::Readings#audio_hint}) and the rest. On a page that shows podcast signals
+    # ({PodcastReadings::Readings#page_hint} in its URL host, path or +<title>+, an +og:type+ matching {MEDIA_OG_TYPE},
     # or a {PODCAST_SCHEMA_TYPE} in its JSON-LD) the order is audio-hinted alternates, other
     # alternates, path guesses. On any other page it is other alternates, path guesses, then the
     # audio-hinted alternates, so a news page that advertises only a podcast feed does not become
@@ -19,19 +19,43 @@ module Html2rss
     module Discovery # rubocop:disable Metrics/ModuleLength -- discovery ordering + probe stay on one owner
       # Common feed path suffixes probed after head +rel=alternate+ hints.
       DEFAULT_PATHS = CandidateCatalog::FEED_PATHS
-      # Word-ish podcast hint in a page's URL host, path or +<title>+ (plural allowed, case-insensitive). The
-      # words are {Vocabulary}'s +podcast_word+ (words read with a letter boundary: Latin and Cyrillic) and
-      # +podcast_unspaced+ (written without spaces, so no boundary).
-      PODCAST_PAGE_HINT = /
-        (?<![[:alpha:]])(?:#{Vocabulary.alternation(:podcast_word)})s?(?![[:alpha:]])
-        |#{Vocabulary.alternation(:podcast_unspaced)}
-      /ix
-      # Word-ish audio hint in an alternate's title or URL (Podlove-style per-format podcast feeds): the podcast
-      # words and audio file formats.
-      AUDIO_HINT = /
-        (?<![[:alpha:]])(?:#{Vocabulary.alternation(:podcast_word)}|mp3|m4a|aac|opus)s?(?![[:alpha:]])
-        |#{Vocabulary.alternation(:podcast_unspaced)}
-      /ix
+      ##
+      # How the podcast concepts ({Vocabulary::PAGE_PATTERNS}: +podcast_word+, +podcast_unspaced+) are read: one
+      # precompiled pair of hints per page scope, built at load. +page_hint+ is the word-ish podcast hint in a
+      # page's URL host, path or +<title>+ (plural allowed, case-insensitive); +audio_hint+ the one in an
+      # alternate's title or URL (Podlove-style per-format podcast feeds): the podcast words and audio file
+      # formats. +podcast_word+ is read with a letter boundary (Latin and Cyrillic), +podcast_unspaced+ written
+      # without spaces, so no boundary. The own terms of a {Vocabulary::PAGE_ONLY} language, of either concept,
+      # are read unspaced: a hint inside a URL or title has no whole label to match. Scopes with the same own
+      # terms (every shared language and +:all+) share one entry.
+      module PodcastReadings
+        Readings = Data.define(:page_hint, :audio_hint)
+
+        class << self
+          ##
+          # @param own [Hash{Symbol => String}] a scope's own alternatives per podcast concept
+          # @return [Readings]
+          def build(own)
+            unspaced = [Vocabulary.alternation(:podcast_unspaced), own.fetch(:podcast_word),
+                        own.fetch(:podcast_unspaced)].reject(&:empty?).join('|')
+            words = Vocabulary.alternation(:podcast_word)
+            Readings.new(
+              page_hint: /(?<![[:alpha:]])(?:#{words})s?(?![[:alpha:]])|#{unspaced}/ix,
+              audio_hint: /(?<![[:alpha:]])(?:#{words}|mp3|m4a|aac|opus)s?(?![[:alpha:]])|#{unspaced}/ix
+            ).freeze
+          end
+        end
+
+        # Per scope code; scopes with the same own terms share one entry.
+        BY_SCOPE = begin
+          built = {}
+          Vocabulary::SCOPES.transform_values do |scope|
+            own = %i[podcast_word podcast_unspaced].to_h { [_1, scope.own_alternation(_1)] }
+            built[own] ||= build(own)
+          end.freeze
+        end
+      end
+
       # +og:type+ values (+music.song+, +video.episode+, ...) marking a podcast or media page.
       MEDIA_OG_TYPE = /\A\s*(?:music|video)\./i
       # A JSON-LD +@type+ naming podcast content (short name or schema.org URL, alone or in an
@@ -45,15 +69,17 @@ module Html2rss
         #
         # @param page_url [String, Html2rss::Url] page or origin URL
         # @param request_session [Html2rss::RequestSession] shared session for follow-ups
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the podcast words
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML when available
         # @param html [String, nil] raw HTML when a document is unavailable
         # @param extra_paths [Array<String>] additional path guesses
         # @param max_probes [Integer, nil] max candidate GETs (nil = uncapped)
         # @return [Html2rss::Url, nil]
         # rubocop:disable-next Metrics/ParameterLists -- discovery kwargs stay co-located
-        def best_feed_url(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
+        def best_feed_url(page_url:, request_session:, vocabulary:, parsed_body: nil, html: nil, extra_paths: [],
                           max_probes: nil)
-          best_feed_response(page_url:, request_session:, parsed_body:, html:, extra_paths:, max_probes:)&.url
+          best_feed_response(page_url:, request_session:, vocabulary:, parsed_body:, html:, extra_paths:,
+                             max_probes:)&.url
         end
 
         ##
@@ -66,10 +92,11 @@ module Html2rss
         # @param response [Html2rss::RequestService::Response] the fetched page; a non-HTML
         #   response contributes its raw body only
         # @param request_session [Html2rss::RequestSession] session for the probes
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
         # @return [Html2rss::Url, nil]
-        def native_feed_url(response:, request_session:)
+        def native_feed_url(response:, request_session:, vocabulary:)
           parsed_body = response.parsed_body if response.html_response?
-          best_feed_url(page_url: response.url, request_session:, parsed_body:, html: response.body)
+          best_feed_url(page_url: response.url, request_session:, vocabulary:, parsed_body:, html: response.body)
         end
 
         ##
@@ -77,18 +104,19 @@ module Html2rss
         #
         # @param page_url [String, Html2rss::Url]
         # @param request_session [Html2rss::RequestSession]
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
         # @param parsed_body [Nokogiri::HTML::Document, nil]
         # @param html [String, nil]
         # @param extra_paths [Array<String>]
         # @param max_probes [Integer, nil] max candidate GETs (nil = uncapped)
         # @return [Html2rss::RequestService::Response, nil]
         # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- discovery kwargs stay co-located
-        def best_feed_response(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
-                               max_probes: nil)
+        def best_feed_response(page_url:, request_session:, vocabulary:, parsed_body: nil, html: nil,
+                               extra_paths: [], max_probes: nil)
           page = Html2rss::Url.from_absolute(page_url)
           doc = document(parsed_body)
           advertisement = RequestService::FeedAdvertisement.from_document(doc, page_url: page)
-          candidates = candidates(page, advertisement, doc:, html:, extra_paths:)
+          candidates = candidates(page, advertisement, doc:, html:, extra_paths:, vocabulary:)
           Log.debug("Syndication::Discovery: host=#{page.host} candidate_count=#{candidates.size}")
 
           first_feedish_response(
@@ -109,15 +137,16 @@ module Html2rss
         # signals the audio-hinted alternates come after the guesses).
         #
         # @param page_url [String, Html2rss::Url]
+        # @param vocabulary [Vocabulary::Scope] the page language's scope
         # @param parsed_body [Nokogiri::HTML::Document, nil]
         # @param html [String, nil]
         # @param extra_paths [Array<String>]
         # @return [Array<Html2rss::Url>]
-        def candidate_urls(page_url:, parsed_body: nil, html: nil, extra_paths: [])
+        def candidate_urls(page_url:, vocabulary:, parsed_body: nil, html: nil, extra_paths: [])
           page = Html2rss::Url.from_absolute(page_url)
           doc = document(parsed_body)
           advertisement = RequestService::FeedAdvertisement.from_document(doc, page_url: page)
-          candidates(page, advertisement, doc:, html:, extra_paths:)
+          candidates(page, advertisement, doc:, html:, extra_paths:, vocabulary:)
         end
 
         ##
@@ -168,8 +197,9 @@ module Html2rss
           nil
         end
 
-        def candidates(page, advertisement, doc:, html:, extra_paths:)
-          leading, trailing = alternate_feed_urls(page, advertisement, doc:, html:)
+        # rubocop:disable-next Metrics/ParameterLists -- discovery kwargs stay co-located
+        def candidates(page, advertisement, doc:, html:, extra_paths:, vocabulary:)
+          leading, trailing = alternate_feed_urls(page, advertisement, doc:, html:, readings: readings(vocabulary))
           (leading + path_guess_urls(page, extra_paths:) + trailing).uniq
         end
 
@@ -179,20 +209,22 @@ module Html2rss
         end
 
         # @return [Array(Array, Array)] alternates ranked before the path guesses, and those after them
-        def alternate_feed_urls(page, advertisement, doc:, html:)
+        def alternate_feed_urls(page, advertisement, doc:, html:, readings:)
           feeds = advertisement.feeds
           return [AlternateLinks.hrefs(html.to_s).filter_map { |href| absolute_url(page, href) }, []] if feeds.empty?
 
-          audio, other = feeds.keys.partition { |url| AUDIO_HINT.match?("#{feeds.fetch(url)} #{url}") }
-          podcast_page?(doc, page) ? [audio + other, []] : [other, audio]
+          audio, other = feeds.keys.partition { |url| readings.audio_hint.match?("#{feeds.fetch(url)} #{url}") }
+          podcast_page?(doc, page, readings.page_hint) ? [audio + other, []] : [other, audio]
         end
 
         # The page itself looks like a podcast page: cheap signals only (no request, no JSON parse).
-        def podcast_page?(doc, page)
-          PODCAST_PAGE_HINT.match?("#{page.host}#{page.path}") || PODCAST_PAGE_HINT.match?(doc.title) ||
+        def podcast_page?(doc, page, hint)
+          hint.match?("#{page.host}#{page.path}") || hint.match?(doc.title) ||
             MEDIA_OG_TYPE.match?(doc.at_css('meta[property="og:type"]')&.[]('content')) ||
             Html::Probe.scripts(doc, Html::Probe::APPLICATION_LD_JSON).any? { PODCAST_SCHEMA_TYPE.match?(_1.text) }
         end
+
+        def readings(vocabulary) = PodcastReadings::BY_SCOPE.fetch(vocabulary.code)
 
         def path_guess_urls(page, extra_paths:)
           paths = (page_dir_paths(page) + DEFAULT_PATHS + Array(extra_paths)).uniq

@@ -434,6 +434,7 @@ RSpec.describe Html2rss::Capture do
 
         expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
           page_url: Html2rss::Url.from_absolute(url), request_session: kind_of(Html2rss::RequestSession),
+          vocabulary: all_scope,
           parsed_body: kind_of(Nokogiri::HTML::Document), html: a_string_including('Page Title')
         )
       end

@@ -175,7 +175,8 @@ module Html2rss
     end
 
     def probe_native_feed(response)
-      Syndication::Discovery.native_feed_url(response:, request_session: discovery_session)&.to_s
+      Syndication::Discovery.native_feed_url(response:, request_session: discovery_session,
+                                             vocabulary: Vocabulary[Channel.language_for(response)])&.to_s
     rescue Html2rss::ContractError
       raise
     rescue Html2rss::Error

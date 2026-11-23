@@ -40,7 +40,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
 
       urls = described_class.candidate_urls(
         page_url: 'https://example.com/blog/',
-        parsed_body: doc
+        parsed_body: doc, vocabulary: all_scope
       )
 
       expect(urls.first.to_s).to eq('https://example.com/custom.xml')
@@ -58,7 +58,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
         </head></html>
       HTML
 
-      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc).map(&:to_s)
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc,
+                                            vocabulary: all_scope).map(&:to_s)
 
       expect(urls.first(4)).to eq(%w[https://example.com/feed/a/ https://example.com/feed/m4a/
                                      https://example.com/feed/ https://example.com/comments/feed/])
@@ -75,7 +76,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
         </head></html>
       HTML
 
-      urls = described_class.candidate_urls(page_url: 'https://example.com/news/', parsed_body: doc).map(&:to_s)
+      urls = described_class.candidate_urls(page_url: 'https://example.com/news/', parsed_body: doc,
+                                            vocabulary: all_scope).map(&:to_s)
 
       expect(urls.first(2)).to eq(%w[https://example.com/news.xml https://example.com/news/feed])
       expect(urls.last).to eq('https://example.com/podcast.xml')
@@ -91,14 +93,16 @@ RSpec.describe Html2rss::Syndication::Discovery do
         HTML
       end
       let(:guesses) do
-        described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: Nokogiri::HTML('')).map(&:to_s)
+        described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: Nokogiri::HTML(''),
+                                       vocabulary: all_scope).map(&:to_s)
       end
       let(:podcast_urls) { %w[https://feeds.example.net/tide-talk/rss https://example.com/feed/mp3/] }
       let(:other_urls) { %w[https://example.com/feed.xml https://example.com/comments.xml] }
 
       def ranked(title)
         doc = Nokogiri::HTML("<html><head><title>#{title}</title>#{alternates}</head></html>")
-        described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc).map(&:to_s)
+        described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc,
+                                       vocabulary: all_scope).map(&:to_s)
       end
 
       it 'ranks audio-hinted alternates after the path guesses on a page without podcast signals' do
@@ -131,7 +135,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
           </head></html>
         HTML
 
-        urls = described_class.candidate_urls(page_url:, parsed_body: doc).map(&:to_s)
+        urls = described_class.candidate_urls(page_url:, parsed_body: doc, vocabulary: all_scope).map(&:to_s)
 
         expect(urls.first(2)).to eq(%w[https://example.com/feed/mp3/ https://example.com/news.xml])
       end
@@ -145,7 +149,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
         </head></html>
       HTML
 
-      urls = described_class.candidate_urls(page_url: 'https://show-podcast.example.com/', parsed_body: doc).map(&:to_s)
+      urls = described_class.candidate_urls(page_url: 'https://show-podcast.example.com/', parsed_body: doc,
+                                            vocabulary: all_scope).map(&:to_s)
 
       expect(urls.first(2)).to eq(%w[https://show-podcast.example.com/news.xml https://show-podcast.example.com/feed/mp3/])
     end
@@ -160,7 +165,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
         </head></html>
       HTML
 
-      urls = described_class.candidate_urls(page_url: 'https://example.com/news?type=podcast', parsed_body: doc)
+      urls = described_class.candidate_urls(page_url: 'https://example.com/news?type=podcast', parsed_body: doc,
+                                            vocabulary: all_scope)
 
       expect(urls.first.to_s).to eq('https://example.com/news.xml')
     end
@@ -169,8 +175,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
       hinted = ['Podcasts', '/episode-12/', 'Example AUDIO']
       unhinted = ['Audiobooks', 'Podcasting tips', '/mp3/', 'News']
 
-      expect(hinted.grep(described_class::PODCAST_PAGE_HINT)).to eq(hinted)
-      expect(unhinted.grep(described_class::PODCAST_PAGE_HINT)).to be_empty
+      expect(hinted.grep(described_class::PodcastReadings::BY_SCOPE.fetch(:all).page_hint)).to eq(hinted)
+      expect(unhinted.grep(described_class::PodcastReadings::BY_SCOPE.fetch(:all).page_hint)).to be_empty
     end
 
     it 'matches the unambiguous podcast words of other languages, and leaves general words alone',
@@ -178,7 +184,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
       hinted = ['Épisode 4', '/episodios/', 'ÉPISODES', 'Episódio 2', 'ポッドキャスト一覧', '音声エピソード']
       unhinted = ['Folge 3', 'Avsnitt', 'Odcinek', 'Aflevering', 'Episodically']
 
-      [described_class::PODCAST_PAGE_HINT, described_class::AUDIO_HINT].each do |hint|
+      [described_class::PodcastReadings::BY_SCOPE.fetch(:all).page_hint,
+       described_class::PodcastReadings::BY_SCOPE.fetch(:all).audio_hint].each do |hint|
         expect(hinted.grep(hint)).to eq(hinted)
         expect(unhinted.grep(hint)).to be_empty
       end
@@ -188,14 +195,14 @@ RSpec.describe Html2rss::Syndication::Discovery do
       hinted = ['Podcast Feed', 'EPISODES', 'Audio', '/feed/opus/', '/podcast09/x.xml', '/aac.xml', '/podcasts/']
       unhinted = ['Audiobooks', 'Podcasting tips', '/feed/mp3x', 'aacounty', 'News feed']
 
-      expect(hinted.grep(described_class::AUDIO_HINT)).to eq(hinted)
-      expect(unhinted.grep(described_class::AUDIO_HINT)).to be_empty
+      expect(hinted.grep(described_class::PodcastReadings::BY_SCOPE.fetch(:all).audio_hint)).to eq(hinted)
+      expect(unhinted.grep(described_class::PodcastReadings::BY_SCOPE.fetch(:all).audio_hint)).to be_empty
     end
 
     it 'reads head alternates from any HTML document subclass' do
       doc = Nokogiri::HTML5('<head><link rel="alternate" type="application/rss+xml" href="/h5.xml"></head>')
 
-      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc)
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc, vocabulary: all_scope)
 
       expect(urls.first.to_s).to eq('https://example.com/h5.xml')
     end
@@ -208,14 +215,15 @@ RSpec.describe Html2rss::Syndication::Discovery do
         </head></html>
       HTML
 
-      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc).map(&:to_s)
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc,
+                                            vocabulary: all_scope).map(&:to_s)
 
       expect(urls.first(2)).to eq(%w[https://example.com/news.xml https://example.com/comments.xml])
     end
 
     it 'falls back to string HTML alternate scanning when no document is given' do
       html = '<link rel="alternate" type="application/atom+xml" href="/atom.xml">'
-      urls = described_class.candidate_urls(page_url: 'https://example.com/', html:)
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', html:, vocabulary: all_scope)
 
       expect(urls.first.to_s).to eq('https://example.com/atom.xml')
     end
@@ -224,7 +232,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
       html = '<link rel="alternate" type="application/rss+xml" href="/feed">'
 
       urls = described_class.candidate_urls(
-        page_url: 'https://example.com/news/index.html', html:, extra_paths: ['/extra', '/feed']
+        page_url: 'https://example.com/news/index.html', html:, extra_paths: ['/extra', '/feed'], vocabulary: all_scope
       )
 
       expect(urls.map(&:to_s)).to eq(%w[
@@ -245,12 +253,13 @@ RSpec.describe Html2rss::Syndication::Discovery do
     end
 
     it 'works without html or a parsed body and ignores a non-document parsed body', :aggregate_failures do
-      expect(described_class.candidate_urls(page_url: 'https://example.com/')).to include(
+      expect(described_class.candidate_urls(page_url: 'https://example.com/', vocabulary: all_scope)).to include(
         Html2rss::Url.from_absolute('https://example.com/feed')
       )
 
       html = '<link rel="alternate" type="application/atom+xml" href="/atom-alt.xml">'
-      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: 'not a document', html:)
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: 'not a document', html:,
+                                            vocabulary: all_scope)
 
       expect(urls.first.to_s).to eq('https://example.com/atom-alt.xml')
     end
@@ -261,7 +270,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
       urls = nil
       expect do
         urls = described_class.candidate_urls(
-          page_url: 'https://example.com/', html:, extra_paths: ['ht tp://x', '/kept']
+          page_url: 'https://example.com/', html:, extra_paths: ['ht tp://x', '/kept'], vocabulary: all_scope
         )
       end.not_to raise_error
       expect(urls).to all(be_a(Html2rss::Url))
@@ -273,7 +282,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
       doc = Nokogiri::HTML('<html><head></head><body>no feeds</body></html>')
       html = '<link rel="alternate" type="application/rss+xml" href="/from-html.xml">'
 
-      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc, html:)
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc, html:,
+                                            vocabulary: all_scope)
 
       expect(urls.first.to_s).to eq('https://example.com/from-html.xml')
     end
@@ -330,7 +340,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
     it 'follows the fetched page\'s advertised feed on another host first', :aggregate_failures do
       allow(session).to receive(:follow_up).and_return(hit)
 
-      expect(described_class.native_feed_url(response: page, request_session: session).to_s)
+      expect(described_class.native_feed_url(response: page, request_session: session, vocabulary: all_scope).to_s)
         .to eq('https://feeds.example.net/show.xml')
       expect(session).to have_received(:follow_up).once.with(
         url: Html2rss::Url.from_absolute('https://feeds.example.net/show.xml'), relation: :advertised_feed,
@@ -343,7 +353,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
       plain = feed_response(body:, content_type: 'text/plain', url: page_url.to_s)
       allow(session).to receive(:follow_up).and_return(hit)
 
-      described_class.native_feed_url(response: plain, request_session: session)
+      described_class.native_feed_url(response: plain, request_session: session, vocabulary: all_scope)
 
       expect(session).to have_received(:follow_up).once.with(
         url: Html2rss::Url.from_absolute('https://example.com/alt.xml'), relation: :auto_source, origin_url: page_url
@@ -355,7 +365,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
       landed = feed_response(body:, content_type: 'text/html', url: 'https://www.example.com/blog/')
       allow(session).to receive(:follow_up).and_return(hit)
 
-      described_class.native_feed_url(response: landed, request_session: session)
+      described_class.native_feed_url(response: landed, request_session: session, vocabulary: all_scope)
 
       expect(session).to have_received(:follow_up).once.with(
         url: Html2rss::Url.from_absolute('https://www.example.com/blog/feed.xml'), relation: :advertised_feed,
@@ -387,7 +397,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
       selected = described_class.best_feed_url(
         page_url:,
         request_session: session,
-        html: ''
+        html: '', vocabulary: all_scope
       )
 
       expect(selected.to_s).to eq('https://example.com/news/feed')
@@ -414,7 +424,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
         ->(**) { hit }
       )
 
-      selected = described_class.best_feed_url(page_url:, request_session: session, html: '')
+      selected = described_class.best_feed_url(page_url:, request_session: session, html: '', vocabulary: all_scope)
 
       # Candidates: /news/feed (error), /news/rss.xml (miss), /news/atom.xml (hit)
       expect(selected.to_s).to eq('https://example.com/news/atom.xml')
@@ -423,7 +433,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
     it 'propagates contract errors raised while probing a candidate' do
       allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::Context::InvalidError)
 
-      expect { described_class.best_feed_url(page_url:, request_session: session, html: '') }
+      expect { described_class.best_feed_url(page_url:, request_session: session, html: '', vocabulary: all_scope) }
         .to raise_error(Html2rss::ContractError)
     end
 
@@ -440,7 +450,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
         page_url:,
         request_session: session,
         html: '',
-        max_probes: 1
+        max_probes: 1, vocabulary: all_scope
       )
 
       expect(selected).to be_nil
@@ -450,7 +460,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
     it 'probes past misses when uncapped and finds a later feed', :aggregate_failures do
       allow(session).to receive(:follow_up).and_invoke(->(**) { miss }, ->(**) { miss }, ->(**) { hit })
 
-      selected = described_class.best_feed_url(page_url:, request_session: session, html: '', max_probes: nil)
+      selected = described_class.best_feed_url(page_url:, request_session: session, html: '', max_probes: nil,
+                                               vocabulary: all_scope)
 
       expect(selected.to_s).to eq('https://example.com/news/atom.xml')
       expect(session).to have_received(:follow_up).exactly(3).times
@@ -459,7 +470,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
     it 'finds a feed within max_probes when it is the last allowed candidate' do
       allow(session).to receive(:follow_up).and_invoke(->(**) { miss }, ->(**) { hit })
 
-      selected = described_class.best_feed_url(page_url:, request_session: session, html: '', max_probes: 2)
+      selected = described_class.best_feed_url(page_url:, request_session: session, html: '', max_probes: 2,
+                                               vocabulary: all_scope)
 
       expect(selected.to_s).to eq('https://example.com/news/atom.xml')
     end
@@ -467,7 +479,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
     it 'probes candidates as same-origin auto-source follow-ups from the page origin', :aggregate_failures do
       allow(session).to receive(:follow_up).and_return(miss)
 
-      described_class.best_feed_url(page_url:, request_session: session, html: '', max_probes: 1)
+      described_class.best_feed_url(page_url:, request_session: session, html: '', max_probes: 1, vocabulary: all_scope)
 
       expect(session).to have_received(:follow_up).with(
         url: having_attributes(to_s: 'https://example.com/news/feed'),
@@ -480,7 +492,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
       allow(session).to receive(:follow_up).and_return(hit)
       html = '<link rel="alternate" type="application/rss+xml" href="/alt.xml">'
 
-      described_class.best_feed_url(page_url:, request_session: session, html:)
+      described_class.best_feed_url(page_url:, request_session: session, html:, vocabulary: all_scope)
 
       expect(session).to have_received(:follow_up).with(
         url: having_attributes(to_s: 'https://example.com/alt.xml'), relation: :auto_source,
@@ -492,7 +504,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
       allow(session).to receive(:follow_up).and_return(hit)
       doc = Nokogiri::HTML('<head><link rel="alternate" type="application/rss+xml" href="/doc.xml"></head>')
 
-      described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc)
+      described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, vocabulary: all_scope)
 
       expect(session).to have_received(:follow_up).with(
         url: having_attributes(to_s: 'https://example.com/doc.xml'), relation: :advertised_feed,
@@ -509,7 +521,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
         '<head><link rel="alternate" type="application/rss+xml" href="https://feeds.example.net/show.xml"></head>'
       )
 
-      described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 1)
+      described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 1,
+                                    vocabulary: all_scope)
 
       expect(session).to have_received(:follow_up).once.with(
         url: Html2rss::Url.from_absolute('https://feeds.example.net/show.xml'), relation: :advertised_feed,
@@ -523,7 +536,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
         '<head><link rel="alternate" type="application/rss+xml" href="http://feeds.example.net/show.xml"></head>'
       )
 
-      selected = described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 1)
+      selected = described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 1,
+                                               vocabulary: all_scope)
 
       expect(selected).to be_nil
       expect(session).to have_received(:follow_up).once
@@ -534,7 +548,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
       allow(session).to receive(:follow_up).and_invoke(->(**) { miss }, ->(**) { miss })
       doc = Nokogiri::HTML('<head><link rel="alternate" type="application/rss+xml" href="/doc.xml"></head>')
 
-      described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 2)
+      described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 2,
+                                    vocabulary: all_scope)
 
       expect(session).to have_received(:follow_up).with(
         url: having_attributes(to_s: 'https://example.com/news/feed'), relation: :auto_source, origin_url: page_url
@@ -544,7 +559,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
     it 'probes caller-supplied extra paths' do
       allow(session).to receive(:follow_up).and_return(miss)
 
-      described_class.best_feed_url(page_url:, request_session: session, html: '', extra_paths: ['/news/custom-feed'])
+      described_class.best_feed_url(page_url:, request_session: session, html: '', extra_paths: ['/news/custom-feed'],
+                                    vocabulary: all_scope)
 
       expect(session).to have_received(:follow_up).with(
         url: having_attributes(to_s: 'https://example.com/news/custom-feed'), relation: :auto_source,
@@ -555,7 +571,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
     it 'returns the validated response itself, not only its URL' do
       allow(session).to receive(:follow_up).and_return(hit)
 
-      response = described_class.best_feed_response(page_url:, request_session: session, html: '')
+      response = described_class.best_feed_response(page_url:, request_session: session, html: '',
+                                                    vocabulary: all_scope)
 
       expect(response).to be(hit)
     end
@@ -564,7 +581,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
       allow(session).to receive(:follow_up).and_return(miss)
       allow(Html2rss::Log).to receive(:info)
 
-      expect(described_class.best_feed_response(page_url:, request_session: session, html: '')).to be_nil
+      expect(described_class.best_feed_response(page_url:, request_session: session, html: '',
+                                                vocabulary: all_scope)).to be_nil
       expect(Html2rss::Log).not_to have_received(:info)
     end
 
@@ -572,7 +590,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
       allow(session).to receive(:follow_up).and_return(miss)
       allow(Html2rss::Log).to receive(:debug)
 
-      described_class.best_feed_response(page_url:, request_session: session, html: '', extra_paths: ['/x'])
+      described_class.best_feed_response(page_url:, request_session: session, html: '', extra_paths: ['/x'],
+                                         vocabulary: all_scope)
 
       expect(Html2rss::Log).to have_received(:debug).with(
         'Syndication::Discovery: host=example.com candidate_count=13'
@@ -586,7 +605,8 @@ RSpec.describe Html2rss::Syndication::Discovery do
       )
       allow(Html2rss::Log).to receive(:debug)
 
-      described_class.best_feed_response(page_url:, request_session: session, html: '', max_probes: 2)
+      described_class.best_feed_response(page_url:, request_session: session, html: '', max_probes: 2,
+                                         vocabulary: all_scope)
 
       expect(Html2rss::Log).to have_received(:debug).with(
         'Syndication::Discovery: probe skipped host=example.com ' \
@@ -598,7 +618,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
       allow(session).to receive(:follow_up).and_return(hit)
       allow(Html2rss::Log).to receive(:info)
 
-      described_class.best_feed_response(page_url:, request_session: session, html: '')
+      described_class.best_feed_response(page_url:, request_session: session, html: '', vocabulary: all_scope)
 
       expect(Html2rss::Log).to have_received(:info).with(
         {
@@ -607,6 +627,35 @@ RSpec.describe Html2rss::Syndication::Discovery do
           message: 'Syndication::Discovery: host=example.com selected_feed_url=https://example.com/news/atom.xml'
         }.to_json
       )
+    end
+  end
+
+  describe 'a page-only language declaring the podcast concepts' do
+    let(:xx) do
+      terms = Html2rss::Vocabulary::CONCEPTS.to_h { [_1, Html2rss::Vocabulary::NONE] }
+      terms[:podcast_word] = %w[uitzending-xx]
+      terms[:podcast_unspaced] = %w[luister-xx]
+      language = Html2rss::Vocabulary::Language.new(code: :xx, terms: terms.freeze)
+      Html2rss::Vocabulary.build_scope(:zh, Html2rss::Vocabulary::ALL, own: [language])
+    end
+    let(:own) { %i[podcast_word podcast_unspaced].to_h { [_1, xx.own_alternation(_1)] } }
+    let(:readings) { described_class::PodcastReadings.build(own) }
+    let(:shared) { described_class::PodcastReadings::BY_SCOPE.fetch(:all) }
+
+    it 'reads both own concepts as hints in a page and in an alternate', :aggregate_failures do
+      %w[uitzending-xx luister-xx].each do |word|
+        expect(readings.page_hint.match?("show.example/#{word}s")).to be(true), word
+        expect(readings.audio_hint.match?("Feed #{word}")).to be(true), word
+        expect(shared.page_hint.match?("show.example/#{word}")).to be(false), word
+      end
+    end
+
+    it 'keeps every shared scope on the one shared entry, and still reads the shared words', :aggregate_failures do
+      by_scope = described_class::PodcastReadings::BY_SCOPE
+
+      %i[en ja de].each { expect(by_scope.fetch(_1)).to be(shared) }
+      expect(by_scope.fetch(:zh)).to be(shared)
+      expect([readings.page_hint.match?('/podcasts/'), readings.audio_hint.match?('feed.mp3')]).to eq([true, true])
     end
   end
 end

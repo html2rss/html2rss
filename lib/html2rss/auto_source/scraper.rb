@@ -150,8 +150,8 @@ module Html2rss
       # @option opts [Hash] :sitemap scraper toggle and configuration
       # @return [Object, nil]
       # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- construction context for structured and heuristic scrapers
-      def self.build_instance(scraper, parsed_body, opts:, url:, request_session: nil, body: nil, document: nil,
-                              link_resolver: nil, captured_responses: [])
+      def self.build_instance(scraper, parsed_body, opts:, url:, vocabulary:, request_session: nil, body: nil,
+                              document: nil, link_resolver: nil, captured_responses: [])
         return unless opts.dig(scraper.options_key, :enabled)
         return if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
 
@@ -162,7 +162,8 @@ module Html2rss
           body:,
           document:,
           link_resolver:,
-          captured_responses:
+          captured_responses:,
+          vocabulary:
         )
         scraper.new(parsed_body, url:, **kwargs, **scraper_opts)
       end
@@ -176,12 +177,13 @@ module Html2rss
       end
 
       def self.construction_kwargs(scraper, request_session:, body:, document:, link_resolver:, # rubocop:disable Metrics/ParameterLists -- scraper construction bag
-                                   captured_responses:)
+                                   captured_responses:, vocabulary:)
         if HEURISTIC_SCRAPERS.include?(scraper)
           { document:, link_resolver: }.compact
         else
           {}.tap do |kwargs|
             kwargs[:request_session] = request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
+            kwargs[:vocabulary] = vocabulary if scraper == NativeFeed
             kwargs[:body] = body if scraper == Sitemap
             kwargs[:captured_responses] = captured_responses if CAPTURED_RESPONSE_SCRAPERS.include?(scraper)
           end

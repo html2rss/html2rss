@@ -166,7 +166,8 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response] the fetched page, where any redirect landed
     # @return [Array(Html2rss::Url, nil), String, nil)] feed URL and optional discovery error note
     def self.find_native_feed(session, response)
-      feed = Syndication::Discovery.native_feed_url(response:, request_session: session)
+      feed = Syndication::Discovery.native_feed_url(response:, request_session: session,
+                                                    vocabulary: Vocabulary[Channel.language_for(response)])
       [feed, nil]
     rescue Html2rss::ContractError
       raise

@@ -65,7 +65,7 @@ module Html2rss
     # any other pattern concept would have a dead term, so the conformance spec rejects it.
     PAGE_PATTERNS = %i[utility_cta read_more topic_lead topic_preposition read_more_suffix new_window_notice
                        paid_label ad_word element_label field_label type_label clock_suffix date_piece
-                       pager_label page_link page_link_label].freeze
+                       pager_label page_link page_link_label podcast_word podcast_unspaced].freeze
 
     # Every concept each language in {ALL} declares.
     CONCEPTS = (WORD_CONCEPTS + PATTERN_CONCEPTS).freeze

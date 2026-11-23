@@ -199,7 +199,8 @@ module Html2rss
             body:,
             document: (page_document if Scraper.heuristic_tier?(tier)),
             link_resolver:,
-            captured_responses:
+            captured_responses:,
+            vocabulary:
           )
           next unless instance
           next unless instance.extractable?
@@ -237,7 +238,8 @@ module Html2rss
         url:,
         request_session:,
         body:,
-        captured_responses:
+        captured_responses:,
+        vocabulary:
       )
     end
 

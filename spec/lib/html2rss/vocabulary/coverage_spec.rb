@@ -178,7 +178,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads a Cyrillic podcast word with a letter boundary, in any case', :aggregate_failures do
-      hint = Html2rss::Syndication::Discovery::PODCAST_PAGE_HINT
+      hint = Html2rss::Syndication::Discovery::PodcastReadings::BY_SCOPE.fetch(:all).page_hint
 
       podcast = ['Подкаст о портовом городе', 'Все подкасты радио', 'выпуск ПОДКАСТОВ']
 
@@ -274,7 +274,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'does not read 播客 inside a Han compound as a podcast word', :aggregate_failures do
-      hint = Html2rss::Syndication::Discovery::PODCAST_PAGE_HINT
+      hint = Html2rss::Syndication::Discovery::PodcastReadings::BY_SCOPE.fetch(:all).page_hint
 
       %w[直播客户端 主播客串 转播客场 港口播客].each { expect(hint.match?(_1)).to be(false), _1 }
     end

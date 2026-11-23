@@ -209,7 +209,8 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       allow(Html2rss::SST::Normalizer).to receive(:call)
 
       described_class::HEURISTIC_SCRAPERS.each do |klass|
-        instance = described_class.build_instance(klass, parsed_body, opts:, url:, document: shared_document)
+        instance = described_class.build_instance(klass, parsed_body, opts:, url:, document: shared_document,
+                                                                      vocabulary: all_scope)
         instance.extractable?
       end
 
@@ -222,7 +223,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
 
       described_class::HEURISTIC_SCRAPERS.each do |klass|
         instance = described_class.build_instance(
-          klass, parsed_body, opts:, url:, document:, link_resolver: shared_resolver
+          klass, parsed_body, opts:, url:, document:, link_resolver: shared_resolver, vocabulary: all_scope
         )
         instance.extractable?
       end
@@ -275,16 +276,20 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     let(:resolver) { Html2rss::Scoring::LinkResolver.new(url) }
 
     it 'returns nil when the scraper is disabled or missing from opts', :aggregate_failures do
-      expect(described_class.build_instance(described_class::Schema, parsed_body, opts: {}, url:)).to be_nil
+      expect(described_class.build_instance(described_class::Schema, parsed_body, opts: {}, url:,
+                                                                                  vocabulary: all_scope)).to be_nil
       expect(
-        described_class.build_instance(described_class::Schema, parsed_body, opts: { schema: { enabled: false } }, url:)
+        described_class.build_instance(described_class::Schema, parsed_body, opts: { schema: { enabled: false } },
+                                                                             url:, vocabulary: all_scope)
       ).to be_nil
     end
 
     it 'returns nil for heuristic scrapers when no shared document is given' do
       opts = { semantic_html: { enabled: true } }
 
-      expect(described_class.build_instance(described_class::SemanticHtml, parsed_body, opts:, url:)).to be_nil
+      built = described_class.build_instance(described_class::SemanticHtml, parsed_body, opts:, url:,
+                                                                                         vocabulary: all_scope)
+      expect(built).to be_nil
     end
 
     it 'passes the document, link resolver and scraper options to heuristic scrapers', :aggregate_failures do
@@ -292,7 +297,8 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       opts = { semantic_html: { enabled: true, max: 3 } }
 
       result = described_class.build_instance(
-        described_class::SemanticHtml, parsed_body, opts:, url:, document:, link_resolver: resolver
+        described_class::SemanticHtml, parsed_body, opts:, url:, document:, link_resolver: resolver,
+                                                    vocabulary: all_scope
       )
 
       expect(result).to eq(:semantic)
@@ -304,7 +310,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       allow(described_class::Html).to receive(:new).and_return(:html)
       opts = { html: { enabled: true } }
 
-      described_class.build_instance(described_class::Html, parsed_body, opts:, url:, document:)
+      described_class.build_instance(described_class::Html, parsed_body, opts:, url:, document:, vocabulary: all_scope)
 
       expect(described_class::Html).to have_received(:new).with(parsed_body, url:, document:)
     end
@@ -314,10 +320,13 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       allow(described_class::Schema).to receive(:new).and_return(:schema)
       opts = { native_feed: { enabled: true }, schema: { enabled: true } }
 
-      described_class.build_instance(described_class::NativeFeed, parsed_body, opts:, url:, request_session: :session)
-      described_class.build_instance(described_class::Schema, parsed_body, opts:, url:, request_session: :session)
+      described_class.build_instance(described_class::NativeFeed, parsed_body, opts:, url:, request_session: :session,
+                                                                               vocabulary: all_scope)
+      described_class.build_instance(described_class::Schema, parsed_body, opts:, url:, request_session: :session,
+                                                                           vocabulary: all_scope)
 
-      expect(described_class::NativeFeed).to have_received(:new).with(parsed_body, url:, request_session: :session)
+      expect(described_class::NativeFeed).to have_received(:new).with(parsed_body, url:, request_session: :session,
+                                                                                   vocabulary: all_scope)
       expect(described_class::Schema).to have_received(:new).with(parsed_body, url:)
     end
 
@@ -326,7 +335,8 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       opts = { sitemap: { enabled: true } }
 
       described_class.build_instance(
-        described_class::Sitemap, parsed_body, opts:, url:, body: '<urlset/>', request_session: :session
+        described_class::Sitemap, parsed_body, opts:, url:, body: '<urlset/>', request_session: :session,
+                                               vocabulary: all_scope
       )
 
       expect(described_class::Sitemap).to have_received(:new)
@@ -338,7 +348,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
 
       opts = { xhr_articles: { enabled: true } }
 
-      described_class.build_instance(described_class::XhrArticles, parsed_body, opts:, url:)
+      described_class.build_instance(described_class::XhrArticles, parsed_body, opts:, url:, vocabulary: all_scope)
 
       expect(described_class::XhrArticles).to have_received(:new).with(parsed_body, url:, captured_responses: [])
     end
@@ -348,8 +358,9 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       captured = [{ 'items' => [] }]
       opts = { xhr_articles: { enabled: true } }
 
-      described_class.build_instance(described_class::XhrArticles, parsed_body, opts:, url:,
-                                                                                captured_responses: captured)
+      described_class.build_instance(
+        described_class::XhrArticles, parsed_body, opts:, url:, captured_responses: captured, vocabulary: all_scope
+      )
 
       expect(described_class::XhrArticles).to have_received(:new).with(parsed_body, url:, captured_responses: captured)
     end

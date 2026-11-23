@@ -382,7 +382,8 @@ module Html2rss
       resources = FeedPipeline::RuntimePolicy.resources_for(config)
       strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(config.strategy)
       session = RequestSession.build(config:, strategy:, budget: resources.budget, policy: resources.policy)
-      Syndication::Discovery.native_feed_url(response:, request_session: session)
+      Syndication::Discovery.native_feed_url(response:, request_session: session,
+                                             vocabulary: Vocabulary[Channel.language_for(response, config.channel)])
     rescue Html2rss::ContractError
       raise
     rescue Html2rss::Error
