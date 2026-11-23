@@ -35,6 +35,8 @@ These abort immediately (`AutoFallback::NON_FALLBACK_ERRORS`): unknown strategy,
 
 Retries share the feed's request/session policy. Pin a concrete strategy when you need a single-hop budget profile.
 
+`AutoFallback` owns the entry-resolution attempt: it hands `FeedResolution.call` the request slots left minus the initial fetch a later strategy needs, records the returned diagnostic, and extracts the winning probe's response without fetching it again. The resolved page's own scraper follow-ups draw on the same budget, so on a zero-item retry they can still spend the slot reserved for the next strategy.
+
 ### Terminal fallback outcome
 
 A hop that returns zero items does **not** erase an earlier terminal transport failure (`RequestTimedOut`, `BlockedSurfaceDetected`, or `ConnectionFailed`). `AutoFallback` remembers that error across later hops and, when no later hop yields items, re-raises it with `attempts` attached. A later hop that extracts items still succeeds. Two zero-item hops with no terminal transport error still raise `NoFeedItemsExtracted`. True empty stays the web policy already in force: listing `EXTRACTION_EMPTY` is cacheable; `app_shell` and `high_entropy_surface` are not. `html2rss-web` `ErrorClassifier` maps the raised error to HTTP/cache policy; it does not invent a second cache rule for empty extraction.

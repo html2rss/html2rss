@@ -349,36 +349,15 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       end
 
       # rubocop:disable-next RSpec/ExampleLength -- resolution kwargs stay in one example
-      it 'asks feed resolution with the hop inputs', :aggregate_failures do
-        allow(Html2rss::FeedResolution).to receive(:try_apply!).and_call_original
+      it 'asks feed resolution with the hop inputs and the slots left after a later strategy', :aggregate_failures do
+        allow(Html2rss::FeedResolution).to receive(:call).and_call_original
 
         expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted)
-        expect(Html2rss::FeedResolution).to have_received(:try_apply!).with(
-          hash_including(
-            pipeline:, config: kind_of(Html2rss::Config), strategy: :default,
-            response: kind_of(Html2rss::RequestService::Response),
-            session: kind_of(Html2rss::RequestSession),
-            resources: kind_of(Html2rss::FeedPipeline::RuntimePolicy::Resources),
-            articles: kind_of(Array), state: kind_of(described_class::AttemptState),
-            budget: kind_of(Html2rss::RequestService::Budget),
-            scrape_target: kind_of(Html2rss::ScrapeTarget)
-          )
-        ).at_least(:once)
-      end
-
-      # rubocop:disable-next RSpec/ExampleLength -- resolved URL plus the early return
-      it 'keeps a resolved scrape target for the next hop', :aggregate_failures do
-        listing = 'https://example.com/listing'
-        target = Html2rss::ScrapeTarget.new(entry_url: 'https://example.com/news', effective_url: listing)
-        outcome = Html2rss::FeedResolution::ApplyOutcome.new(scrape_target: target, status: :succeeded)
-        allow(Html2rss::FeedResolution).to receive(:try_apply!).and_return(outcome)
-        allow(pipeline).to receive(:request_session_for).and_call_original
-
-        expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted)
-        expect(pipeline).to have_received(:request_session_for).with(
-          kind_of(Html2rss::Config), hash_including(strategy: :botasaurus, scrape_url: listing)
-        )
-        expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
+        # 3 requests: default leaves 2, one reserved for botasaurus; botasaurus is last and keeps its 1.
+        expect(Html2rss::FeedResolution).to have_received(:call).with(
+          response: kind_of(Html2rss::RequestService::Response), session: kind_of(Html2rss::RequestSession),
+          config: kind_of(Html2rss::Config), articles: kind_of(Array), slots: 1
+        ).twice
       end
     end
 

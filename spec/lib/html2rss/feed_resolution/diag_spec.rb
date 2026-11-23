@@ -10,7 +10,8 @@ RSpec.describe Html2rss::FeedResolution::Diag do
       applied: true,
       reason: :winner,
       probe_count: 3,
-      winner_score: 40
+      winner_score: 40,
+      response: nil
     )
   end
 

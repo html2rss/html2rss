@@ -88,7 +88,7 @@ Composable curation seams for inspect → recon → capture → validate/test �
 
 ## Scrape target
 
-Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated only when `FeedResolution.try_apply!` returns `:succeeded` (retry extract yielded items). Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override. `Config` stays unchanged.
+Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated by `FeedPipeline::AutoFallback` only when the retry extract of the winning probe response yielded items. Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override. `Config` stays unchanged.
 
 ## Page assessment
 
@@ -134,7 +134,7 @@ Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::Surf
 
 ## Entry-resolution options
 
-Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Options` (`enabled?`, `max_probes`, `request_slots`). Policy eligibility, Runner probe caps, and budget slot reservation consume it.
+Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Options` (`enabled?`, `max_probes`, `request_slots`). Policy eligibility, the probe cap, and budget slot reservation (`request_slots` = `max_probes`; the winner is not fetched again) consume it. `FeedResolution::DEFAULT_CONFIG` is the one owner of the default; `AutoSource::DEFAULT_CONFIG[:entry_resolution]` is that object.
 
 ## Pipeline outcome URLs
 

@@ -9,7 +9,8 @@ module Html2rss
       # @param url [Html2rss::Url]
       # @param score [Numeric]
       # @param articles_count [Integer]
-      Scored = Data.define(:url, :score, :articles_count)
+      # @param response [Html2rss::RequestService::Response] the fetched candidate (reused when it wins)
+      Scored = Data.define(:url, :score, :articles_count, :response)
 
       ##
       # @param request_session [Html2rss::RequestSession]
@@ -47,7 +48,8 @@ module Html2rss
           return Scored.new(
             url: response.url,
             score: Scorer.score_feed(articles_count: count),
-            articles_count: count
+            articles_count: count,
+            response:
           )
         end
 
@@ -55,7 +57,8 @@ module Html2rss
         Scored.new(
           url: response.url,
           score: Scorer.score_assessment(assessment),
-          articles_count: assessment.articles_count
+          articles_count: assessment.articles_count,
+          response:
         )
       end
     end
