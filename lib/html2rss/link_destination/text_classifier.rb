@@ -140,8 +140,12 @@ module Html2rss
       def recommended?(text) = label?(:recommended, text)
 
       # @param text [String, #to_s] visible anchor text or extracted title
-      # @return [Boolean] true when the whole text is a read-more label, bare or with its topic
-      def read_more?(text) = normalize(text).match?(@page.fetch(:read_more))
+      # @return [Boolean] true when the whole text is a read-more label, bare or with its topic, or an own term of
+      #   a page-only language with a short bracketed count (+Xem tất cả [3]+)
+      def read_more?(text)
+        normalized = normalize(text)
+        normalized.match?(@page.fetch(:read_more)) || normalized.match?(@page.fetch(:own_read_more))
+      end
 
       private
 

@@ -266,6 +266,20 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
   end
 
   describe '#read_more?' do
+    it 'reads a bracketed short count after an own read-more term as read-more, never a bare number or a year',
+       :aggregate_failures do
+      zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
+      expect(['阅读全文 (3)', '了解更多 （12）', '继续阅读 [3]'].map { zh.read_more?(_1) }).to all(be(true))
+      expect(['阅读全文 3', '阅读全文 2026', '阅读全文 (1234)'].map { zh.read_more?(_1) }).to all(be(false))
+    end
+
+    it 'keeps a shared read-more term with a count unread on every scope', :aggregate_failures do
+      zh = described_class.new(vocabulary: Html2rss::Vocabulary[:zh])
+      [described_class.new, zh, described_class.new(vocabulary: Html2rss::Vocabulary[:en])].each do |classifier|
+        expect(classifier.read_more?('Read more (3)')).to be(false)
+      end
+    end
+
     [
       'Read more', 'Continue reading »', 'Learn more', 'More about «Harbor ferry»',
       'More about „Hafen“', 'Mehr über "Hafen"', "More about 'Harbor'", 'More about “Harbor”', 'Mehr über 「港」',

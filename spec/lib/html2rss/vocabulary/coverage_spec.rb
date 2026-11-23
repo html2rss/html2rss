@@ -973,10 +973,11 @@ RSpec.describe Html2rss::Vocabulary do
       end
     end
 
-    it 'reads a bracketed count after a read-more label as neither chrome nor read-more', :aggregate_failures do
-      ['Tovább (3)', 'Tovább [3]', 'Bővebben (3)'].each do |label|
-        expect([hu.read_more?(label), hu.utility_chrome?(label)]).to eq([false, false]), label
+    it 'reads a bracketed count after an own read-more label as read-more, never chrome', :aggregate_failures do
+      ['Tovább (3)', 'Tovább [3]', 'Bővebben (3)', 'További hírek [3]', 'Összes （3）'].each do |label|
+        expect([hu.read_more?(label), hu.utility_chrome?(label)]).to eq([true, false]), label
       end
+      ['Tovább 3', 'További hírek 2026', 'Tovább (1234)'].each { expect(hu.read_more?(_1)).to be(false), _1 }
     end
 
     it 'keeps a headline of three Hungarian words above the title floor', :aggregate_failures do
@@ -1023,6 +1024,14 @@ RSpec.describe Html2rss::Vocabulary do
       ['Tin liên quan', 'Bài viết liên quan', 'Có thể bạn quan tâm', 'Gợi ý cho bạn'].each do |item|
         expect(vi.recommended?(item)).to be(true), item
       end
+    end
+
+    it 'reads a bracketed count after an own read-more label as read-more, a bare number or a year as a title',
+       :aggregate_failures do
+      ['Xem tất cả [3]', 'Xem thêm (12)', 'Xem tất cả ［3］'].each do |label|
+        expect([vi.read_more?(label), vi.utility_chrome?(label)]).to eq([true, false]), label
+      end
+      ['Xem tất cả 3', 'Xem tất cả 2026', 'Xem tất cả (1234)'].each { expect(vi.read_more?(_1)).to be(false), _1 }
     end
 
     it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
@@ -1334,6 +1343,14 @@ RSpec.describe Html2rss::Vocabulary do
       ['Související články', 'Podobné články', 'Mohlo by vás zajímat', 'Čtěte také', 'Doporučujeme'].each do |item|
         expect(cs.recommended?(item)).to be(true), item
       end
+    end
+
+    it 'reads a bracketed count after an own read-more label as read-more, a bare number or a year as a title',
+       :aggregate_failures do
+      ['Další články (12)', 'Zobrazit všechny [3]', 'Další články （12）'].each do |label|
+        expect([cs.read_more?(label), cs.utility_chrome?(label)]).to eq([true, false]), label
+      end
+      ['Další články 3', 'Další články 2026', 'Další články (1234)'].each { expect(cs.read_more?(_1)).to be(false), _1 }
     end
 
     it 'reads read-more and call-to-action labels as chrome and junk', :aggregate_failures do
