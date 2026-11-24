@@ -347,10 +347,7 @@ module Html2rss
     def lift_heading_link_root(root, enclosed, vocabulary)
       return root unless heading_or_inner_title_link?(root)
 
-      index = SST::Index.for_node(root)
-      return root unless index
-
-      walk_usable_card(root, index, enclosed, vocabulary)
+      walk_usable_card(root, SST::Index.for_node!(root), enclosed, vocabulary)
     end
 
     def walk_usable_card(root, index, enclosed, vocabulary)
@@ -377,9 +374,7 @@ module Html2rss
     end
 
     def count_enclosing_ancestors(root, tally)
-      index = SST::Index.for_node(root)
-      return unless index
-
+      index = SST::Index.for_node!(root)
       ancestor = index.parent_of(root)
       while ancestor
         tally[ancestor] += 1

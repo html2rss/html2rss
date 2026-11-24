@@ -58,7 +58,7 @@ RSpec.describe Html2rss::Html::Navigator do
       ids = %w[rn rc rd dl rs as pb ab]
       expected = { 'rn' => false, 'rc' => false, 'rd' => false, 'dl' => false, 'rs' => true, 'as' => false,
                    'pb' => false, 'ab' => true }
-      sst_root = document_for(html).root
+      sst_root = hold_document(document_for(html)).root
       nokogiri = ids.to_h { |id| [id, usable_card?(Nokogiri::HTML(html).at_css("##{id}"))] }
       sst = ids.to_h do |id|
         [id, usable_card?(sst_root.find { _1.attrs.id == id })]
@@ -83,7 +83,7 @@ RSpec.describe Html2rss::Html::Navigator do
       end
 
       let(:document) { Nokogiri::HTML(html) }
-      let(:sst_root) { document_for(html).root }
+      let(:sst_root) { hold_document(document_for(html)).root }
 
       it 'agrees on page-level, sectioned and chrome-inherited headers', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         nokogiri = ids.to_h do |id|
@@ -99,14 +99,18 @@ RSpec.describe Html2rss::Html::Navigator do
     end
 
     it 'follows the SST chrome index for header and footer nodes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      doc = document_for(
-        '<html><body><header>H</header><article><header>A</header></article></body></html>'
-      )
+      doc = hold_document(document_for(
+                            '<html><body><header>H</header><article><header>A</header></article></body></html>'
+                          ))
       page_header, card_header = doc.root.find_all { _1.name == :header }
 
       expect(usable_card?(page_header)).to be(false)
       expect(usable_card?(card_header)).to be(true)
-      expect(usable_card?(Html2rss::SST::Node.build(name: :header))).to be(false)
+    end
+
+    it 'raises for a page-level SST node without a live index' do
+      expect { usable_card?(Html2rss::SST::Node.build(name: :header)) }
+        .to raise_error(Html2rss::SST::Index::InvalidError)
     end
   end
 end

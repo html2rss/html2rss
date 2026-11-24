@@ -55,7 +55,8 @@ module SstTestHelpers
                                         position: 0)
   end
 
-  def hold_document(doc) = (@sst_documents ||= []) << doc
+  # Keeps +doc+ referenced for the example so its index stays live; returns +doc+.
+  def hold_document(doc) = doc.tap { (@sst_documents ||= []) << _1 }
 
   def document_for(html)
     Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)
