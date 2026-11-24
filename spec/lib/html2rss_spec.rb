@@ -503,6 +503,14 @@ RSpec.describe Html2rss do
       expect(config).not_to have_key(:strategy)
     end
 
+    it 'derives the request budget by default and honors an explicit one', :aggregate_failures do
+      allow(described_class).to receive(:feed_result) { |config| config }
+      budget = ->(config) { Html2rss::FeedPipeline::RuntimePolicy.from_config(Html2rss::Config.from_hash(config)).max_requests }
+
+      expect(budget.call(described_class.scrape('https://example.com'))).to eq(10)
+      expect(budget.call(described_class.scrape('https://example.com', max_requests: 4))).to eq(4)
+    end
+
     it 'returns the feed result from the pipeline' do
       feed_result = instance_double(Html2rss::FeedResult)
       allow(described_class).to receive(:feed_result).and_return(feed_result)
