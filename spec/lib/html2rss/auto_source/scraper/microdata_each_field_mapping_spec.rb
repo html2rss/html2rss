@@ -248,13 +248,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata, '#each' do
     let(:html) do
       self.class.article_html(<<~BODY)
         <span itemprop="headline">DL</span><span itemprop="description">short</span>
-        <span itemprop="articleBody">the much longer body text</span><span itemprop="abstract">mid abs</span>
+        <span itemprop="articleBody">the much longer body tx1</span><span itemprop="abstract">mid abs</span>
         <a itemprop="url" href="/dl">o</a>
       BODY
     end
 
     it 'takes the longest' do
-      expect(article[:description]).to eq('the much longer body text')
+      expect(article[:description]).to eq('the much longer body tx1')
     end
   end
 
@@ -320,6 +320,71 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata, '#each' do
         %w[https://example.com/nested-a https://example.com/main-b https://example.com/fallback-c
            https://example.com/first-d https://example.com/main-e]
       )
+    end
+  end
+
+  context 'with a blank itemid and an identifier' do
+    let(:html) do
+      ['', '  '].map do |itemid|
+        self.class.article_html(%(<span itemprop="headline">Id</span><span itemprop="identifier">ID1</span>) +
+                                '<a itemprop="url" href="/blank-id">o</a>', attrs: %(itemid="#{itemid}"))
+      end.join
+    end
+
+    it 'falls through to the identifier' do
+      expect(articles.map { _1[:id] }).to eq(%w[ID1 ID1])
+    end
+  end
+
+  context 'with an absolute itemid and no url' do
+    let(:html) do
+      self.class.article_html('<span itemprop="headline">Abs</span>', attrs: 'itemid="https://example.com/p/1#frag"')
+    end
+
+    it 'uses it as the url unchanged, fragment included' do
+      expect(resolved_url).to eq('https://example.com/p/1#frag')
+    end
+  end
+
+  context 'with an abstract as long as the article body' do
+    let(:html) do
+      self.class.article_html(<<~BODY)
+        <span itemprop="headline">Tie</span><span itemprop="articleBody">body tx1</span>
+        <span itemprop="abstract">abs text</span><a itemprop="url" href="/tie">o</a>
+      BODY
+    end
+
+    it 'prefers the abstract' do
+      expect(article[:description]).to eq('abs text')
+    end
+  end
+
+  context 'with a leading nested item before a second url or image' do
+    let(:html) do
+      self.class.article_html(<<~BODY)
+        <span itemprop="headline">Lead</span>
+        <div itemprop="url" itemscope itemtype="https://schema.org/Thing"><span itemprop="name">no url</span></div>
+        <a itemprop="url" href="/second">o</a><link itemprop="mainEntityOfPage" href="/main">
+        <div itemprop="image" itemscope itemtype="https://schema.org/Thing"><meta itemprop="name" content="x"></div>
+        <img itemprop="image" src="/second.png">
+      BODY
+    end
+
+    it 'looks only at the first value, falling to the next url and giving no image', :aggregate_failures do
+      expect(resolved_url).to eq('https://example.com/main')
+      expect(article[:image]).to be_nil
+    end
+  end
+
+  context 'with a nested mainEntityOfPage holding two urls' do
+    let(:html) do
+      self.class.article_html('<span itemprop="headline">Two</span>' \
+                              '<div itemprop="mainEntityOfPage" itemscope><meta itemprop="url" content="/a">' \
+                              '<meta itemprop="url" content="/b"></div>')
+    end
+
+    it 'uses the first url (the old code built a stringified array path)' do
+      expect(resolved_url).to eq('https://example.com/a')
     end
   end
 
