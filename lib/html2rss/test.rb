@@ -172,6 +172,10 @@ module Html2rss
       end
     end
 
+    # The timed run's products, handed to {Test.build_test_result}.
+    Measured = Data.define(:feed_result, :rss_doc, :duration, :quality_report, :enhance_compare)
+    private_constant :Measured
+
     Options = Data.define(:min_items, :strict_quality, :compare_enhance, :sample_limit)
 
     ##
@@ -234,8 +238,8 @@ module Html2rss
                                                          feed_result:, pipeline_outcome:)
       enhance_compare = build_enhance_compare(config, pipeline_outcome) if settings.compare_enhance
 
-      build_test_result(raw_config, [feed_result, rss_doc, duration], [quality_report, enhance_compare],
-                        settings, pipeline_outcome)
+      measured = Measured.new(feed_result:, rss_doc:, duration:, quality_report:, enhance_compare:)
+      build_test_result(raw_config, measured, settings, pipeline_outcome)
     end
     private_class_method :execute_timed_pipeline
 
@@ -245,9 +249,8 @@ module Html2rss
     end
     private_class_method :renderable_articles
 
-    def self.build_test_result(raw_config, timed, reports, settings, pipeline_outcome) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- one Result literal
-      feed_result, rss_doc, duration = timed
-      quality_report, enhance_compare = reports
+    def self.build_test_result(raw_config, measured, settings, pipeline_outcome) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- one Result literal
+      measured => { feed_result:, rss_doc:, duration:, quality_report:, enhance_compare: }
       outcome = Policy.evaluate(item_count: rss_doc.items.size, min_items: settings.min_items,
                                 strict_quality: settings.strict_quality, quality_report:)
       articles = renderable_articles(pipeline_outcome)
