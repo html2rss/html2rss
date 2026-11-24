@@ -11,15 +11,22 @@ module Html2rss
       # @param value [Object] candidate value
       # @param min [Integer] inclusive lower bound
       # @param max [Integer, nil] inclusive upper bound
-      # @param optional [Boolean] whether +nil+ passes through
       # @return [Integer, nil] +value+ when valid
       # @raise [InvalidOption] when +value+ is not an Integer within bounds
-      def integer(name, value, min:, max: nil, optional: false)
-        return value if value.nil? && optional
+      def integer(name, value, min:, max: nil)
         return value if value.is_a?(Integer) && (min..max).cover?(value)
 
         raise InvalidOption, "#{name} must be an Integer in #{min}..#{max}, got #{value.inspect}"
       end
+
+      ##
+      # @param name [Symbol] option name used in the error message
+      # @param value [Object] candidate value, +nil+ passes through
+      # @param min [Integer] inclusive lower bound
+      # @param max [Integer, nil] inclusive upper bound
+      # @return [Integer, nil] +value+ when +nil+ or valid
+      # @raise [InvalidOption] when +value+ is not an Integer within bounds
+      def optional_integer(name, value, min:, max: nil) = value.nil? ? value : integer(name, value, min:, max:)
 
       ##
       # @param value [Symbol, String, nil] strategy plan name (+nil+ means +:auto+)

@@ -11,7 +11,7 @@ RSpec.describe Html2rss::Option do
     end
 
     it 'passes nil only when optional', :aggregate_failures do
-      expect(described_class.integer(:n, nil, min: 1, optional: true)).to be_nil
+      expect(described_class.optional_integer(:n, nil, min: 1)).to be_nil
       expect { described_class.integer(:n, nil, min: 1) }.to raise_error(Html2rss::InvalidOption, /got nil/)
     end
 

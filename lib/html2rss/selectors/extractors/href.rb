@@ -44,7 +44,7 @@ module Html2rss
         # @param selector [String, nil] CSS selector used to find the link element
         def initialize(xml, base_url: nil, selector: nil, **)
           @base_url = base_url
-          @element = Extractors.element(xml, selector, first: true)
+          @element = Extractors.first_element(xml, selector)
           @href = @element&.[]('href').to_s
         end
 
