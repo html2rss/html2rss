@@ -71,6 +71,11 @@ module Html2rss
 
       ##
       # @param text [String, #to_s]
+      # @return [Boolean] true when only the page-only language reads the text as utility chrome
+      def page_only_chrome_text?(text) = @text_classifier.page_only_chrome?(text)
+
+      ##
+      # @param text [String, #to_s]
       # @return [Boolean]
       def utility_prefix_text?(text) = @text_classifier.utility_prefix?(text)
 

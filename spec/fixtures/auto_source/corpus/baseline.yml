@@ -490,8 +490,8 @@ language_chrome_ja.html:
   sst_built: true
 language_chrome_ko.html:
   junk: 0
-  real: 16
-  expected: 16
+  real: 24
+  expected: 24
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
@@ -666,8 +666,8 @@ language_chrome_vi_hubs.html:
   sst_built: true
 language_chrome_zh.html:
   junk: 0
-  real: 6
-  expected: 6
+  real: 14
+  expected: 14
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
