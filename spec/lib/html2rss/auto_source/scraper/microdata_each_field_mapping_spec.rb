@@ -272,6 +272,57 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata, '#each' do
     end
   end
 
+  context 'with every category-like property' do
+    let(:html) do
+      self.class.article_html(<<~BODY)
+        <span itemprop="headline">Cats</span><span itemprop="categories">C1</span>
+        <span itemprop="articleSection">S1</span><span itemprop="keywords">K1</span><span itemprop="tags">T1</span>
+        <span itemprop="about">Plain, topic</span><a itemprop="url" href="/cats">o</a>
+      BODY
+    end
+
+    it 'lists categories, section, keywords, tags and about, keeping a plain about string whole' do
+      expect(article[:categories]).to eq(['K1', 'C1', 'S1', 'T1', 'Plain, topic'])
+    end
+  end
+
+  context 'with a nested item among repeated keywords and tags' do
+    let(:html) do
+      self.class.article_html(<<~BODY)
+        <span itemprop="headline">Mixed</span><span itemprop="keywords">K1</span>
+        <div itemprop="keywords" itemscope><span itemprop="name">Hidden</span></div>
+        <span itemprop="tags">T1</span><div itemprop="tags" itemscope><span itemprop="name">Hidden</span></div>
+        <a itemprop="url" href="/mixed">o</a>
+      BODY
+    end
+
+    it 'keeps only the strings' do
+      expect(article[:categories]).to eq(%w[K1 T1])
+    end
+  end
+
+  context 'with urls from nested items and lists' do
+    let(:html) do
+      [
+        '<span itemprop="headline">A</span><div itemprop="url" itemscope><meta itemprop="url" content="/nested-a">' \
+        '<meta itemprop="@id" content="/ignored"></div>',
+        '<span itemprop="headline">B</span><div itemprop="mainEntityOfPage" itemscope itemid="/main-b"></div>',
+        '<span itemprop="headline">C</span><div itemprop="url" itemscope><span itemprop="name">no url</span></div>' \
+        '<link itemprop="mainEntityOfPage" href="/fallback-c">',
+        '<span itemprop="headline">D</span><a itemprop="url" href="/first-d">o</a>' \
+        '<a itemprop="url" href="/second-d">o</a>',
+        '<span itemprop="headline">E</span><link itemprop="mainEntityOfPage" href="/main-e">'
+      ].map { self.class.article_html(_1, attrs: _1.include?('E<') ? 'itemid="https://example.com/e-id"' : '') }.join
+    end
+
+    it 'prefers url, then mainEntityOfPage, then a url-like itemid' do
+      expect(articles.map { _1[:url].to_s }).to eq(
+        %w[https://example.com/nested-a https://example.com/main-b https://example.com/fallback-c
+           https://example.com/first-d https://example.com/main-e]
+      )
+    end
+  end
+
   context 'with the saved newsroom page' do
     let(:html) { File.read('spec/fixtures/auto_source/microdata_article_cards.html') }
 

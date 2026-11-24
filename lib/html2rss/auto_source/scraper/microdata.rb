@@ -296,13 +296,13 @@ module Html2rss
 
             # @param props [Hash{Symbol => Object}] parsed properties
             # @param id [String, nil] item identifier
-            # @return [String, nil] first of `url`, `mainEntityOfPage` (or a nested item's url or id) and a URL-like id
+            # @return [String, nil] first of `url`, `mainEntityOfPage` (or a nested item's url or id) and a root-relative id
             def url_value(props, id)
-              url_like = id if id&.match?(%r{\A(/|https?://)})
+              url_like = id if id&.start_with?('/')
               [props[:url], props[:mainEntityOfPage], url_like].each do |value|
-                value = first_value([value]) unless value.nil?
+                value = first_value([value])
                 value = value.values_at(:url, :@id).compact.first if value.is_a?(Hash)
-                return value.to_s if value
+                return value if value
               end
 
               nil
