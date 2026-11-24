@@ -63,8 +63,13 @@ module Html2rss
             parse_datetime(Description.date_core(line), time_zone:)
           end
 
-          # A zone (Z, GMT, EST, +02:00, ...) is whatever the parser resolves to an offset.
-          def naive?(string) = !DateTime._parse(string, limit: MAX_DATE_CHARS).key?(:offset)
+          # Naive unless the parser resolved a real offset: unknown words ("Uhr", "ET") leave it nil, and a
+          # single-letter military zone other than Z ("h") is a stray letter, not a zone.
+          def naive?(string)
+            parsed = DateTime._parse(string, limit: MAX_DATE_CHARS)
+            zone = parsed[:zone]
+            parsed[:offset].nil? || (zone.length == 1 && !zone.casecmp?('z'))
+          end
 
           def localize(datetime, time_zone)
             identifier = time_zone.to_s

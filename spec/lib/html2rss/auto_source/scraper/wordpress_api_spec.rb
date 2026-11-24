@@ -137,6 +137,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
 
+    context 'when date_gmt is the unset zero date' do
+      let(:post) { super().merge('date' => '2024-01-02T04:04:05', 'date_gmt' => '0000-00-00T00:00:00') }
+
+      it 'falls back to the site-local date' do
+        expect(articles.first).to include(published_at: '2024-01-02T04:04:05')
+      end
+    end
+
     context 'when date_gmt is blank' do
       let(:post) { super().merge('date' => '2024-01-02T04:04:05', 'date_gmt' => '  ') }
 

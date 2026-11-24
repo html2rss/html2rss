@@ -35,6 +35,23 @@ RSpec.describe Html2rss::Html::ArticleRules::Date do
       expect(est.iso8601).to eq('2024-07-12T10:00:00-05:00')
     end
 
+    it 'reads text with an unknown zone word or a stray letter in the time zone', :aggregate_failures do
+      ['12.07.2024 10:00 Uhr', '2024-07-12 10:00 horas', '2024-07-12 10:00 ET',
+       '2024-07-12T10:00:00 Europe/Berlin', '2024-07-12 10:00 h'].each do |text|
+        expect(described_class.parse_datetime(text, time_zone: 'Europe/Berlin').iso8601)
+          .to eq('2024-07-12T10:00:00+02:00')
+      end
+    end
+
+    it 'keeps a lowercase z as UTC' do
+      expect(described_class.parse_datetime('2024-07-12 10:00 z', time_zone: 'Europe/Berlin').offset).to eq(0)
+    end
+
+    it 'returns nil for nil and empty input', :aggregate_failures do
+      expect(described_class.parse_datetime(nil, time_zone: nil)).to be_nil
+      expect(described_class.parse_datetime('', time_zone: nil)).to be_nil
+    end
+
     it 'reads a naive value as UTC without a time zone', :aggregate_failures do
       expect(described_class.parse_datetime('2024-07-12T09:00:00', time_zone: nil).iso8601)
         .to eq('2024-07-12T09:00:00+00:00')

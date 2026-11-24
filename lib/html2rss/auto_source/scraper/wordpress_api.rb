@@ -148,7 +148,8 @@ module Html2rss
 
         def article_published_at(post)
           gmt = present_string(post[:date_gmt])
-          gmt ? "#{gmt}Z" : present_string(post[:date])
+          # WordPress reports unset GMT dates (drafts, imports) as 0000-00-00.
+          gmt && !gmt.start_with?('0000') ? "#{gmt}Z" : present_string(post[:date])
         end
 
         def article_categories(post)
