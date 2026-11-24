@@ -645,11 +645,14 @@ RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
   end
 
   describe 'a card whose SST document is gone' do
-    it 'raises the index contract error rather than reading the card without its parents', :aggregate_failures do
+    it 'raises the index contract error rather than reading the card without its parents', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       link = build_node(name: :a, href: '/s', text: 'Story')
       segment = build_segment(root: build_node(name: :h3, children: [link]), link:)
 
-      expect { described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC', vocabulary: all_scope) }
+      expect do
+        described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC',
+                                      link_resolver: page_resolver)
+      end
         .to raise_error(Html2rss::SST::Index::InvalidError, /no live index/)
     end
   end
