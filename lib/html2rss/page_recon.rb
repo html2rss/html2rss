@@ -245,7 +245,7 @@ module Html2rss
     def surface_category(parsed)
       return :unsupported_surface unless parsed
 
-      AutoSource::Scraper.classify_no_scraper_surface(parsed, body: response.body)
+      SurfaceCategory.classify(parsed, body: response.body)
     end
 
     def cheap_articles

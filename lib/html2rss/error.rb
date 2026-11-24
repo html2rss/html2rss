@@ -112,7 +112,7 @@ module Html2rss
     def surface_guidance
       return unless SURFACE_HINT_CATEGORIES.include?(surface_category)
 
-      AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(surface_category)
+      SurfaceCategory::MESSAGES.fetch(surface_category)
     end
 
     def botasaurus_guidance

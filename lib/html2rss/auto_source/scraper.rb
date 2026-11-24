@@ -11,16 +11,7 @@ module Html2rss
     # Detection is intentionally shallow for most scrapers, but instance-based
     # matching is available for scrapers that need to carry expensive selection
     # state forward into extraction.
-    module Scraper # rubocop:disable Metrics/ModuleLength -- tier registry + construction helpers
-      # Root markers indicating likely app-shell/client-rendered surfaces.
-      APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
-      # Maximum anchors tolerated before app-shell detection is considered unlikely.
-      APP_SHELL_MAX_ANCHORS = 2
-      # Minimum same-page anchors suggesting a high-entropy homepage/hub surface.
-      HIGH_ENTROPY_MIN_ANCHORS = 20
-      # Maximum visible text length tolerated for app-shell classification.
-      APP_SHELL_MAX_VISIBLE_TEXT_LENGTH = 220
-
+    module Scraper
       # Extraction tiers: merge within a tier, then stop when AutoSource has enough articles.
       # Heuristic scrapers are separate tiers so SemanticHtml can satisfy before Html runs.
       # NativeFeed is tier 0 so syndication wins before structured HTML scrapers.
@@ -56,28 +47,12 @@ module Html2rss
       ##
       # Error raised when no suitable scraper is found.
       class NoScraperFound < Html2rss::Error
-        # Surface diagnostics shared with {Html2rss::NoFeedItemsExtracted} (one string home).
-        CATEGORY_MESSAGES = {
-          blocked_surface: 'blocked surface likely (anti-bot or interstitial). ' \
-                           'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, ' \
-                           'or run from an environment that can complete anti-bot checks.',
-          app_shell: 'app-shell surface detected (client-rendered page with little or no ' \
-                     'server-rendered article HTML). Target a direct listing/update URL instead of a ' \
-                     'homepage or shell entrypoint; a browser strategy does not add extractable markup here.',
-          high_entropy_surface: 'high-entropy surface (e.g. news homepage) with few or no durable ' \
-                                'article destinations after admission. Target a section, topic, or ' \
-                                'listing/update URL instead of the site homepage.',
-          unsupported_surface: 'unsupported extraction surface for auto mode. ' \
-                               'Try a direct listing/changelog/category URL, ' \
-                               'or use explicit selectors in a feed config.'
-        }.freeze
-
         # @param message [String, nil] custom error message override
         # @param category [Symbol] no-scraper classification
         def initialize(message = nil, category: :unsupported_surface)
           validate_category!(category)
           @category = category
-          super(message || "No scrapers found: #{CATEGORY_MESSAGES.fetch(@category)}")
+          super(message || "No scrapers found: #{Html2rss::SurfaceCategory::MESSAGES.fetch(@category)}")
         end
 
         attr_reader :category
@@ -85,9 +60,9 @@ module Html2rss
         private
 
         def validate_category!(category)
-          return if CATEGORY_MESSAGES.key?(category)
+          return if Html2rss::SurfaceCategory::MESSAGES.key?(category)
 
-          valid_categories = CATEGORY_MESSAGES.keys.join(', ')
+          valid_categories = Html2rss::SurfaceCategory::MESSAGES.keys.join(', ')
           raise InvalidOption, "Unknown category: #{category.inspect}. Valid categories are: #{valid_categories}"
         end
       end
@@ -172,7 +147,7 @@ module Html2rss
       # @param body [String, nil] raw response body (preferred for blocked-surface checks)
       # @return [NoScraperFound]
       def self.no_scraper_found_for(parsed_body, body: nil)
-        NoScraperFound.new(category: classify_no_scraper_surface(parsed_body, body:))
+        NoScraperFound.new(category: Html2rss::SurfaceCategory.classify(parsed_body, body:))
       end
 
       def self.construction_kwargs(scraper, request_session:, body:, document:, link_resolver:, # rubocop:disable Metrics/ParameterLists -- scraper construction bag
@@ -188,66 +163,6 @@ module Html2rss
         end
       end
       private_class_method :construction_kwargs
-
-      ##
-      # Classifies why scrapers could not extract from a parsed page.
-      #
-      # @param parsed_body [Nokogiri::HTML::Document]
-      # @param body [String, nil] raw body for blocked-surface detection
-      # @return [Symbol] one of {NoScraperFound::CATEGORY_MESSAGES} keys
-      def self.classify_no_scraper_surface(parsed_body, body: nil)
-        return :blocked_surface if blocked_surface?(parsed_body, body:)
-        return :app_shell if app_shell_surface?(parsed_body)
-        return :high_entropy_surface if high_entropy_surface?(parsed_body)
-
-        :unsupported_surface
-      end
-
-      def self.blocked_surface?(parsed_body, body: nil)
-        Html2rss::RequestService::BlockedSurface.interstitial?(body || parsed_body.to_html)
-      end
-      private_class_method :blocked_surface?
-
-      def self.app_shell_surface?(parsed_body)
-        root_marker = parsed_body.at_css(APP_SHELL_ROOT_SELECTORS)
-        return false unless root_marker
-
-        sparse_anchor_surface?(parsed_body) &&
-          no_article_markers?(parsed_body) &&
-          short_visible_text?(parsed_body)
-      end
-      private_class_method :app_shell_surface?
-
-      def self.high_entropy_surface?(parsed_body)
-        parsed_body.css('body a[href]').size >= HIGH_ENTROPY_MIN_ANCHORS
-      end
-      private_class_method :high_entropy_surface?
-
-      def self.sparse_anchor_surface?(parsed_body)
-        parsed_body.css('body a[href]').size <= APP_SHELL_MAX_ANCHORS
-      end
-      private_class_method :sparse_anchor_surface?
-
-      def self.no_article_markers?(parsed_body)
-        parsed_body.css(
-          'article, main article, [itemtype*="Article"], [itemprop="articleBody"]'
-        ).empty?
-      end
-      private_class_method :no_article_markers?
-
-      def self.short_visible_text?(parsed_body)
-        visible_text_length(parsed_body) <= APP_SHELL_MAX_VISIBLE_TEXT_LENGTH
-      end
-      private_class_method :short_visible_text?
-
-      def self.visible_text_length(parsed_body)
-        body = parsed_body.at_css('body')
-        return 0 unless body
-
-        text_nodes = body.xpath('.//text()[not(ancestor::script or ancestor::style or ancestor::noscript)]')
-        text_nodes.map(&:text).join(' ').gsub(/\s+/, ' ').strip.length
-      end
-      private_class_method :visible_text_length
     end
   end
 end
