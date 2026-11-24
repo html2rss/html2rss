@@ -178,43 +178,48 @@ RSpec.describe Html2rss::MCP::Outcome do
 
   describe '.capture' do
     let(:base) do
-      { yaml: "channel:\n  url: https://example.com\n", articles_count: 3, has_selectors: true,
-        channel_title: 'Example', requested_strategy: 'auto' }
+      { config: {}, yaml: "channel:\n  url: https://example.com\n", articles_count: 3, has_selectors: true,
+        channel_title: 'Example', segment_strategy: nil }
+    end
+    let(:capture) do
+      lambda do |requested_strategy: 'auto', **fields|
+        described_class.capture(result: Html2rss::Capture::CaptureResult.new(**base, **fields), requested_strategy:)
+      end
     end
 
     it 'points at test when the draft has articles and selectors' do
-      outcome = described_class.capture(**base)
+      outcome = capture.call
 
       expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :test))
     end
 
     it 'points at done when native_feed is detected', :aggregate_failures do
-      outcome = described_class.capture(**base, native_feed: 'https://example.com/feed.xml')
+      outcome = capture.call(native_feed: 'https://example.com/feed.xml')
 
       expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :done))
       expect(outcome.payload[:native_feed]).to eq('https://example.com/feed.xml')
     end
 
     it 'points at inspect when articles_count is zero' do
-      outcome = described_class.capture(**base, articles_count: 0)
+      outcome = capture.call(articles_count: 0)
 
       expect(outcome.next_step.name).to eq(:inspect)
     end
 
     it 'points at inspect when selectors are missing' do
-      outcome = described_class.capture(**base, has_selectors: false)
+      outcome = capture.call(has_selectors: false)
 
       expect(outcome.next_step.name).to eq(:inspect)
     end
 
     it 'puts YAML inside payload rather than as the whole result' do
-      outcome = described_class.capture(**base)
+      outcome = capture.call
 
       expect(outcome.payload[:yaml]).to include('channel:')
     end
 
     it 'emits only the base payload keys when no optional draft fields are given', :aggregate_failures do
-      outcome = described_class.capture(**base)
+      outcome = capture.call
 
       expect(outcome.payload).to eq(
         yaml: base[:yaml], articles_count: 3, has_selectors: true,
@@ -223,10 +228,10 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'emits every optional draft field with its wire form when given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- full wire payload
-      outcome = described_class.capture(
-        **base, requested_strategy: :auto, segment_strategy: :rss, selected_strategy: 'html',
-                admission_drops: { 'credit' => 1 }, native_feed: 'https://example.com/feed.xml',
-                suggested_channel_url: 'https://example.com/'
+      outcome = capture.call(
+        requested_strategy: :auto, segment_strategy: :rss, selected_strategy: 'html',
+        admission_drops: { 'credit' => 1 }, native_feed: 'https://example.com/feed.xml',
+        suggested_channel_url: 'https://example.com/'
       )
 
       expect(outcome.payload).to eq(
@@ -238,7 +243,7 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'keeps the draft ok and points at test when native_feed is absent', :aggregate_failures do
-      outcome = described_class.capture(**base, articles_count: 1, has_selectors: true)
+      outcome = capture.call(articles_count: 1, has_selectors: true)
 
       expect(outcome).to have_attributes(ok: true, guidance: described_class::NextStep[:test].guidance)
     end

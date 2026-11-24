@@ -608,21 +608,6 @@ RSpec.describe Html2rss do
   end
 
   describe '.test' do
-    it 'rejects a malformed min_items before running', :aggregate_failures do
-      allow(Html2rss::Test).to receive(:call)
-
-      [-1, 1.5, '2', nil].each { |min_items| expect { described_class.test('x.yml', min_items:) }.to raise_error(Html2rss::InvalidOption, /min_items/) }
-      expect(Html2rss::Test).not_to have_received(:call)
-    end
-
-    it 'rejects a malformed sample_limit and forwards a valid one', :aggregate_failures do
-      allow(Html2rss::Test).to receive(:call)
-
-      [-1, 1.5, '2', nil].each { |limit| expect { described_class.test('x.yml', sample_limit: limit) }.to raise_error(Html2rss::InvalidOption, /\Asample_limit must be/) }
-      described_class.test('x.yml', sample_limit: 0)
-      expect(Html2rss::Test).to have_received(:call).with('x.yml', nil, hash_including(sample_limit: 0)).once
-    end
-
     it 'delegates to Test.call' do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Test).to receive(:call).with(
         'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
