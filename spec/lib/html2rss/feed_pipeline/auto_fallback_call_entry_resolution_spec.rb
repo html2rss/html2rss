@@ -86,6 +86,14 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
       expect(listing_requests).to eq([{ strategy: :default, relation: :entry_resolution, url: "#{origin}/news/" }])
     end
 
+    it 'opens the retry session for the winning strategy and listing URL' do
+      allow(pipeline).to receive(:request_session_for).and_call_original
+      result
+
+      expect(pipeline).to have_received(:request_session_for)
+        .with(kind_of(Html2rss::Config), strategy: :default, resources: anything, scrape_url: "#{origin}/news/")
+    end
+
     it 'keeps the winner transport telemetry on the recorded attempt' do
       expect(result.status.strategy_attempts.last).to include(
         strategy: :default, items_count: 8, transport_meta: listing_meta
@@ -157,7 +165,12 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
         selected_strategy: :botasaurus, scrape_url: "#{origin}/", entry_resolution: hash_including(applied: true)
       )
       expect(result.status.strategy_attempts.map { _1[:items_count] }).to eq([0, 0, 8])
-      expect(Html2rss::Log).to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
+      expect(Html2rss::Log).to have_received(:info).with(
+        a_string_including('"event_name":"auto_fallback.zero_items"', '"host":"example.com"', '"strategy":"default"',
+                           '"next_strategy":"botasaurus"',
+                           '"message":"Html2rss::FeedPipeline::AutoFallback: auto fallback default -> botasaurus ' \
+                           'after zero extracted')
+      )
     end
   end
 

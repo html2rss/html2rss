@@ -70,14 +70,12 @@ module Html2rss
         # @return [Boolean] whether entry resolution already ran for this chain
         def resolution_tried? = @resolution_tried
 
-        # @return [void]
-        def mark_resolution_tried!
-          @resolution_tried = true
-        end
-
+        # Records the diagnostic and marks the tournament as run for this chain.
+        #
         # @param result [Html2rss::FeedResolution::Result]
         # @return [void]
         def remember_entry_resolution(result)
+          @resolution_tried = true
           @entry_resolution = FeedResolution::Diag.from_result(result)
         end
 
@@ -210,7 +208,7 @@ module Html2rss
         raise
       rescue Html2rss::Error => error
         state.record_error(strategy:, error:, elapsed_ms: monotonic_ms - started_ms)
-        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy && request_session
+        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy
       end
 
       # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
@@ -244,19 +242,13 @@ module Html2rss
       # The hold around the strategy's work keeps the later strategy's initial request slot from the tournament.
       #
       # @return [Boolean] true when the retry extraction yielded items and ended the chain
-      # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- eligibility, record, retry, error policy
+      # rubocop:disable-next Metrics/MethodLength -- eligibility, record, retry, error policy
       def resolve_entry(hop, response, extraction)
-        state = hop.state
-        return false if state.resolution_tried?
+        return false if hop.state.resolution_tried?
 
-        resolution = FeedResolution.call(
-          response:, session: hop.request_session, config:, articles: extraction.articles,
-          slots: budget.remaining_requests
-        )
-        return false unless resolution
+        return false unless (resolution = run_tournament(hop, response, extraction))
 
-        state.mark_resolution_tried!
-        state.remember_entry_resolution(resolution)
+        hop.state.remember_entry_resolution(resolution)
         resolution.applied && retry_succeeded?(hop, resolution)
       rescue RequestService::RequestBudgetExceeded
         log_resolution_failure('budget_exhausted', 'entry resolution skipped (request budget exhausted)')
@@ -267,6 +259,11 @@ module Html2rss
         log_resolution_failure('retry_failed', "entry resolution retry failed (#{error.class})",
                                error_class: error.class.name)
         false
+      end
+
+      def run_tournament(hop, response, extraction)
+        FeedResolution.call(response:, session: hop.request_session, config:, articles: extraction.articles,
+                            slots: budget.remaining_requests)
       end
 
       # Extracts the winner's already fetched response; the target turns sticky only when it yields items.
@@ -335,7 +332,7 @@ module Html2rss
         host = response.url.host
         Log.event(
           :info, 'auto_fallback.zero_items',
-          host:, strategy: hop.strategy.to_s, next_strategy: hop.next_strategy.to_s,
+          host:, strategy: hop.strategy, next_strategy: hop.next_strategy,
           message: "#{self.class}: auto fallback #{hop.strategy} -> #{hop.next_strategy} after zero extracted items " \
                    "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                    "budget_remaining=#{budget_remaining_label}"
