@@ -807,6 +807,12 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(described_class.redacted_endpoint(entry)).to eq('https://api.example.com/v1/articles')
     end
 
+    it 'joins host and path with one slash', :aggregate_failures do
+      expect(described_class.redacted_endpoint({ 'url' => 'ftp://example.com/x' })).to eq('ftp://example.com/x')
+      expect(described_class.redacted_endpoint({ 'url' => 'https://example.com' })).to eq('https://example.com')
+      expect(described_class.redacted_endpoint({ 'url' => 'https://example.com/' })).to eq('https://example.com/')
+    end
+
     it 'accepts symbol-keyed entries' do
       expect(described_class.redacted_endpoint({ url: 'https://api.example.com/feed?a=1' }))
         .to eq('https://api.example.com/feed')

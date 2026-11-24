@@ -60,7 +60,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, '#execute' do
       :warn, 'botasaurus.capture_dropped', reason: denied.name, endpoint: 'http://10.0.0.7/admin'
     )
     expect(Html2rss::Log).to have_received(:event).with(
-      :warn, 'botasaurus.capture_dropped', reason: Html2rss::Url::InvalidUrlError.name, endpoint: 'ftp://example.comx'
+      :warn, 'botasaurus.capture_dropped', reason: Html2rss::Url::InvalidUrlError.name, endpoint: 'ftp://example.com/x'
     )
   end
 

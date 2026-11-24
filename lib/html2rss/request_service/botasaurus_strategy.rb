@@ -107,7 +107,6 @@ module Html2rss
 
       def denial_reason(url)
         ctx.policy.enforce_public_network!(url)
-        nil
       rescue PrivateNetworkDenied => error
         error.class.name
       end

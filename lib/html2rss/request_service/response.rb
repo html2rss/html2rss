@@ -49,7 +49,8 @@ module Html2rss
         uri = URI.parse(raw.to_s)
         return unless uri.scheme && uri.host
 
-        "#{uri.scheme}://#{uri.host}#{uri.path}"
+        path = uri.path
+        "#{uri.scheme}://#{uri.host}#{"/#{path.delete_prefix('/')}" unless path.empty?}"
       rescue URI::InvalidURIError
         nil
       end
