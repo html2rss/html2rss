@@ -118,24 +118,11 @@ module Html2rss
     method_option :explain, type: :boolean, desc: 'Print capture diagnostics to stderr', default: false
     # @param target [String, nil] URL or local HTML file
     # @return [void]
-    def capture(target = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    def capture(target = nil) # rubocop:disable Metrics/AbcSize
       strategy, local_file_path, url = prepare_auto_inputs(target, options[:input])
       topics = options[:topics]&.split(',')&.map(&:strip)
 
-      result = Html2rss::Capture.build(
-        url,
-        strategy:,
-        items_selector: options[:items_selector],
-        topics:,
-        title: options[:title],
-        summary: options[:summary],
-        force: options[:force],
-        enhance: options[:enhance],
-        limit: options[:limit],
-        max_redirects: options[:max_redirects],
-        max_requests: options[:max_requests],
-        local_file_path:
-      )
+      result = Html2rss::Capture.build(url, strategy:, local_file_path:, topics:, **capture_options)
 
       if result.native_feed? && !options[:force]
         $stderr.puts "First-party RSS/Atom/RDF feed detected at #{result.native_feed}. Use --force to capture anyway." # rubocop:disable Style/StderrPuts
@@ -429,6 +416,14 @@ module Html2rss
         limit: options[:limit],
         **cleanup_overrides
       )
+    end
+
+    def capture_options
+      {
+        items_selector: options[:items_selector], title: options[:title], summary: options[:summary],
+        force: options[:force], enhance: options[:enhance], limit: options[:limit],
+        max_redirects: options[:max_redirects], max_requests: options[:max_requests]
+      }
     end
 
     def cleanup_overrides
