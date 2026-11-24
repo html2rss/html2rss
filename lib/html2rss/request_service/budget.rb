@@ -6,6 +6,8 @@ module Html2rss
     # Tracks HTTP request slots and wall-clock deadline for one feed build.
     #
     # HTTP fetches consume request slots. Deadline remains on `#remaining_timeout_seconds`.
+    # A budget belongs to one feed build and is not shared across threads; at most one {#holding} floor is
+    # active at a time.
     class Budget
       ##
       # @param max_requests [Integer] maximum HTTP request slots
