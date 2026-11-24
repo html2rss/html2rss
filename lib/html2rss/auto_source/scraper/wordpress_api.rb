@@ -211,8 +211,7 @@ module Html2rss
             parsed_body:,
             page_url: url,
             page_scope:,
-            posts_query:,
-            logger: Log
+            posts_query:
           )
         end
       end
