@@ -534,6 +534,21 @@ RSpec.describe Html2rss::Selectors do
         end
       end
 
+      it 'keeps a selected template, read through its content, beside a normal item', :aggregate_failures do
+        page = '<html><body><template class="i"><a href="/t">T</a><p>d</p></template>' \
+               '<div class="i"><a href="/a">A</a></div></body></html>'
+        articles = articles_for.call(page)
+
+        expect(articles.map { [_1.title, _1.url.to_s] }).to eq([['T', 'http://example.com/t'],
+                                                                ['A', 'http://example.com/a']])
+      end
+
+      it 'keeps a lone selected template' do
+        articles = articles_for.call('<html><body><template class="i"><a href="/t">T</a></template></body></html>')
+
+        expect(articles.map(&:title)).to eq(['T'])
+      end
+
       {
         'inside a template' => '<html><body><template>%<item>s</template></body></html>',
         'after the closing html tag' => '<html><body><p>x</p></body></html>%<item>s',

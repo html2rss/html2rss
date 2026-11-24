@@ -14,10 +14,11 @@ module Html2rss
     # It owns the documents' lifetime: an SST node finds its relationships through an index that only its
     # document keeps alive, so every document stays referenced here for as long as items are read.
     #
-    # An item the region has no node for (inside a +template+ or +script+, or under a second root of a
-    # parsed JSON fragment: only the first root of a fragment is normalized) is read from its own root, with
-    # the chrome scope its ancestors give it, so enhance never drops an item. Such an item has no parent card
-    # to walk to.
+    # An item the region has no node for (inside a +template+ or +script+, after the closing +html+ tag, or
+    # under a second root of a parsed JSON fragment: only the first root of a fragment is normalized) is read
+    # from its own root, with the chrome scope its ancestors give it, so enhance never drops it. Such an item
+    # has no parent card to walk to. An item that is a +template+ is read through its content. Only an item
+    # that is a +script+, +style+, +svg+ or +iframe+ element, which has no card content, stays unread.
     #
     # The SST node is found by the parsed node's identity, which only a Nokogiri-parsed page offers. A parser
     # that does not keep node identity would need a document-order index here instead.
@@ -95,7 +96,7 @@ module Html2rss
       def kept?(element) = SST::Normalizer.kept_tag?(Html::Probe.tag(element), items: true)
 
       # The SST root of +item+ normalized by itself, kept alive with the rest, or +nil+ for an item that is no
-      # SST node at all (a +script+ or +template+ element).
+      # SST node at all (a +script+, +style+, +svg+ or +iframe+ element).
       def root_alone(item)
         Log.debug { { event_name: 'selectors.enhance.alone', node: item.name }.to_json }
         alone = normalize(item)

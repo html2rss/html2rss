@@ -159,7 +159,7 @@ module Html2rss
       end
 
       def element_root?(node)
-        node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
+        node.element? && self.class.kept_tag?(Html2rss::Html::Probe.tag(node), items: @items)
       end
 
       # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
@@ -210,16 +210,19 @@ module Html2rss
       # file links inside it ({Html::ArticleRules::Enclosure.file_link?}), as its only children, so a
       # card's no-script download link still names its enclosure; its text stays invisible
       # ({Tags::INVISIBLE_NAMES}) and a +noscript+ without one is stripped; its file links come back as an
-      # Array standing in for its children.
+      # Array standing in for its children. The root of a region is a +template+ the config selected as an
+      # item: its content is the item, so it is kept.
       #
       # @return [Nokogiri::XML::Node, Array<Nokogiri::XML::Node>, nil]
       def kept_children(nk_node, tag)
-        return nk_node if self.class.kept_tag?(tag, items: @items)
+        return nk_node if self.class.kept_tag?(tag, items: @items) || region_template?(nk_node, tag)
         return unless tag == 'noscript'
 
         links = nk_node.xpath('.//a[@href]').select { Html::ArticleRules::Enclosure.file_link?(_1['href']) }
         links unless links.empty?
       end
+
+      def region_template?(nk_node, tag) = @within && tag == 'template' && nk_node.equal?(@parsed_body)
 
       def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength
         attr_nodes = nk_node.attribute_nodes

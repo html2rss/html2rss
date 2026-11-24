@@ -322,6 +322,19 @@ RSpec.describe Html2rss::SST::Normalizer do
       end
     end
 
+    context 'when the region root is a template' do
+      let(:parsed) { Nokogiri::HTML('<html><body><template id="t"><a href="/t">T</a></template></body></html>') }
+
+      it 'keeps it as the item whose content is read, and strips it elsewhere', :aggregate_failures do
+        region = described_class.call(parsed.at_css('#t'), vocabulary: all_scope, items: true, within: :page)
+        page = described_class.call(parsed, vocabulary: all_scope, items: true)
+
+        expect(region.root.name).to eq(:template)
+        expect(region.root.find(&:link?).attrs.href).to eq('/t')
+        expect(page.root.find { _1.name == :template }).to be_nil
+      end
+    end
+
     describe '.kept_tag?' do
       it 'keeps a noscript for items only, never a stripped tag', :aggregate_failures do
         expect(described_class.kept_tag?('div', items: false)).to be(true)

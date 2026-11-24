@@ -283,6 +283,17 @@ RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
     end
   end
 
+  describe 'a thin wrapper beside stripped siblings' do
+    it 'climbs past it to the parent card, as auto-source does', :aggregate_failures do
+      html = '<main><div class="c"><h3 class="i"><a href="/s/1">Head one</a></h3><script>x()</script></div>' \
+             '<p>outer para text</p></main>'
+      fields = item_fields_for(html, item: '.i')
+
+      expect(fields[:title]).to eq('Head one')
+      expect(fields[:description]).to eq('outer para text')
+    end
+  end
+
   describe 'description and date from the parent card' do
     let(:card) do
       lambda do |inner, item|
