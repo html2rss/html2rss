@@ -1,6 +1,42 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Url do
+  describe '.from_relative normalization skip' do
+    let(:normalized) do
+      ->(ref, base) { Addressable::URI.parse(base).join(Addressable::URI.parse(ref)).normalize.to_s }
+    end
+    let(:edge_refs) do
+      %w[
+        / /a /a/ //a /a//b /a/./b /a/../b /./a /a/. /a/.. /.x /a.b /a..b /a%2fb /A%7e /a%20b /~u /a;b /a@b
+        /a?b=1&a=2 /a? /a?a=%41 /a?a=b+c /a?x=1/../y /a#frag /a?q=1#f /A/B?C=D
+        HTTP://EXAMPLE.com/a http://example.com:80/a http://example.com:8080/a https://example.com:443/a
+        http://user@example.com/a http://example.com http://example.com? https://EXAMPLE.com/Path
+        http://xn--bcher-kva.de/a http://b%C3%BCcher.de/a http://bücher.de/a http://example.com./a
+        http://a..b.com/a http://127.0.0.1/a http://[::1]/a //cdn.example.org/x.js a/b ../a ./a ?q=1 #top
+        https://example.com/é https://example.com/a?é=1
+      ]
+    end
+
+    let(:fixture_refs) do
+      Dir['spec/fixtures/**/*.html'].flat_map do |file|
+        Nokogiri::HTML(File.read(file)).css('a[href], img[src]').filter_map { _1['href'] || _1['src'] }
+      end.uniq
+    end
+    let(:bases) { ['https://example.com/dir/page', 'http://Example.com:80/x/'] }
+    let(:comparisons) do
+      (edge_refs + fixture_refs).product(bases).filter_map do |ref, base|
+        [ref, base, normalized.call(ref.strip, base), described_class.from_relative(ref, base).to_s]
+      rescue Addressable::URI::InvalidURIError, Html2rss::Url::InvalidUrlError
+        nil
+      end
+    end
+
+    it 'matches join-then-normalize for edge references and every anchor of the HTML fixtures', :aggregate_failures do
+      expect(comparisons.size).to be > 1000
+      expect(comparisons.reject { |_ref, _base, expected, actual| expected == actual }).to eq([])
+    end
+  end
+
   describe '.from_relative' do
     let(:base_url) { 'https://example.com' }
 
