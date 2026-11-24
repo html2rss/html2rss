@@ -70,38 +70,17 @@ module Html2rss
         end
       end
 
-      # Validates that hash keys are symbols.
+      # Validates that the keys of a hash are symbols. Nested hashes are not walked.
       #
-      # @param value [Object] candidate hash container whose keys must be symbols
+      # @param value [Object] candidate hash whose keys must be symbols
       # @param context [String] error context
-      # @param deep [Boolean] whether nested hashes should also be validated
       # @return [void]
-      def assert_symbol_keys!(value, context: 'hash', deep: true)
+      def assert_symbol_keys!(value, context: 'hash')
         return unless value in Hash
+        return if value.each_key.all?(Symbol)
 
-        unless value.each_key.all?(Symbol)
-          invalid_key = value.keys.find { _1.class != Symbol }
-          raise InvalidOption, "#{context} must use symbol keys (found #{invalid_key.inspect})"
-        end
-
-        value.each_value { assert_symbol_keys!(_1, context:, deep:) } if deep
-      end
-
-      # Validates that hash keys are strings.
-      #
-      # @param value [Object] candidate hash container whose keys must be strings
-      # @param context [String] error context
-      # @param deep [Boolean] whether nested hashes should also be validated
-      # @return [void]
-      def assert_string_keys!(value, context: 'hash', deep: true)
-        return unless value in Hash
-
-        unless value.each_key.all?(String)
-          invalid_key = value.keys.find { _1.class != String }
-          raise InvalidOption, "#{context} must use string keys (found #{invalid_key.inspect})"
-        end
-
-        value.each_value { assert_string_keys!(_1, context:, deep:) } if deep
+        invalid_key = value.keys.find { _1.class != Symbol }
+        raise InvalidOption, "#{context} must use symbol keys (found #{invalid_key.inspect})"
       end
 
       private
