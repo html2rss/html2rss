@@ -12,6 +12,8 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
   blocked_ips = %w[
     0.0.0.0 0.255.255.255 10.0.0.1 10.255.255.255 127.0.0.1 127.255.255.255 169.254.169.254 172.16.0.1
     172.31.255.255 192.168.0.1 192.168.255.255 224.0.0.1 239.255.255.255 ::1 :: fe80::1 febf::1 fc00::1
+    100.64.0.1 100.127.255.255 192.0.0.1 192.0.2.1 192.88.99.1 198.18.0.1 198.19.255.255 198.51.100.1 203.0.113.1
+    240.0.0.1 255.255.255.255 100::1 2001:10::1 2001:20::1 2001:db8::1
     fdff::1 ff02::1 ::ffff:127.0.0.1 ::ffff:10.0.0.1 ::ffff:169.254.169.254
     64:ff9b::10.0.0.1 64:ff9b::127.0.0.1 64:ff9b::169.254.169.254 64:ff9b::192.168.1.1 64:ff9b::0.0.0.0
     64:ff9b::224.0.0.1 64:ff9b:1::1 64:ff9b:1::808:808 2002:0a00:0001:: 2002:7f00:0001:: 2002:a9fe:a9fe::1
@@ -19,7 +21,7 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
   ]
   public_ips = %w[
     1.1.1.1 8.8.8.8 9.255.255.255 11.0.0.1 126.255.255.255 128.0.0.1 169.253.255.255 169.255.0.1 172.15.255.255
-    172.32.0.1 192.167.255.255 192.169.0.1 223.255.255.255 240.0.0.1 2001:4860:4860::8888 ::ffff:8.8.8.8
+    172.32.0.1 192.167.255.255 192.169.0.1 223.255.255.255 2001:4860:4860::8888 ::ffff:8.8.8.8
     64:ff9b::8.8.8.8 64:ff9b::1.1.1.1 2002:0808:0808:: 2001:1::1
   ]
 
@@ -40,7 +42,7 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
 
     context 'when the resolver is Resolv-shaped' do
       before do
-        allow(resolver).to receive(:each_address).with('example.com').and_yield('192.0.2.10')
+        allow(resolver).to receive(:each_address).with('example.com').and_yield('8.8.8.8')
       end
 
       it 'classifies addresses via each_address' do
@@ -52,7 +54,7 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
       let(:resolver) do
         Class.new do
           def self.getaddrinfo(*)
-            [[nil, nil, nil, '192.0.2.10']]
+            [[nil, nil, nil, '8.8.8.8']]
           end
         end
       end
@@ -78,7 +80,8 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
       end
     end
 
-    %w[localhost LOCALHOST localhost.localdomain metadata.google.internal].each do |host|
+    %w[localhost LOCALHOST localhost. foo.localhost foo.localhost. localhost.localdomain
+       metadata.google.internal].each do |host|
       it "denies host #{host} without resolving", :aggregate_failures do
         allow(resolver).to receive(:each_address)
 
@@ -89,7 +92,7 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
     end
 
     it 'does not treat look-alike hosts as local' do
-      allow(resolver).to receive(:each_address).and_yield('192.0.2.10')
+      allow(resolver).to receive(:each_address).and_yield('8.8.8.8')
 
       expect { guard.enforce_public_network!(Html2rss::Url.from_absolute('http://notlocalhost.example/')) }
         .not_to raise_error
@@ -103,13 +106,13 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
     end
 
     it 'denies when any resolved address is blocked' do
-      allow(resolver).to receive(:each_address).with('example.com').and_yield('192.0.2.10').and_yield('10.0.0.1')
+      allow(resolver).to receive(:each_address).with('example.com').and_yield('8.8.8.8').and_yield('10.0.0.1')
 
       expect { guard.enforce_public_network!(url) }.to raise_error(denied, /example.com/)
     end
 
     it 'ignores unparsable resolver addresses but keeps valid ones' do
-      allow(resolver).to receive(:each_address).with('example.com').and_yield('garbage').and_yield('192.0.2.10')
+      allow(resolver).to receive(:each_address).with('example.com').and_yield('garbage').and_yield('8.8.8.8')
 
       expect { guard.enforce_public_network!(url) }.not_to raise_error
     end
@@ -150,44 +153,39 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
     end
   end
 
-  describe '#validate_remote_ip!' do
+  describe '#blocked_ip?' do
     blocked_ips.each do |ip|
-      it "denies #{ip}" do
-        expect { guard.validate_remote_ip!(ip:, url:) }
-          .to raise_error(denied, %r{Private network target denied for https://example.com/feed})
-      end
+      it("denies #{ip}") { expect(guard.blocked_ip?(IPAddr.new(ip))).to be(true) }
     end
 
     public_ips.each do |ip|
-      it "allows public #{ip}" do
-        expect { guard.validate_remote_ip!(ip:, url:) }.not_to raise_error
+      it("allows public #{ip}") { expect(guard.blocked_ip?(IPAddr.new(ip))).to be(false) }
+    end
+  end
+
+  describe 'HTTPX ssrf_filter parity' do
+    # Judged on the embedded IPv4 (NAT64, 6to4) or by IPAddr#native (IPv4-mapped), or malformed ranges HTTPX
+    # derives in ::/80 that no client can reach. A new HTTPX range is never skipped unless listed here.
+    let(:excluded_keys) do
+      %w[
+        64:ff9b::/96 2002::/16 ::ff00:0:0/88 ::ffc0:0:0/90 ::fff0:0:0/92 ::f000:0:0/84 ::fffe:0:0/95
+        ::ffff:0.0.0.0/96 ::ffff:192.0.0.0/104 ::ffff:198.0.0.0/104 ::ffff:203.0.0.0/104 ::ffff:255.255.0.0/112
+      ]
+    end
+
+    it 'excludes only ranges HTTPX still lists' do
+      keys = (HTTPX::Plugins::SsrfFilter::IPV4_BLACKLIST + HTTPX::Plugins::SsrfFilter::IPV6_BLACKLIST)
+             .map { |range| "#{range.to_range.first}/#{range.prefix}" }
+
+      expect(keys & excluded_keys).to match_array(excluded_keys)
+    end
+
+    (HTTPX::Plugins::SsrfFilter::IPV4_BLACKLIST + HTTPX::Plugins::SsrfFilter::IPV6_BLACKLIST).each do |range|
+      it "denies the network address of #{range.to_range.first}/#{range.prefix}" do
+        next if excluded_keys.include?("#{range.to_range.first}/#{range.prefix}")
+
+        expect(guard.blocked_ip?(range.to_range.first)).to be(true)
       end
-    end
-
-    [nil, '', 'garbage'].each do |ip|
-      it "denies unvalidatable ip #{ip.inspect}" do
-        expect { guard.validate_remote_ip!(ip:, url:) }
-          .to raise_error(denied, %r{could not be validated for https://example.com/feed})
-      end
-    end
-
-    it 'allows any ip when private networks are allowed', :aggregate_failures do
-      open_guard = described_class.new(allow_private_networks: true, resolver:)
-
-      expect { open_guard.validate_remote_ip!(ip: '127.0.0.1', url:) }.not_to raise_error
-      expect { open_guard.validate_remote_ip!(ip: nil, url:) }.not_to raise_error
-    end
-
-    it 'treats a truthy non-boolean allow flag as allowed' do
-      open_guard = described_class.new(allow_private_networks: 'yes', resolver:)
-
-      expect { open_guard.validate_remote_ip!(ip: '127.0.0.1', url:) }.not_to raise_error
-    end
-
-    it 'treats a nil allow flag as denied' do
-      closed_guard = described_class.new(allow_private_networks: nil, resolver:)
-
-      expect { closed_guard.validate_remote_ip!(ip: '127.0.0.1', url:) }.to raise_error(denied)
     end
   end
 

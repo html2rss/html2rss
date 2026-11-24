@@ -7,24 +7,38 @@ require 'socket'
 module Html2rss
   class RequestService
     ##
-    # Enforces public-network reachability for request targets and remote IPs.
+    # Enforces public-network reachability for request targets.
     #
     # Owns DNS resolution, host denylist, and blocked IP ranges. Callers go through
     # {Policy} so SSRF/origin rules stay single-homed on the public façade.
     class NetworkGuard
       # Hostnames treated as local/private surfaces.
       LOCAL_HOSTS = Set['localhost', 'localhost.localdomain', 'metadata.google.internal'].freeze
-      # IP ranges blocked when private networks are disabled.
+      # IP ranges blocked when private networks are disabled. Single owner: a spec pins that it covers
+      # every HTTPX +:ssrf_filter+ range (NAT64 and 6to4 are decoded via {#embedded_ipv4}; +IPAddr#native+ decodes
+      # IPv4-mapped and IPv4-compatible forms, so those never reach this list).
       BLOCKED_IP_RANGES = [
         IPAddr.new('0.0.0.0/8'),
         IPAddr.new('10.0.0.0/8'),
+        IPAddr.new('100.64.0.0/10'),
         IPAddr.new('127.0.0.0/8'),
         IPAddr.new('169.254.0.0/16'),
         IPAddr.new('172.16.0.0/12'),
+        IPAddr.new('192.0.0.0/24'),
+        IPAddr.new('192.0.2.0/24'),
+        IPAddr.new('192.88.99.0/24'),
         IPAddr.new('192.168.0.0/16'),
+        IPAddr.new('198.18.0.0/15'),
+        IPAddr.new('198.51.100.0/24'),
+        IPAddr.new('203.0.113.0/24'),
         IPAddr.new('224.0.0.0/4'),
+        IPAddr.new('240.0.0.0/4'),
         IPAddr.new('::/128'),
         IPAddr.new('::1/128'),
+        IPAddr.new('100::/64'),
+        IPAddr.new('2001:10::/28'),
+        IPAddr.new('2001:20::/28'),
+        IPAddr.new('2001:db8::/32'),
         IPAddr.new('fe80::/10'),
         IPAddr.new('fc00::/7'),
         IPAddr.new('ff00::/8'),
@@ -68,27 +82,10 @@ module Html2rss
       end
 
       ##
-      # Validates the resolved remote IP for a completed request.
-      #
-      # @param ip [String, nil] remote IP address reported by the client
-      # @param url [Html2rss::Url] URL associated with the response
-      # @return [void]
-      # @raise [PrivateNetworkDenied] if the response came from a blocked address
-      def validate_remote_ip!(ip:, url:)
-        return if allow_private_networks?
-
-        parsed_ip = parse_ip(ip.to_s)
-        raise PrivateNetworkDenied, "Remote IP could not be validated for #{url}" unless parsed_ip
-        return unless blocked_ip?(parsed_ip)
-
-        raise PrivateNetworkDenied, "Private network target denied for #{url}"
-      end
-
-      ##
       # Single owner of the IP allow/deny decision. IPv6 forms that embed an IPv4 address
       # (IPv4-mapped, NAT64 64:ff9b::/96, 6to4) are allowed only if the embedded IPv4 is.
       #
-      # @param address [IPAddr] resolved or remote address
+      # @param address [IPAddr] resolved address
       # @return [Boolean] true when the address must be denied
       def blocked_ip?(address)
         native = address.native
@@ -117,8 +114,9 @@ module Html2rss
         @allow_private_networks
       end
 
+      # +host+ comes from {Html2rss::Url}, which lowercases it and drops a trailing dot.
       def blocked_host?(host)
-        LOCAL_HOSTS.include?(host.to_s.downcase)
+        LOCAL_HOSTS.include?(host) || host.end_with?('.localhost')
       end
 
       def resolved_ip_addresses(host)

@@ -19,8 +19,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       max_decompressed_bytes: 5_242_880,
       allow_private_networks?: false,
       validate_request!: nil,
-      validate_redirect!: nil,
-      validate_remote_ip!: nil
+      validate_redirect!: nil
     )
   end
   let(:budget) do

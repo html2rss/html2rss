@@ -15,7 +15,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       connect_timeout_seconds: 10,
       read_timeout_seconds: 30,
       max_decompressed_bytes: 700_000,
-      validate_request!: nil
+      validate_request!: nil,
+      validate_redirect!: nil
     )
   end
   let(:budget) do
@@ -383,6 +384,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
 
         expect(result.status).to be_nil
         expect(result.url.to_s).to eq('https://example.com/')
+        expect(policy).not_to have_received(:validate_redirect!)
         expect(result.headers).to eq({})
         expect(result.captured_responses).to eq([])
         expect(result.transport_meta).to include('request_id' => 'req-fallback')
@@ -524,6 +526,91 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
 
         expect(result.body).to include('ok')
         expect(result.transport_meta).to include('metadata_error' => 'metadata collection failed')
+      end
+    end
+
+    context 'when the browser ends on a private literal address' do
+      let(:policy) { Html2rss::RequestService::Policy.new }
+
+      it 'refuses loopback, private, IPv6 loopback, and local-host final urls', :aggregate_failures do
+        %w[https://127.0.0.1/ https://10.0.0.5/feed https://[::1]/ https://localhost/].each do |final_url|
+          allow(self).to receive(:raw_response_body).and_return(JSON.generate(base_payload.merge(final_url:)))
+
+          expect { described_class.new(ctx).execute }
+            .to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+        end
+      end
+    end
+
+    context 'when the final url is public' do
+      let(:ctx) do
+        Html2rss::RequestService::Context.new(
+          url: 'https://example.com', request: request_config, policy:, budget:, relation: :advertised_feed,
+          advertisement: instance_double(Html2rss::RequestService::FeedAdvertisement)
+        )
+      end
+      let(:response_payload) { base_payload.merge(final_url: 'https://redacted.example/after/') }
+
+      it 'validates it as a redirect hop from the requested url and keeps it', :aggregate_failures do
+        expect(execute.url.to_s).to eq('https://redacted.example/after/')
+        expect(policy).to have_received(:validate_redirect!).with(
+          from_url: ctx.url, to_url: Html2rss::Url.from_absolute('https://redacted.example/after/'),
+          origin_url: ctx.origin_url, relation: ctx.relation, advertisement: ctx.advertisement
+        )
+      end
+    end
+
+    context 'when the final url is not a web url' do
+      it 'keeps the requested url without a hop check', :aggregate_failures do
+        ['about:blank', 'chrome-error://chromewebdata/', 'ftp://files.example/x'].each do |final_url|
+          allow(self).to receive(:raw_response_body).and_return(JSON.generate(base_payload.merge(final_url:)))
+
+          expect(described_class.new(ctx).execute.url.to_s).to eq('https://example.com/')
+        end
+        expect(policy).not_to have_received(:validate_redirect!)
+      end
+    end
+
+    context 'when the final url is in shared address space' do
+      let(:policy) { Html2rss::RequestService::Policy.new }
+      let(:response_payload) { base_payload.merge(final_url: 'https://100.64.0.1/') }
+
+      it 'is refused' do
+        expect { execute }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+      end
+    end
+
+    context 'when the final url downgrades to http' do
+      let(:policy) { Html2rss::RequestService::Policy.new }
+      let(:response_payload) { base_payload.merge(final_url: 'http://example.com/') }
+
+      it 'raises the downgrade error' do
+        expect { execute }.to raise_error(Html2rss::RequestService::UnsupportedUrlScheme)
+      end
+    end
+
+    context 'when a follow-up ends on another origin' do
+      let(:ctx) do
+        Html2rss::RequestService::Context.new(
+          url: 'https://example.com/b', request: request_config, policy:, budget:, relation: :same_origin_follow_up,
+          origin_url: Html2rss::Url.from_absolute('https://example.com/a')
+        )
+      end
+      let(:response_payload) { base_payload.merge(final_url: 'https://other.example/') }
+
+      it 'raises CrossOriginFollowUpDenied' do
+        allow(policy).to receive(:validate_redirect!) { |**hop| Html2rss::RequestService::Policy.new.validate_redirect!(**hop) }
+
+        expect { execute }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
+    context 'when the final url is unparseable' do
+      let(:response_payload) { base_payload.merge(final_url: 'not a url') }
+
+      it 'keeps the requested url without a hop check', :aggregate_failures do
+        expect(execute.url.to_s).to eq('https://example.com/')
+        expect(policy).not_to have_received(:validate_redirect!)
       end
     end
 

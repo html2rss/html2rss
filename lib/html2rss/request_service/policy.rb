@@ -153,17 +153,6 @@ module Html2rss
         network_guard.enforce_public_network!(to_url)
       end
 
-      ##
-      # Validates the resolved remote IP for a completed request.
-      #
-      # @param ip [String, nil] remote IP address reported by the client
-      # @param url [Html2rss::Url] URL associated with the response
-      # @return [void]
-      # @raise [PrivateNetworkDenied] if the response came from a blocked address
-      def validate_remote_ip!(ip:, url:)
-        network_guard.validate_remote_ip!(ip:, url:)
-      end
-
       private
 
       attr_reader :network_guard

@@ -55,7 +55,7 @@ RSpec.describe Html2rss::RequestService::Policy do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/wp-json/wp/v2/posts') }
 
       before do
-        allow(resolver).to receive(:each_address).with('example.com').and_yield('192.0.2.10')
+        allow(resolver).to receive(:each_address).with('example.com').and_yield('8.8.8.8')
       end
 
       it 'rejects the downgrade' do
@@ -92,7 +92,7 @@ RSpec.describe Html2rss::RequestService::Policy do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
       before do
-        allow(resolver).to receive(:each_address).with('example.com').and_yield('192.0.2.10')
+        allow(resolver).to receive(:each_address).with('example.com').and_yield('8.8.8.8')
       end
 
       it 'allows the request' do
@@ -106,7 +106,7 @@ RSpec.describe Html2rss::RequestService::Policy do
       before do
         allow(resolver).to receive(:each_address).with('example.com')
                                                  .and_yield('weird-address')
-                                                 .and_yield('192.0.2.10')
+                                                 .and_yield('8.8.8.8')
         allow(IPAddr).to receive(:new).and_call_original
         allow(IPAddr).to receive(:new).with('weird-address').and_raise(
           IPAddr::AddressFamilyError, 'address family must be specified'
@@ -188,7 +188,7 @@ RSpec.describe Html2rss::RequestService::Policy do
       end
 
       before do
-        allow(resolver).to receive(:each_address).with('other.example.com').and_yield('192.0.2.10')
+        allow(resolver).to receive(:each_address).with('other.example.com').and_yield('8.8.8.8')
       end
 
       it 'allows the follow-up' do
@@ -203,7 +203,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     let(:origin_url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
     before do
-      allow(resolver).to receive(:each_address).and_yield('192.0.2.10')
+      allow(resolver).to receive(:each_address).and_yield('8.8.8.8')
     end
 
     context 'when the follow-up shares host and default port with the origin' do
@@ -347,7 +347,7 @@ RSpec.describe Html2rss::RequestService::Policy do
 
   describe '#validate_request!' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
     before do
-      allow(resolver).to receive(:each_address).and_yield('192.0.2.10')
+      allow(resolver).to receive(:each_address).and_yield('8.8.8.8')
     end
 
     {
@@ -418,7 +418,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     let(:relation) { :initial }
 
     before do
-      allow(resolver).to receive(:each_address).with('example.com').and_yield('192.0.2.10')
+      allow(resolver).to receive(:each_address).with('example.com').and_yield('8.8.8.8')
     end
 
     context 'when the redirect downgrades the scheme' do # rubocop:disable RSpec/MultipleMemoizedHelpers
@@ -479,7 +479,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     let(:advertisement) do
       Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML(head), page_url:)
     end
-    let(:resolved_ip) { '192.0.2.10' }
+    let(:resolved_ip) { '8.8.8.8' }
 
     before do
       allow(resolver).to receive(:each_address) { |_host, &block| block.call(resolved_ip) }
@@ -656,77 +656,6 @@ RSpec.describe Html2rss::RequestService::Policy do
 
       it 'denies the cross-origin hop' do
         expect { validate_redirect! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
-      end
-    end
-  end
-
-  describe '#validate_remote_ip!' do
-    subject(:validate_remote_ip!) { policy.validate_remote_ip!(ip:, url:) }
-
-    let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
-
-    context 'when the response IP is private' do
-      let(:ip) { '127.0.0.1' }
-
-      it 'rejects the response' do
-        expect { validate_remote_ip! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /example.com/)
-      end
-    end
-
-    context 'when the response IP is public' do
-      let(:ip) { '192.0.2.10' }
-
-      it 'allows the response' do
-        expect { validate_remote_ip! }.not_to raise_error
-      end
-    end
-
-    context 'when the response IP is nil' do
-      let(:ip) { nil }
-
-      it 'rejects the response' do
-        expect { validate_remote_ip! }.to raise_error(
-          Html2rss::RequestService::PrivateNetworkDenied,
-          /Remote IP could not be validated/
-        )
-      end
-    end
-
-    context 'when the response IP is empty' do
-      let(:ip) { '' }
-
-      it 'rejects the response' do
-        expect { validate_remote_ip! }.to raise_error(
-          Html2rss::RequestService::PrivateNetworkDenied,
-          /Remote IP could not be validated/
-        )
-      end
-    end
-
-    context 'when private networks are allowed' do
-      let(:options) { { allow_private_networks: true } }
-      let(:ip) { '127.0.0.1' }
-
-      it 'allows private response IPs' do
-        expect { validate_remote_ip! }.not_to raise_error
-      end
-    end
-
-    context 'when the response IP cannot be classified by IPAddr' do
-      let(:ip) { 'weird-address' }
-
-      before do
-        allow(IPAddr).to receive(:new).and_call_original
-        allow(IPAddr).to receive(:new).with('weird-address').and_raise(
-          IPAddr::AddressFamilyError, 'address family must be specified'
-        )
-      end
-
-      it 'rejects the response because the remote IP cannot be validated' do
-        expect { validate_remote_ip! }.to raise_error(
-          Html2rss::RequestService::PrivateNetworkDenied,
-          /Remote IP could not be validated/
-        )
       end
     end
   end

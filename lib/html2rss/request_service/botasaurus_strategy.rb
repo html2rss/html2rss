@@ -98,12 +98,20 @@ module Html2rss
         raise err
       end
 
+      # The remote browser follows redirects itself, so its final URL gets the same hop check HTTPX applies.
       def response_url(final_url)
-        return ctx.url if final_url.nil?
+        url = parse_final_url(final_url)
+        return ctx.url unless url
 
-        Html2rss::Url.from_absolute(final_url)
+        ctx.policy.validate_redirect!(from_url: ctx.url, to_url: url, origin_url: ctx.origin_url,
+                                      relation: ctx.relation, advertisement: ctx.advertisement)
+        url
+      end
+
+      def parse_final_url(final_url)
+        Html2rss::Url.from_absolute_web(final_url)
       rescue Html2rss::Url::InvalidUrlError
-        ctx.url
+        nil
       end
 
       def contract(stored, overrides)
