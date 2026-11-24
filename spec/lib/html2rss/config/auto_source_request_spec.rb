@@ -107,6 +107,11 @@ RSpec.describe Html2rss::Config::AutoSourceRequest do
       expect(config[:request]).to eq(max_redirects: 2, local_file_path: '/tmp/p.html')
     end
 
+    it 'rejects a url keyword beside the positional url' do
+      expect { described_class.from_shortcut('https://a.test', strategy: :auto, url: 'https://b.test') }
+        .to raise_error(Html2rss::InvalidOption, 'unknown keyword: :url')
+    end
+
     it 'rejects an unknown member' do
       expect { described_class.from_shortcut('https://example.com', strategy: :auto, bogus: 1) }
         .to raise_error(ArgumentError, /bogus/)
