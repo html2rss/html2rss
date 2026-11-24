@@ -178,6 +178,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       expect(result.status).to eq(200)
       expect(result.body).to eq('<html>terminal-success</html>')
       expect(result.url.to_s).to eq('https://example.com/terminal')
+      expect(budget).to have_received(:consume!).once
     end
 
     it 'returns the response without raising RedirectLimitReached for 304 Not Modified' do
@@ -286,6 +287,37 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       expect(budget).to have_received(:consume!).once
       expect(session).to have_received(:get).exactly(3).times
       expect(session).to have_received(:with).with(hash_including(max_retries: 0)).at_least(:once)
+    end
+  end
+
+  describe 'budget slot per request' do
+    it 'raises before any network I/O when the budget is exhausted', :aggregate_failures do
+      allow(budget).to receive(:consume!).and_raise(Html2rss::RequestService::RequestBudgetExceeded)
+
+      expect { execute }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded)
+      expect(a_request(:get, 'https://example.com')).not_to have_been_made
+      expect(policy).not_to have_received(:validate_request!)
+    end
+
+    it 'spends one slot across transport retries and a terminal-redirect retry', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario, one pinned count
+      session = instance_double(HTTPX::Session)
+      timeout = HTTPX::TimeoutError.new({ request_timeout: 5 }, 'timed out')
+      redirect = instance_double(HTTPX::Response, status: 301, uri: URI('https://example.com'),
+                                                  headers: { 'location' => 'https://example.com/terminal' })
+      ok = instance_double(
+        HTTPX::Response, status: 200, body: StringIO.new('<html>ok</html>'), uri: URI('https://example.com/terminal'),
+                         headers: instance_double(HTTPX::Headers, to_h: { 'content-type' => 'text/html' })
+      )
+      allow(redirect).to receive(:is_a?).and_return(false)
+      allow(redirect).to receive(:is_a?).with(HTTPX::Response).and_return(true)
+      outcomes = [timeout, timeout, redirect, ok]
+      allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
+      allow(session).to receive(:with).and_return(session)
+      allow(session).to receive(:get) { (o = outcomes.shift).is_a?(Exception) ? raise(o) : o }
+
+      expect(execute.status).to eq(200)
+      expect(session).to have_received(:get).exactly(4).times
+      expect(budget).to have_received(:consume!).once
     end
   end
 

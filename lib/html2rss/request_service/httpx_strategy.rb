@@ -54,6 +54,7 @@ module Html2rss
       def perform_execute
         deadline = request_deadline
         reset_redirect_tracking!
+        charge_budget!
         raw_response = request_with_deadline_retries(deadline:)
         build_response(raw_response)
       end
@@ -82,29 +83,24 @@ module Html2rss
       end
 
       # Retries HTTPX timeouts in Ruby while the shared monotonic deadline has time left.
-      # First try consumes the budget slot; retries do not.
+      # The caller has already charged the request's one budget slot; every attempt only validates.
       def request_with_deadline_retries(deadline:)
-        state = { retries_remaining: MAX_RETRIES, consume_budget: true }
+        retries_remaining = MAX_RETRIES
 
         begin
-          request_with_terminal_redirect_retry(deadline:, consume_budget: state[:consume_budget])
+          request_with_terminal_redirect_retry(deadline:)
         rescue HTTPX::TimeoutError => error
-          prepare_deadline_retry!(deadline:, state:, error:)
+          raise error if retries_remaining.zero?
+
+          remaining_timeout_seconds(deadline)
+          retries_remaining -= 1
+          reset_redirect_tracking!
           retry
         end
       end
 
-      def prepare_deadline_retry!(deadline:, state:, error:)
-        raise error if state[:retries_remaining].zero?
-
-        remaining_timeout_seconds(deadline)
-        state[:retries_remaining] -= 1
-        state[:consume_budget] = false
-        reset_redirect_tracking!
-      end
-
-      def request_with_terminal_redirect_retry(deadline:, consume_budget: true)
-        raw_response = execute_http_request(deadline:, consume_budget:)
+      def request_with_terminal_redirect_retry(deadline:)
+        raw_response = execute_http_request(deadline:)
         return raw_response unless redirect_limit_reached?(raw_response)
 
         unless terminal_redirect_retryable?(raw_response)
@@ -145,7 +141,7 @@ module Html2rss
         @terminal_redirect_retried = true
         Log.debug("#{self.class}: redirect limit reached; retrying once from #{terminal_url}")
         begin_terminal_url_request!(terminal_url)
-        new_response = execute_http_request(deadline:, consume_budget: false)
+        new_response = execute_http_request(deadline:)
         if redirect_limit_reached?(new_response)
           raise RedirectLimitReached, "Too many redirects (status #{new_response.status})"
         end
@@ -164,8 +160,8 @@ module Html2rss
         @request_url_override || ctx.url
       end
 
-      def execute_http_request(deadline:, consume_budget: true)
-        preflight!(consume_budget:)
+      def execute_http_request(deadline:)
+        validate_request!
         session = session_client(deadline)
         response = http_get(session)
         raise response.error if response.is_a?(HTTPX::ErrorResponse)

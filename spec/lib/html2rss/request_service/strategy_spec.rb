@@ -62,6 +62,14 @@ RSpec.describe Html2rss::RequestService::Strategy do
                                                                advertisement: nil)
     end
 
+    it 'spends and validates nothing when the adapter skips preflight', :aggregate_failures do
+      skipping = Class.new(adapter) { def skip_preflight? = true }
+      skipping.new(ctx).execute
+
+      expect(budget).not_to have_received(:consume!)
+      expect(policy).not_to have_received(:validate_request!)
+    end
+
     it 'hands the context feed advertisement to policy validation' do
       advertisement = Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML('<head></head>'),
                                                                                 page_url: url)
