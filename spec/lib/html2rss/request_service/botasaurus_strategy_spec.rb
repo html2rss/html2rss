@@ -16,7 +16,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       read_timeout_seconds: 30,
       max_decompressed_bytes: 700_000,
       validate_request!: nil,
-      validate_redirect!: nil
+      validate_redirect!: nil,
+      enforce_public_network!: nil
     )
   end
   let(:budget) do

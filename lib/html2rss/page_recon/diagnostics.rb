@@ -71,24 +71,9 @@ module Html2rss
         captured = response.captured_responses
         {
           count: captured.size,
-          sample_endpoints: captured.first(5).filter_map { |entry| redacted_endpoint(entry) },
+          sample_endpoints: captured.first(5).filter_map { |entry| RequestService::Response.redacted_endpoint(entry) },
           candidate_articles: captured.any? { |entry| xhr_candidate_articles?(entry) }
         }
-      end
-
-      ##
-      # @param entry [Hash] captured response hash
-      # @return [String, nil] scheme+host+path only
-      def self.redacted_endpoint(entry)
-        raw = entry['url'] || entry[:url]
-        return unless raw
-
-        uri = URI.parse(raw.to_s)
-        return unless uri.scheme && uri.host
-
-        "#{uri.scheme}://#{uri.host}#{uri.path}"
-      rescue URI::InvalidURIError
-        nil
       end
 
       ##

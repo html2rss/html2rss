@@ -42,6 +42,20 @@ module Html2rss
       private_constant :BASE_ELEMENT, :CHARSET_PARAMETER, :META_CHARSET_BYTES, :FEED_CT_MARKERS, :FEED_BODY_MARKERS
 
       ##
+      # @param capture [Hash] captured response hash (+'url'+ or +:url+)
+      # @return [String, nil] scheme, host and path only (no credentials, query or fragment)
+      def self.redacted_endpoint(capture)
+        raw = capture['url'] || capture[:url]
+        uri = URI.parse(raw.to_s)
+        return unless uri.scheme && uri.host
+
+        path = uri.path
+        "#{uri.scheme}://#{uri.host}#{"/#{path.delete_prefix('/')}" unless path.empty?}"
+      rescue URI::InvalidURIError
+        nil
+      end
+
+      ##
       # @param body [String] the body of the response
       # @param url [Html2rss::Url] the final request URL
       # @param headers [Hash] the headers of the response

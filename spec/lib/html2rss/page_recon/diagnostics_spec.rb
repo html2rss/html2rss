@@ -418,25 +418,6 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
     end
   end
 
-  describe '.redacted_endpoint' do
-    it 'keeps only scheme, host, and path', :aggregate_failures do
-      entry = { 'url' => 'https://user:pass@api.example.com/v1/articles?token=secret#frag' }
-
-      expect(described_class.redacted_endpoint(entry)).to eq('https://api.example.com/v1/articles')
-    end
-
-    it 'accepts symbol-keyed entries' do
-      expect(described_class.redacted_endpoint({ url: 'https://api.example.com/feed?a=1' }))
-        .to eq('https://api.example.com/feed')
-    end
-
-    it 'returns nil without a URL, scheme, or host', :aggregate_failures do
-      expect(described_class.redacted_endpoint({})).to be_nil
-      expect(described_class.redacted_endpoint({ 'url' => '/relative/path?x=1' })).to be_nil
-      expect(described_class.redacted_endpoint({ 'url' => 'http://[bad' })).to be_nil
-    end
-  end
-
   describe Html2rss::PageRecon::Result do
     let(:fields) do
       {
