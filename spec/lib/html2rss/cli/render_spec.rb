@@ -73,14 +73,14 @@ RSpec.describe Html2rss::CLI::Render do
     end
   end
 
-  describe '.recon_output' do
-    it 'prints only urls with url_only' do
-      expect { described_class.recon_output([recon_result], format: 'json', batch_mode: true, url_only: true) }
+  describe 'recon rendering' do
+    it 'prints only urls' do
+      expect { described_class.recon_urls([recon_result]) }
         .to output("https://a.test/x\n").to_stdout
     end
 
     it 'prints a header and tab separated rows for tsv' do
-      expect { described_class.recon_output([recon_result], format: 'tsv', batch_mode: true) }.to output(
+      expect { described_class.recon_tsv([recon_result]) }.to output(
         "verdict\tstatus\trequested_url\tfinal_url\tnative_feed\tnotes\n" \
         "BUILD\t200\thttps://a.test/x\thttps://a.test/y\thttps://a.test/feed\tn1; n2\n"
       ).to_stdout
@@ -89,50 +89,29 @@ RSpec.describe Html2rss::CLI::Render do
     it 'prints dashes for missing tsv fields' do
       bare = recon_result.with(status: nil, native_feed: nil, notes: [])
 
-      expect { described_class.recon_output([bare], format: 'tsv', batch_mode: true) }
+      expect { described_class.recon_tsv([bare]) }
         .to output(%r{BUILD\t-\thttps://a.test/x\thttps://a.test/y\t-\t\n\z}).to_stdout
     end
 
-    it 'prints the first result for single json' do
-      expect { described_class.recon_output([recon_result], format: 'json', batch_mode: false) }.to output(
-        satisfy { |text| JSON.parse(text).values_at('requested_url', 'verdict') == ['https://a.test/x', 'build'] }
-      ).to_stdout
-    end
-
-    it 'prints a list for batch json' do
-      expect { described_class.recon_output([recon_result], format: 'json', batch_mode: true) }.to output(
-        satisfy { |text| JSON.parse(text).map { _1['requested_url'] } == ['https://a.test/x'] }
-      ).to_stdout
-    end
-
     it 'renders text cards otherwise' do
-      expect { described_class.recon_output([recon_result], format: 'text', batch_mode: false) }.to output(
+      expect { described_class.recon_cards([recon_result]) }.to output(
         a_string_starting_with("\e[32m[BUILD]\e[0m https://a.test/x\n        Final:    https://a.test/y (HTTP 200)\n")
       ).to_stdout
     end
   end
 
-  describe '.inspect_output' do
+  describe '.inspect_cards' do
     let(:wire) { { requested_url: 'https://a.test/x', surface_category: 'listing', articles_count: 1 } }
 
-    it 'prints json payloads' do
-      expect { described_class.inspect_output([wire], format: 'json', batch_mode: false) }
-        .to output("#{JSON.pretty_generate(wire)}\n").to_stdout
-    end
-
-    it 'prints text cards for any other format' do
-      expect { described_class.inspect_output([wire], format: 'text', batch_mode: false) }
+    it 'prints text cards' do
+      expect { described_class.inspect_cards([wire]) }
         .to output("https://a.test/x\n        Surface:  listing (1 articles)\n\n").to_stdout
     end
   end
 
   describe '.json' do
-    it 'prints the first element unless batch' do
-      expect { described_class.json([{ a: 1 }, { b: 2 }], false) }.to output("{\n  \"a\": 1\n}\n").to_stdout
-    end
-
-    it 'prints the whole list for batch' do
-      expect { described_class.json([{ a: 1 }], true) }.to output("[\n  {\n    \"a\": 1\n  }\n]\n").to_stdout
+    it 'pretty prints the payload' do
+      expect { described_class.json([{ a: 1 }]) }.to output("[\n  {\n    \"a\": 1\n  }\n]\n").to_stdout
     end
   end
 

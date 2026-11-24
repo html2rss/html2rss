@@ -76,6 +76,16 @@ RSpec.describe Html2rss::CLI do
       end
     end
 
+    it 'writes no explain JSON to stderr by default' do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      expect { cli.invoke(:apply, ['example.yml'], {}) }.not_to output.to_stderr
+    end
+
+    it 'prints RSS without --format' do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      expect { cli.invoke(:apply, ['example.yml'], {}) }.to output("#{rss_xml}\n").to_stdout
+    end
+
     it 'supports --format jsonfeed and --explain' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
       expect { cli.invoke(:apply, ['example.yml'], { format: 'jsonfeed', explain: true }) }
@@ -267,9 +277,23 @@ RSpec.describe Html2rss::CLI do
         .to output(/"verdict": "build"/).to_stdout
     end
 
+    it 'prints a single json object for one target' do
+      expect { cli.invoke(:recon, ['https://example.com/news'], { format: 'json' }) }
+        .to output(satisfy { |text| JSON.parse(text).is_a?(Hash) }).to_stdout
+    end
+
     it 'supports --format tsv' do
       expect { cli.invoke(:recon, ['https://example.com/news'], { format: 'tsv' }) }
         .to output(/BUILD\t/).to_stdout
+    end
+
+    it 'prints a json list for batch targets' do # rubocop:disable RSpec/ExampleLength
+      Tempfile.create('urls') do |f|
+        f.puts('https://example.com/news')
+        f.flush
+        expect { cli.invoke(:recon, nil, { file: f.path, format: 'json' }) }
+          .to output(satisfy { |text| JSON.parse(text).is_a?(Array) }).to_stdout
+      end
     end
 
     it 'supports batch mode with --verdict filter and --url-only' do # rubocop:disable RSpec/ExampleLength
@@ -669,6 +693,10 @@ RSpec.describe Html2rss::CLI do
     end
 
     it_behaves_like 'a command reporting gem errors on one line', 'scrape', Html2rss, :scrape
+
+    it 'writes no explain JSON when --explain is false' do
+      expect { cli.invoke(:scrape, ['https://example.com/news'], { explain: false }) }.not_to output.to_stderr
+    end
 
     it 'prints RSS to stdout' do
       expect { cli.scrape('https://example.com/news') }.to output("#{rss_xml}\n").to_stdout

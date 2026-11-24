@@ -74,20 +74,21 @@ RSpec.describe Html2rss::CLI do
   end
 
   describe '#validate' do
-    it 'forwards files, params and quiet to Validate.run', :aggregate_failures do
+    it 'forwards files, params and a quiet sink to Validate.run', :aggregate_failures do
       allow(Html2rss::CLI::Validate).to receive(:run)
 
       run_command.call(:validate, %w[a.yml b.yml], { params: { 'x' => 'y' }, quiet: true })
 
-      expect(Html2rss::CLI::Validate).to have_received(:run).with(%w[a.yml b.yml], params: { 'x' => 'y' }, quiet: true)
+      expect(Html2rss::CLI::Validate).to have_received(:run).with(%w[a.yml b.yml], params: { 'x' => 'y' },
+                                                                                   out: an_instance_of(StringIO))
     end
 
-    it 'defaults to empty params and not quiet' do
+    it 'defaults to empty params and stdout' do
       allow(Html2rss::CLI::Validate).to receive(:run)
 
       run_command.call(:validate, [])
 
-      expect(Html2rss::CLI::Validate).to have_received(:run).with([], params: {}, quiet: false)
+      expect(Html2rss::CLI::Validate).to have_received(:run).with([], params: {}, out: $stdout)
     end
   end
 

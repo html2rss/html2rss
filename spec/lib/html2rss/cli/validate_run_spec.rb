@@ -14,20 +14,20 @@ RSpec.describe Html2rss::CLI::Validate do
   describe '.run' do
     describe 'a single file' do
       it 'confirms validity', :aggregate_failures do
-        expect { described_class.run([single], params: { 'a' => 'b' }, quiet: false) }
+        expect { described_class.run([single], params: { 'a' => 'b' }) }
           .to output("Configuration is valid\n").to_stdout
         expect(Html2rss).to have_received(:validate).with(single, params: { 'a' => 'b' })
       end
 
       it 'stays silent when quiet' do
-        expect { described_class.run([single], params: {}, quiet: true) }.not_to output.to_stdout
+        expect { described_class.run([single], params: {}, out: StringIO.new) }.not_to output.to_stdout
       end
 
       context 'when invalid' do
         let(:report) { failure }
 
         it 'raises the formatted report' do
-          expect { described_class.run([single], params: {}, quiet: true) }
+          expect { described_class.run([single], params: {}, out: StringIO.new) }
             .to raise_error(Thor::Error, "Invalid configuration: #{failure}")
         end
       end
@@ -35,9 +35,9 @@ RSpec.describe Html2rss::CLI::Validate do
 
     describe 'several files' do
       it 'prints an ok line per file and nothing when quiet', :aggregate_failures do
-        expect { described_class.run([single, feeds], params: {}, quiet: false) }
+        expect { described_class.run([single, feeds], params: {}) }
           .to output("ok   #{single}\nok   #{feeds}\n").to_stdout
-        expect { described_class.run([single, feeds], params: {}, quiet: true) }.not_to output.to_stdout
+        expect { described_class.run([single, feeds], params: {}, out: StringIO.new) }.not_to output.to_stdout
       end
 
       context 'when some fail' do
@@ -50,7 +50,7 @@ RSpec.describe Html2rss::CLI::Validate do
           allow(described_class).to receive(:warn)
 
           expect do
-            expect { described_class.run([single, feeds], params: {}, quiet: false) }
+            expect { described_class.run([single, feeds], params: {}) }
               .to raise_error(Thor::Error, '1/2 configurations failed validation.')
           end.to output("ok   #{single}\n").to_stdout
           expect(described_class).to have_received(:warn).with("FAIL #{feeds}").ordered
@@ -61,37 +61,37 @@ RSpec.describe Html2rss::CLI::Validate do
 
     describe 'a config file followed by a feed name' do
       it 'validates the named feed', :aggregate_failures do
-        expect { described_class.run([feeds, 'notitle'], params: { 'p' => '1' }, quiet: false) }
+        expect { described_class.run([feeds, 'notitle'], params: { 'p' => '1' }) }
           .to output("Configuration is valid\n").to_stdout
         expect(Html2rss).to have_received(:validate).with(feeds, 'notitle', params: { 'p' => '1' })
       end
 
       it 'stays silent when quiet' do
-        expect { described_class.run([feeds, 'notitle'], params: {}, quiet: true) }.not_to output.to_stdout
+        expect { described_class.run([feeds, 'notitle'], params: {}, out: StringIO.new) }.not_to output.to_stdout
       end
 
       context 'when the named feed is invalid' do
         let(:report) { failure }
 
         it 'raises the formatted report' do
-          expect { described_class.run([feeds, 'notitle'], params: {}, quiet: true) }
+          expect { described_class.run([feeds, 'notitle'], params: {}, out: StringIO.new) }
             .to raise_error(Thor::Error, "Invalid configuration: #{failure}")
         end
       end
 
       %w[missing.yml missing.yaml dir/missing -glob missing* a/b].each do |second|
         it "treats #{second.inspect} as a missing config path" do
-          expect { described_class.run([feeds, second], params: {}, quiet: false) }
+          expect { described_class.run([feeds, second], params: {}) }
             .to raise_error(Thor::Error, "No such file: #{second}")
         end
       end
 
       it 'validates two existing files as a list' do
-        expect { described_class.run([single, feeds], params: {}, quiet: false) }.to output(/ok   /).to_stdout
+        expect { described_class.run([single, feeds], params: {}) }.to output(/ok   /).to_stdout
       end
 
       it 'validates two paths as a list when the first is not a file', :aggregate_failures do
-        expect { described_class.run(%w[missing-one notitle], params: {}, quiet: false) }
+        expect { described_class.run(%w[missing-one notitle], params: {}) }
           .to output("ok   missing-one\nok   notitle\n").to_stdout
       end
     end
@@ -100,8 +100,8 @@ RSpec.describe Html2rss::CLI::Validate do
       before { allow($stdin).to receive(:read).and_return('from: stdin') }
 
       it 'validates stdin content for no files and for a dash', :aggregate_failures do
-        expect { described_class.run([], params: {}, quiet: false) }.to output("Configuration is valid\n").to_stdout
-        expect { described_class.run(['-'], params: {}, quiet: false) }.to output("Configuration is valid\n").to_stdout
+        expect { described_class.run([], params: {}) }.to output("Configuration is valid\n").to_stdout
+        expect { described_class.run(['-'], params: {}) }.to output("Configuration is valid\n").to_stdout
         expect(Html2rss).to have_received(:validate).with('from: stdin', params: {}).twice
       end
     end
