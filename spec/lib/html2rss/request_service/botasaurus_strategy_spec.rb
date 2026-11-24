@@ -560,6 +560,51 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       end
     end
 
+    context 'when the final url is not a web url' do
+      it 'keeps the requested url without a hop check', :aggregate_failures do
+        ['about:blank', 'chrome-error://chromewebdata/', 'ftp://files.example/x'].each do |final_url|
+          allow(self).to receive(:raw_response_body).and_return(JSON.generate(base_payload.merge(final_url:)))
+
+          expect(described_class.new(ctx).execute.url.to_s).to eq('https://example.com/')
+        end
+        expect(policy).not_to have_received(:validate_redirect!)
+      end
+    end
+
+    context 'when the final url is in shared address space' do
+      let(:policy) { Html2rss::RequestService::Policy.new }
+      let(:response_payload) { base_payload.merge(final_url: 'https://100.64.0.1/') }
+
+      it 'is refused' do
+        expect { execute }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+      end
+    end
+
+    context 'when the final url downgrades to http' do
+      let(:policy) { Html2rss::RequestService::Policy.new }
+      let(:response_payload) { base_payload.merge(final_url: 'http://example.com/') }
+
+      it 'raises the downgrade error' do
+        expect { execute }.to raise_error(Html2rss::RequestService::UnsupportedUrlScheme)
+      end
+    end
+
+    context 'when a follow-up ends on another origin' do
+      let(:ctx) do
+        Html2rss::RequestService::Context.new(
+          url: 'https://example.com/b', request: request_config, policy:, budget:, relation: :same_origin_follow_up,
+          origin_url: Html2rss::Url.from_absolute('https://example.com/a')
+        )
+      end
+      let(:response_payload) { base_payload.merge(final_url: 'https://other.example/') }
+
+      it 'raises CrossOriginFollowUpDenied' do
+        allow(policy).to receive(:validate_redirect!) { |**hop| Html2rss::RequestService::Policy.new.validate_redirect!(**hop) }
+
+        expect { execute }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
     context 'when the final url is unparseable' do
       let(:response_payload) { base_payload.merge(final_url: 'not a url') }
 

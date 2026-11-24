@@ -109,7 +109,7 @@ module Html2rss
       end
 
       def parse_final_url(final_url)
-        Html2rss::Url.from_absolute(final_url)
+        Html2rss::Url.from_absolute_web(final_url)
       rescue Html2rss::Url::InvalidUrlError
         nil
       end
