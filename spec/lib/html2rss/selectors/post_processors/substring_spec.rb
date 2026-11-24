@@ -5,9 +5,9 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
 
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
-  describe '.schema_export' do
+  describe 'schema export' do
     it 'exports the substring name and description', :aggregate_failures do
-      fragment = described_class.schema_export
+      fragment = Html2rss::Selectors::SchemaExport.for_post_processor(name: :substring, klass: described_class)
 
       expect(fragment.fetch(:properties).fetch(:name)).to eq(type: 'string', const: 'substring')
       expect(fragment.fetch(:description)).to eq(described_class::DESCRIPTION)

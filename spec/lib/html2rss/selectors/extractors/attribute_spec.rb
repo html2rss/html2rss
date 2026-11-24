@@ -24,9 +24,9 @@ RSpec.describe Html2rss::Selectors::Extractors::Attribute do
     expect { described_class.new(xml, attribute: 'datetime') }.not_to raise_error
   end
 
-  describe '.schema_export' do
+  describe 'schema export' do
     it 'exports the attribute extractor schema', :aggregate_failures do
-      expect(described_class.schema_export).to eq(
+      expect(Html2rss::Selectors::SchemaExport.for_extractor(name: :attribute, klass: described_class)).to eq(
         type: 'string', const: 'attribute', title: 'attribute',
         description: described_class::DESCRIPTION, examples: ['attribute']
       )

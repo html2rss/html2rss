@@ -42,7 +42,7 @@ module Html2rss
           OptionSpec.new(name: :string, type: String)
         ].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         # rubocop:disable Style/FormatStringToken -- documents Kernel#format `%{key}` placeholders
         DESCRIPTION = 'Format a string with Kernel#format-style placeholders (`%{key}` / `%<key>s`). ' \
                       '`%{self}` is the current selector value; other keys resolve sibling selectors.'
@@ -52,9 +52,6 @@ module Html2rss
           { 'name' => 'template', 'string' => '`%{self}` (`%{price}`)' }
         ].freeze
         # rubocop:enable Style/FormatStringToken
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :template, klass: self)
 
         ##
         # Ensures a non-empty template +string+ option and an +item_env+ for sibling lookup.

@@ -21,16 +21,13 @@ module Html2rss
           OptionSpec.new(name: :static, type: String)
         ].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return a fixed value from sibling selector option `static` (no DOM read).'
 
         # Example extractor name values for JSON Schema +examples+.
         EXAMPLES = [
           'static'
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_export = SchemaExport.for_extractor(name: :static, klass: self)
 
         ##
         # Initializes the Static extractor.

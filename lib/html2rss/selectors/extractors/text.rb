@@ -24,16 +24,13 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return collapsed visible text of the selected element (default extractor).'
 
         # Example extractor name values for JSON Schema +examples+.
         EXAMPLES = [
           'text'
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_export = SchemaExport.for_extractor(name: :text, klass: self)
 
         ##
         # Initializes the Text extractor.

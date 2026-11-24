@@ -85,27 +85,15 @@ RSpec.describe Html2rss::Selectors::SchemaExport do
     it 'maps each option to its JSON type after the const name' do
       expect(described_class.post_processor_properties('gsub', Html2rss::Selectors::PostProcessors::Gsub)).to eq(
         name: { type: 'string', const: 'gsub' },
-        pattern: { type: 'string' },
+        pattern: { type: 'string', maxLength: 256 },
         replacement: { type: %w[string object] }
       )
     end
   end
 
-  describe 'registry exports' do
-    it 'exports every post-processor class under its registry name', :aggregate_failures do
-      Html2rss::Selectors::PostProcessors::NAME_TO_CLASS.each do |name, klass|
-        expect(klass.schema_export[:title]).to eq(name.to_s)
-      end
-    end
-
-    it 'exports every extractor class under its registry name', :aggregate_failures do
-      Html2rss::Selectors::Extractors::NAME_TO_CLASS.each do |name, klass|
-        expect(klass.schema_export[:title]).to eq(name.to_s)
-      end
-    end
-
+  describe 'gsub pattern cap' do
     it 'caps the gsub pattern length in its JSON Schema fragment' do
-      gsub = Html2rss::Selectors::PostProcessors::Gsub.schema_export
+      gsub = described_class.for_post_processor(name: :gsub, klass: Html2rss::Selectors::PostProcessors::Gsub)
 
       expect(gsub.dig(:properties, :pattern, :maxLength)).to eq(Html2rss::Selectors::PostProcessors::Gsub::MAX_PATTERN_LENGTH)
     end

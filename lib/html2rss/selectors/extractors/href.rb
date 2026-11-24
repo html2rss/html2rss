@@ -27,7 +27,7 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return the absolute URL from the selected element\'s `href` attribute ' \
                       '(relative hrefs are resolved against the page base URL).'
 
@@ -35,9 +35,6 @@ module Html2rss
         EXAMPLES = [
           'href'
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_export = SchemaExport.for_extractor(name: :href, klass: self)
 
         ##
         # Initializes the Href extractor.

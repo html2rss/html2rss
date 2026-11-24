@@ -22,9 +22,9 @@ RSpec.describe Html2rss::Selectors::Extractors::Text do
     it { is_expected.to eq 'Lorem ipsum dolor' }
   end
 
-  describe '.schema_export' do
+  describe 'schema export' do
     it 'exports the text extractor schema', :aggregate_failures do
-      expect(described_class.schema_export).to eq(
+      expect(Html2rss::Selectors::SchemaExport.for_extractor(name: :text, klass: described_class)).to eq(
         type: 'string', const: 'text', title: 'text',
         description: described_class::DESCRIPTION, examples: ['text']
       )

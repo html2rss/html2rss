@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    OptionSpec = Data.define(:name, :type, :required)
+    OptionSpec = Data.define(:name, :type, :required, :max_length)
 
     ##
     # One config-facing option on an extractor or post-processor strategy.
@@ -32,8 +32,9 @@ module Html2rss
       # @param name [Symbol, String]
       # @param type [Class, Array<Class>]
       # @param required [Boolean]
-      def initialize(name:, type:, required: true)
-        super(name: name.to_sym, type:, required:)
+      # @param max_length [Integer, nil] JSON Schema +maxLength+ exported for a String option
+      def initialize(name:, type:, required: true, max_length: nil)
+        super(name: name.to_sym, type:, required:, max_length:)
       end
 
       ##

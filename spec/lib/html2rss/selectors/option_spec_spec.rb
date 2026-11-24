@@ -3,6 +3,20 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Selectors::OptionSpec do
+  describe '.new' do
+    it 'symbolizes the name and defaults to required without a length cap', :aggregate_failures do
+      spec = described_class.new(name: 'test', type: String)
+
+      expect(spec).to have_attributes(name: :test, required: true, max_length: nil)
+    end
+
+    it 'keeps an explicit optional flag and length cap', :aggregate_failures do
+      spec = described_class.new(name: :test, type: String, required: false, max_length: 5)
+
+      expect(spec).to have_attributes(required: false, max_length: 5)
+    end
+  end
+
   describe '.option_for' do
     it 'resolves OptionSpec directly', :aggregate_failures do
       spec = described_class.option_for({ extractor: 'attribute' }, :attribute)

@@ -119,15 +119,24 @@ module Html2rss
         # @return [Hash{Symbol => Hash}] catalog under $defs.post_processors / $defs.extractors
         def registry_catalog_defs
           {
-            post_processors: catalog_from_registry(Selectors::PostProcessors::NAME_TO_CLASS),
-            extractors: catalog_from_registry(Selectors::Extractors::NAME_TO_CLASS)
+            post_processors: catalog_from_registry(Selectors::PostProcessors::NAME_TO_CLASS) do |name, klass|
+              Selectors::SchemaExport.for_post_processor(name:, klass:)
+            end,
+            extractors: catalog_from_registry(Selectors::Extractors::NAME_TO_CLASS) do |name, klass|
+              Selectors::SchemaExport.for_extractor(name:, klass:)
+            end
           }
         end
 
         # @param registry [Hash{Symbol => Class}]
+        # @yieldparam name [Symbol]
+        # @yieldparam klass [Class]
+        # @yieldreturn [Hash] the {Selectors::SchemaExport} fragment for that strategy
         # @return [Hash{String => Hash}]
         def catalog_from_registry(registry)
-          registry.keys.sort.to_h { |name| [name.to_s, registry.fetch(name).schema_export] }
+          registry.keys.sort.to_h do |name|
+            [name.to_s, yield(name, registry.fetch(name))]
+          end
         end
 
         # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength

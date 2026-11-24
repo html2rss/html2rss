@@ -29,7 +29,7 @@ module Html2rss
           OptionSpec.new(name: :attribute, type: String)
         ].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return the value of an HTML attribute on the selected element. ' \
                       'Requires sibling selector option `attribute` (attribute name).'
 
@@ -37,9 +37,6 @@ module Html2rss
         EXAMPLES = [
           'attribute'
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_export = SchemaExport.for_extractor(name: :attribute, klass: self)
 
         ##
         # Initializes the Attribute extractor.

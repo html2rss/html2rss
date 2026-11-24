@@ -720,6 +720,24 @@ RSpec.describe Html2rss::Selectors do
         expect(instance.select(:categories, item)).to eq(%w[News Ruby RSS])
       end
 
+      it 'accepts category selector names given as strings' do
+        selectors.merge!(category: { selector: '.category' }, categories: %w[category])
+
+        expect(instance.select(:categories, item)).to eq(%w[News])
+      end
+
+      it 'returns an empty list when a category selector yields nil' do
+        selectors.merge!(tags: { selector: '.nomatch', extractor: 'href' }, categories: %i[tags])
+
+        expect(instance.select(:categories, item)).to eq([])
+      end
+
+      it 'returns an empty list when a referenced category selector has no config' do
+        selectors.merge!(tags: nil, categories: %i[tags])
+
+        expect(instance.select(:categories, item)).to eq([])
+      end
+
       it 'returns an empty list when a referenced category selector is missing' do
         selectors[:categories] = %i[missing]
 
@@ -738,6 +756,50 @@ RSpec.describe Html2rss::Selectors do
         )
 
         expect(instance.select(:categories, item)).to eq(%w[ruby rSS])
+      end
+    end
+
+    context 'when a multi-node category selector resolves hrefs against the page url' do
+      subject(:categories) { instance.select(:categories, item, base_url: 'http://other.test/dir/') }
+
+      let(:item) { Nokogiri::HTML('<article><div class="tags"><a href="x">A</a><a href="y">B</a></div></article>').at('article') }
+      let(:selectors) do
+        { items: { selector: 'article', enhance: false }, tags: { selector: '.tags a', extractor: 'href' },
+          categories: %i[tags] }
+      end
+
+      it 'uses the base url of the extraction scope' do
+        expect(categories).to eq(%w[http://other.test/dir/x http://other.test/dir/y])
+      end
+    end
+
+    context 'when the enclosure selector has post_process steps' do
+      subject(:enclosure) { instance.select(:enclosure, item) }
+
+      let(:item) { Nokogiri::HTML('<article><audio src="/a.mp3"></audio></article>').at('article') }
+      let(:selectors) do
+        {
+          items: { selector: 'article', enhance: false },
+          enclosure: { selector: 'audio', extractor: 'attribute', attribute: 'src', content_type: 'audio/mpeg',
+                       post_process: { name: 'gsub', pattern: 'a.mp3', replacement: 'b.mp3' } }
+        }
+      end
+
+      it 'applies them before resolving the url', :aggregate_failures do
+        expect(enclosure[:url].to_s).to eq('http://example.com/b.mp3')
+        expect(enclosure[:type]).to eq('audio/mpeg')
+      end
+    end
+
+    context 'when a category selector names an unknown post processor' do
+      let(:item) { Nokogiri::HTML('<article><b>x</b></article>').at('article') }
+      let(:selectors) do
+        { items: { selector: 'article', enhance: false },
+          tags: { selector: 'b', post_process: { name: 'nope' } }, categories: %i[tags] }
+      end
+
+      it 'raises when the selectors are built' do
+        expect { instance }.to raise_error(Html2rss::Selectors::PostProcessors::UnknownPostProcessorName)
       end
     end
 
@@ -991,19 +1053,6 @@ RSpec.describe Html2rss::Selectors do
 
     it 'extracts articles from the XML view of the document' do
       expect(instance.articles.map(&:title)).to eq(%w[A B])
-    end
-  end
-
-  describe '#selector_config_for' do
-    it 'returns the key and config for a defined selector, string or symbol', :aggregate_failures do
-      expect(instance.selector_config_for(:title)).to eq([:title, { selector: 'h1' }])
-      expect(instance.selector_config_for('title')).to eq([:title, { selector: 'h1' }])
-    end
-
-    it 'returns a nil config for an undefined selector only when allow_nil is given', :aggregate_failures do
-      expect(instance.selector_config_for(:missing, allow_nil: true)).to eq([:missing, nil])
-      expect { instance.selector_config_for(:missing) }
-        .to raise_error(described_class::InvalidSelectorName, "Selector for 'missing' is not defined.")
     end
   end
 

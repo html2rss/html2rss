@@ -95,7 +95,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
   end
 
   it 'exports the parse_time name and description', :aggregate_failures do
-    fragment = described_class.schema_export
+    fragment = Html2rss::Selectors::SchemaExport.for_post_processor(name: :parse_time, klass: described_class)
 
     expect(fragment.fetch(:properties).fetch(:name)).to eq(type: 'string', const: 'parse_time')
     expect(fragment.fetch(:description)).to eq(described_class::DESCRIPTION)

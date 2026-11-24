@@ -39,7 +39,7 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Convert Markdown to HTML (Kramdown) and sanitize the result. ' \
                       'Often chained after `template`.'
 
@@ -47,9 +47,6 @@ module Html2rss
         EXAMPLES = [
           { 'name' => 'markdown_to_html' }
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :markdown_to_html, klass: self)
 
         ##
         # Converts Markdown to sanitized HTML.

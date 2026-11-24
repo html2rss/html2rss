@@ -8,10 +8,10 @@ module Html2rss
     # @see Html2rss::Html::Rendering::DescriptionBuilder
     #
     # @example
-    #   Html2rss::Html::Rendering::ImageRenderer.new(
+    #   Html2rss::Html::Rendering::Media.image(
     #     url: "https://example.com/image.jpg",
     #     title: "Example"
-    #   ).to_html
+    #   )
     module Rendering
     end
   end

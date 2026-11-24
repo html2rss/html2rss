@@ -46,7 +46,7 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Sanitize HTML (sanitize gem RELAXED plus html2rss defaults: absolute URLs, ' \
                       'safe link/img attributes, wrap lone images in anchors).'
 
@@ -108,9 +108,6 @@ module Html2rss
           'video' => %w[src],
           'source' => %w[src type]
         }.freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :sanitize_html, klass: self)
 
         ##
         # Cached standalone helper: sanitizes an HTML string with a memoized fragment cache.

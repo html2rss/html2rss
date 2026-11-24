@@ -39,7 +39,7 @@ module Html2rss
           OptionSpec.new(name: :end, type: Integer, required: false)
         ].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return a slice of the extracted string using Integer `start` and optional `end` ' \
                       '(Ruby String#[] range semantics; end may be omitted).'
 
@@ -47,9 +47,6 @@ module Html2rss
         EXAMPLES = [
           { 'name' => 'substring', 'start' => 4, 'end' => 6 }
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :substring, klass: self)
 
         ##
         # Extracts the substring from the original string based on the provided start and end indices.

@@ -29,16 +29,13 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Normalize a URL string; resolve relative URLs against the channel URL.'
 
         # Example post-process objects for JSON Schema +examples+.
         EXAMPLES = [
           { 'name' => 'parse_uri' }
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :parse_uri, klass: self)
 
         # @param value [String] extracted selector value
         # @param _context [Selectors::StepEnv] post-processor context

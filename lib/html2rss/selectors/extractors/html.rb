@@ -26,7 +26,7 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return the outer HTML of the selected element. ' \
                       'Sanitize during post-processing (e.g. `sanitize_html`).'
 
@@ -34,9 +34,6 @@ module Html2rss
         EXAMPLES = [
           'html'
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_export = SchemaExport.for_extractor(name: :html, klass: self)
 
         ##
         # Initializes the Html extractor.
