@@ -19,15 +19,16 @@ module Html2rss
         # @param base_url [String, Html2rss::Url]
         # @param scraper [Class, nil]
         # @param time_zone [String] channel time zone for naive leftover dates
-        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
-        # @param classifier [LinkDestination::TextClassifier] the page's label reader; pass the page-scoped one
-        #   ({Scoring::LinkResolver#text_classifier}) so a label is normalized once per page
         # @param link_resolver [Scoring::LinkResolver, nil] the page's resolver, built for the same +base_url+;
-        #   its already resolved URL of the primary link is reused instead of resolving it again
+        #   its already resolved URL of the primary link is reused instead of resolving it again, and it
+        #   supplies +vocabulary+ and +classifier+ (the page-scoped label reader, so a label is normalized once)
+        # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
+        # @param classifier [LinkDestination::TextClassifier] the page's label reader
         # @return [Html2rss::Article, nil] nil when the segment has no primary link (no URL of its own)
         # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
-        def call(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil],
-                 classifier: LinkDestination::TextClassifier.for(vocabulary), link_resolver: nil)
+        def call(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', link_resolver: nil,
+                 vocabulary: link_resolver&.vocabulary || Vocabulary[nil],
+                 classifier: link_resolver&.text_classifier || LinkDestination::TextClassifier.for(vocabulary))
           new(ranked_or_segment, base_url:, scraper:, time_zone:, vocabulary:, classifier:, link_resolver:).call
         end
       end
@@ -36,12 +37,13 @@ module Html2rss
       # @param base_url [String, Html2rss::Url]
       # @param scraper [Class, nil]
       # @param time_zone [String] channel time zone for naive leftover dates
+      # @param link_resolver [Scoring::LinkResolver, nil] see {.call}
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
       # @param classifier [LinkDestination::TextClassifier] the page's label reader
-      # @param link_resolver [Scoring::LinkResolver, nil] see {.call}
       # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
-      def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil],
-                     classifier: LinkDestination::TextClassifier.for(vocabulary), link_resolver: nil)
+      def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', link_resolver: nil,
+                     vocabulary: link_resolver&.vocabulary || Vocabulary[nil],
+                     classifier: link_resolver&.text_classifier || LinkDestination::TextClassifier.for(vocabulary))
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
@@ -228,8 +230,9 @@ module Html2rss
         SST::Index.for_node!(@root).parent_of(@root)
       end
 
-      # DOM id of the card (the root or its first descendant carrying one), else the link's path (never empty: the
-      # extractor yields no article for a link that is not a web URL).
+      # DOM id of the card (the root or its first descendant carrying one), else the link's path. The path is never
+      # empty: a web URL has at least +/+, and an opaque URL (+mailto:+, +tel:+, +javascript:+) yields no article.
+      # A hierarchical non-web URL (+ftp://x.com/a+) keeps its path; Cleanup drops it later.
       def parse_id_from_dom
         @root.find { |n| n.attrs.id }&.attrs&.id || extract_url&.path
       end

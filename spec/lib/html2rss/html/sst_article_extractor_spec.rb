@@ -252,8 +252,14 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(id_for.call('/a?p=1')).to eq('/a')
     end
 
-    it 'emits no article for a non-web link, so the URL path is never empty' do
+    it 'emits no article for an opaque link (mailto:, tel:, javascript:)', :aggregate_failures do
       expect(id_for.call('mailto:?subject=news')).to be_nil
+      expect(id_for.call('mailto:a@b.c')).to be_nil
+      expect(id_for.call('javascript:void(0)')).to be_nil
+    end
+
+    it 'still builds an article for a hierarchical non-web link (Cleanup drops it later)' do
+      expect(id_for.call('ftp://x.com/a')).to eq('/a')
     end
 
     describe 'with the page resolver' do
