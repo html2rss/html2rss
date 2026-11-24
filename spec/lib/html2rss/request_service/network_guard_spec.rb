@@ -150,44 +150,13 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
     end
   end
 
-  describe '#validate_remote_ip!' do
+  describe '#blocked_ip?' do
     blocked_ips.each do |ip|
-      it "denies #{ip}" do
-        expect { guard.validate_remote_ip!(ip:, url:) }
-          .to raise_error(denied, %r{Private network target denied for https://example.com/feed})
-      end
+      it("denies #{ip}") { expect(guard.blocked_ip?(IPAddr.new(ip))).to be(true) }
     end
 
     public_ips.each do |ip|
-      it "allows public #{ip}" do
-        expect { guard.validate_remote_ip!(ip:, url:) }.not_to raise_error
-      end
-    end
-
-    [nil, '', 'garbage'].each do |ip|
-      it "denies unvalidatable ip #{ip.inspect}" do
-        expect { guard.validate_remote_ip!(ip:, url:) }
-          .to raise_error(denied, %r{could not be validated for https://example.com/feed})
-      end
-    end
-
-    it 'allows any ip when private networks are allowed', :aggregate_failures do
-      open_guard = described_class.new(allow_private_networks: true, resolver:)
-
-      expect { open_guard.validate_remote_ip!(ip: '127.0.0.1', url:) }.not_to raise_error
-      expect { open_guard.validate_remote_ip!(ip: nil, url:) }.not_to raise_error
-    end
-
-    it 'treats a truthy non-boolean allow flag as allowed' do
-      open_guard = described_class.new(allow_private_networks: 'yes', resolver:)
-
-      expect { open_guard.validate_remote_ip!(ip: '127.0.0.1', url:) }.not_to raise_error
-    end
-
-    it 'treats a nil allow flag as denied' do
-      closed_guard = described_class.new(allow_private_networks: nil, resolver:)
-
-      expect { closed_guard.validate_remote_ip!(ip: '127.0.0.1', url:) }.to raise_error(denied)
+      it("allows public #{ip}") { expect(guard.blocked_ip?(IPAddr.new(ip))).to be(false) }
     end
   end
 

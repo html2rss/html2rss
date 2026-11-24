@@ -107,9 +107,8 @@ RSpec.describe Html2rss::RequestService::NetworkGuardFilter do
     end
 
     %w[64:ff9b::10.0.0.1 64:ff9b::169.254.169.254 64:ff9b:1::808:808 2002:0a00:0001:: 2001::1].each do |ip|
-      it "has the guard deny the connected peer #{ip}" do
-        expect { guard.validate_remote_ip!(ip:, url:) }
-          .to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+      it "has the guard deny #{ip}" do
+        expect(guard.blocked_ip?(IPAddr.new(ip))).to be(true)
       end
     end
 
@@ -135,8 +134,8 @@ RSpec.describe Html2rss::RequestService::NetworkGuardFilter do
       end
     end
 
-    it 'accepts the connected peer of a public NAT64 address' do
-      expect { guard.validate_remote_ip!(ip: '64:ff9b::8.8.8.8', url:) }.not_to raise_error
+    it 'accepts a public NAT64 address' do
+      expect(guard.blocked_ip?(IPAddr.new('64:ff9b::8.8.8.8'))).to be(false)
     end
   end
 end

@@ -7,7 +7,7 @@ require 'socket'
 module Html2rss
   class RequestService
     ##
-    # Enforces public-network reachability for request targets and remote IPs.
+    # Enforces public-network reachability for request targets.
     #
     # Owns DNS resolution, host denylist, and blocked IP ranges. Callers go through
     # {Policy} so SSRF/origin rules stay single-homed on the public façade.
@@ -68,27 +68,10 @@ module Html2rss
       end
 
       ##
-      # Validates the resolved remote IP for a completed request.
-      #
-      # @param ip [String, nil] remote IP address reported by the client
-      # @param url [Html2rss::Url] URL associated with the response
-      # @return [void]
-      # @raise [PrivateNetworkDenied] if the response came from a blocked address
-      def validate_remote_ip!(ip:, url:)
-        return if allow_private_networks?
-
-        parsed_ip = parse_ip(ip.to_s)
-        raise PrivateNetworkDenied, "Remote IP could not be validated for #{url}" unless parsed_ip
-        return unless blocked_ip?(parsed_ip)
-
-        raise PrivateNetworkDenied, "Private network target denied for #{url}"
-      end
-
-      ##
       # Single owner of the IP allow/deny decision. IPv6 forms that embed an IPv4 address
       # (IPv4-mapped, NAT64 64:ff9b::/96, 6to4) are allowed only if the embedded IPv4 is.
       #
-      # @param address [IPAddr] resolved or remote address
+      # @param address [IPAddr] resolved address
       # @return [Boolean] true when the address must be denied
       def blocked_ip?(address)
         native = address.native
