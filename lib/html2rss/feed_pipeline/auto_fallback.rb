@@ -208,7 +208,7 @@ module Html2rss
         raise
       rescue Html2rss::Error => error
         state.record_error(strategy:, error:, elapsed_ms: monotonic_ms - started_ms)
-        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy
+        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy && request_session
       end
 
       # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
