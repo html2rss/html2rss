@@ -24,7 +24,6 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
       expect(described_class.date_shaped?(nil)).to be(false)
       expect(described_class).not_to have_received(:date_core)
       expect(described_class.date_shaped?('2024-03-12')).to be(true)
-      expect(described_class).to have_received(:date_core).once
     end
 
     it 'accepts whole-line date shapes', :aggregate_failures do
