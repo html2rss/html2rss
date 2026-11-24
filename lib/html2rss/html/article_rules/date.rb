@@ -42,6 +42,17 @@ module Html2rss
           # @return [DateTime] midnight of +date+ in +time_zone+
           def at_midnight(date, time_zone:) = localize(DateTime.new(date.year, date.month, date.day), time_zone)
 
+          ##
+          # @param string [String] raw datetime text
+          # @param time_zone [String, nil] channel time zone for a naive value (nil reads as UTC)
+          # @return [DateTime, nil] parsed instant; naive values are read in +time_zone+
+          def parse_datetime(string, time_zone:)
+            parsed = DateTime.parse(string, limit: MAX_DATE_CHARS)
+            naive?(string) ? localize(parsed, time_zone) : parsed
+          rescue ArgumentError, TypeError
+            nil
+          end
+
           private
 
           def parse_attr(value, time_zone:)
@@ -52,15 +63,6 @@ module Html2rss
             return unless Description.date_shaped?(line)
 
             parse_datetime(Description.date_core(line), time_zone:)
-          end
-
-          def parse_datetime(string, time_zone:)
-            return if string.empty? || string.length > MAX_DATE_CHARS
-
-            parsed = DateTime.parse(string, limit: MAX_DATE_CHARS)
-            naive?(string) ? localize(parsed, time_zone) : parsed
-          rescue ArgumentError, TypeError
-            nil
           end
 
           def naive?(string) = !string.match?(OFFSET)

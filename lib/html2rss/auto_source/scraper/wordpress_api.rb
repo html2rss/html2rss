@@ -13,7 +13,7 @@ module Html2rss
         # Selector for canonical link tags used for scope normalization.
         CANONICAL_LINK_SELECTOR = 'link[rel="canonical"][href]'
         # Fields requested from the WordPress posts endpoint.
-        POSTS_FIELDS = %w[id title excerpt content link date categories].freeze
+        POSTS_FIELDS = %w[id title excerpt content link date date_gmt categories].freeze
         # Baseline query sent to WordPress posts API follow-ups.
         POSTS_QUERY_DEFAULTS = {
           '_fields' => POSTS_FIELDS.join(','),
@@ -147,7 +147,8 @@ module Html2rss
         end
 
         def article_published_at(post)
-          present_string(post[:date])
+          gmt = present_string(post[:date_gmt])
+          gmt ? "#{gmt}Z" : present_string(post[:date])
         end
 
         def article_categories(post)
