@@ -44,7 +44,7 @@ module Html2rss
       end
 
       ##
-      # Builds controls for public API shortcuts ({Html2rss.auto_source}, etc.).
+      # Builds controls for public API shortcuts ({Html2rss.scrape}, etc.).
       # Strategy is explicit only when non-nil and not the configured default.
       #
       # @param strategy [Symbol, nil]

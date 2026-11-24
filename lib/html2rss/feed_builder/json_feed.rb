@@ -16,7 +16,7 @@ module Html2rss
       # @param user_comment [String] required generator comment (from {Status})
       # @param feed_url [String, nil] optional absolute self URL for the feed (JSON Feed feed_url)
       def initialize(channel:, articles:, user_comment:, feed_url: nil)
-        raise InvalidOption, 'user_comment must be a non-blank String' if blank_string?(user_comment)
+        raise InvalidOption, 'user_comment must be a non-blank String' if StringUtil.blank?(user_comment)
 
         @channel = channel
         @articles = articles
@@ -35,10 +35,6 @@ module Html2rss
       private
 
       attr_reader :channel, :articles, :feed_url, :user_comment
-
-      def blank_string?(value)
-        !value.is_a?(String) || value.strip.empty?
-      end
 
       def normalize_feed_url(value)
         return if value.nil?

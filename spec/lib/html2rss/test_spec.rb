@@ -62,6 +62,41 @@ RSpec.describe Html2rss::Test do
     )
   end
 
+  describe Html2rss::Test::Options do
+    it 'defaults the run knobs' do
+      expect(described_class.build).to eq(
+        described_class.new(min_items: 1, strict_quality: false, compare_enhance: false, sample_limit: 3)
+      )
+    end
+
+    it 'rejects a malformed min_items or sample_limit', :aggregate_failures do
+      [-1, 1.5, '2', nil].each do |bad|
+        expect { described_class.build(min_items: bad) }.to raise_error(Html2rss::InvalidOption, /\Amin_items must be/)
+        expect do
+          described_class.build(sample_limit: bad)
+        end.to raise_error(Html2rss::InvalidOption, /\Asample_limit must be/)
+      end
+    end
+
+    it 'accepts zero bounds' do
+      expect(described_class.build(min_items: 0, sample_limit: 0)).to have_attributes(min_items: 0, sample_limit: 0)
+    end
+
+    it 'is validated before Test.call runs' do
+      expect { Html2rss::Test.call('x.yml', min_items: -1) }.to raise_error(Html2rss::InvalidOption, /min_items/)
+    end
+  end
+
+  describe '.call feed_name' do
+    it 'resolves the named feed of a multi-feed config' do
+      allow(Html2rss::Config).to receive(:resolve_and_validate).and_call_original
+      described_class.call('feeds: {}', 'named')
+
+      expect(Html2rss::Config).to have_received(:resolve_and_validate)
+        .with('feeds: {}', feed_name: 'named', params: {})
+    end
+  end
+
   describe '.call' do
     context 'when schema validation fails' do
       it 'returns a failed Test::Result with validation errors', :aggregate_failures do

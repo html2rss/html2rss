@@ -158,10 +158,7 @@ module Html2rss
             # @param node [Nokogiri::XML::Element] itemprop node
             # @return [Array<String>] normalized property names
             def property_names(node)
-              node['itemprop'].to_s.split.filter_map do |name|
-                stripped = name.strip
-                stripped unless stripped.empty?
-              end
+              node['itemprop'].to_s.split
             end
 
             # @param node [Nokogiri::XML::Element] itemprop node
@@ -201,8 +198,7 @@ module Html2rss
             # @param node [Nokogiri::XML::Element] itemprop node
             # @return [String, nil] normalized text content
             def text_value(node)
-              value = node.text.to_s.strip
-              value unless value.empty?
+              StringUtil.presence(node.text.to_s)&.strip
             end
 
             # @param properties [Hash{Symbol => Object}] accumulator hash for parsed properties
@@ -225,9 +221,9 @@ module Html2rss
             # @return [Boolean] whether value is blank for microdata extraction purposes
             def blank_value?(value)
               case value
-              when nil then true
-              when String then value.strip.empty?
-              when Array, Hash then value.empty?
+              in nil then true
+              in String then StringUtil.blank?(value)
+              in Array | Hash then value.empty?
               else false
               end
             end
@@ -278,7 +274,7 @@ module Html2rss
             def text(*values)
               values.each do |value|
                 value = value.first if value.is_a?(Array)
-                return value if value.is_a?(String) && !value.strip.empty?
+                return value if StringUtil.present?(value)
               end
 
               nil

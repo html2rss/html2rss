@@ -172,6 +172,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
 
+    context 'when the title holds markup' do
+      let(:post) { { 'link' => 'https://example.com/hello/', 'title' => { 'rendered' => '<b>Hi</b> &amp; <i>bye</i>' } } }
+
+      it 'strips tags and unescapes entities' do
+        expect(articles.first).to include(title: 'Hi & bye')
+      end
+    end
+
+    context 'when the title is a long run of unterminated tag openers' do
+      let(:post) { { 'link' => 'https://example.com/hello/', 'title' => { 'rendered' => "#{'<' * 50_000}x" } } }
+
+      it 'finishes quickly and keeps the text', :aggregate_failures do
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        title = articles.first[:title]
+        expect(Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).to be < 0.5
+        expect(title).to end_with('x')
+      end
+    end
+
     context 'when the link is relative to the source URL' do
       let(:url) { 'https://example.com/blog' }
       let(:post) { { 'link' => '/hello/' } }

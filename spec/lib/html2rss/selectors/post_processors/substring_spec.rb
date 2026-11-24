@@ -59,8 +59,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
       let(:step_config) { { end: 4 } }
 
       it 'raises an error' do
-        expect { subject }.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
-                                          /The `start` option is missing/)
+        expect { described_class.validate_options!(context) }
+          .to raise_error(Html2rss::Selectors::PostProcessors::MissingOption, /The `start` option is missing/)
       end
     end
   end

@@ -136,8 +136,6 @@ module Html2rss
   # @return [Html2rss::Test::Result]
   def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, # rubocop:disable Metrics/ParameterLists
                 compare_enhance: false, sample_limit: 3)
-    Option.integer(:min_items, min_items, min: 0)
-    Option.integer(:sample_limit, sample_limit, min: 0)
     Test.call(config_input, feed_name, min_items:, params:, strategy:, strict_quality:, compare_enhance:,
                                        sample_limit:)
   end

@@ -203,18 +203,7 @@ module Html2rss
               max_redirects:,
               max_requests:
             )
-            Outcome.capture(
-              yaml: result.yaml,
-              articles_count: result.articles_count,
-              has_selectors: result.has_selectors,
-              channel_title: result.channel_title,
-              requested_strategy: plan,
-              segment_strategy: result.segment_strategy,
-              selected_strategy: result.selected_strategy,
-              admission_drops: result.admission_drops,
-              native_feed: result.native_feed,
-              suggested_channel_url: result.suggested_channel_url
-            )
+            Outcome.capture(result:, requested_strategy: plan)
           end
 
           ##

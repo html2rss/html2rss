@@ -74,7 +74,7 @@ module Html2rss
       # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
       # @param generator [String] required preformatted generator comment (from {Status})
       def initialize(channel:, articles:, generator:, stylesheets: [])
-        raise InvalidOption, 'generator must be a non-blank String' if blank_string?(generator)
+        raise InvalidOption, 'generator must be a non-blank String' if StringUtil.blank?(generator)
 
         @channel = channel
         @articles = articles.select { |article| ItemPresentation.renderable?(article) }
@@ -96,10 +96,6 @@ module Html2rss
       private
 
       attr_reader :channel, :articles, :generator, :media_feed
-
-      def blank_string?(value)
-        !value.is_a?(String) || value.strip.empty?
-      end
 
       def stylesheets
         @stylesheets.map { |style| Stylesheet.new(**style) }

@@ -165,11 +165,9 @@ module Html2rss
       result = Html2rss.test(
         raw_content,
         feed_name,
-        min_items: options.fetch(:min_items, 1),
         params: options[:params] || {},
         strategy: options[:strategy],
-        strict_quality: options.fetch(:strict_quality, false),
-        compare_enhance: options.fetch(:compare_enhance, false)
+        **options.to_h.transform_keys(&:to_sym).slice(:min_items, :strict_quality, :compare_enhance)
       )
 
       if options[:json]
