@@ -15,7 +15,8 @@ module Html2rss
       # Hostnames treated as local/private surfaces.
       LOCAL_HOSTS = Set['localhost', 'localhost.localdomain', 'metadata.google.internal'].freeze
       # IP ranges blocked when private networks are disabled. Single owner: a spec pins that it covers
-      # every HTTPX +:ssrf_filter+ range (NAT64 and 6to4 are decoded via {#embedded_ipv4}).
+      # every HTTPX +:ssrf_filter+ range (NAT64 and 6to4 are decoded via {#embedded_ipv4}; +IPAddr#native+ decodes
+      # IPv4-mapped and IPv4-compatible forms, so those never reach this list).
       BLOCKED_IP_RANGES = [
         IPAddr.new('0.0.0.0/8'),
         IPAddr.new('10.0.0.0/8'),
@@ -32,8 +33,8 @@ module Html2rss
         IPAddr.new('203.0.113.0/24'),
         IPAddr.new('224.0.0.0/4'),
         IPAddr.new('240.0.0.0/4'),
-        # Deprecated IPv4-compatible block, which also holds ::, ::1 and ::a.b.c.d forms of every IPv4 range.
-        IPAddr.new('::/96'),
+        IPAddr.new('::/128'),
+        IPAddr.new('::1/128'),
         IPAddr.new('100::/64'),
         IPAddr.new('2001:10::/28'),
         IPAddr.new('2001:20::/28'),

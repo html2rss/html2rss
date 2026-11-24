@@ -164,16 +164,26 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
   end
 
   describe 'HTTPX ssrf_filter parity' do
-    httpx_ranges = HTTPX::Plugins::SsrfFilter::IPV4_BLACKLIST + HTTPX::Plugins::SsrfFilter::IPV6_BLACKLIST
-    covered_by_decoding = [described_class::NAT64_PREFIX, described_class::SIX_TO_FOUR_PREFIX]
-    # HTTPX also lists IPv4-mapped forms (judged on the embedded IPv4 via IPAddr#native) and derived ranges
-    # in ::/80 outside the IPv4-compatible ::/96 block; those are not addresses a client can reach.
-    non_native = lambda { |range|
-      IPAddr.new('::/80').include?(range.to_range.first) && !IPAddr.new('::/96').include?(range.to_range.first)
-    }
+    # Judged on the embedded IPv4 (NAT64, 6to4) or by IPAddr#native (IPv4-mapped), or malformed ranges HTTPX
+    # derives in ::/80 that no client can reach. A new HTTPX range is never skipped unless listed here.
+    let(:excluded_keys) do
+      %w[
+        64:ff9b::/96 2002::/16 ::ff00:0:0/88 ::ffc0:0:0/90 ::fff0:0:0/92 ::f000:0:0/84 ::fffe:0:0/95
+        ::ffff:0.0.0.0/96 ::ffff:192.0.0.0/104 ::ffff:198.0.0.0/104 ::ffff:203.0.0.0/104 ::ffff:255.255.0.0/112
+      ]
+    end
 
-    httpx_ranges.reject { |range| covered_by_decoding.include?(range) || non_native.call(range) }.each do |range|
+    it 'excludes only ranges HTTPX still lists' do
+      keys = (HTTPX::Plugins::SsrfFilter::IPV4_BLACKLIST + HTTPX::Plugins::SsrfFilter::IPV6_BLACKLIST)
+             .map { |range| "#{range.to_range.first}/#{range.prefix}" }
+
+      expect(keys & excluded_keys).to match_array(excluded_keys)
+    end
+
+    (HTTPX::Plugins::SsrfFilter::IPV4_BLACKLIST + HTTPX::Plugins::SsrfFilter::IPV6_BLACKLIST).each do |range|
       it "denies the network address of #{range.to_range.first}/#{range.prefix}" do
+        next if excluded_keys.include?("#{range.to_range.first}/#{range.prefix}")
+
         expect(guard.blocked_ip?(range.to_range.first)).to be(true)
       end
     end
