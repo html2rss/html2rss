@@ -4,7 +4,7 @@ module Html2rss
   class RequestService
     ##
     # Bounded, thread-safe TTL cache for initial page fetches; install with
-    # {RequestService.response_cache=}. Only successful (2xx) responses are stored, so a
+    # {RequestService::ResponseCaching#response_cache=}. Only successful (2xx) responses are stored, so a
     # block page or rate limit is never replayed. Hits are returned tagged with their
     # {Response#cache_age}; memory is capped in body bytes as well as entries.
     class ResponseCache
