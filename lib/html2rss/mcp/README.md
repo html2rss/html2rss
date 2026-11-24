@@ -11,7 +11,7 @@ MCP exposes the same seven user-facing verbs as the CLI and gem facades. Full co
 | capture  | `capture`  | YAML draft config                                    |
 | validate | `validate` | Schema only                                          |
 | test     | `test`     | Schema + live extraction                             |
-| apply    | `apply`    | Ship RSS from config                                 |
+| apply    | `apply`    | Ship RSS from config (`Apply::Result`; zero items = isError) |
 | scrape   | `scrape`   | Articles now (one-shot)                              |
 
 Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.

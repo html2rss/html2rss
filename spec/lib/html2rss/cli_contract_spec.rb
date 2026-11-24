@@ -81,7 +81,8 @@ RSpec.describe Html2rss::CLI do
           }
         },
         'apply' => {
-          usage: 'apply [CONFIG_INPUT] [feed_name]', description: 'Print RSS built from YAML config to stdout',
+          usage: 'apply [CONFIG_INPUT] [feed_name]',
+          description: 'Print RSS built from YAML config to stdout (fails on 0 items)',
           options: {
             strategy: { type: :string, default: nil, enum: strategies, aliases: [], description: strategy_desc },
             max_redirects: { type: :numeric, default: nil, enum: nil, aliases: [],

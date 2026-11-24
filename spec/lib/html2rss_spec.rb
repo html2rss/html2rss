@@ -639,13 +639,13 @@ RSpec.describe Html2rss do
   end
 
   describe '.apply' do
-    it 'delegates to feed_result', :aggregate_failures do
+    it 'delegates to Apply.call', :aggregate_failures do
       config = { channel: { url: 'https://example.com' } }
-      feed_result = instance_double(Html2rss::FeedResult)
-      allow(described_class).to receive(:feed_result).with(config).and_return(feed_result)
+      result = instance_double(Html2rss::Apply::Result)
+      allow(Html2rss::Apply).to receive(:call).with(config).and_return(result)
 
-      expect(described_class.apply(config)).to eq(feed_result)
-      expect(described_class).to have_received(:feed_result).with(config)
+      expect(described_class.apply(config)).to eq(result)
+      expect(Html2rss::Apply).to have_received(:call).with(config)
     end
   end
 

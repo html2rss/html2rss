@@ -117,13 +117,15 @@ module Html2rss
   end
 
   ##
-  # Ships RSS from a validated config (user-facing verb for {.feed_result}).
-  # Golden path step 5.
+  # Ships RSS from a validated config. Golden path step 5.
+  #
+  # Returns the result even when the feed has no items (check {Apply::Result#empty?}); the CLI and
+  # MCP surfaces turn an empty result into a failure.
   #
   # @param raw_config [Hash{Symbol => Object}] feed configuration
-  # @return [Html2rss::FeedResult]
+  # @return [Html2rss::Apply::Result] responds to +to_rss+, +to_json_feed+, +status+, +empty?+
   def self.apply(raw_config)
-    feed_result(raw_config)
+    Apply.call(raw_config)
   end
 
   # rubocop:disable Metrics/ParameterLists

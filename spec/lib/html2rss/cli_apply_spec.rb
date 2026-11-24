@@ -8,8 +8,8 @@ RSpec.describe Html2rss::CLI, '#apply' do
 
   let(:feed_res) do
     instance_double(
-      Html2rss::FeedResult, to_rss: '<rss/>', to_json_feed: { title: 'T' },
-                            status: instance_double(Html2rss::Status, to_h: { ok: true })
+      Html2rss::Apply::Result, empty?: false, to_rss: '<rss/>', to_json_feed: { title: 'T' },
+                               status: instance_double(Html2rss::Status, to_h: { ok: true })
     )
   end
   let(:yaml_config) { { channel: { url: 'https://a.test' } } }
