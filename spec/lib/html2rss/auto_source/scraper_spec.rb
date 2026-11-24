@@ -62,12 +62,13 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   describe 'scraper protocol' do
     described_class::SCRAPERS.each do |klass|
       describe klass.name do
-        it 'declares request_slots so AutoSource can sum follow-up budget without a fallback' do
+        it 'declares its own request_slots (the base has no default to hide a miscount)', :aggregate_failures do
+          expect(klass.singleton_methods(false)).to include(:request_slots)
           expect(klass.request_slots({})).to be_an(Integer)
         end
 
-        it 'declares extractable? so instance matching does not fall back to articles?' do
-          expect(klass.instance_methods(false)).to include(:extractable?)
+        it 'shares the Scraper::Base contract' do
+          expect(klass).to be < Html2rss::AutoSource::Scraper::Base
         end
       end
     end

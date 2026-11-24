@@ -6,9 +6,7 @@ module Html2rss
       # Extracts articles from a parsed JSON response body (Hash or Array).
       # JSON Feed documents map item fields directly; every other document walks
       # via {JsonState.discover_articles}. Does not scan HTML.
-      class JsonDocument
-        include Enumerable
-
+      class JsonDocument < Base
         # Exact JSON Feed 1.0 / 1.1 +version+ URLs (no substring host matching).
         JSON_FEED_VERSIONS = Set[
           'https://jsonfeed.org/version/1',
@@ -29,16 +27,9 @@ module Html2rss
         # @return [Boolean]
         def self.articles?(_parsed_body) = false
 
-        # @param parsed_body [Hash, Array, Object] parsed JSON document (or HTML when misrouted)
-        # @param url [String, Html2rss::Url] base URL for relative link resolution
-        def initialize(parsed_body, url:)
-          @parsed_body = parsed_body
-          @url = url
-        end
-
         # @return [Boolean] true when +parsed_body+ is a Hash or Array
         def extractable?
-          @parsed_body.is_a?(Hash) || @parsed_body.is_a?(Array)
+          parsed_body.is_a?(Hash) || parsed_body.is_a?(Array)
         end
 
         # @yield [Hash{Symbol => Object}] normalized article hash
@@ -49,7 +40,7 @@ module Html2rss
           if json_feed?
             each_json_feed_item(&block)
           else
-            JsonState.discover_articles(@parsed_body, base_url: @url) do |article|
+            JsonState.discover_articles(parsed_body, base_url: url) do |article|
               yield(article) if article
             end
           end
@@ -58,13 +49,13 @@ module Html2rss
         private
 
         def json_feed?
-          return false unless @parsed_body.is_a?(Hash)
+          return false unless parsed_body.is_a?(Hash)
 
-          JSON_FEED_VERSIONS.include?(@parsed_body[:version].to_s) && @parsed_body[:items].is_a?(Array)
+          JSON_FEED_VERSIONS.include?(parsed_body[:version].to_s) && parsed_body[:items].is_a?(Array)
         end
 
         def each_json_feed_item
-          @parsed_body[:items].each do |item|
+          parsed_body[:items].each do |item|
             article = map_json_feed_item(item)
             yield article if article
           end
@@ -99,7 +90,7 @@ module Html2rss
           str = string(value)
           return unless str
 
-          Url.from_relative(str, @url)
+          Url.from_relative(str, url)
         rescue Html2rss::Url::InvalidUrlError
           nil
         end

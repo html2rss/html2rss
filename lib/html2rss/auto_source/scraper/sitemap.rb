@@ -7,9 +7,7 @@ module Html2rss
     module Scraper
       ##
       # Scrapes articles from XML sitemaps explicitly linked in HTML or discovered via standard sitemap paths.
-      class Sitemap
-        include Enumerable
-
+      class Sitemap < Base
         # Selector for sitemap link tags in HTML head
         SITEMAP_LINK_SELECTOR = 'link[rel="sitemap"][href]'
 
@@ -47,16 +45,12 @@ module Html2rss
         # @option opts [Float] :min_priority minimum priority score (default: 0.3)
         # @option opts [Integer] :max_age_days maximum entry age in days (default: 30)
         def initialize(parsed_body, url:, request_session: nil, body: nil, **opts)
-          @parsed_body = parsed_body
+          super(parsed_body, url: Html2rss::Url.from_absolute(url))
           @body = body
-          @url = Html2rss::Url.from_absolute(url)
           @request_session = request_session
           @min_priority = opts.fetch(:min_priority, Scraper::Sitemap::Parser::DEFAULT_MIN_PRIORITY)
           @max_age_days = opts.fetch(:max_age_days, Scraper::Sitemap::Parser::DEFAULT_MAX_AGE_DAYS)
         end
-
-        # @return [Boolean]
-        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # Yields article hashes from the sitemap.
@@ -71,7 +65,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :body, :url, :request_session, :min_priority, :max_age_days
+        attr_reader :body, :request_session, :min_priority, :max_age_days
 
         # rubocop:disable-next Metrics/MethodLength -- structured budget-exhausted warn
         def fetch_and_parse_entries

@@ -6,11 +6,7 @@ module Html2rss
       ##
       # Fallback HTML list scraper via SST pipeline
       # (Normalizer → Segmenter → Scoring::Engine → Html::SstArticleExtractor).
-      class Html
-        include Enumerable
-
-        # Absolute base URL used when probe-time detection needs to normalize relative hrefs.
-        DETECTION_BASE_URL = 'https://example.com'
+      class Html < PageCards
         # Minimum selector frequency required to treat a path as a stable list signal.
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
         # Number of most frequent selectors kept for container extraction.
@@ -27,27 +23,15 @@ module Html2rss
         # @return [Integer]
         def self.request_slots(_opts = {}) = 0
 
-        ##
-        # @param parsed_body [Nokogiri::HTML::Document]
-        # @return [Boolean]
-        def self.articles?(parsed_body)
-          return false unless parsed_body
-
-          new(parsed_body, url: DETECTION_BASE_URL).extractable?
-        end
-
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
-        # @param url [String, Html2rss::Url]
+        # @param url [String, Html2rss::Url] page URL used to resolve relative links
         # @param document [SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
         # @param opts [Hash]
         # @option opts [Integer] :minimum_selector_frequency list frequency floor
         # @option opts [Integer] :use_top_selectors list selector budget
         def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, **opts)
-          @parsed_body = parsed_body
-          @provided_document = document
-          @provided_link_resolver = link_resolver
-          @url = url
+          super(parsed_body, url:, document:, link_resolver:)
           @opts = opts
         end
 
@@ -74,7 +58,7 @@ module Html2rss
 
         def ranked_segments
           @ranked_segments ||= if document
-                                 segments = Segmenter.call(document, base_url: @url, strategy: :list, link_resolver:,
+                                 segments = Segmenter.call(document, base_url: url, strategy: :list, link_resolver:,
                                                                      minimum_selector_frequency:, use_top_selectors:)
                                  engine.select_eligible(segments, limit: TOP_K)
                                else
@@ -84,7 +68,7 @@ module Html2rss
 
         def materialize(ranked)
           ranked.filter_map do |entry|
-            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class,
+            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: url, scraper: self.class,
                                                               vocabulary: link_resolver.vocabulary,
                                                               classifier: link_resolver.text_classifier)
           end
@@ -92,14 +76,6 @@ module Html2rss
 
         def engine
           @engine ||= Scoring::Engine.new(link_resolver:)
-        end
-
-        def link_resolver
-          @link_resolver ||= @provided_link_resolver || Scoring::LinkResolver.new(@url)
-        end
-
-        def document
-          @document ||= @provided_document || SST::Normalizer.call(@parsed_body, vocabulary: link_resolver.vocabulary)
         end
 
         def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY

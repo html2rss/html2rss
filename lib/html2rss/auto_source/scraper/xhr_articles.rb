@@ -7,9 +7,7 @@ module Html2rss
     module Scraper
       # Extracts articles from JSON XHR/fetch responses captured during a
       # browser-tier scrape (see RequestService::Response#captured_responses).
-      class XhrArticles
-        include Enumerable
-
+      class XhrArticles < Base
         # @return [Symbol] scraper config key
         def self.options_key = :xhr_articles
 
@@ -27,7 +25,7 @@ module Html2rss
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
         # @param captured_responses [Array<Hash>] JSON bodies from Response#captured_responses
         def initialize(_parsed_body, url:, captured_responses: [])
-          @url = url
+          super(nil, url:)
           @captured_responses = captured_responses
         end
 
@@ -42,7 +40,7 @@ module Html2rss
           return enum_for(:each) unless block_given?
 
           parsed_bodies.each do |doc|
-            JsonState.discover_articles(doc, base_url: @url) { |article| yield article if article }
+            JsonState.discover_articles(doc, base_url: url) { |article| yield article if article }
           end
         end
 

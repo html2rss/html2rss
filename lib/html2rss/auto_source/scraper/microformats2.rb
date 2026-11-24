@@ -9,9 +9,7 @@ module Html2rss
       # Scrapes h-entry objects based on Microformats2 specifications.
       #
       # @see https://microformats.org/wiki/h-entry
-      class Microformats2
-        include Enumerable
-
+      class Microformats2 < Base
         # Selector for Microformats2 h-entry containers.
         ENTRY_SELECTOR = '.h-entry, [class*="h-entry"]'
 
@@ -37,12 +35,8 @@ module Html2rss
         # @param url [String, Html2rss::Url] base page URL
         # @return [void]
         def initialize(parsed_body, url:)
-          @parsed_body = parsed_body
-          @url = Html2rss::Url.from_absolute(url)
+          super(parsed_body, url: Html2rss::Url.from_absolute(url))
         end
-
-        # @return [Boolean]
-        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # Yields normalized article hashes extracted from h-entry elements.
@@ -59,8 +53,6 @@ module Html2rss
         end
 
         private
-
-        attr_reader :parsed_body, :url
 
         # @param entry [Nokogiri::XML::Element] entry DOM node
         # @return [Hash{Symbol => Object}, nil] article hash or nil

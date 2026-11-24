@@ -192,6 +192,23 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PageScope do
       end
     end
 
+    {
+      'category, tag, author and date' => ['category category-1 tag tag-2 author author-3 date',
+                                           { 'categories' => '1' }],
+      'tag, author and date' => ['tag tag-2 author author-3 date', { 'tags' => '2' }],
+      'author and date' => ['author author-3 date', { 'author' => '3' }],
+      'a category without id and a tag with id' => ['category tag tag-2', nil]
+    }.each do |signals, (classes, query)|
+      context "when the body signals #{signals}" do
+        let(:html) { %(<html><body class="#{classes}"></body></html>) }
+
+        it 'resolves category, tag, author, date in that order', :aggregate_failures do
+          expect(page_scope.query).to eq(query || {})
+          expect(page_scope.reason).to eq(query ? :archive : :unsupported_archive)
+        end
+      end
+    end
+
     context 'when an archive body class lacks an id' do
       let(:html) { '<html><body class="tag"></body></html>' }
 

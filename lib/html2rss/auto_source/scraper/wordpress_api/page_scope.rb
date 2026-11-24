@@ -4,15 +4,21 @@ module Html2rss
   class AutoSource
     module Scraper
       class WordpressApi
+        PageScope = Data.define(:query, :fetchable, :reason)
+
         ##
         # Determines whether a WordPress page can safely be mapped to a posts query.
+        #
+        # @!attribute [r] query
+        #   @return [Hash{String => String}] query params to apply to the posts request
+        # @!attribute [r] fetchable
+        #   @return [Boolean] whether a posts follow-up is safe for this page
+        # @!attribute [r] reason
+        #   @return [Symbol] classification of the resolved page scope
         class PageScope
-          # Canonical path segment for category archives.
-          CATEGORY_SEGMENT = 'category'
-          # Canonical path segment for tag archives.
-          TAG_SEGMENT = 'tag'
-          # Canonical path segment for author archives.
-          AUTHOR_SEGMENT = 'author'
+          # Archive kinds mapped to the posts-endpoint query key that scopes them; the order is the
+          # precedence when a page signals several kinds (before date archives).
+          ARCHIVE_TAXONOMIES = { 'category' => 'categories', 'tag' => 'tags', 'author' => 'author' }.freeze
           # Canonical path segment for paginated archives.
           PAGE_SEGMENT = 'page'
           # Canonical query key used for paginated archives.
@@ -30,26 +36,11 @@ module Html2rss
           # @param query [Hash{String => String}] scoped query params for the posts endpoint
           # @param fetchable [Boolean] whether a posts follow-up is safe for this page
           # @param reason [Symbol] classification of the resolved page scope
-          def initialize(query:, fetchable:, reason:)
-            @query = query.freeze
-            @fetchable = fetchable
-            @reason = reason
-            freeze
-          end
-
-          ##
-          # @return [Hash{String => String}] query params to apply to the posts request
-          attr_reader :query
+          def initialize(query:, fetchable:, reason:) = super(query: query.freeze, fetchable:, reason:)
 
           ##
           # @return [Boolean] whether the page may safely use the posts API follow-up
-          def fetchable?
-            @fetchable
-          end
-
-          ##
-          # @return [Symbol] classification of the resolved page scope
-          attr_reader :reason
+          alias fetchable? fetchable
 
           ##
           # Resolves the page scope from page markup and canonical URL signals.
@@ -65,9 +56,7 @@ module Html2rss
             ##
             # @return [PageScope] derived page scope
             def call
-              scope = category_scope ||
-                      tag_scope ||
-                      author_scope ||
+              scope = taxonomy_scope ||
                       date_scope ||
                       fallback_scope
 
@@ -78,22 +67,11 @@ module Html2rss
 
             attr_reader :parsed_body, :url
 
-            def category_scope
-              return unless category_archive?
+            def taxonomy_scope
+              segment, query_key = ARCHIVE_TAXONOMIES.find { |kind, _| taxonomy_archive?(kind) }
+              return unless segment
 
-              scoped_scope('categories' => archive_id('category'))
-            end
-
-            def tag_scope
-              return unless tag_archive?
-
-              scoped_scope('tags' => archive_id('tag'))
-            end
-
-            def author_scope
-              return unless author_archive?
-
-              scoped_scope('author' => archive_id('author'))
+              scoped_scope(query_key => archive_id(segment))
             end
 
             def date_scope
@@ -116,11 +94,7 @@ module Html2rss
               page = archive_page_number
               return scope unless scope.fetchable? && page
 
-              PageScope.new(
-                query: scope.query.merge('page' => page.to_s),
-                fetchable: scope.fetchable?,
-                reason: scope.reason
-              )
+              scope.with(query: scope.query.merge('page' => page.to_s))
             end
 
             def scoped_scope(query)
@@ -137,16 +111,8 @@ module Html2rss
               PageScope.new(query: {}, fetchable: false, reason: :non_archive)
             end
 
-            def category_archive?
-              body_classes.include?('category') || leading_path_segment == CATEGORY_SEGMENT
-            end
-
-            def tag_archive?
-              body_classes.include?('tag') || leading_path_segment == TAG_SEGMENT
-            end
-
-            def author_archive?
-              body_classes.include?('author') || leading_path_segment == AUTHOR_SEGMENT
+            def taxonomy_archive?(segment)
+              body_classes.include?(segment) || leading_path_segment == segment
             end
 
             def date_archive?

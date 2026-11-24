@@ -7,9 +7,7 @@ module Html2rss
       # Promotes a page's native RSS/Atom feed via {Syndication::Discovery} + {Syndication::Parser}.
       # After {#each}, {#channel} holds what that feed states about its channel and {#feed_url} where
       # it was read, the provenance {Cleanup} admits the feed's own domain by.
-      class NativeFeed
-        include Enumerable
-
+      class NativeFeed < Base
         # Href shapes that Discovery's path probing can still resolve when the link type is not a feed MIME type.
         FEEDISH_HREF = /rss|atom|feed|\.xml/i
         private_constant :FEEDISH_HREF
@@ -43,13 +41,9 @@ module Html2rss
         # @param url [String, Html2rss::Url]
         # @param request_session [Html2rss::RequestSession, nil]
         def initialize(parsed_body, url:, request_session: nil)
-          @parsed_body = parsed_body
-          @url = Html2rss::Url.from_absolute(url)
+          super(parsed_body, url: Html2rss::Url.from_absolute(url))
           @request_session = request_session
         end
-
-        # @return [Boolean]
-        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # @return [Syndication::ChannelFacts, nil] what the followed feed states about its channel;
@@ -88,7 +82,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session
+        attr_reader :request_session
 
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- discovery + parse + structured warn
         def fetch_feed
