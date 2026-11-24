@@ -49,11 +49,9 @@ module Html2rss
       # @param limit [Integer]
       # @param items_selector [String, nil]
       # @return [Hash{Symbol => Object}] +:strategy+, +:items+, +:channel_title+, +:admission_drops+
-      def scrape_wire(url:, strategy:, limit:, items_selector: nil) # rubocop:disable Metrics/MethodLength
+      def scrape_wire(url:, strategy:, limit:, items_selector: nil)
         plan = Option.strategy(strategy)
-        feed_args = { strategy: plan, limit: }
-        feed_args[:items_selector] = items_selector unless items_selector.nil?
-        feed_result = Html2rss.scrape(url, **feed_args)
+        feed_result = Html2rss.scrape(url, strategy: plan, limit:, **{ items_selector: }.compact)
         feed = feed_result.to_json_feed
         {
           strategy: plan,

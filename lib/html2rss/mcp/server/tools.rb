@@ -104,10 +104,9 @@ module Html2rss
                          'Full schema options live in resource html2rss://schema.',
             input_schema: Contract::CAPTURE_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
-            call: lambda { |url:, strategy: 'auto', items_selector: nil, force: false, topics: nil, title: nil,
-                              summary: nil, enhance: nil, limit: nil, max_redirects: nil, max_requests: nil, **|
-              capture_outcome(url:, strategy:, items_selector:, force:, topics:, title:, summary:,
-                              enhance:, limit:, max_redirects:, max_requests:)
+            call: lambda { |url:, strategy: 'auto', **options|
+              # the input schema is the allowlist: it keeps local_file_path (and any file access) out of MCP
+              capture_outcome(url:, strategy:, **options.slice(*Contract::CAPTURE_INPUT_SCHEMA[:properties].keys))
             }
           ),
           Tool.new(
@@ -177,32 +176,11 @@ module Html2rss
           # @api private
           # @param url [String]
           # @param strategy [String, Symbol]
-          # @param items_selector [String, nil]
-          # @param force [Boolean]
-          # @param topics [Array<String>, nil]
-          # @param title [String, nil]
-          # @param summary [String, nil]
-          # @param enhance [Boolean, nil]
-          # @param limit [Integer, nil]
-          # @param max_redirects [Integer, nil]
-          # @param max_requests [Integer, nil]
+          # @option options [Object] :topics the {Html2rss::Capture.build} keywords
           # @return [Outcome]
-          def capture_outcome(url:, strategy: 'auto', items_selector: nil, force: false, topics: nil, title: nil, # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
-                              summary: nil, enhance: nil, limit: nil, max_redirects: nil, max_requests: nil)
+          def capture_outcome(url:, strategy: 'auto', **)
             plan = Option.strategy(strategy)
-            result = Html2rss::Capture.build(
-              url,
-              strategy: plan,
-              items_selector:,
-              force:,
-              topics:,
-              title:,
-              summary:,
-              enhance:,
-              limit:,
-              max_redirects:,
-              max_requests:
-            )
+            result = Html2rss::Capture.build(url, strategy: plan, **)
             Outcome.capture(result:, requested_strategy: plan)
           end
 

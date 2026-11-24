@@ -25,6 +25,25 @@ module Html2rss
     CHROME_DROP_THRESHOLD = 3
     private_constant :CHROME_DROP_THRESHOLD
 
+    # Request keys {Capture.build} forwards to {Config::AutoSourceRequest}.
+    REQUEST_KEYS = %i[items_selector limit local_file_path max_redirects max_requests total_timeout_seconds].freeze
+    private_constant :REQUEST_KEYS
+
+    Options = Data.define(:topics, :title, :summary, :force, :enhance)
+
+    ##
+    # Capture-only inputs; every member is optional.
+    class Options
+      # @param topics [Array<String>, nil] directory topics override
+      # @param title [String, nil] title override
+      # @param summary [String, nil] summary override
+      # @param force [Boolean] whether to ignore native feed detection
+      # @param enhance [Boolean, nil] whether to force enhance: true
+      def initialize(topics: nil, title: nil, summary: nil, force: false, enhance: nil)
+        super
+      end
+    end
+
     CaptureResult = Data.define(
       :config, :yaml, :articles_count, :channel_title, :has_selectors, :segment_strategy,
       :admission_drops, :selected_strategy, :inferred_topics, :native_feed, :suggested_channel_url,
@@ -103,29 +122,21 @@ module Html2rss
     # @param url [String] source page URL
     # @param strategy [Symbol] request strategy
     # @option options [String, nil] :items_selector optional selector hint
-    # @option options [Array<String>, nil] :topics optional directory topics override
-    # @option options [String, nil] :title optional title override
-    # @option options [String, nil] :summary optional summary override
-    # @option options [Boolean] :force whether to ignore native feed detection
-    # @option options [Boolean, nil] :enhance whether to force enhance: true
-    # @option options [Integer, nil] :max_redirects optional redirect limit override
-    # @option options [Integer, nil] :max_requests optional request budget override
-    # @option options [Integer, nil] :total_timeout_seconds optional wall-clock bound (seconds) for the whole
-    #   request chain, including every +:auto+ fallback hop (shared budget, not per hop)
     # @option options [Integer, nil] :limit max articles to keep
     # @option options [String, nil] :local_file_path optional local HTML file path
-    def initialize(url, strategy: :auto, **options) # rubocop:disable Metrics/MethodLength
-      @url = url
+    # @option options [Integer, nil] :max_redirects optional redirect limit override
+    # @option options [Integer, nil] :max_requests optional request budget override
+    # @option options [Integer, nil] :total_timeout_seconds optional wall-clock bound for the request chain
+    # @option options [Array<String>, nil] :topics see {Options}
+    # @option options [String, nil] :title see {Options}
+    # @option options [String, nil] :summary see {Options}
+    # @option options [Boolean, nil] :force see {Options}
+    # @option options [Boolean, nil] :enhance see {Options}
+    def initialize(url, strategy: :auto, **options)
       @strategy = strategy
-      @items_selector_hint = options.delete(:items_selector)
-      @topics = options.delete(:topics)
-      @title = options.delete(:title)
-      @summary = options.delete(:summary)
-      @force = options.delete(:force) || false
-      @enhance_option = options.delete(:enhance)
-      @request_options = options.slice(:max_redirects, :max_requests, :total_timeout_seconds)
-      @limit = options.delete(:limit)
-      @local_file_path = options.delete(:local_file_path)
+      @request = Config::AutoSourceRequest.from_shortcut(url, strategy:, **options.slice(*REQUEST_KEYS))
+      @options = Options.new(**options.slice(*Options.members))
+      @url = url
     end
 
     ##
@@ -136,9 +147,9 @@ module Html2rss
       outcome = FeedPipeline.new(raw_config).to_outcome
       @admission_drops = outcome.admission_drops
       selectors, segment_strategy, candidates = derive_selectors(outcome.response, outcome.articles)
-      ch_title = @title || channel_title_from(outcome.response)
-      topics = @topics || infer_topics("#{@url} #{ch_title}")
-      native_feed = probe_native_feed(outcome.response) unless @force
+      ch_title = @options.title || channel_title_from(outcome.response)
+      topics = @options.topics || infer_topics("#{@url} #{ch_title}")
+      native_feed = probe_native_feed(outcome.response) unless @options.force
 
       config = {
         directory: build_directory(ch_title, topics),
@@ -166,7 +177,7 @@ module Html2rss
     private
 
     def build_directory(title, topics)
-      summary_text = @summary || "#{title} updates and announcements."
+      summary_text = @options.summary || "#{title} updates and announcements."
       {
         topics: topics.take(2),
         title:,
@@ -231,31 +242,20 @@ module Html2rss
     end
 
     def build_raw_config
-      Config.auto_source_config(
-        url: @url,
-        items_selector: @items_selector_hint,
-        request_controls: Config::RequestControls.from_shortcut(strategy: @strategy, **@request_options),
-        limit: @limit
-      ).tap { |config| apply_local_file_path!(config) }
-    end
-
-    def apply_local_file_path!(config)
-      return unless @local_file_path
-
-      config[:strategy] = :local_file
-      config[:request] ||= {}
-      config[:request][:local_file_path] = @local_file_path
+      config = @request.to_config
+      config[:strategy] = :local_file if @request.local_file_path
+      config
     end
 
     def local_file_request_overlay
-      return {} unless @local_file_path
+      return {} unless @request.local_file_path
 
-      { strategy: :local_file, request: { local_file_path: @local_file_path } }
+      { strategy: :local_file, request: { local_file_path: @request.local_file_path } }
     end
 
     # @return [Array(Hash, Symbol, nil, Hash)] selectors, segment strategy, candidate buckets
     def derive_selectors(response, articles)
-      return [*hint_selectors, SelectorCandidates.empty] if @items_selector_hint
+      return [*hint_selectors, SelectorCandidates.empty] if @request.items_selector
       return [{}, nil, SelectorCandidates.empty] unless response.html_response?
       return [*default_selectors, SelectorCandidates.empty] if articles.empty?
 
@@ -267,7 +267,7 @@ module Html2rss
     end
 
     def hint_selectors
-      [{ items: { selector: @items_selector_hint, enhance: resolve_enhance } }, :hint]
+      [{ items: { selector: @request.items_selector, enhance: resolve_enhance } }, :hint]
     end
 
     def default_selectors
@@ -460,7 +460,7 @@ module Html2rss
     end
 
     def resolve_enhance
-      return @enhance_option unless @enhance_option.nil?
+      return @options.enhance unless @options.enhance.nil?
 
       drops = (@admission_drops || {}).values.sum
       drops < CHROME_DROP_THRESHOLD
