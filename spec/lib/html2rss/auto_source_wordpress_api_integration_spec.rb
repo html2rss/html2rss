@@ -17,7 +17,7 @@ RSpec.describe Html2rss::AutoSource do
       Html2rss::RequestService::Response.new(
         body: File.read(File.expand_path('../../fixtures/auto_source/wordpress_api/posts.json', __dir__)),
         url: Html2rss::Url.from_absolute(
-          'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,categories&per_page=100'
+          'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,date_gmt,categories&per_page=100'
         ),
         headers: { 'content-type' => 'application/json' }
       )
@@ -57,6 +57,28 @@ RSpec.describe Html2rss::AutoSource do
 
     it 'aligns WordPress article ids with canonical paths for cross-scraper deduplication' do
       expect(articles.map(&:id)).to eq(['/2024/04/wordpress-api-post/', '/2024/04/excerpt-only-post/'])
+    end
+
+    context 'with date_gmt under a non-UTC channel time zone' do
+      subject(:articles) do
+        described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil],
+                                              time_zone: 'Europe/Berlin').articles
+      end
+
+      let(:api_response) do
+        Html2rss::RequestService::Response.new(
+          body: [{ id: 1, link: 'https://example.com/2024/04/dated-post/',
+                   title: { rendered: 'A dated post with a longer headline' },
+                   content: { rendered: '<p>A dated post body with plenty of words to pass the admission gate.</p>' },
+                   date: '2024-07-12T12:00:00', date_gmt: '2024-07-12T10:00:00', categories: [] }].to_json,
+          url: super().url,
+          headers: { 'content-type' => 'application/json' }
+        )
+      end
+
+      it 'keeps the UTC instant' do
+        expect(articles.first.published_at.new_offset(0).iso8601).to eq('2024-07-12T10:00:00+00:00')
+      end
     end
   end
 end

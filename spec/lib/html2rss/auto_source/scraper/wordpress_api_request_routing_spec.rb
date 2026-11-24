@@ -6,7 +6,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
     Html2rss::RequestService::Response.new(
       body: '[]',
       url: Html2rss::Url.from_absolute(
-        'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,categories&per_page=100'
+        'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,date_gmt,categories&per_page=100'
       ),
       headers: { 'content-type' => 'application/json' }
     )
@@ -54,7 +54,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
             '<link rel="https://api.w.org/" href="https://example.com/index.php?rest_route=/" />' \
             '</head></html>',
       expected_url:
-        'https://example.com/index.php?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/index.php?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&per_page=100&rest_route=%2Fwp%2Fv2%2Fposts'
     },
     {
@@ -63,7 +64,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
             '<link rel="https://api.w.org/" href="https://example.com/wp-json" />' \
             '</head></html>',
       expected_url:
-        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&per_page=100'
     },
     {
@@ -80,7 +82,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       html: '<html><head><link rel="https://api.w.org/" href="https://example.com/wp-json/" /></head>' \
             '<body class="archive category category-news category-7"></body></html>',
       expected_url:
-        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&categories=7&per_page=100'
     },
     {
@@ -89,7 +92,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       html: '<html><head><link rel="https://api.w.org/" href="https://example.com/wp-json/" /></head>' \
             '<body class="archive tag tag-ruby tag-9"></body></html>',
       expected_url:
-        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&per_page=100&tags=9'
     },
     {
@@ -98,7 +102,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       html: '<html><head><link rel="https://api.w.org/" href="https://example.com/wp-json/" /></head>' \
             '<body class="archive author author-jane author-3"></body></html>',
       expected_url:
-        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&author=3&per_page=100'
     },
     {
@@ -109,7 +114,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
             '<link rel="https://api.w.org/" href="https://example.com/wp-json/" />' \
             '</head><body class="archive date"></body></html>',
       expected_url:
-        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&after=2024-04-01T00%3A00%3A00Z&before=2024-05-01T00%3A00%3A00Z&per_page=100'
     },
     {
@@ -119,7 +125,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
             '<link rel="https://api.w.org/" href="https://example.com/wp-json/" />' \
             '</head><body class="archive date"></body></html>',
       expected_url:
-        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&after=2024-02-29T00%3A00%3A00Z&before=2024-03-01T00%3A00%3A00Z&per_page=100'
     },
     {
@@ -130,7 +137,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
             '<link rel="https://api.w.org/" href="https://example.com/wp-json/" />' \
             '</head><body class="archive date"></body></html>',
       expected_url:
-        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&after=2024-04-01T00%3A00%3A00Z&before=2024-05-01T00%3A00%3A00Z&per_page=100'
     },
     {
@@ -141,7 +149,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
             '<link rel="https://api.w.org/" href="https://example.com/wp-json/" />' \
             '</head><body class="archive date"></body></html>',
       expected_url:
-        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories' \
+        'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Cdate_gmt' \
+        '%2Ccategories' \
         '&after=2024-04-01T00%3A00%3A00Z&before=2024-05-01T00%3A00%3A00Z&per_page=100'
     }
   ].each do |example|

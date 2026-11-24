@@ -129,6 +129,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
 
+    context 'when the post carries date_gmt' do
+      let(:post) { super().merge('date' => '2024-01-02T04:04:05', 'date_gmt' => '2024-01-02T03:04:05') }
+
+      it 'marks date_gmt as UTC' do
+        expect(articles.first).to include(published_at: '2024-01-02T03:04:05Z')
+      end
+    end
+
+    context 'when date_gmt is the unset zero date' do
+      let(:post) { super().merge('date' => '2024-01-02T04:04:05', 'date_gmt' => '0000-00-00T00:00:00') }
+
+      it 'falls back to the site-local date' do
+        expect(articles.first).to include(published_at: '2024-01-02T04:04:05')
+      end
+    end
+
+    context 'when date_gmt is blank' do
+      let(:post) { super().merge('date' => '2024-01-02T04:04:05', 'date_gmt' => '  ') }
+
+      it 'falls back to the site-local date' do
+        expect(articles.first).to include(published_at: '2024-01-02T04:04:05')
+      end
+    end
+
     context 'when optional fields are blank' do
       let(:post) do
         {
@@ -228,7 +252,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       Html2rss::RequestService::Response.new(
         body: posts_json,
         url: Html2rss::Url.from_absolute(
-          'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,categories&per_page=100'
+          'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,date_gmt,categories&per_page=100'
         ),
         headers: { 'content-type' => 'application/json' }
       )
@@ -295,7 +319,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         Html2rss::RequestService::Response.new(
           body: posts_with_markup,
           url: Html2rss::Url.from_absolute(
-            'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,categories&per_page=100'
+            'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,date_gmt,categories&per_page=100'
           ),
           headers: { 'content-type' => 'application/json' }
         )
@@ -354,7 +378,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
           body: posts_json,
           url: Html2rss::Url.from_absolute(
             'https://example.com/wp-json/wp/v2/posts?' \
-            '_fields=id,title,excerpt,content,link,date,categories&' \
+            '_fields=id,title,excerpt,content,link,date,date_gmt,categories&' \
             'after=2024-04-01T00%3A00%3A00Z&before=2024-05-01T00%3A00%3A00Z&page=2&per_page=100'
           ),
           headers: { 'content-type' => 'application/json' }

@@ -11,8 +11,6 @@ module Html2rss
       module Date
         # Skip DateTime.parse above this length (Ruby parse is not a validator).
         MAX_DATE_CHARS = Description::MAX_DATE_CHARS
-        # Trailing offset / Zulu marker — present means the string already has a zone.
-        OFFSET = /(?:Z|[+-]\d{2}:?\d{2})\z/i
         # Prefer standard time when a local clock time occurs twice (DST fall-back).
         AMBIGUOUS_DST = false
 
@@ -42,6 +40,17 @@ module Html2rss
           # @return [DateTime] midnight of +date+ in +time_zone+
           def at_midnight(date, time_zone:) = localize(DateTime.new(date.year, date.month, date.day), time_zone)
 
+          ##
+          # @param string [String] raw datetime text
+          # @param time_zone [String, nil] channel time zone for a naive value (nil reads as UTC)
+          # @return [DateTime, nil] parsed instant; naive values are read in +time_zone+
+          def parse_datetime(string, time_zone:)
+            parsed = DateTime.parse(string, limit: MAX_DATE_CHARS)
+            naive?(string) ? localize(parsed, time_zone) : parsed
+          rescue ArgumentError, TypeError
+            nil
+          end
+
           private
 
           def parse_attr(value, time_zone:)
@@ -54,16 +63,13 @@ module Html2rss
             parse_datetime(Description.date_core(line), time_zone:)
           end
 
-          def parse_datetime(string, time_zone:)
-            return if string.empty? || string.length > MAX_DATE_CHARS
-
-            parsed = DateTime.parse(string, limit: MAX_DATE_CHARS)
-            naive?(string) ? localize(parsed, time_zone) : parsed
-          rescue ArgumentError, TypeError
-            nil
+          # Naive unless the parser resolved a real offset: unknown words ("Uhr", "ET") leave it nil, and a
+          # single-letter military zone other than Z ("h") is a stray letter, not a zone.
+          def naive?(string)
+            parsed = DateTime._parse(string, limit: MAX_DATE_CHARS)
+            zone = parsed[:zone]
+            parsed[:offset].nil? || (zone.length == 1 && !zone.casecmp?('z'))
           end
-
-          def naive?(string) = !string.match?(OFFSET)
 
           def localize(datetime, time_zone)
             identifier = time_zone.to_s
