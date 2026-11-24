@@ -182,6 +182,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       it { expect(url.to_s).to eq('https://example.com/a1') }
     end
 
+    context 'when url is whitespace-only' do
+      let(:schema_object) { { headline: 'Blank', url: '  ' } }
+
+      before { allow(Html2rss::Log).to receive(:debug) }
+
+      it 'treats it as absent' do
+        expect(url).to be_nil
+      end
+    end
+
     context 'when url is absent' do
       let(:schema_object) { { headline: 'Bare' } }
 
