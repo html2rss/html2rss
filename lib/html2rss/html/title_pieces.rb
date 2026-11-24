@@ -60,7 +60,7 @@ module Html2rss
       def initialize(root, source, vocabulary:, anchor: nil)
         @anchor = anchor
         @vocabulary = vocabulary
-        @nodes = SstNodes.new(vocabulary)
+        @nodes = Nodes.new(vocabulary)
         @kicker = Kicker.new(@nodes, root, source, vocabulary) { headline_piece(source) }
       end
 
