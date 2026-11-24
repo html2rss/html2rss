@@ -52,6 +52,19 @@ module Html2rss
           value.is_a?(Integer) && value.positive? ? value : DEFAULT_MAX_PAGES
         end
 
+        # Builds the URL for a 1-based page number by stepping one query parameter.
+        #
+        # @param page_response [RequestService::Response] page the next URL derives from
+        # @param page_number [Integer] 1-based target page number
+        # @param param [String, Symbol] query parameter name
+        # @param start [Integer] value on page 1
+        # @param step [Integer] increment per page
+        # @return [Html2rss::Url]
+        def stepped_url(page_response, page_number:, param:, start:, step:)
+          url = page_response.url
+          url.with_query_values(url.query_values.merge(param => start + ((page_number - 1) * step)))
+        end
+
         # @param next_url [Html2rss::Url, String, nil]
         # @return [Boolean]
         def follow_up_allowed?(next_url)
