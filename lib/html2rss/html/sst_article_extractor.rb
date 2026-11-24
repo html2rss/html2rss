@@ -18,7 +18,7 @@ module Html2rss
         # @param ranked_or_segment [Scoring::RankedSegment, AutoSource::Segment]
         # @param base_url [String, Html2rss::Url]
         # @param scraper [Class, nil]
-        # @param time_zone [String] channel time zone for naive leftover dates
+        # @param time_zone [String, nil] channel time zone for naive leftover dates; nil reads as UTC
         # @param link_resolver [Scoring::LinkResolver, nil] the page's resolver, built for the same +base_url+;
         #   its already resolved URL of the primary link is reused instead of resolving it again, and it
         #   supplies +vocabulary+ and +classifier+ (the page-scoped label reader, so a label is normalized once)
@@ -26,7 +26,7 @@ module Html2rss
         # @param classifier [LinkDestination::TextClassifier] the page's label reader
         # @return [Html2rss::Article, nil] nil when the segment has no primary link (no URL of its own)
         # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
-        def call(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', link_resolver: nil,
+        def call(ranked_or_segment, base_url:, time_zone:, scraper: nil, link_resolver: nil,
                  vocabulary: link_resolver&.vocabulary || Vocabulary[nil],
                  classifier: link_resolver&.text_classifier || LinkDestination::TextClassifier.for(vocabulary))
           new(ranked_or_segment, base_url:, scraper:, time_zone:, vocabulary:, classifier:, link_resolver:).call
@@ -36,7 +36,7 @@ module Html2rss
       # @param ranked_or_segment [Scoring::RankedSegment, AutoSource::Segment]
       # @param base_url [String, Html2rss::Url]
       # @param scraper [Class, nil]
-      # @param time_zone [String] channel time zone for naive leftover dates
+      # @param time_zone [String, nil] channel time zone for naive leftover dates; nil reads as UTC
       # @param link_resolver [Scoring::LinkResolver, nil] see {.call}
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
       # @param classifier [LinkDestination::TextClassifier] the page's label reader

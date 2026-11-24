@@ -134,6 +134,22 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'with a channel time zone' do
+      subject(:auto_source) do
+        described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil],
+                                              time_zone: 'Europe/Berlin')
+      end
+
+      let(:body) do
+        '<html><body><article><h2><a href="/news/dated">Dated story headline</a></h2>' \
+          '<p>12 July 2024</p></article></body></html>'
+      end
+
+      it 'reads a naive leftover date in that zone' do
+        expect(articles.first.published_at.zone).to eq('+02:00')
+      end
+    end
+
     context 'when no scrapers are found' do
       let(:body) { '<html><body></body></html>' }
 

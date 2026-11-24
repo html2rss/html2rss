@@ -353,6 +353,18 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
       expect(articles.map { _1.url.to_s }).to include('https://example.net/article1/')
     end
+
+    it 'reads a naive leftover date in the given time zone', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      cards = %w[one two].map do |slug|
+        %(<article><h2><a href="/news/#{slug}">Dated story #{slug} headline</a></h2><span>12 July 2024</span></article>)
+      end
+      dated = Nokogiri::HTML("<html><body>#{cards.join}</body></html>")
+      zones = [nil, 'Europe/Berlin'].map do |zone|
+        described_class.new(dated, url: 'https://example.com', time_zone: zone).to_a.first.published_at.zone
+      end
+
+      expect(zones).to eq(['+00:00', '+02:00'])
+    end
   end
 
   describe '#document' do

@@ -27,11 +27,13 @@ module Html2rss
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
         # @param document [SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
+        # @param time_zone [String, nil] channel time zone for naive leftover dates
         # @param opts [Hash]
         # @option opts [Integer] :minimum_selector_frequency list frequency floor
         # @option opts [Integer] :use_top_selectors list selector budget
-        def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, **opts)
-          super(parsed_body, url:, document:, link_resolver:)
+        # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
+        def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, time_zone: nil, **opts)
+          super(parsed_body, url:, document:, link_resolver:, time_zone:)
           @opts = opts
         end
 
@@ -69,7 +71,7 @@ module Html2rss
         def materialize(ranked)
           ranked.filter_map do |entry|
             ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: url, scraper: self.class,
-                                                              link_resolver:)
+                                                              time_zone:, link_resolver:)
           end
         end
 

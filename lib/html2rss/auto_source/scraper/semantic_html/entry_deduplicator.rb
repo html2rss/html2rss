@@ -10,8 +10,10 @@ module Html2rss
           # @param url [String, Html2rss::Url] base url used to resolve relative hrefs
           # @param scraper [Class, nil] scraper class stamped onto extracted articles
           # @param link_resolver [Scoring::LinkResolver, nil] page-scoped destination facts cache
-          def initialize(url, scraper: nil, link_resolver: nil)
+          # @param time_zone [String, nil] channel time zone for naive leftover dates
+          def initialize(url, scraper: nil, link_resolver: nil, time_zone: nil)
             @url = url
+            @time_zone = time_zone
             @scraper = scraper
             @link_resolver = link_resolver || Scoring::LinkResolver.new(url)
             @article_cache = {}.compare_by_identity
@@ -35,6 +37,7 @@ module Html2rss
             @article_cache.fetch(entry) do
               @article_cache[entry] =
                 ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: @scraper,
+                                                                  time_zone: @time_zone,
                                                                   link_resolver: @link_resolver)
             end
           end

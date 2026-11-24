@@ -6,7 +6,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::PageCards do
       let(:slugs) { %w[launch-update api-rollout summer-release] }
       let(:parsed_body) do
         cards = slugs.map do |slug|
-          %(<article><h2><a href="/news/#{slug}">Big #{slug.tr('-', ' ')} announced today</a></h2></article>)
+          %(<article><h2><a href="/news/#{slug}">Story #{slug} out</a></h2><p>12 March 2024</p></article>)
         end
         Nokogiri::HTML("<html><body><main>#{cards.join}</main></body></html>")
       end
@@ -26,6 +26,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::PageCards do
         expect(scraper_class.new(parsed_body, url: 'https://example.org/')).to be_extractable
         expect(Html2rss::Scoring::LinkResolver).to have_received(:new).with('https://example.org/')
         expect(Html2rss::SST::Normalizer).to have_received(:call).with(parsed_body, vocabulary: anything)
+      end
+
+      it 'reads a naive leftover date in the given time zone' do # rubocop:disable RSpec/ExampleLength
+        cards = slugs.map do |slug|
+          %(<article><h2><a href="/news/#{slug}">Story #{slug} out now</a></h2><p>12 March 2024</p></article>)
+        end
+        dated = Nokogiri::HTML("<html><body><main>#{cards.join}</main></body></html>")
+        scraper = scraper_class.new(dated, url: 'https://example.org/', time_zone: 'Europe/Berlin')
+
+        expect(scraper.to_a.first.published_at.zone).to eq('+01:00')
       end
 
       it 'can be built for a url alone' do

@@ -111,6 +111,7 @@ module Html2rss
       # @param body [String, nil]
       # @param document [SST::Document, nil]
       # @param link_resolver [Scoring::LinkResolver, nil]
+      # @param time_zone [String, nil] channel time zone for naive leftover dates
       # @param captured_responses [Array<Hash>] browser-captured JSON XHR/fetch bodies
       # @option opts [Hash] :wordpress_api scraper toggle and configuration
       # @option opts [Hash] :schema scraper toggle and configuration
@@ -126,7 +127,7 @@ module Html2rss
       # @return [Object, nil]
       # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- construction context for structured and heuristic scrapers
       def self.build_instance(scraper, parsed_body, opts:, url:, request_session: nil, body: nil, document: nil,
-                              link_resolver: nil, captured_responses: [])
+                              link_resolver: nil, time_zone: nil, captured_responses: [])
         return unless opts.dig(scraper.options_key, :enabled)
         return if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
 
@@ -137,6 +138,7 @@ module Html2rss
           body:,
           document:,
           link_resolver:,
+          time_zone:,
           captured_responses:
         )
         scraper.new(parsed_body, url:, **kwargs, **scraper_opts)
@@ -150,10 +152,10 @@ module Html2rss
         NoScraperFound.new(category: Html2rss::SurfaceCategory.classify(parsed_body, body:))
       end
 
-      def self.construction_kwargs(scraper, request_session:, body:, document:, link_resolver:, # rubocop:disable Metrics/ParameterLists -- scraper construction bag
+      def self.construction_kwargs(scraper, request_session:, body:, document:, link_resolver:, time_zone:, # rubocop:disable Metrics/ParameterLists -- scraper construction bag
                                    captured_responses:)
         if HEURISTIC_SCRAPERS.include?(scraper)
-          { document:, link_resolver: }.compact
+          { document:, link_resolver:, time_zone: }.compact
         else
           {}.tap do |kwargs|
             kwargs[:request_session] = request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
