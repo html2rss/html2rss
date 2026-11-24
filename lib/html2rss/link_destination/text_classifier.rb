@@ -133,6 +133,14 @@ module Html2rss
       end
 
       # @param text [String, #to_s] visible anchor text
+      # @return [Boolean] true when {#utility_chrome?} holds only through a term of the page-only language of
+      #   this scope: no other language reads the text as chrome, so an ordinary noun of that language
+      #   ("评论" is also "comment") may be a card's only link; false for every shared language scope
+      def page_only_chrome?(text)
+        utility_chrome?(text) && !SHARED.fetch(:all).utility_chrome?(text)
+      end
+
+      # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text begins with a utility label
       def utility_prefix?(text) = label?(:utility_prefix, text)
 

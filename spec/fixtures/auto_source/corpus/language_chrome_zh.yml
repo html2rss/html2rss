@@ -1,5 +1,5 @@
 ---
-case: Six invented news cards (two headlines open with a label word and a space), page shortcuts and a labelled pager, in language "zh-Hans"; only the six headlines are items.
+case: Six invented news cards (two headlines open with a label word and a space), page shortcuts and a labelled pager, in language "zh-Hans"; only the six headlines and eight cards with an unlinked h3 are items, four whose only link is a label noun (comment, share) and four with a share link and a read-more link in either order.
 expected:
 - https://example.com/news/2026/11/harbor-ferry-timetable
 - https://example.com/news/2026/11/library-weekend-hours
@@ -7,3 +7,11 @@ expected:
 - https://example.com/news/2026/11/bridge-lights-repaired
 - https://example.com/news/2026/11/community-recovery-volunteers
 - https://example.com/news/2026/11/missing-boat-search-day-three
+- https://example.com/story-7
+- https://example.com/story-8
+- https://example.com/story-9
+- https://example.com/story-10
+- https://example.com/story-11
+- https://example.com/story-12
+- https://example.com/story-13
+- https://example.com/story-14

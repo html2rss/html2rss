@@ -24,7 +24,7 @@ module Html2rss
       # @param heading_anchor [Boolean]
       # @param utility_landmark_ancestor [Boolean] pre-computed by Segmenter tree walk
       # @return [Boolean]
-      # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/ParameterLists, Metrics/PerceivedComplexity, Lint/UnusedMethodArgument
+      # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/ParameterLists, Metrics/PerceivedComplexity
       def noise_anchor?(text:, destination_facts:, anchor: nil, container: nil,
                         heading_anchor: false, utility_landmark_ancestor: false)
         return true unless destination_facts
@@ -34,7 +34,7 @@ module Html2rss
           recommended_chrome?(text, destination_facts, heading_anchor:) ||
           (@link_resolver.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
           (@link_resolver.utility_text?(text) && destination_facts.vanity_path) ||
-          utility_text_chrome?(text, destination_facts, heading_anchor:) ||
+          utility_text_chrome?(text, destination_facts, heading_anchor:, anchor:, container:) ||
           icon_only_anchor?(anchor, text) ||
           concealed_anchor?(anchor) ||
           utility_landmark_ancestor
@@ -65,11 +65,22 @@ module Html2rss
         !heading_anchor && @link_resolver.recommended_text?(text) && destination_facts.shallow
       end
 
-      def utility_text_chrome?(text, destination_facts, heading_anchor:)
+      def utility_text_chrome?(text, destination_facts, heading_anchor:, anchor:, container:)
         return false if destination_facts.content_path
         return false unless @link_resolver.utility_chrome_text?(text)
+        return false if heading_anchor || destination_facts.strong_post_suffix
 
-        !heading_anchor && !destination_facts.strong_post_suffix
+        !(@link_resolver.page_only_chrome_text?(text) && sole_link_of_headed_card?(anchor, container))
+      end
+
+      # A card with a real, unlinked heading whose only link is this anchor: its label is the card's link, not
+      # chrome beside it (a page-only noun such as +评论+ labels the story link).
+      def sole_link_of_headed_card?(anchor, container)
+        return false unless container
+
+        heading = container.find(&:heading?)
+        heading&.visible_text.to_s.match?(/\p{Alnum}/) &&
+          container.find { |node| node.link? && !node.equal?(anchor) }.nil?
       end
 
       # An anchor a sighted reader does not see, such as the off-screen accessibility twin of a teaser

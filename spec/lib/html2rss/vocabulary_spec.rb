@@ -23,7 +23,7 @@ RSpec.describe Html2rss::Vocabulary do
         path_section: %i[ru], path_article: %i[ru], path_profile: %i[ru], path_office: %i[ru],
         path_non_article: %i[ru], path_taxonomy: %i[ru], path_vanity: %i[ru], path_soft_utility: %i[ru],
         clock_suffix: all - %i[de ru],
-        date_piece: all - %i[ja],
+        date_piece: all - %i[ja ru],
         element_label: all - %i[ja],
         list_more: all,
         read_more_suffix: all - %i[ja],
@@ -199,7 +199,8 @@ RSpec.describe Html2rss::Vocabulary do
     it 'keeps a concept only some languages use to those languages', :aggregate_failures do
       expect(described_class.alternation(:clock_suffix)).to eq('Uhr|мск')
       expect(described_class.alternation(:element_label)).to eq('PR')
-      expect(described_class.alternation(:date_piece)).to eq('(?:\d{4}年)?\d{1,2}月\d{1,2}日')
+      expect(described_class.alternation(:date_piece)).to start_with('(?:\d{4}年)?\d{1,2}月\d{1,2}日|')
+      expect(described_class.alternation(:date_piece)).to include('ноябр', 'чера')
     end
 
     it 'rejects a word concept, a scoped concept and an unknown concept', :aggregate_failures do

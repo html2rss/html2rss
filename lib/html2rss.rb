@@ -153,8 +153,6 @@ module Html2rss
     Apply.call(raw_config)
   end
 
-  # rubocop:disable Metrics/ParameterLists
-
   ##
   # One-shot auto-source scrape from a URL, without hand-written selectors.
   # Builds an auto_source config; FeedPipeline runs structured scrapers and, when needed, the SST
@@ -162,25 +160,16 @@ module Html2rss
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy to use
-  # @param items_selector [String, nil] optional selector hint for item extraction
-  # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer, nil] optional request budget override (nil derives it from the config, max 10)
-  # @param local_file_path [String, nil] optional local HTML file path
-  # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
-  # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
-  # @param keep_sponsored [Boolean, nil] when set, overrides cleanup.keep_sponsored
+  # @option options [String, nil] :items_selector optional selector hint for item extraction
+  # @option options [Integer, nil] :max_redirects optional redirect limit override
+  # @option options [Integer, nil] :max_requests optional request budget override (nil derives it, max 10)
+  # @option options [String, nil] :local_file_path optional local HTML file path
+  # @option options [Integer, nil] :limit max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
+  # @option options [Boolean, nil] :keep_different_domain when set, overrides cleanup.keep_different_domain
+  # @option options [Boolean, nil] :keep_sponsored when set, overrides cleanup.keep_sponsored
   # @return [Html2rss::FeedResult]
-  def self.scrape(url,
-                  strategy: :auto,
-                  items_selector: nil,
-                  max_redirects: nil,
-                  max_requests: nil,
-                  local_file_path: nil,
-                  limit: nil,
-                  keep_different_domain: nil,
-                  keep_sponsored: nil)
-    feed_result(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
-                                         local_file_path:, limit:, keep_different_domain:, keep_sponsored:))
+  def self.scrape(url, strategy: :auto, **)
+    feed_result(Config::AutoSourceRequest.from_shortcut(url, strategy:, **).to_config)
   end
 
   ##
@@ -217,8 +206,6 @@ module Html2rss
   def self.batch_recon(urls, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY, **)
     Batch.batch_recon(urls:, strategy:, concurrency:, **)
   end
-
-  # rubocop:enable Metrics/ParameterLists
 
   ##
   # Exports the configuration JSON Schema as JSON string.
@@ -297,29 +284,6 @@ module Html2rss
     def reset_defaults!
       @defaults = nil
       logger.level = defaults.log_level
-    end
-  end
-
-  class << self
-    private
-
-    # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength
-    def build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
-                                 local_file_path: nil, limit: nil, keep_different_domain: nil,
-                                 keep_sponsored: nil)
-      config = Config.auto_source_config(
-        url:,
-        items_selector:,
-        request_controls: Config::RequestControls.from_shortcut(strategy:, max_redirects:, max_requests:),
-        limit:,
-        keep_different_domain:,
-        keep_sponsored:
-      )
-      if local_file_path
-        config[:request] ||= {}
-        config[:request][:local_file_path] = local_file_path
-      end
-      config
     end
   end
 

@@ -207,4 +207,49 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
       end
     end
   end
+
+  describe '#noise_anchor? for a label noun of a page-only language' do
+    let(:verdict) do
+      lambda do |lang, label, html|
+        resolver = Html2rss::Scoring::LinkResolver.new(base_url, vocabulary: Html2rss::Vocabulary[lang])
+        root = Html2rss::SST::Normalizer.call("<html><body><div>#{html}</div></body></html>",
+                                              vocabulary: Html2rss::Vocabulary[lang]).root
+        anchor = root.find { |node| node.link? && node.visible_text.to_s.strip == label }
+        described_class.new(link_resolver: resolver)
+                       .noise_anchor?(text: label, destination_facts: resolver.destination_facts(anchor), anchor:,
+                                      container: root.find { |node| node.name == :div })
+      end
+    end
+
+    it 'keeps the only link of a card with an unlinked heading, and drops it without a heading or beside a link', # rubocop:disable RSpec/ExampleLength
+       :aggregate_failures do
+      { zh: '评论', ko: '구독' }.each do |lang, label|
+        link = %(<a href="/story-1">#{label}</a>)
+        expect(verdict.call(lang, label, "<h3>Harbor ferry timetable changes</h3>#{link}")).to be(false), lang.to_s
+        expect(verdict.call(lang, label, link)).to be(true), lang.to_s
+        expect(verdict.call(lang, label, "<h3> </h3>#{link}")).to be(true), lang.to_s
+        expect(verdict.call(lang, label, %(<h3>Harbor ferry timetable changes</h3>#{link}<a href="/c-1">More</a>)))
+          .to be(true), lang.to_s
+      end
+    end
+
+    it 'drops the label when the caller gives no card', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      resolver = Html2rss::Scoring::LinkResolver.new(base_url, vocabulary: Html2rss::Vocabulary[:zh])
+      html = '<html><body><div><h3>Harbor ferry timetable</h3><a href="/story-1">评论</a></div></body></html>'
+      root = Html2rss::SST::Normalizer.call(html, vocabulary: Html2rss::Vocabulary[:zh]).root
+      anchor = root.find(&:link?)
+      facts = resolver.destination_facts(anchor)
+      policy = described_class.new(link_resolver: resolver)
+
+      expect(policy.noise_anchor?(text: '评论', destination_facts: facts, anchor:)).to be(true)
+      expect(policy.noise_anchor?(text: '评论', destination_facts: facts, anchor:, container: root)).to be(false)
+    end
+
+    it 'keeps today\'s verdict for a shared language and an unlabeled page', :aggregate_failures do
+      [[:en, 'Comments'], [nil, 'Comments'], [:de, 'Kommentare']].each do |lang, label|
+        html = %(<h3>Harbor ferry timetable changes</h3><a href="/story-1">#{label}</a>)
+        expect(verdict.call(lang, label, html)).to be(true), label
+      end
+    end
+  end
 end

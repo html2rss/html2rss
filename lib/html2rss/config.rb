@@ -112,36 +112,6 @@ module Html2rss
       end
 
       ##
-      # Builds a top-level auto-source feed config for the public shortcut APIs.
-      #
-      # @param url [String] source page URL
-      # @param items_selector [String, nil] optional selector hint for item extraction
-      # @param request_controls [Html2rss::Config::RequestControls, nil] explicit request controls to write
-      # @param limit [Integer, nil] max articles to keep in the auto-sourced feed
-      # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
-      # @param keep_sponsored [Boolean, nil] when set, overrides cleanup.keep_sponsored
-      # @return [Hash{Symbol => Object}] feed config hash ready for {from_hash}
-      # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- cleanup overrides stay co-located
-      def auto_source_config(url:, items_selector: nil, request_controls: nil, limit: nil,
-                             keep_different_domain: nil, keep_sponsored: nil)
-        auto_source = AutoSource::DEFAULT_CONFIG
-        auto_source = auto_source.merge(limit: Option.integer(:limit, limit, min: 1)) unless limit.nil?
-        cleanup = { keep_different_domain:, keep_sponsored: }.compact
-        auto_source = auto_source.merge(cleanup: auto_source[:cleanup].merge(cleanup)) unless cleanup.empty?
-
-        config = {
-          channel: default_config[:channel].merge(url:),
-          auto_source:
-        }
-
-        request_controls ||= RequestControls.new
-        request_controls.apply_to(config)
-
-        config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector
-        config
-      end
-
-      ##
       # Provides a default configuration.
       #
       # @return [Hash{Symbol => Object}] a hash with default configuration values.

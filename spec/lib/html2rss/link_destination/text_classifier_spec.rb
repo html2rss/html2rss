@@ -571,4 +571,25 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
         .to eq([true, false])
     end
   end
+
+  describe '#page_only_chrome?' do
+    it 'is true only for chrome that no shared language reads, on its own page', :aggregate_failures do
+      zh = described_class.for(Html2rss::Vocabulary[:zh])
+      ko = described_class.for(Html2rss::Vocabulary[:ko])
+
+      expect([zh.page_only_chrome?('评论'), zh.page_only_chrome?('立即订阅'), ko.page_only_chrome?('구독')]).to all(be(true))
+      expect([zh.page_only_chrome?('Comments'), zh.page_only_chrome?('港口重新开放'), ko.page_only_chrome?('로그인 오류로 서비스 중단')])
+        .to all(be(false))
+    end
+
+    it 'is false on every shared scope', :aggregate_failures do
+      labels = %w[评论 구독 Comments]
+
+      %i[all en de ja].each do |lang|
+        classifier = described_class.for(Html2rss::Vocabulary[lang])
+
+        expect(labels.map { classifier.page_only_chrome?(_1) }).to all(be(false)), lang.to_s
+      end
+    end
+  end
 end

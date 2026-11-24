@@ -111,14 +111,9 @@ module Html2rss
     # @option options [Integer, nil] :max_requests
     # @return [Html2rss::RequestSession]
     def self.build_probe_session(url_obj, strategy, **options) # rubocop:disable Metrics/MethodLength
-      raw_config = Config.auto_source_config(
-        url: url_obj.to_s,
-        request_controls: Config::RequestControls.from_shortcut(
-          strategy:,
-          max_redirects: options[:max_redirects],
-          max_requests: options[:max_requests]
-        )
-      )
+      raw_config = Config::AutoSourceRequest.from_shortcut(
+        url_obj.to_s, strategy:, max_redirects: options[:max_redirects], max_requests: options[:max_requests]
+      ).to_config
       raw_config[:strategy] = strategy
       config = Config.from_hash(raw_config)
       resources = FeedPipeline::RuntimePolicy.resources_for(config)
