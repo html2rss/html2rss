@@ -131,6 +131,17 @@ module Html2rss
       end
 
       ##
+      # Rejects a URL whose host is denylisted or resolves to a blocked address, with no origin checks
+      # (for responses a remote browser captured, which may legitimately come from other public hosts).
+      #
+      # @param url [Html2rss::Url] address to check
+      # @return [void]
+      # @raise [PrivateNetworkDenied] if the target resolves to a private address
+      def enforce_public_network!(url)
+        network_guard.enforce_public_network!(url)
+      end
+
+      ##
       # Validates a redirect hop before it is followed.
       #
       # @param from_url [Html2rss::Url] URL that produced the redirect

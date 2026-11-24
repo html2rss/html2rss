@@ -17,6 +17,18 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
   end
 
+  describe '#enforce_public_network!' do
+    let(:url) { Html2rss::Url.from_absolute('https://example.com/x') }
+
+    it 'delegates to the network guard without origin checks', :aggregate_failures do
+      allow(resolver).to receive(:each_address).with('example.com').and_yield('8.8.8.8')
+
+      expect { policy.enforce_public_network!(url) }.not_to raise_error
+      expect { policy.enforce_public_network!(Html2rss::Url.from_absolute('http://localhost/')) }
+        .to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+    end
+  end
+
   describe '#validate_request!' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
     subject(:validate_request!) { policy.validate_request!(url:, origin_url:, relation:) }
 

@@ -93,11 +93,11 @@ module Html2rss
 
       def public_capture?(capture)
         url = Url.from_absolute_web(capture.fetch('url'))
-        ctx.policy.validate_request!(url:, origin_url: ctx.origin_url, relation: :initial)
+        ctx.policy.enforce_public_network!(url)
         true
       rescue Html2rss::Url::InvalidUrlError, PrivateNetworkDenied => error
         Log.event(:warn, 'botasaurus.capture_dropped', reason: error.class.name,
-                                                       endpoint: PageRecon::Diagnostics.redacted_endpoint(capture))
+                                                       endpoint: Response.redacted_endpoint(capture))
         false
       end
 
