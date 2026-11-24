@@ -230,8 +230,8 @@ RSpec.describe Html2rss::MCP::Outcome do
     it 'emits every optional draft field with its wire form when given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- full wire payload
       outcome = capture.call(
         requested_strategy: :auto, segment_strategy: :rss, selected_strategy: 'html',
-        admission_drops: { 'credit' => 1 }, native_feed: 'https://example.com/feed.xml',
-        suggested_channel_url: 'https://example.com/'
+        admission_drops: { 'credit' => 1 }, native_feed: URI('https://example.com/feed.xml'),
+        suggested_channel_url: URI('https://example.com/')
       )
 
       expect(outcome.payload).to eq(
