@@ -30,10 +30,23 @@ RSpec.describe Html2rss::Config::AutoSourceRequest do
       expect(config[:selectors]).to be_nil
     end
 
+    it 'adds local_file_path to the request', :aggregate_failures do
+      controls = Html2rss::Config::RequestControls.new(max_redirects: 2, explicit_keys: %i[max_redirects])
+      with_controls = described_class.new(url: 'https://example.com', local_file_path: '/p', request_controls: controls)
+
+      expect(described_class.new(url: 'https://example.com', local_file_path: '/p').to_config[:request])
+        .to eq(local_file_path: '/p')
+      expect(with_controls.to_config[:request]).to eq(max_redirects: 2, local_file_path: '/p')
+    end
+
+    it 'keeps the selector hint off the config when none is given' do
+      expect(described_class.new(url: 'https://example.com').to_config).not_to have_key(:selectors)
+    end
+
     it 'rejects a malformed limit', :aggregate_failures do
       [0, -1, '5', 2.5].each do |limit|
         expect { described_class.new(url: 'https://example.com', limit:).to_config }
-          .to raise_error(Html2rss::InvalidOption, /limit/)
+          .to raise_error(Html2rss::InvalidOption, /\Alimit must be/)
       end
     end
 
@@ -44,7 +57,7 @@ RSpec.describe Html2rss::Config::AutoSourceRequest do
     it 'accepts the minimum limit of 1 and names the option when rejecting', :aggregate_failures do
       expect(described_class.new(url: 'https://example.com', limit: 1).to_config[:auto_source][:limit]).to eq(1)
       expect { described_class.new(url: 'https://example.com', limit: 0).to_config }
-        .to raise_error(Html2rss::InvalidOption, /limit/)
+        .to raise_error(Html2rss::InvalidOption, /\Alimit must be/)
     end
 
     it 'puts only the default time zone and the url on the channel' do
@@ -84,6 +97,7 @@ RSpec.describe Html2rss::Config::AutoSourceRequest do
 
       expect(config[:strategy]).to eq(:default)
       expect(config[:request]).to eq(max_requests: 4)
+      expect(config.dig(:channel, :url)).to eq('https://example.com')
     end
 
     it 'adds local_file_path to the request without dropping request limits' do

@@ -37,10 +37,10 @@ module Html2rss
       # @param topics [Array<String>, nil] directory topics override
       # @param title [String, nil] title override
       # @param summary [String, nil] summary override
-      # @param force [Boolean, nil] whether to ignore native feed detection
+      # @param force [Boolean] whether to ignore native feed detection
       # @param enhance [Boolean, nil] whether to force enhance: true
       def initialize(topics: nil, title: nil, summary: nil, force: false, enhance: nil)
-        super(topics:, title:, summary:, force: force || false, enhance:)
+        super
       end
     end
 
