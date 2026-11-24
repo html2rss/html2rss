@@ -23,18 +23,29 @@ module Html2rss
         ##
         # Retrieves an element from Nokogiri XML based on the selector.
         #
-        # Attribute-style extractors pass +first: true+ so Nokogiri can use +at_css+
+        # Attribute-style extractors use {.first_element} so Nokogiri can use +at_css+
         # when only the first match is consumed. Text/HTML keep +css+ so every
         # match is concatenated. Category collection also uses the default.
         #
         # @param xml [Nokogiri::XML::Document, Nokogiri::XML::Node]
         # @param selector [String, nil]
-        # @param first [Boolean] when true, return the first match via +at_css+
         # @return [Nokogiri::XML::Node, Nokogiri::XML::NodeSet, nil] selected XML elements
-        def element(xml, selector, first: false)
+        def element(xml, selector)
           return xml unless selector
 
-          first ? xml.at_css(selector) : xml.css(selector)
+          xml.css(selector)
+        end
+
+        ##
+        # Like {.element} for attribute-style extractors that consume only the first match.
+        #
+        # @param xml [Nokogiri::XML::Document, Nokogiri::XML::Node]
+        # @param selector [String, nil]
+        # @return [Nokogiri::XML::Node, nil] the first selected element
+        def first_element(xml, selector)
+          return xml unless selector
+
+          xml.at_css(selector)
         end
       end
     end

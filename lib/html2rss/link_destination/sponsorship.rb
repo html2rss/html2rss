@@ -148,7 +148,7 @@ module Html2rss
 
           sponsored_rel?(raw['rel']) ||
             ATTRIBUTE_NAMES.any? { ON_VALUES.include?(raw[_1]&.strip&.downcase) } ||
-            ARIA_NAMES.any? { LabelText.kind(raw[_1], vocabulary:, element: false) }
+            ARIA_NAMES.any? { LabelText.attribute_kind(raw[_1], vocabulary:) }
         end
 
         def sponsored_rel?(rel)

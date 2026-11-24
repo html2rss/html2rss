@@ -88,10 +88,10 @@ RSpec.describe Html2rss::HashUtil do
       expect(described_class.assert_symbol_keys!('nope')).to be_nil
     end
 
-    it 'accepts nested symbol keys' do
+    it 'accepts symbol keys' do
       hash = { key: 'value', nested: { ok: 1 } }
 
-      expect(described_class.assert_symbol_keys!(hash)).to be(hash)
+      expect(described_class.assert_symbol_keys!(hash)).to be_nil
     end
 
     it 'raises when a hash contains string keys' do
@@ -101,45 +101,10 @@ RSpec.describe Html2rss::HashUtil do
         .to raise_error(Html2rss::InvalidOption, 'hash must use symbol keys (found "bad")')
     end
 
-    it 'rejects nested string keys' do
-      expect { described_class.assert_symbol_keys!({ outer: { 'bad' => 1 } }) }
-        .to raise_error(Html2rss::InvalidOption, 'hash must use symbol keys (found "bad")')
-    end
-
-    it 'does not walk nested hashes when deep is false' do
+    it 'does not walk nested hashes' do
       hash = { outer: { 'bad' => 1 } }
 
-      expect(described_class.assert_symbol_keys!(hash, deep: false)).to be_nil
-    end
-  end
-
-  describe '.assert_string_keys!' do
-    it 'returns nil for a non-hash' do
-      expect(described_class.assert_string_keys!(:nope)).to be_nil
-    end
-
-    it 'accepts nested string keys' do
-      hash = { 'key' => :value, 'nested' => { 'ok' => 1 } }
-
-      expect(described_class.assert_string_keys!(hash)).to be(hash)
-    end
-
-    it 'raises when a hash contains symbol keys' do
-      hash = { 'ok' => 1, bad: 2, 'also' => 3 }
-
-      expect { described_class.assert_string_keys!(hash) }
-        .to raise_error(Html2rss::InvalidOption, 'hash must use string keys (found :bad)')
-    end
-
-    it 'rejects nested symbol keys' do
-      expect { described_class.assert_string_keys!({ 'outer' => { bad: 1 } }) }
-        .to raise_error(Html2rss::InvalidOption, 'hash must use string keys (found :bad)')
-    end
-
-    it 'does not walk nested hashes when deep is false' do
-      hash = { 'outer' => { bad: 1 } }
-
-      expect(described_class.assert_string_keys!(hash, deep: false)).to be_nil
+      expect(described_class.assert_symbol_keys!(hash)).to be_nil
     end
   end
 end

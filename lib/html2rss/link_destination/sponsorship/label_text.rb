@@ -41,10 +41,19 @@ module Html2rss
           ##
           # @param text [String, nil] a whole text
           # @param vocabulary [Vocabulary::Scope] the page language's scope
-          # @param element [Boolean] whether +text+ is an element's text, the only place "PR" counts
           # @return [Symbol, nil] +:paid_label+ for a paid phrase, +:label+ for an ad word, else nil
-          def kind(text, vocabulary:, element: true)
-            kind_in(BY_SCOPE.fetch(vocabulary.code), text, element)
+          def kind(text, vocabulary:)
+            kind_in(BY_SCOPE.fetch(vocabulary.code), text, true)
+          end
+
+          ##
+          # Like {.kind} for an attribute value, where the element-only "PR" does not count.
+          #
+          # @param text [String, nil] a whole text
+          # @param vocabulary [Vocabulary::Scope] the page language's scope
+          # @return [Symbol, nil] +:paid_label+ for a paid phrase, +:label+ for an ad word, else nil
+          def attribute_kind(text, vocabulary:)
+            kind_in(BY_SCOPE.fetch(vocabulary.code), text, false)
           end
 
           ##

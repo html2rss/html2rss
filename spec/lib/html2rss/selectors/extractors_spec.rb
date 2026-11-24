@@ -8,12 +8,18 @@ RSpec.describe Html2rss::Selectors::Extractors do
       expect(described_class.element(doc, nil)).to be(doc)
     end
 
-    it 'returns every match for a selector by default' do
+    it 'returns every match for a selector' do
       expect(described_class.element(doc, 'p').size).to eq(2)
     end
+  end
 
-    it 'returns only the first match when first is requested', :aggregate_failures do
-      first = described_class.element(doc, 'p', first: true)
+  describe '.first_element' do
+    it 'returns the document without a selector' do
+      expect(described_class.first_element(doc, nil)).to be(doc)
+    end
+
+    it 'returns only the first match', :aggregate_failures do
+      first = described_class.first_element(doc, 'p')
 
       expect(first).to be_a(Nokogiri::XML::Element)
       expect(first.text).to eq('a')

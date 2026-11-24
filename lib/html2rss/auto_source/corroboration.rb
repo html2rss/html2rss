@@ -116,22 +116,22 @@ module Html2rss
       def unrendered(article, cohort)
         return uncorroborated(:not_on_page, article, cohort) if page_links.sparse? || rendered?(cohort)
 
-        scored(article, cohort, absent: true)
+        scored(article, cohort, penalty: 1)
       end
 
-      def scored(article, cohort, absent: false)
-        likely?(article, cohort, absent:) ? :keep : :unlikely
+      def scored(article, cohort, penalty: 0)
+        likely?(article, cohort, penalty:) ? :keep : :unlikely
       end
 
       def page_links
         @page_links ||= @page_links_source.call
       end
 
-      def likely?(article, cohort, absent:)
+      def likely?(article, cohort, penalty:)
         score = [article.published_at, article.image, article.description].count(&:itself)
         score += url_shape(article.url)
         score += 1 if cohesive?(cohort)
-        score -= 1 if absent
+        score -= penalty
         score >= LIKELY_SCORE
       end
 

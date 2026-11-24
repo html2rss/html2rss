@@ -47,13 +47,14 @@ module Html2rss
         return uncompress_gzip(@raw) if @raw.start_with?(GZIP_MAGIC)
         return unless octet_stream?
 
-        try_brotli(@raw)
+        inflated = try_brotli(@raw)
+        inflated if inflated&.b&.match?(HTML_BODY_SNIFF)
       end
 
       def inflate(raw, encoding)
         case encoding
         when 'gzip' then uncompress_gzip(raw)
-        when 'br' then try_brotli(raw, require_html: false)
+        when 'br' then try_brotli(raw)
         when 'deflate' then inflate_deflate(raw)
         end
       rescue Zlib::Error, Brotli::Error, ArgumentError
@@ -76,11 +77,8 @@ module Html2rss
         nil
       end
 
-      def try_brotli(raw, require_html: true)
-        inflated = Brotli.inflate(raw)
-        return inflated unless require_html
-
-        inflated.b.match?(HTML_BODY_SNIFF) ? inflated : nil
+      def try_brotli(raw)
+        Brotli.inflate(raw)
       rescue Brotli::Error, ArgumentError
         nil
       end

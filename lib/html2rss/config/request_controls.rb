@@ -14,7 +14,7 @@ module Html2rss
       # @param config [Hash{Symbol => Object}] raw config input
       # @return [RequestControls] request controls extracted from the config hash
       def self.from_config(config)
-        HashUtil.assert_symbol_keys!(config, context: 'config', deep: false)
+        HashUtil.assert_symbol_keys!(config, context: 'config')
         HashUtil.assert_symbol_keys!(config[:request], context: 'config[:request]') if config[:request].is_a?(Hash)
 
         new(
@@ -55,7 +55,7 @@ module Html2rss
       def self.from_shortcut(strategy:, max_redirects: nil, max_requests: nil, total_timeout_seconds: nil)
         strategy = Option.strategy(strategy) unless strategy.nil?
         check_budgets!(max_redirects, max_requests)
-        Option.integer(:total_timeout_seconds, total_timeout_seconds, min: 1, optional: true)
+        Option.optional_integer(:total_timeout_seconds, total_timeout_seconds, min: 1)
         keys = []
         keys << :strategy unless strategy.nil? || strategy == Config.default_strategy_name
         keys << :max_redirects unless max_redirects.nil?
@@ -83,8 +83,8 @@ module Html2rss
       end
 
       def self.check_budgets!(max_redirects, max_requests)
-        Option.integer(:max_redirects, max_redirects, min: 0, optional: true)
-        Option.integer(:max_requests, max_requests, min: 1, optional: true)
+        Option.optional_integer(:max_redirects, max_redirects, min: 0)
+        Option.optional_integer(:max_requests, max_requests, min: 1)
       end
 
       private_class_method :explicit_keys_for, :request_value_for, :request_key?, :check_budgets!
