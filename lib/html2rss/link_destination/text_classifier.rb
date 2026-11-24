@@ -174,7 +174,7 @@ module Html2rss
       end
 
       def compute_normal(string)
-        text = string.unicode_normalize(:nfc)
+        text = string.ascii_only? ? string : string.unicode_normalize(:nfc)
         text = self.class.strip_bidi(text).sub(@page.fetch(:new_window), '')
         text.match?(JOINER) ? trim_edges(text) : text
       end

@@ -293,7 +293,10 @@ module Html2rss
     #
     # @return [Array<String>] decoded path segments
     def decoded_path_segments
-      path_segments.map { Addressable::URI.unencode_component(_1).force_encoding(Encoding::UTF_8).scrub.unicode_normalize(:nfc) }
+      path_segments.map do |segment|
+        decoded = Addressable::URI.unencode_component(segment).force_encoding(Encoding::UTF_8).scrub
+        decoded.ascii_only? ? decoded : decoded.unicode_normalize(:nfc)
+      end
     end
 
     ##

@@ -363,7 +363,7 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
   end
 
   describe 'memoization' do
-    let(:first) { +'Read more (opens in new tab)' }
+    let(:first) { +"Read more (opens in new tab)\u200F" }
     let(:second) { first.dup }
 
     before { [first, second].each { |text| allow(text).to receive(:unicode_normalize).and_call_original } }
@@ -375,6 +375,14 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect(memoized.utility?(second)).to be(false)
       expect(first).to have_received(:unicode_normalize).once
       expect(second).not_to have_received(:unicode_normalize)
+    end
+
+    it 'skips NFC for ASCII-only text', :aggregate_failures do
+      ascii = +'Read more'
+      allow(ascii).to receive(:unicode_normalize).and_call_original
+
+      expect(described_class.new.read_more?(ascii)).to be(true)
+      expect(ascii).not_to have_received(:unicode_normalize)
     end
 
     it 'retains nothing by default, as the shared constants are built', :aggregate_failures do
