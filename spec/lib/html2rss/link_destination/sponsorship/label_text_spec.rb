@@ -25,7 +25,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship::LabelText do
 
     it 'reads the PR badge only as element text' do
       expect([described_class.kind('PR', vocabulary: all_scope),
-              described_class.kind('PR', element: false, vocabulary: all_scope)]).to eq([:label, nil])
+              described_class.attribute_kind('PR', vocabulary: all_scope)]).to eq([:label, nil])
     end
 
     bidi_wrappers.each do |wrapper|
