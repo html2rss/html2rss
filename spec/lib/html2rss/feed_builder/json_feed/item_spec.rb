@@ -44,12 +44,6 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed::Item do
     expect(described_class.new(article).to_h[:content_text]).to eq('Only body')
   end
 
-  it 'returns nil when the article has no usable content' do
-    article = build_article.call(id: 'article-1', url: 'https://example.com/articles/1')
-
-    expect(described_class.new(article).to_h).to be_nil
-  end
-
   context 'with a blank author' do
     let(:attributes) { super().merge(author: ' ') }
 

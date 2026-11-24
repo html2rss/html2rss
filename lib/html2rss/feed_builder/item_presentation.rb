@@ -40,6 +40,16 @@ module Html2rss
         end
 
         ##
+        # Sole owner of "a feed item needs content": a title or a description. Both {Rss} and {JsonFeed} render
+        # only these, and {Html2rss::Test} samples only these, so every output agrees with its item count.
+        #
+        # @param article [Html2rss::Article]
+        # @return [Boolean] true when the item has a title, or a description after {.description_for}
+        def renderable?(article)
+          !article.title.to_s.empty? || !description_for(article).nil?
+        end
+
+        ##
         # A media feed (podcast) is one where more than half of the items carry an audio or video
         # RSS enclosure; only such a feed gets podcast (+itunes:+) tags.
         #

@@ -144,4 +144,27 @@ RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
       expect(described_class.media_feed?(articles)).to be(false)
     end
   end
+
+  describe '.renderable?' do
+    {
+      'a title' => [{ title: 'T' }, true],
+      'a description' => [{ description: 'D' }, true],
+      'an image only' => [{ url: 'http://example.com/a', image: 'http://example.com/i.jpg' }, true],
+      'an audio enclosure only' => [{ url: 'http://example.com/a',
+                                      enclosures: [{ url: Html2rss::Url.from_absolute('http://example.com/a.mp3'),
+                                                     type: 'audio/mpeg' }] }, true],
+      'a document enclosure only' => [{ url: 'http://example.com/a',
+                                        enclosures: [{ url: Html2rss::Url.from_absolute('http://example.com/a.pdf'),
+                                                       type: 'application/pdf' }] },
+                                      false],
+      'a url only' => [{ url: 'http://example.com/a' }, false],
+      'a blank title and a blank description' => [{ title: ' ', description: ' ' }, false],
+      'a description that sanitizes to nothing' => [{ url: 'http://example.com/a',
+                                                      description: '<script>x</script>' }, false]
+    }.each do |name, (attrs, expected)|
+      it "is #{expected} with #{name}" do
+        expect(described_class.renderable?(Html2rss::Article.new(**attrs))).to be(expected)
+      end
+    end
+  end
 end

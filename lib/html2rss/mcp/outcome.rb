@@ -216,14 +216,15 @@ module Html2rss
                  else
                    test_result.error_message || next_step.guidance
                  end
-          warnings = test_result.quality_report&.warnings
-          return base if warnings.nil? || warnings.empty?
+          report = test_result.quality_report
+          return base if report.nil? || report.warnings.empty?
 
-          "#{base} Review payload.quality_report warnings: #{warnings.join(', ')}.#{items_without_url_hint(warnings)}"
+          warnings = report.warnings.join(', ')
+          "#{base} Review payload.quality_report warnings: #{warnings}.#{items_without_url_hint(report)}"
         end
 
-        def items_without_url_hint(warnings)
-          return '' unless warnings.include?(:items_without_url)
+        def items_without_url_hint(report)
+          return unless report.items_without_url?
 
           ' Items were dropped for having no URL: fix the selectors.url selector (it must match a link on each item).'
         end

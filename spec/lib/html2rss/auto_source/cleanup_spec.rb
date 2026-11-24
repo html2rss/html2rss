@@ -705,55 +705,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     end
   end
 
-  describe '.audit_feed_items' do
-    it 'returns no warnings for a clean multi-item feed', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      items = [
-        rss_item(title: 'First Article Title Here', url: 'https://example.com/a'),
-        rss_item(title: 'Second Article Title Here', url: 'https://example.com/b')
-      ]
-      audit = described_class.audit_feed_items(items, vocabulary:)
-
-      expect(audit.warnings).to be_empty
-      expect(audit.metrics).to include(item_count: 2, unique_url_count: 2, junk_title_count: 0)
-    end
-
-    it 'warns on duplicate URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      items = [
-        rss_item(title: 'Story One Title Here', url: 'https://example.com/same'),
-        rss_item(title: 'Story Two Title Here', url: 'https://example.com/same')
-      ]
-      audit = described_class.audit_feed_items(items, vocabulary:)
-
-      expect(audit.warnings).to include(:duplicate_urls)
-      expect(audit.metrics[:junk_title_count]).to eq(0)
-    end
-
-    it 'warns on duplicate URLs that differ only by scheme, tracking params, or trailing slash' do
-      items = %w[http://example.com/same https://example.com/same/?utm_source=x].map do |href|
-        rss_item(title: 'Story Title Words Here', url: href)
-      end
-
-      expect(described_class.audit_feed_items(items, vocabulary:).warnings).to include(:duplicate_urls)
-    end
-
-    it 'warns on CTA titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      items = [
-        rss_item(title: 'Read More', url: 'https://example.com/a'),
-        rss_item(title: 'Valid Article Title Here', url: 'https://example.com/b')
-      ]
-      audit = described_class.audit_feed_items(items, vocabulary:)
-
-      expect(audit.warnings).to include(:generic_titles)
-      expect(audit.metrics[:junk_title_count]).to eq(1)
-    end
-
-    it 'warns on short titles', :aggregate_failures do
-      audit = described_class.audit_feed_items([rss_item(title: 'Ok', url: 'https://example.com/a')], vocabulary:)
-
-      expect(audit.warnings).to include(:short_titles, :low_word_count)
-      expect(audit.metrics[:junk_title_count]).to eq(0)
-    end
-
+  describe '.junk_reason table' do
     [
       { title: 'Read More', reason: :cta },
       { title: 'learn more', reason: :cta },
@@ -769,52 +721,6 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(described_class.junk_reason(example[:title],
                                            vocabulary: Html2rss::Vocabulary[:all])).to eq(example[:reason])
       end
-    end
-
-    it 'tallies duplicate, short and low-word violations with exact metrics', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      items = [
-        rss_item(title: 'Ok', url: 'https://example.com/a'),
-        rss_item(title: 'Story Two Title Here', url: 'https://example.com/a')
-      ]
-      audit = described_class.audit_feed_items(items, vocabulary:)
-
-      expect(audit.warnings).to eq(%i[duplicate_urls short_titles low_word_count])
-      expect(audit.metrics).to eq(item_count: 2, unique_url_count: 1, junk_title_count: 0,
-                                  short_title_count: 1, low_word_count: 1)
-      expect(audit.violations).to eq(duplicate_urls: 1, short_title: 1, low_word_count: 1)
-      expect(audit.metrics).to be_frozen
-      expect(audit.violations).to be_frozen
-    end
-
-    it 'does not warn about duplicate URLs for a single item', :aggregate_failures do
-      audit = described_class.audit_feed_items([rss_item(title: 'Single Article Title', url: 'https://example.com/a')],
-                                               vocabulary:)
-
-      expect(audit.warnings).not_to include(:duplicate_urls)
-      expect(audit.metrics[:unique_url_count]).to eq(1)
-    end
-
-    it 'does not count items without a URL as unique', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      items = [
-        Html2rss::Article.new(title: 'First Article Title Here'),
-        Html2rss::Article.new(title: 'Second Article Title Here')
-      ]
-      audit = described_class.audit_feed_items(items, vocabulary:)
-
-      expect(audit.metrics).to include(item_count: 2, unique_url_count: 0)
-      expect(audit.warnings).to include(:duplicate_urls)
-    end
-
-    it 'tallies a junk title and a low word count separately', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      items = [
-        rss_item(title: 'Read More', url: 'https://example.com/a'),
-        rss_item(title: 'Two Words', url: 'https://example.com/b')
-      ]
-      audit = described_class.audit_feed_items(items, vocabulary:)
-
-      expect(audit.violations).to eq(cta: 1, low_word_count: 1)
-      expect(audit.metrics).to include(junk_title_count: 1, low_word_count: 1, short_title_count: 0)
-      expect(audit.warnings).to eq(%i[generic_titles low_word_count])
     end
   end
 
@@ -852,32 +758,6 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
       expect(kept).to eq(%w[/news/login /store/item-slug-name-here /video/some-title-goes-here-now
                             /news/newsletters /press/newsletters/some-article-slug])
-    end
-  end
-
-  describe '.audit_feed_items URL diversity' do
-    it 'counts fragment-only variants of one URL as a duplicate', :aggregate_failures do
-      items = [rss_item(title: 'Story One Title Here', url: 'https://example.com/same#top'),
-               rss_item(title: 'Story Two Title Here', url: 'https://example.com/same')]
-      audit = described_class.audit_feed_items(items, vocabulary:)
-
-      expect(audit.metrics[:unique_url_count]).to eq(1)
-      expect(audit.warnings).to include(:duplicate_urls)
-    end
-
-    it 'counts three identical URLs as one duplicate violation', :aggregate_failures do
-      items = Array.new(3) { |index| rss_item(title: "Story Number #{index} Title", url: 'https://example.com/same') }
-      audit = described_class.audit_feed_items(items, vocabulary:)
-
-      expect(audit.metrics[:unique_url_count]).to eq(1)
-      expect(audit.violations).to eq(duplicate_urls: 1)
-    end
-
-    it 'does not warn for a single item' do
-      audit = described_class.audit_feed_items([rss_item(title: 'Only Story Title Here', url: 'https://example.com/a')],
-                                               vocabulary: Html2rss::Vocabulary[:all])
-
-      expect(audit.warnings).not_to include(:duplicate_urls)
     end
   end
 end

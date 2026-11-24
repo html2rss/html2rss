@@ -235,7 +235,7 @@ module Html2rss
 
           def apply_feed_outcome(feed_config, feed_result, outcome) # rubocop:disable Metrics/MethodLength -- quality_report + RSS payload
             rss = feed_result.to_rss
-            quality_report = Html2rss::Test.quality_report_for(
+            quality_report = Html2rss::Test::Quality.report_for(
               rss.items,
               channel_url: feed_config.dig(:channel, :url).to_s,
               config: Html2rss::Config.from_hash(feed_config),

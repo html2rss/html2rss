@@ -50,7 +50,7 @@ module Html2rss
     # Ship-quality audit summary for a configuration test (warn-only).
     class QualityReport
       ##
-      # @param audit [Html2rss::AutoSource::Cleanup::AuditResult]
+      # @param audit [Quality::Audit]
       # @param native_feed [String, nil]
       # @return [QualityReport]
       def self.from_audit(audit, native_feed: nil)
@@ -64,13 +64,31 @@ module Html2rss
       end
 
       ##
+      # A copy carrying more warnings (each once, in order) and metrics.
+      #
+      # @param added_warnings [Array<Symbol>]
+      # @param added_metrics [Hash{Symbol => Object}] merged over the current metrics
+      # @return [QualityReport]
+      def amend(added_warnings, added_metrics)
+        with(warnings: (warnings + added_warnings).uniq.freeze, metrics: metrics.merge(added_metrics))
+      end
+
+      ##
+      # @return [Array<Symbol>] the strict-quality thresholds the metrics breach ({Quality.failure_reasons})
+      def failure_reasons = Quality.failure_reasons(metrics)
+
+      ##
+      # @return [Boolean] whether selector items were dropped for having no URL
+      def items_without_url? = metrics.key?(:items_without_url)
+
+      ##
       # @return [Hash{Symbol => Object}]
       def to_h
         {
           warnings: warnings.map(&:to_s),
           metrics:,
           **(native_feed ? { native_feed:, defer_reason: defer_reason.to_s } : {})
-        }.compact
+        }
       end
     end
 
@@ -188,33 +206,29 @@ module Html2rss
     end
     private_class_method :build_test_config
 
-    def self.compile_quality_report(raw_config, config, feed_result, pipeline_outcome)
-      quality_report_for(
-        feed_result.to_rss.items,
-        channel_url: raw_config.dig(:channel, :url).to_s,
-        config:,
-        feed_result:,
-        pipeline_outcome:
-      )
-    end
-    private_class_method :compile_quality_report
-
     def self.execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, # rubocop:disable Metrics/ParameterLists
                                     compare_enhance:, sample_limit:)
       feed_result, pipeline_outcome = extract_feed(raw_config)
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-      quality_report = compile_quality_report(raw_config, config, feed_result, pipeline_outcome)
+      rss_doc = feed_result.to_rss
+      quality_report = Quality.report_for(rss_doc.items, channel_url: raw_config.dig(:channel, :url).to_s, config:,
+                                                         feed_result:, pipeline_outcome:)
       enhance_compare = build_enhance_compare(config, pipeline_outcome) if compare_enhance
 
-      build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare,
+      build_test_result(raw_config, feed_result, rss_doc, duration, quality_report, enhance_compare,
                         min_items:, strict_quality:, response_body: pipeline_outcome.response.body,
-                        items: ItemSample.call(pipeline_outcome.articles, limit: sample_limit))
+                        articles: renderable_articles(pipeline_outcome), sample_limit:)
     end
     private_class_method :execute_timed_pipeline
 
-    def self.build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
-                               min_items:, strict_quality:, response_body:, items:)
-      rss_doc = feed_result.to_rss
+    # The articles the feed renders, so samples and items agree with the feed's own item count.
+    def self.renderable_articles(pipeline_outcome)
+      pipeline_outcome.articles.select { |article| FeedBuilder::ItemPresentation.renderable?(article) }
+    end
+    private_class_method :renderable_articles
+
+    def self.build_test_result(raw_config, feed_result, rss_doc, duration, quality_report, enhance_compare, # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
+                               min_items:, strict_quality:, response_body:, articles:, sample_limit:)
       outcome = Policy.evaluate(item_count: rss_doc.items.size, min_items:, strict_quality:, quality_report:)
       strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] ||
                       RequestService.default_strategy_name
@@ -222,8 +236,8 @@ module Html2rss
       Result.new(
         success: outcome.passed,
         item_count: rss_doc.items.size,
-        sample_items: extract_samples(rss_doc.items),
-        items:,
+        sample_items: extract_samples(articles),
+        items: ItemSample.call(articles, limit: sample_limit),
         channel_title: feed_result.channel_title,
         channel_url: raw_config.dig(:channel, :url).to_s,
         strategy_used:,
@@ -239,47 +253,18 @@ module Html2rss
     end
     private_class_method :build_test_result
 
-    def self.extract_samples(items, limit: 3)
-      items.first(limit).map do |item|
-        article = Article.new(title: item.title, url: item.link, published_at: item.pubDate)
+    def self.extract_samples(articles, limit: 3)
+      articles.first(limit).map do |article|
         { title: article.title.to_s.strip, url: article.url.to_s, published_at: article.published_at }
       end
     end
     private_class_method :extract_samples
-
-    ##
-    # Builds a ship-quality report for RSS items (shared by test and MCP apply).
-    #
-    # @param items [Array]
-    # @param channel_url [String]
-    # @param config [Html2rss::Config]
-    # @param feed_result [Html2rss::FeedResult]
-    # @param pipeline_outcome [Html2rss::FeedPipeline::PipelineOutcome]
-    # @param probe_native_feed [Boolean] when false, skip syndication discovery (apply ship gate);
-    #   when true, discovery reads the page in +pipeline_outcome.response+ (no extra page fetch)
-    # @return [QualityReport]
-    def self.quality_report_for(items, channel_url:, config:, feed_result:, pipeline_outcome:, # rubocop:disable Metrics/ParameterLists
-                                probe_native_feed: true)
-      audit = AutoSource::Cleanup.audit_feed_items(items, vocabulary: enhance_vocabulary(config, pipeline_outcome))
-      native_feed = probe_native_feed_url(channel_url, config, pipeline_outcome.response)&.to_s if probe_native_feed
-      report = QualityReport.from_audit(audit, native_feed:)
-      report = append_url_mismatch_warning(report, channel_url, feed_result)
-      report = append_items_without_url_warning(report, pipeline_outcome)
-      merge_enhance_audit(report, config, pipeline_outcome)
-    end
 
     def self.extract_feed(raw_config)
       outcome, feed_result = FeedPipeline.new(raw_config).to_outcome_and_result
       [feed_result, outcome]
     end
     private_class_method :extract_feed
-
-    def self.enhance_enabled?(config)
-      return false unless config.selectors
-
-      !!config.selectors.dig(:items, :enhance)
-    end
-    private_class_method :enhance_enabled?
 
     def self.build_enhance_compare(config, pipeline_outcome)
       return nil unless config.selectors
@@ -288,107 +273,10 @@ module Html2rss
         response: pipeline_outcome.response,
         selectors: config.selectors,
         time_zone: config.time_zone,
-        vocabulary: enhance_vocabulary(config, pipeline_outcome)
+        vocabulary: Quality.vocabulary_for(config, pipeline_outcome)
       )
     end
     private_class_method :build_enhance_compare
-
-    # The page scope the feed itself reads, so the audit agrees with it under a +channel.language+ override.
-    def self.enhance_vocabulary(config, pipeline_outcome)
-      Vocabulary[Channel.language_for(pipeline_outcome.response, config.channel)]
-    end
-    private_class_method :enhance_vocabulary
-
-    def self.merge_enhance_audit(report, config, pipeline_outcome) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- warning merge + metrics
-      return report unless enhance_enabled?(config)
-
-      slice = EnhanceAudit.probe(
-        response: pipeline_outcome.response,
-        selectors: config.selectors,
-        time_zone: config.time_zone,
-        vocabulary: enhance_vocabulary(config, pipeline_outcome)
-      )
-      return report unless slice
-
-      warnings = report.warnings.dup
-      slice.warnings.each { |warning| warnings << warning unless warnings.include?(warning) }
-      metrics = report.metrics.merge(enhance_gains: enhance_gains_to_h(slice.enhance_gains))
-      QualityReport.new(
-        warnings: warnings.freeze,
-        metrics:,
-        native_feed: report.native_feed,
-        defer_reason: report.defer_reason
-      )
-    end
-    private_class_method :merge_enhance_audit
-
-    def self.enhance_gains_to_h(enhance_gains)
-      {
-        items_probed: enhance_gains.items_probed,
-        keys_added: enhance_gains.keys_added,
-        descriptions_added: enhance_gains.descriptions_added,
-        no_op: enhance_gains.no_op
-      }
-    end
-    private_class_method :enhance_gains_to_h
-
-    # Selector items dropped for having no URL ({Selectors#admission_drops}) leave nothing for the audit to
-    # see, so the warning names the +url+ selector as the place to look.
-    def self.append_items_without_url_warning(report, pipeline_outcome)
-      dropped = pipeline_outcome.admission_drops.fetch(Selectors::MISSING_URL_REASON, 0)
-      return report unless dropped.positive?
-
-      QualityReport.new(
-        warnings: (report.warnings + [:items_without_url]).freeze,
-        metrics: report.metrics.merge(items_without_url: dropped),
-        native_feed: report.native_feed,
-        defer_reason: report.defer_reason
-      )
-    end
-    private_class_method :append_items_without_url_warning
-
-    def self.append_url_mismatch_warning(report, channel_url, feed_result)
-      return report unless url_mismatch?(channel_url, feed_result)
-
-      warnings = report.warnings.dup
-      warnings << :url_mismatch unless warnings.include?(:url_mismatch)
-      QualityReport.new(
-        warnings: warnings.freeze,
-        metrics: report.metrics.merge(url_mismatch: true),
-        native_feed: report.native_feed,
-        defer_reason: report.defer_reason
-      )
-    end
-    private_class_method :append_url_mismatch_warning
-
-    def self.url_mismatch?(channel_url, feed_result)
-      status = feed_result.status
-      configured = channel_url.to_s
-      final = status.scrape_url.to_s
-      final = status.entry_url.to_s if final.empty?
-      return false if configured.empty? || final.empty?
-
-      !Url.from_absolute(configured).same_document?(Url.from_absolute(final))
-    rescue Html2rss::Url::InvalidUrlError
-      false
-    end
-    private_class_method :url_mismatch?
-
-    # The page the pipeline fetched (where any redirect landed) is the page probed, as in Recon and Capture: no
-    # extra page fetch.
-    def self.probe_native_feed_url(channel_url, config, response)
-      return nil if channel_url.to_s.empty?
-
-      resources = FeedPipeline::RuntimePolicy.resources_for(config)
-      strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(config.strategy)
-      session = RequestSession.build(config:, strategy:, budget: resources.budget, policy: resources.policy)
-      Syndication::Discovery.native_feed_url(response:, request_session: session)
-    rescue Html2rss::ContractError
-      raise
-    rescue Html2rss::Error
-      nil
-    end
-    private_class_method :probe_native_feed_url
 
     def self.validation_failure_result(report, raw_config) # rubocop:disable Metrics/MethodLength
       Result.new(

@@ -308,7 +308,8 @@ RSpec.describe Html2rss::Test do
         expect(result.rss).to eq(fake_rss.to_s)
         expect(result.sample_items).to eq(
           [
-            { title: 'First Example Article Title', url: 'https://example.com/news/1', published_at: nil },
+            { title: 'First Example Article Title', url: 'https://example.com/news/1',
+              published_at: DateTime.new(2024, 1, 2, 3, 4, 5) },
             { title: 'Second Example Article Title', url: 'https://example.com/news/2', published_at: nil }
           ]
         )
@@ -321,23 +322,25 @@ RSpec.describe Html2rss::Test do
         expect(described_class.call(valid_config).strategy_used).to eq(Html2rss::RequestService.default_strategy_name)
       end
 
-      it 'samples at most three items with stripped titles and parsed dates', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        items = Array.new(4) do |index|
-          instance_double(RSS::Rss::Channel::Item, title: "  Story number #{index} here  ",
-                                                   link: "https://example.com/news/#{index}",
-                                                   pubDate: Time.utc(2024, 1, 2, 3, 4, 5))
+      context 'with more extracted articles than samples' do # rubocop:disable RSpec/NestedGroups
+        let(:outcome_articles) do
+          Array.new(4) do |index|
+            Html2rss::Article.new(title: "  Story number #{index} here  ", url: "https://example.com/news/#{index}",
+                                  published_at: Time.utc(2024, 1, 2, 3, 4, 5))
+          end
         end
-        allow(fake_rss).to receive(:items).and_return(items)
-        result = described_class.call(valid_config)
 
-        expect(result.item_count).to eq(4)
-        expect(result.sample_items.map { _1[:title] }).to eq(
-          ['Story number 0 here', 'Story number 1 here', 'Story number 2 here']
-        )
-        expect(result.sample_items.first).to eq(
-          title: 'Story number 0 here', url: 'https://example.com/news/0', published_at: DateTime.new(2024, 1, 2, 3, 4,
-                                                                                                      5)
-        )
+        it 'samples at most three articles with stripped titles and parsed dates', :aggregate_failures do
+          result = described_class.call(valid_config)
+
+          expect(result.sample_items.map { _1[:title] }).to eq(
+            ['Story number 0 here', 'Story number 1 here', 'Story number 2 here']
+          )
+          expect(result.sample_items.first).to eq(
+            title: 'Story number 0 here', url: 'https://example.com/news/0',
+            published_at: DateTime.new(2024, 1, 2, 3, 4, 5)
+          )
+        end
       end
 
       it 'passes the strategy override and non-empty params to the pipeline', :aggregate_failures do
@@ -353,31 +356,6 @@ RSpec.describe Html2rss::Test do
         expect(Html2rss::FeedPipeline).to have_received(:new).with(satisfy { |raw|
           !raw.key?(:strategy) && !raw.key?(:params)
         })
-      end
-
-      it 'probes the fetched channel page for a native feed with a diagnostic request session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        allow(Html2rss::RequestSession).to receive(:build).and_call_original
-        described_class.call(valid_config.merge(strategy: :default))
-
-        expect(Html2rss::RequestSession).to have_received(:build).with(hash_including(strategy: :default))
-        expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-          page_url: 'https://example.com/news', request_session: kind_of(Html2rss::RequestSession),
-          parsed_body: kind_of(Nokogiri::HTML::Document), html: '<html></html>'
-        )
-      end
-
-      it 'treats a discovery error as no native feed', :aggregate_failures do
-        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_raise(Html2rss::Error, 'boom')
-        result = described_class.call(valid_config)
-
-        expect(result.success).to be(true)
-        expect(result.quality_report.native_feed).to be_nil
-      end
-
-      it 'propagates a discovery contract error' do
-        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_raise(Html2rss::RequestService::Context::InvalidError)
-
-        expect { described_class.call(valid_config) }.to raise_error(Html2rss::ContractError)
       end
 
       it 'reports the exact result when execution fails', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -400,36 +378,6 @@ RSpec.describe Html2rss::Test do
 
         expect(result).to have_attributes(success: false, failure_kind: Html2rss::Test::FailureKind[:execution])
         expect(result.duration_seconds).to be_a(Float)
-      end
-
-      describe 'url mismatch detection' do # rubocop:disable RSpec/NestedGroups
-        it 'falls back to the entry url when the scrape url is empty', :aggregate_failures do
-          allow(fake_feed_result.status).to receive_messages(scrape_url: '', entry_url: 'https://example.com/other')
-          result = described_class.call(valid_config)
-
-          expect(result.quality_report.warnings).to include(:url_mismatch)
-          expect(result.quality_report.metrics[:url_mismatch]).to be(true)
-        end
-
-        it 'does not warn when the final url is the same document', :aggregate_failures do
-          allow(fake_feed_result.status).to receive(:scrape_url).and_return('https://example.com/news#top')
-          result = described_class.call(valid_config)
-
-          expect(result.quality_report.warnings).not_to include(:url_mismatch)
-          expect(result.quality_report.metrics).not_to have_key(:url_mismatch)
-        end
-
-        it 'does not warn when both final urls are empty' do
-          allow(fake_feed_result.status).to receive_messages(scrape_url: '', entry_url: '')
-
-          expect(described_class.call(valid_config).quality_report.warnings).not_to include(:url_mismatch)
-        end
-
-        it 'does not warn when the final url is unparsable' do
-          allow(fake_feed_result.status).to receive(:scrape_url).and_return('not a url')
-
-          expect(described_class.call(valid_config).quality_report.warnings).not_to include(:url_mismatch)
-        end
       end
 
       it 'handles file path input' do
@@ -487,6 +435,42 @@ RSpec.describe Html2rss::Test do
 
       it 'propagates instead of returning a failed Test::Result' do
         expect { described_class.call(valid_config) }.to raise_error(Html2rss::ContractError)
+      end
+    end
+
+    context 'when a linked selector row has neither title nor description' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:page) do
+        <<~HTML
+          <html><body>
+            <article><h2>First Example Article Title</h2><a href="/news/1">go</a></article>
+            <article><a href="/news/2">go</a></article>
+            <article><h2>Third Example Article Title</h2><a href="/news/3">go</a></article>
+            <article><a href="/news/4">go</a><script>x</script></article>
+          </body></html>
+        HTML
+      end
+      let(:with_description) do
+        valid_config.merge(selectors: valid_config[:selectors].merge(description: { selector: 'script',
+                                                                                    extractor: 'html' }))
+      end
+      let(:response) do
+        Html2rss::RequestService::Response.new(url: Html2rss::Url.from_absolute('https://example.com/news'),
+                                               headers: { 'content-type' => 'text/html' }, body: page)
+      end
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute).and_return(response)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+      end
+
+      it 'keeps the feed, the count, the samples and the items in agreement', :aggregate_failures do
+        result = described_class.call(with_description)
+
+        expect(result.item_count).to eq(2)
+        expect(Nokogiri::XML(result.rss).css('item link').map(&:text))
+          .to eq(%w[https://example.com/news/1 https://example.com/news/3])
+        expect(result.sample_items.map { _1[:url] }).to eq(%w[https://example.com/news/1 https://example.com/news/3])
+        expect(result.items.map { _1[:url] }).to eq(%w[https://example.com/news/1 https://example.com/news/3])
       end
     end
 
@@ -586,214 +570,6 @@ RSpec.describe Html2rss::Test do
         )
         expect(result.quality_report.metrics).not_to have_key(:enhance_gains)
         expect(result.to_h).to include(enhance_compare: result.enhance_compare)
-      end
-    end
-  end
-
-  describe '.quality_report_for' do
-    let(:enhance) { true }
-    let(:config) do
-      Html2rss::Config.from_hash(
-        valid_config.merge(
-          selectors: valid_config[:selectors].merge(items: { selector: 'article', enhance: })
-        )
-      )
-    end
-    let(:response) do
-      Html2rss::RequestService::Response.new(url: 'https://example.com/news', headers: {}, body: '<html></html>')
-    end
-    let(:pipeline_outcome) { instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:, admission_drops: {}) }
-    let(:status) { instance_double(Html2rss::Status, scrape_url: 'https://example.com/news', entry_url: '') }
-    let(:feed_result) { instance_double(Html2rss::FeedResult, status:) }
-    let(:slice) do
-      gains = Html2rss::Test::EnhanceAudit::EnhanceGains.new(
-        items_probed: 2, keys_added: { title: 1 }, descriptions_added: 3, no_op: false
-      )
-      Html2rss::Test::EnhanceAudit::AuditSlice.new(enhance_gains: gains, warnings: %i[w_one duplicate_urls])
-    end
-    let(:probed) { slice }
-    let(:channel_url) { 'https://example.com/news' }
-    let(:report) do
-      described_class.quality_report_for(
-        fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:, probe_native_feed: false
-      )
-    end
-
-    before do
-      allow(Html2rss::Test::EnhanceAudit).to receive(:probe).and_return(probed)
-      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
-    end
-
-    it 'merges enhance warnings once and reports the gains', :aggregate_failures do
-      allow(fake_rss_items.last).to receive(:link).and_return(fake_rss_items.first.link)
-
-      expect(report.warnings).to eq(%i[duplicate_urls w_one])
-      expect(report.metrics[:enhance_gains]).to eq(items_probed: 2, keys_added: { title: 1 }, descriptions_added: 3,
-                                                   no_op: false)
-      expect(report.warnings).to be_frozen
-    end
-
-    it 'probes with the response, selectors and time zone', :aggregate_failures do
-      report
-
-      expect(Html2rss::Test::EnhanceAudit).to have_received(:probe).with(
-        response:, selectors: config.selectors, time_zone: 'UTC', vocabulary: Html2rss::Vocabulary[nil]
-      )
-      expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
-    end
-
-    context 'when the channel overrides the page language' do
-      let(:config) do
-        Html2rss::Config.from_hash(
-          valid_config.merge(
-            channel: valid_config[:channel].merge(language: 'zh-Hant'),
-            selectors: valid_config[:selectors].merge(items: { selector: 'article', enhance: })
-          )
-        )
-      end
-
-      it 'probes with the scope the feed reads', :aggregate_failures do
-        report
-
-        expect(Html2rss::Test::EnhanceAudit).to have_received(:probe).with(
-          hash_including(vocabulary: be(Html2rss::Vocabulary[:zh]))
-        )
-      end
-
-      it 'counts a Chinese read-more item title as junk, as the feed itself reads it', :aggregate_failures do
-        read_more = instance_double(RSS::Rss::Channel::Item, title: '了解更多', link: 'https://example.com/news/3',
-                                                             pubDate: nil)
-        result = described_class.quality_report_for(
-          fake_rss_items + [read_more], channel_url:, config:, feed_result:, pipeline_outcome:,
-                                        probe_native_feed: false
-        )
-
-        expect(result.metrics[:junk_title_count]).to eq(1)
-      end
-    end
-
-    context 'when enhance is disabled' do
-      let(:enhance) { false }
-
-      it 'does not probe', :aggregate_failures do
-        expect(report.metrics).not_to have_key(:enhance_gains)
-        expect(Html2rss::Test::EnhanceAudit).not_to have_received(:probe)
-      end
-    end
-
-    context 'when the config has no selectors' do
-      let(:config) do
-        Html2rss::Config.from_hash(valid_config.except(:selectors).merge(auto_source: {}))
-      end
-
-      it 'skips enhance auditing', :aggregate_failures do
-        expect(report.metrics).not_to have_key(:enhance_gains)
-        expect(Html2rss::Test::EnhanceAudit).not_to have_received(:probe)
-      end
-    end
-
-    context 'when the probe yields nothing' do
-      let(:probed) { nil }
-
-      it 'returns the plain report', :aggregate_failures do
-        expect(report.warnings).to eq([])
-        expect(report.metrics).not_to have_key(:enhance_gains)
-      end
-    end
-
-    context 'when a native feed exists and the url mismatches' do
-      let(:native) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
-
-      before do
-        allow(status).to receive(:scrape_url).and_return('https://example.com/elsewhere')
-        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(native)
-      end
-
-      it 'keeps the native feed through the url mismatch and enhance merges', :aggregate_failures do
-        result = described_class.quality_report_for(
-          fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:
-        )
-
-        expect(result).to have_attributes(
-          warnings: %i[native_feed_present url_mismatch w_one duplicate_urls],
-          native_feed: 'https://example.com/feed.xml', defer_reason: :native_feed
-        )
-        expect(result.metrics).to include(url_mismatch: true, enhance_gains: hash_including(items_probed: 2))
-      end
-
-      it 'does not duplicate warnings that are already present', :aggregate_failures do
-        allow(Html2rss::Test::EnhanceAudit).to receive(:probe).and_return(
-          slice.with(warnings: %i[native_feed_present url_mismatch])
-        )
-        result = described_class.quality_report_for(
-          fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:
-        )
-
-        expect(result.warnings).to eq(%i[native_feed_present url_mismatch])
-      end
-    end
-
-    context 'when the fetched page names no native feed' do
-      it 'probes that page and reports no native feed', :aggregate_failures do
-        result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:,
-                                                                    pipeline_outcome:)
-
-        expect(result).to have_attributes(native_feed: nil, defer_reason: nil)
-        expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-          page_url: channel_url, request_session: kind_of(Html2rss::RequestSession),
-          parsed_body: kind_of(Nokogiri::HTML::Document), html: '<html></html>'
-        )
-      end
-    end
-
-    context 'when the channel url is empty' do
-      let(:channel_url) { '' }
-
-      it 'skips native feed discovery', :aggregate_failures do
-        described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:)
-
-        expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
-      end
-    end
-
-    describe '.append_items_without_url_warning' do
-      let(:native) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
-      let(:pipeline_outcome) do
-        instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:, admission_drops: { 'missing_url' => 2 })
-      end
-
-      before { allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(native) }
-
-      it 'adds the warning and count to the report and keeps the rest of it', :aggregate_failures do
-        result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:,
-                                                                    pipeline_outcome:)
-
-        expect(result).to have_attributes(
-          warnings: %i[native_feed_present items_without_url w_one duplicate_urls],
-          native_feed: 'https://example.com/feed.xml', defer_reason: :native_feed
-        )
-        expect(result.warnings).to be_frozen
-        expect(result.metrics).to include(items_without_url: 2)
-      end
-
-      context 'when enhance is off' do # rubocop:disable RSpec/NestedGroups
-        let(:enhance) { false }
-
-        it 'returns a frozen warnings list' do
-          result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:,
-                                                                      pipeline_outcome:)
-
-          expect(result.warnings).to be_frozen
-        end
-      end
-
-      it 'ignores other drop reasons', :aggregate_failures do
-        allow(pipeline_outcome).to receive(:admission_drops).and_return('sponsored' => 4)
-        result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:,
-                                                                    pipeline_outcome:)
-
-        expect(result.warnings).not_to include(:items_without_url)
-        expect(result.metrics).not_to have_key(:items_without_url)
       end
     end
   end

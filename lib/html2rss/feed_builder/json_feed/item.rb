@@ -13,12 +13,9 @@ module Html2rss
         end
 
         ##
-        # @return [Hash, nil] the JSONFeed-compliant item hash
+        # @return [Hash] the JSONFeed-compliant item hash of a renderable article ({ItemPresentation.renderable?})
         def to_h
-          content = content_fields
-          return if content.empty?
-
-          item_payload.merge(content).compact
+          item_payload.merge(content_fields).compact
         end
 
         private
@@ -54,13 +51,8 @@ module Html2rss
         #
         # @return [Hash]
         def content_fields
-          if (description = ItemPresentation.description_for(article))
-            return content_for(description)
-          end
-
-          return { content_text: article.title } if article.title
-
-          {}
+          description = ItemPresentation.description_for(article)
+          description ? content_for(description) : { content_text: article.title }
         end
 
         ##
