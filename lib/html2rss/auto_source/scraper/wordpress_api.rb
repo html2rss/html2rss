@@ -180,7 +180,7 @@ module Html2rss
           html = StringUtil.presence(value.to_s)&.strip
           return unless html
 
-          text = CGI.unescapeHTML(html.gsub(/<[^>]*>/m, ' ')).gsub(/\s+/, ' ').strip
+          text = CGI.unescapeHTML(html.gsub(/<[^<>]*>/, ' ')).gsub(/\s+/, ' ').strip
           text unless text.empty?
         end
 
