@@ -252,6 +252,10 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(id_for.call('/a?p=1')).to eq('/a')
     end
 
+    it 'emits no article for a non-web link, so the URL path is never empty' do
+      expect(id_for.call('mailto:?subject=news')).to be_nil
+    end
+
     it 'emits no article when the primary link resolves to no URL' do
       expect(id_for.call('http://')).to be_nil
     end

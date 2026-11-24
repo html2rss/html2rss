@@ -223,11 +223,10 @@ module Html2rss
         SST::Index.for_node!(@root).parent_of(@root)
       end
 
-      # DOM id of the card, else the link's path or query.
+      # DOM id of the card (the root or its first descendant carrying one), else the link's path (never empty: the
+      # extractor yields no article for a link that is not a web URL).
       def parse_id_from_dom
-        url = extract_url
-        nested = @root.find { |n| n.attrs.id }
-        [@root.attrs.id, nested&.attrs&.id, url&.path, url&.query].compact.reject(&:empty?).first
+        @root.find { |n| n.attrs.id }&.attrs&.id || extract_url&.path
       end
 
       def extract_image
