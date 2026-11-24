@@ -73,9 +73,9 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     let(:cleaned) { result.articles }
     let(:keep_different_domain) { false }
-
     let!(:fixed_facts) { Html2rss::LinkDestination::DestinationFacts.build(url, vocabulary:) }
 
+    # rubocop:disable-next RSpec/ExampleLength -- articles + multi-reason tallies
     it 'removes invalid articles and tallies the drop', :aggregate_failures do
       expect(cleaned).not_to include(articles[2])
       expect(result.drop_tallies).to include(
