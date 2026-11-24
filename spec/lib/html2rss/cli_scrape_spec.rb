@@ -54,6 +54,23 @@ RSpec.describe Html2rss::CLI, '#scrape' do
     )
   end
 
+  describe 'log stream' do
+    before do
+      allow(Html2rss).to receive(:scrape) do
+        Html2rss.reset_defaults! # the logger binds $stderr at construction, after the matcher swaps it
+        Html2rss::Log.event(:warn, 'auto_source.no_scraper', host: 'a.test', message: 'no scraper matched')
+        feed_res
+      end
+    end
+
+    after { Html2rss.reset_defaults! }
+
+    it 'writes warn events to stderr so a redirected feed stays valid' do
+      expect { run_scrape.call(['https://a.test']) }
+        .to output("<rss/>\n").to_stdout.and output(/auto_source\.no_scraper/).to_stderr
+    end
+  end
+
   describe 'request failures' do
     {
       Html2rss::RequestService::RedirectLimitReached => 'too many. already retried the last redirect hop once; ' \
