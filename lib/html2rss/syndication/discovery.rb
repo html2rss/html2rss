@@ -73,7 +73,7 @@ module Html2rss
         end
 
         ##
-        # Like {#best_feed_url} but returns the validated syndication response for parsing.
+        # Like {.best_feed_url} but returns the validated syndication response for parsing.
         #
         # @param page_url [String, Html2rss::Url]
         # @param request_session [Html2rss::RequestSession]

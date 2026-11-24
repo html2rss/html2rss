@@ -6,7 +6,7 @@ module Html2rss
     # Sole owner of what makes a tested feed bad: the audit metrics, the warn-only warnings, the strict-quality
     # thresholds and the failure reasons. {Test.call} and the MCP apply gate read a {QualityReport} built here;
     # {Policy} maps its {QualityReport#failure_reasons} onto pass/fail. Title junk rules stay with the admission
-    # owner ({AutoSource::AutoSource::Cleanup.junk_reason}); {EnhanceAudit} owns the enhance metrics merged in below.
+    # owner ({AutoSource::Cleanup.junk_reason}); {EnhanceAudit} owns the enhance metrics merged in below.
     module Quality
       # Minimum present-title length before short-title warnings.
       MIN_TITLE_LENGTH = 4
