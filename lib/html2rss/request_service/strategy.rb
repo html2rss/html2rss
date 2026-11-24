@@ -6,7 +6,7 @@ module Html2rss
     # Defines the guarded request interface for every strategy adapter.
     #
     # `#execute` always runs timeout check → budget/policy preflight → `#fetch`
-    # → ResponseGuard postflight so new adapters cannot skip shared controls.
+    # → body guard postflight so new adapters cannot skip shared controls.
     class Strategy
       ##
       # @param ctx [Context] the context for the request
@@ -63,9 +63,25 @@ module Html2rss
       # @param response [Response, nil] adapter response
       # @return [void]
       def postflight!(response)
-        return if skip_postflight? || response.nil?
+        return if skip_postflight?
 
-        ResponseGuard.new(policy: ctx.policy).inspect_body!(response.body)
+        guard_body!(response.body)
+      end
+
+      ##
+      # Rejects bodies above the decompressed limit or matching an anti-bot interstitial signature.
+      #
+      # @param body [String, nil] final response body
+      # @return [void]
+      # @raise [ResponseTooLarge] if the body exceeds the configured limit
+      # @raise [BlockedSurfaceDetected] if the body matches a known interstitial signature
+      def guard_body!(body)
+        body = body.to_s
+        limit = ctx.policy.max_decompressed_bytes
+        raise ResponseTooLarge, "Response exceeded #{limit} bytes" if body.bytesize > limit
+
+        signature = BlockedSurface.interstitial_signature_for(body)
+        raise BlockedSurfaceDetected, signature.fetch(:message) if signature
       end
 
       ##
@@ -73,7 +89,7 @@ module Html2rss
       def skip_preflight? = false
 
       ##
-      # @return [Boolean] true when ResponseGuard postflight must be skipped
+      # @return [Boolean] true when the adapter guards bodies itself or reads no remote body
       def skip_postflight? = false
 
       def check_timeout!

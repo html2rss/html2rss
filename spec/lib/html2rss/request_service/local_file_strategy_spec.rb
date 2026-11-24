@@ -54,13 +54,13 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
     end
 
     it 'skips remote budget and policy preflight for CLI --input', :aggregate_failures do
-      allow(Html2rss::RequestService::ResponseGuard).to receive(:new).and_call_original
+      allow(Html2rss::RequestService::BlockedSurface).to receive(:interstitial_signature_for).and_call_original
 
       execute
 
       expect(budget).not_to have_received(:consume!)
       expect(policy).not_to have_received(:validate_request!)
-      expect(Html2rss::RequestService::ResponseGuard).not_to have_received(:new)
+      expect(Html2rss::RequestService::BlockedSurface).not_to have_received(:interstitial_signature_for)
     end
   end
 

@@ -18,6 +18,9 @@ module Html2rss
 
       private
 
+      # `scrape` guards each body itself so the cookie replay can fall back on a block.
+      def skip_postflight? = true
+
       # With a stored jar, tries the cheap HTTP tier first; cookies never reach the browser tier,
       # so a block falls back to a plain scrape without them.
       def fetch
@@ -43,7 +46,7 @@ module Html2rss
         raise_from_error!(parsed_response) if parsed_response.is_a?(BotasaurusContract::Error)
 
         response = build_response(parsed_response)
-        ResponseGuard.new(policy: ctx.policy).inspect_body!(response.body)
+        guard_body!(response.body)
         jar.refresh(stored, response.cookies)
         response
       end

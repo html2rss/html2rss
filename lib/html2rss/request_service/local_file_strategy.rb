@@ -5,7 +5,7 @@ module Html2rss
     ##
     # Strategy to read a local HTML file (CLI `--input`).
     #
-    # Intentionally skips remote budget/policy preflight and ResponseGuard
+    # Intentionally skips remote budget/policy preflight and the body guard
     # postflight: this adapter never opens a network connection. SSRF controls
     # remain on remote strategies; do not use this adapter for remote URLs.
     class LocalFileStrategy < Strategy
