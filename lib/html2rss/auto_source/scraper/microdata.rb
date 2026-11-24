@@ -11,6 +11,12 @@ module Html2rss
         SUPPORTED_TYPES = (Schema::Thing::SUPPORTED_TYPES | Set['Product']).freeze
         # Attribute names checked first for microdata property values.
         VALUE_ATTRIBUTES = %w[content datetime href src data value].freeze
+        # Text properties handed to {Schema::Thing} as one string; its own precedence picks among them.
+        TEXT_KEYS = %i[description abstract datePublished dateCreated dateModified uploadDate].freeze
+        # Properties handed to {Schema::Thing} unchanged.
+        PASS_KEYS = %i[author publisher video audio associatedMedia].freeze
+        # Image properties, in precedence order; the first present one is the only candidate.
+        IMAGE_KEYS = %i[image thumbnailUrl thumbnail].freeze
 
         # @return [Symbol] scraper config key
         def self.options_key = :microdata
@@ -92,7 +98,7 @@ module Html2rss
         # @param root [Nokogiri::XML::Element] supported Microdata root node
         # @return [Hash{Symbol => Object, nil}] normalized article hash
         def article_from(root)
-          schema_object = SchemaObjectBuilder.call(root)
+          schema_object = SchemaObject.call(root)
           article = Schema::Thing.new(schema_object, url:).call.compact
           return unless valid_article?(article)
 
@@ -235,258 +241,77 @@ module Html2rss
         end
         private_constant :ItemParser
 
-        # Shared value normalization helpers for Microdata property conversion.
-        module ValueNormalizer
+        # Maps parsed Microdata properties onto the keys {Schema::Thing} reads, which then resolves every field.
+        # Only values Thing would read differently are shaped here: one text value per field (a nested item or
+        # list tail is none), title precedence (headline, title, name), one image, a relative or `itemid` url,
+        # and `articleSection` filed under `categories`.
+        module SchemaObject
           class << self
-            # @param values [Array<Object>] value candidates
-            # @return [String, nil] first URL-like value converted to string
-            def url_value(*values)
+            # @param root [Nokogiri::XML::Element] supported microdata root node
+            # @return [Hash{Symbol => Object}] schema-like object
+            def call(root)
+              props = ItemParser.call(root)
+              id = text(root['itemid'], props[:identifier])
+              base(props, id).merge(lists(props), TEXT_KEYS.to_h { [_1, text(props[_1])] }, props.slice(*PASS_KEYS))
+            end
+
+            # @param props [Hash{Symbol => Object}] parsed properties
+            # @param id [String, nil] item identifier
+            # @return [Hash{Symbol => Object}] identity, title, url and image; the body goes under `schema_object_body`,
+            #   which Thing ranks last, so an equally long abstract wins
+            def base(props, id)
+              { '@id': id, headline: text(*props.values_at(:headline, :title, :name)),
+                schema_object_body: text(props[:articleBody]),
+                url: url_value(props, id), image: first_value(props.values_at(*IMAGE_KEYS).compact) }
+            end
+
+            # @param props [Hash{Symbol => Object}] parsed properties
+            # @return [Hash{Symbol => Object}] category-like lists of strings
+            def lists(props)
+              { categories: strings(props[:categories], props[:articleSection]),
+                keywords: strings(props[:keywords]), tags: strings(props[:tags]),
+                about: props[:about].is_a?(Array) ? props[:about] : [props[:about]].compact }
+            end
+
+            # @param values [Array<Object>] candidates, scalar or list
+            # @return [String, nil] the first candidate's first value when it is a string (a nested item is none)
+            def text(*values)
               values.each do |value|
-                candidate = extract_nested_value(value, :url, :@id)
-                return candidate.to_s if present?(candidate)
+                value = value.first if value.is_a?(Array)
+                return value if value.is_a?(String) && !value.strip.empty?
               end
 
               nil
             end
 
-            # @param values [Array<Object>] value candidates
-            # @return [String, Hash, nil] first normalized image candidate
-            def image_value(*values)
-              values.each do |value|
-                candidate = normalize_image(value)
-                return candidate if present?(candidate)
+            # @param values [Array<Object>] candidates, scalar or list
+            # @return [Array<String>] every string among them (nested items are dropped)
+            def strings(*values)
+              values.flat_map { _1.is_a?(Array) ? _1 : [_1] }.grep(String)
+            end
+
+            # @param values [Array<Object>] candidates, scalar or list
+            # @return [Object, nil] the first candidate's first value
+            def first_value(values)
+              values.first.then { _1.is_a?(Array) ? _1.first : _1 }
+            end
+
+            # @param props [Hash{Symbol => Object}] parsed properties
+            # @param id [String, nil] item identifier
+            # @return [String, nil] first of `url`, `mainEntityOfPage` (or its url or id), a URL-like id
+            def url_value(props, id)
+              url_like = id if id&.match?(%r{\A(/|https?://)})
+              [props[:url], props[:mainEntityOfPage], url_like].each do |value|
+                value = first_value([value])
+                value = value.values_at(:url, :@id).compact.first if value.is_a?(Hash)
+                return value if value
               end
 
               nil
-            end
-
-            # @param value [Object] image candidate value
-            # @return [String, Hash, nil] normalized image-like value
-            def normalize_image(value)
-              candidate = unwrap(value)
-              candidate.is_a?(Hash) ? candidate : candidate.to_s
-            end
-
-            # @param value [Object] about candidate value
-            # @return [Array<String, Hash>, nil] normalized about values
-            def normalize_about(value)
-              items = value.is_a?(Array) ? value : [value]
-              values = items.filter_map { normalize_about_item(_1) }
-              values unless values.empty?
-            end
-
-            # @param item [Object] single about item
-            # @return [String, Hash, nil] normalized about item
-            def normalize_about_item(item)
-              case item
-              when Hash
-                name = item[:name]
-                { name: name.to_s } if name
-              when String then item
-              end
-            end
-
-            # @param values [Array<Object>] value candidates
-            # @return [Array<String>, nil] normalized unique string values
-            def array_value(*values)
-              result = values.flat_map { string_values(Array(_1)) }.uniq
-              result unless result.empty?
-            end
-
-            # @param values [Array<Object>] candidate scalar values collected from microdata arrays
-            # @return [Array<String>] normalized string values
-            def string_values(values)
-              values.filter_map { stringify(_1) }
-            end
-
-            # @param values [Array<Object>] value candidates
-            # @return [String, nil] first present string-like value
-            def first_string(*values)
-              values.each do |value|
-                candidate = stringify(unwrap(value))
-                return candidate if present?(candidate)
-              end
-
-              nil
-            end
-
-            # @param value [Object] nested container or scalar
-            # @param keys [Array<Symbol>] nested keys to probe in order
-            # @return [Object, nil] first matching nested value
-            def extract_nested_value(value, *keys)
-              candidate = unwrap(value)
-              return candidate unless candidate.is_a?(Hash)
-
-              keys.each do |key|
-                nested_value = candidate[key]
-                return nested_value if present?(nested_value)
-              end
-
-              nil
-            end
-
-            # @param value [Object] scalar or array candidate
-            # @return [Object] first array element or the original value
-            def unwrap(value)
-              value.is_a?(Array) ? value.first : value
-            end
-
-            # @param value [Object] scalar candidate normalized to string output
-            # @return [String, nil] normalized string representation
-            def stringify(value)
-              return unless present?(value)
-              return if value.is_a?(Hash) || value.is_a?(Array)
-
-              value.to_s
-            end
-
-            # @param value [Object] candidate value
-            # @return [Boolean] whether value is present
-            def present?(value)
-              case value
-              when nil then false
-              when String then !value.strip.empty?
-              when Array, Hash then !value.empty?
-              else true
-              end
             end
           end
         end
-        private_constant :ValueNormalizer
-
-        # Normalizes raw Microdata properties into the schema-like shape used downstream.
-        module SchemaObjectBuilder
-          # @param root [Nokogiri::XML::Element] supported microdata root node
-          # @return [Hash{Symbol => Object, nil}] compact schema-like object
-          def self.call(root)
-            compact_object(Microdata.supported_type_name(root), root, ItemParser.call(root))
-          end
-
-          # @param type [String] schema type inferred from itemtype
-          # @param root [Nokogiri::XML::Element] supported microdata root node
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @return [Hash{Symbol => Object}] normalized schema-like object
-          def self.compact_object(type, root, properties)
-            object = base_attributes(type, root, properties)
-            merge_categories!(object, properties)
-            object.compact
-          end
-
-          # @param type [String] schema type inferred from itemtype
-          # @param root [Nokogiri::XML::Element] supported microdata root node
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @return [Hash{Symbol => Object}] base schema attributes before category merging
-          def self.base_attributes(type, root, properties)
-            identifier = ValueNormalizer.first_string(root['itemid'], properties.delete(:identifier))
-
-            {
-              '@type': type,
-              '@id': identifier
-            }.merge(text_attributes(properties))
-              .merge(link_attributes(properties, identifier))
-              .merge(media_attributes(properties))
-              .merge(people_attributes(properties))
-          end
-
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @return [Hash{Symbol => Object}] author and publisher (text or nested Person/Organization `{name:}`)
-          def self.people_attributes(properties)
-            { author: properties.delete(:author), publisher: properties.delete(:publisher) }
-          end
-
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @return [String, nil] normalized title
-          def self.title(properties)
-            ValueNormalizer.first_string(properties.delete(:headline), properties.delete(:title),
-                                         properties.delete(:name))
-          end
-
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @return [Hash{Symbol => Object}] normalized text attributes
-          def self.text_attributes(properties)
-            {
-              title: title(properties),
-              description: ValueNormalizer.first_string(properties.delete(:description)),
-              schema_object_body: ValueNormalizer.first_string(properties.delete(:articleBody)),
-              abstract: ValueNormalizer.first_string(properties.delete(:abstract)),
-              datePublished: published_at(properties)
-            }
-          end
-
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @param identifier [String, nil] identifier candidate for fallback URL handling
-          # @return [Hash{Symbol => Object}] normalized link attributes
-          def self.link_attributes(properties, identifier)
-            {
-              url: url(properties, identifier)
-            }
-          end
-
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @return [Hash{Symbol => Object}] normalized media attributes
-          def self.media_attributes(properties)
-            {
-              image: ValueNormalizer.image_value(properties.delete(:image), properties.delete(:thumbnailUrl),
-                                                 properties.delete(:thumbnail)),
-              video: properties.delete(:video),
-              audio: properties.delete(:audio),
-              associatedMedia: properties.delete(:associatedMedia)
-            }
-          end
-
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @param fallback_id [String, nil] identifier candidate for fallback URL handling
-          # @return [String, nil] normalized URL candidate
-          def self.url(properties, fallback_id)
-            ValueNormalizer.url_value(
-              properties.delete(:url),
-              properties.delete(:mainEntityOfPage),
-              url_fallback(fallback_id)
-            )
-          end
-
-          # @param fallback_id [String, nil] identifier candidate for fallback URL handling
-          # @return [String, nil] fallback URL candidate when identifier looks URL-like
-          def self.url_fallback(fallback_id)
-            value = ValueNormalizer.first_string(fallback_id)
-            return unless value
-            return value if value.start_with?('/')
-            return value if value.match?(%r{\Ahttps?://})
-
-            nil
-          end
-
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @return [String, nil] normalized published-at value
-          def self.published_at(properties)
-            ValueNormalizer.first_string(
-              properties.delete(:datePublished),
-              properties.delete(:dateCreated),
-              properties.delete(:dateModified),
-              properties.delete(:uploadDate)
-            )
-          end
-
-          # @param object [Hash{Symbol => Object}] schema-like output object
-          # @param properties [Hash{Symbol => Object}] parsed microdata properties
-          # @return [void]
-          def self.merge_categories!(object, properties)
-            categories = ValueNormalizer.array_value(properties.delete(:categories), properties.delete(:articleSection))
-            assign_if_present(object, :categories, categories)
-            assign_if_present(object, :keywords, ValueNormalizer.array_value(properties.delete(:keywords)))
-            assign_if_present(object, :tags, ValueNormalizer.array_value(properties.delete(:tags)))
-            assign_if_present(object, :about, ValueNormalizer.normalize_about(properties.delete(:about)))
-          end
-
-          # @param object [Hash{Symbol => Object}] schema-like output object
-          # @param key [Symbol] target attribute key
-          # @param value [Object] value to assign when present
-          # @return [void]
-          def self.assign_if_present(object, key, value)
-            object[key] = value if value
-          end
-        end
-        private_constant :SchemaObjectBuilder
+        private_constant :SchemaObject
       end
     end
   end
