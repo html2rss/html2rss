@@ -1,6 +1,6 @@
 # FeedPipeline — `auto` request strategy
 
-`:auto` is the default request plan for feed builds (`auto_source`, `auto_json_feed`, Capture, and MCP `scrape` / `capture`). `FeedPipeline::StrategyPlan` resolves it; `FeedPipeline::AutoFallback` executes `AutoFallback::CHAIN`.
+`:auto` is the default request plan for feed builds (`Html2rss.scrape`, Capture, and MCP `scrape` / `capture`). `FeedPipeline::StrategyPlan` resolves it; `FeedPipeline::AutoFallback` executes `AutoFallback::CHAIN`.
 
 Use `:auto` when you want `default` (HTTPX) first and a browser-backed hop only if that fetch fails or yields zero items. Pin a concrete strategy (`default`, `botasaurus`, `local_file`) when you need a single transport.
 

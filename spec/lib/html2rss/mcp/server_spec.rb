@@ -95,7 +95,7 @@ RSpec.describe Html2rss::MCP::Server do
           to_json_feed: { title: 'Channel', items: [{ title: 'A', url: 'https://example.com/a' }] },
           status:
         )
-        allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
+        allow(Html2rss).to receive(:scrape).and_return(feed_result)
       end
 
       # rubocop:disable-next RSpec/ExampleLength -- tools/call envelope contract
@@ -103,7 +103,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('scrape', { url: 'https://example.com', strategy: 'auto' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss).to have_received(:auto_feed_result).with(
+        expect(Html2rss).to have_received(:scrape).with(
           'https://example.com',
           hash_including(strategy: :auto)
         )
@@ -126,7 +126,7 @@ RSpec.describe Html2rss::MCP::Server do
           to_json_feed: { title: 'Channel', items: [] },
           status: Html2rss::Status.build(articles: [], dedup_dropped: 0, admission_drops: {})
         )
-        allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
+        allow(Html2rss).to receive(:scrape).and_return(feed_result)
 
         result = call_tool.call('scrape', { url: 'https://example.com' })
 
@@ -139,7 +139,7 @@ RSpec.describe Html2rss::MCP::Server do
           to_json_feed: { title: 'Channel', items: [] },
           status: Html2rss::Status.build(articles: [], dedup_dropped: 0, admission_drops: {})
         )
-        allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
+        allow(Html2rss).to receive(:scrape).and_return(feed_result)
 
         ClimateControl.modify(BOTASAURUS_SCRAPER_URL: nil) do
           result = call_tool.call('scrape', { url: 'https://example.com' })
@@ -659,7 +659,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks scrape failures as isError', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- envelope error shape
-        allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
+        allow(Html2rss).to receive(:scrape).and_raise(StandardError, 'scrape boom')
         result = call_tool.call('scrape', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
@@ -670,7 +670,7 @@ RSpec.describe Html2rss::MCP::Server do
 
       it 'keeps Botasaurus configuration failure envelope and logs free of the env URL value', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- leak contract
         secret = 'http://127.0.0.1:4010/secret-token'
-        allow(Html2rss).to receive(:auto_feed_result).and_raise(
+        allow(Html2rss).to receive(:scrape).and_raise(
           Html2rss::RequestService::BotasaurusConfigurationError,
           'BOTASAURUS_SCRAPER_URL is required for strategy=botasaurus.'
         )
@@ -692,14 +692,14 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'surfaces a ContractError as a JSON-RPC internal error, not a tool error envelope' do
-        allow(Html2rss).to receive(:auto_feed_result).and_raise(Html2rss::RequestService::Context::InvalidError, 'bug')
+        allow(Html2rss).to receive(:scrape).and_raise(Html2rss::RequestService::Context::InvalidError, 'bug')
 
         result = call_tool.call('scrape', { url: 'https://example.com' })
         expect(result).to include(error: include(code: -32_603, message: 'Internal error'))
       end
 
       it 'logs tool exceptions to the gem logger' do
-        allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
+        allow(Html2rss).to receive(:scrape).and_raise(StandardError, 'scrape boom')
 
         call_tool.call('scrape', { url: 'https://example.com' })
 

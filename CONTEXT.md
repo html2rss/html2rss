@@ -23,8 +23,8 @@ Parallel curation work shares this vocabulary. User/agent surfaces (CLI, MCP, `n
 | capture  | YAML draft            | `Capture`                | capture  | capture  | `Html2rss.capture`                 |
 | validate | Schema only           | `Config`                 | validate | validate | `Html2rss.validate`                |
 | test     | Schema + live         | `Test`                   | test     | test     | `Html2rss.test`                    |
-| apply    | Ship RSS              | `feed_result`            | apply    | apply    | `Html2rss.apply`                   |
-| scrape   | Articles now          | `auto_feed_result`       | scrape   | scrape   | `Html2rss.scrape`, `.batch_scrape` |
+| apply    | Ship RSS              | `Apply`                  | apply    | apply    | `Html2rss.apply`                   |
+| scrape   | Articles now          | `Html2rss.scrape`        | scrape   | scrape   | `Html2rss.scrape`, `.batch_scrape` |
 
 Batch variants: `batch_inspect`, `batch_recon`, `batch_scrape` (CLI/MCP/facade — same bare prefix, no `_urls` suffix).
 
@@ -36,13 +36,11 @@ CLI historic aliases: `feed` → `apply`, `auto` → `scrape` (Thor `map` only �
 
 Pipeline internals keep existing names — do not rename `Html2rss.feed` / `feed_result` in pipeline specs or `spec/examples/`.
 
-| Internal API                              | Role                       | User-facing verb      |
-| ----------------------------------------- | -------------------------- | --------------------- |
-| `Html2rss.feed` / `feed_result`           | Build RSS from config Hash | **apply**             |
-| `Html2rss.auto_feed_result`               | Auto-source from URL       | **scrape**            |
-| `Html2rss.auto_source` / `auto_json_feed` | Lower-level auto helpers   | used by scrape facade |
+| Internal API                    | Role                 | User-facing verb    |
+| ------------------------------- | -------------------- | ------------------- |
+| `Html2rss.feed` / `feed_result` | Pipeline entrypoints | called by **apply** |
 
-CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** calls **`auto_feed_result`**. Facades delegate — they are not renames of pipeline entrypoints.
+**`apply`** is owned by `Apply.call` → `Apply::Result` (feed result, RSS, lazy memoized `quality_report`, `empty?` ship gate); CLI and MCP only render it. **`scrape`** builds an auto-source config and calls **`feed_result`**. Facades delegate — they are not renames of pipeline entrypoints.
 
 ### File ownership matrix
 
@@ -73,18 +71,19 @@ Instruction prose SSOT: `Outcome::Playbook`. Module guide: `lib/html2rss/mcp/REA
 
 Composable curation seams for inspect → recon → capture → validate/test → apply:
 
-| Fact                                      | Owner                                                                                                                                                                                                                         |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Diagnostic URL fetch + assess             | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics). Module guide: `lib/html2rss/page_recon/README.md` (redirect follow; no default `Host` — HTTPX sets per hop) |
-| Curation verdict                          | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`)                                                                                                                                                           |
-| Native feed URL (defer/gate)              | `Syndication::Discovery.best_feed_url` only                                                                                                                                                                                   |
-| Config Hash/path/YAML → validated raw     | `Config.resolve_and_validate` → `Config::ValidationReport` (`issues` only; Dry stays internal)                                                                                                                                |
-| Validate + live + min_items + RSS         | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`)                                                                                                                                                              |
-| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (bare verb `next_step` names)                                                                                                                                                            |
-| Capture YAML product                      | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`)                                                                                                                                        |
-| Batch concurrency                         | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP)                                                                                                                            |
+| Fact                                            | Owner                                                                                                                                                                                                                       |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Diagnostic URL fetch + assess                   | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics). Module guide: `lib/html2rss/page_recon/README.md` (redirect follow; no default `Host` — HTTPX sets per hop) |
+| Curation verdict                                | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`)                                                                                                                                                         |
+| Native feed URL (defer/gate)                    | `Syndication::Discovery.best_feed_url` only                                                                                                                                                                                 |
+| Config Hash/path/YAML → validated raw           | `Config.resolve_and_validate` → `Config::ValidationReport` (`issues` only; Dry stays internal)                                                                                                                              |
+| Validate + live + min_items + RSS               | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`)                                                                                                                                                            |
+| MCP next_step / guidance / playbook prose       | `MCP::Outcome` + `Outcome::Playbook` (bare verb `next_step` names)                                                                                                                                                          |
+| Apply result (build, quality report, ship gate) | `Apply.call` → `Apply::Result`; CLI `apply` and MCP `apply` render it; `Html2rss.apply` returns it                                                                                                                          |
+| Capture YAML product                            | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`)                                                                                                                                      |
+| Batch concurrency                               | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP)                                                                                                                          |
 
-`apply` zero-item ship gate stays distinct from `Test` min_items. **inspect ≠ recon:** inspect is cheap diagnostics; recon adds verdict and native_feed preference.
+`apply` zero-item ship gate (`Apply::Result#empty?`) stays distinct from `Test` min_items. CLI `apply` exits 1 with an empty stdout and the message on stderr; MCP `apply` returns `isError`; `Html2rss.apply` returns the empty result without raising (html2rss-configs relies on `Html2rss.apply(config).to_rss`). **inspect ≠ recon:** inspect is cheap diagnostics; recon adds verdict and native_feed preference.
 
 ## Scrape target
 

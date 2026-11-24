@@ -106,10 +106,10 @@ RSpec.describe Html2rss::Batch do
         to_json_feed: { title: 'Feed A', items: [{ title: 'Item 1', url: 'https://example.com/a/1' }] },
         status:
       )
-      allow(Html2rss).to receive(:auto_feed_result).with('https://example.com/a', strategy: :auto, limit: 10)
-                                                   .and_return(feed_result_a)
-      allow(Html2rss).to receive(:auto_feed_result).with('https://example.com/b', strategy: :auto, limit: 10)
-                                                   .and_raise(Html2rss::Error, 'Scrape timed out')
+      allow(Html2rss).to receive(:scrape).with('https://example.com/a', strategy: :auto, limit: 10)
+                                         .and_return(feed_result_a)
+      allow(Html2rss).to receive(:scrape).with('https://example.com/b', strategy: :auto, limit: 10)
+                                         .and_raise(Html2rss::Error, 'Scrape timed out')
     end
 
     # rubocop:disable-next RSpec/ExampleLength
@@ -142,8 +142,8 @@ RSpec.describe Html2rss::Batch do
     end
 
     it 'propagates contract errors instead of recording a per-URL failure' do
-      allow(Html2rss).to receive(:auto_feed_result).with('https://example.com/b', strategy: :auto, limit: 10)
-                                                   .and_raise(Html2rss::RequestService::Context::InvalidError)
+      allow(Html2rss).to receive(:scrape).with('https://example.com/b', strategy: :auto, limit: 10)
+                                         .and_raise(Html2rss::RequestService::Context::InvalidError)
 
       expect { described_class.batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: 2) }
         .to raise_error(Html2rss::ContractError)
@@ -153,7 +153,7 @@ RSpec.describe Html2rss::Batch do
       allow(described_class).to receive(:run).and_call_original
       described_class.batch_scrape(urls:)
 
-      expect(Html2rss).to have_received(:auto_feed_result).with('https://example.com/a', strategy: :auto, limit: 10)
+      expect(Html2rss).to have_received(:scrape).with('https://example.com/a', strategy: :auto, limit: 10)
       expect(described_class).to have_received(:run).with(urls, concurrency: described_class::DEFAULT_CONCURRENCY)
     end
 
@@ -162,37 +162,37 @@ RSpec.describe Html2rss::Batch do
         expect { described_class.batch_scrape(urls:, limit:) }
           .to raise_error(Html2rss::InvalidOption, /limit must be an Integer in 1\.\./)
       end
-      expect(Html2rss).not_to have_received(:auto_feed_result)
+      expect(Html2rss).not_to have_received(:scrape)
     end
 
     # rubocop:disable-next RSpec/ExampleLength
     it 'accepts a limit of 1 and forwards it to the scraper', :aggregate_failures do
       feed = instance_double(Html2rss::FeedResult, to_json_feed: { items: [] },
                                                    status: Html2rss::Status.build(articles: []))
-      allow(Html2rss).to receive(:auto_feed_result).with('https://example.com/a', strategy: :auto, limit: 1)
-                                                   .and_return(feed)
+      allow(Html2rss).to receive(:scrape).with('https://example.com/a', strategy: :auto, limit: 1)
+                                         .and_return(feed)
       result = described_class.batch_scrape(urls: urls.first(1), limit: 1)
 
       expect(result.successful).to eq(1)
-      expect(Html2rss).to have_received(:auto_feed_result).with('https://example.com/a', strategy: :auto, limit: 1)
+      expect(Html2rss).to have_received(:scrape).with('https://example.com/a', strategy: :auto, limit: 1)
     end
 
     # rubocop:disable-next RSpec/ExampleLength
     it 'coerces a string strategy to a symbol before scraping', :aggregate_failures do
       feed = instance_double(Html2rss::FeedResult, to_json_feed: { items: [] },
                                                    status: Html2rss::Status.build(articles: []))
-      allow(Html2rss).to receive(:auto_feed_result).with('https://example.com/a', strategy: :default, limit: 10)
-                                                   .and_return(feed)
+      allow(Html2rss).to receive(:scrape).with('https://example.com/a', strategy: :default, limit: 10)
+                                         .and_return(feed)
       described_class.batch_scrape(urls: urls.first(1), strategy: 'default')
 
-      expect(Html2rss).to have_received(:auto_feed_result).with('https://example.com/a', strategy: :default, limit: 10)
+      expect(Html2rss).to have_received(:scrape).with('https://example.com/a', strategy: :default, limit: 10)
     end
 
     # rubocop:disable-next RSpec/ExampleLength
     it 'reports a non-String URL as its string form', :aggregate_failures do
       feed = instance_double(Html2rss::FeedResult, to_json_feed: { items: [] },
                                                    status: Html2rss::Status.build(articles: []))
-      allow(Html2rss).to receive(:auto_feed_result).and_return(feed)
+      allow(Html2rss).to receive(:scrape).and_return(feed)
       result = described_class.batch_scrape(urls: [:'https://example.com/a'])
 
       expect(result.results).to eq([{ url: 'https://example.com/a', ok: true, items_count: 0, items: [],
@@ -202,11 +202,11 @@ RSpec.describe Html2rss::Batch do
     it 'rejects an unknown strategy before scraping', :aggregate_failures do
       expect { described_class.batch_scrape(urls:, strategy: 'bogus') }
         .to raise_error(Html2rss::InvalidOption, /strategy must be one of/)
-      expect(Html2rss).not_to have_received(:auto_feed_result)
+      expect(Html2rss).not_to have_received(:scrape)
     end
 
     it 'lets errors that are not Html2rss::Error propagate' do
-      allow(Html2rss).to receive(:auto_feed_result).and_raise(RuntimeError, 'boom')
+      allow(Html2rss).to receive(:scrape).and_raise(RuntimeError, 'boom')
       expect { described_class.batch_scrape(urls: urls.first(1)) }.to raise_error(RuntimeError, 'boom')
     end
   end
@@ -217,23 +217,23 @@ RSpec.describe Html2rss::Batch do
       instance_double(Html2rss::FeedResult, status:, to_json_feed: { title: 'Feed', items: [{ title: 'Item' }] })
     end
 
-    before { allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result) }
+    before { allow(Html2rss).to receive(:scrape).and_return(feed_result) }
 
     it 'returns the coerced strategy, items, channel title and admission drops', :aggregate_failures do
       result = described_class.scrape_wire(url: 'https://example.com', strategy: 'default', limit: 3)
 
       expect(result).to eq(strategy: :default, items: [{ title: 'Item' }], channel_title: 'Feed',
                            admission_drops: { 'duplicate' => 2 })
-      expect(Html2rss).to have_received(:auto_feed_result).with('https://example.com', strategy: :default, limit: 3)
+      expect(Html2rss).to have_received(:scrape).with('https://example.com', strategy: :default, limit: 3)
     end
 
     it 'forwards items_selector only when it is given', :aggregate_failures do
       described_class.scrape_wire(url: 'https://example.com', strategy: :auto, limit: 10, items_selector: '.card')
-      expect(Html2rss).to have_received(:auto_feed_result)
+      expect(Html2rss).to have_received(:scrape)
         .with('https://example.com', strategy: :auto, limit: 10, items_selector: '.card')
 
       described_class.scrape_wire(url: 'https://example.com', strategy: :auto, limit: 10)
-      expect(Html2rss).to have_received(:auto_feed_result).with('https://example.com', strategy: :auto, limit: 10).once
+      expect(Html2rss).to have_received(:scrape).with('https://example.com', strategy: :auto, limit: 10).once
     end
 
     it 'returns no items and a nil title when the feed has neither', :aggregate_failures do

@@ -11,7 +11,8 @@ RSpec.describe Html2rss::CLI do
     let(:rss_xml) { '<rss><channel><title>Example</title></channel></rss>' }
     let(:feed_res) do
       instance_double(
-        Html2rss::FeedResult,
+        Html2rss::Apply::Result,
+        empty?: false,
         to_rss: rss_xml,
         to_json_feed: { title: 'Example', items: [] },
         status: instance_double(Html2rss::Status, to_h: {})
@@ -26,6 +27,34 @@ RSpec.describe Html2rss::CLI do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
 
       expect { cli.apply('example.yml') }.to output("#{rss_xml}\n").to_stdout
+    end
+
+    context 'when the feed has zero items' do
+      let(:feed_res) do
+        instance_double(Html2rss::Apply::Result, empty?: true, to_rss: rss_xml, to_json_feed: {},
+                                                 status: instance_double(Html2rss::Status, to_h: {}))
+      end
+
+      before { allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' }) }
+
+      it 'fails the ship gate with nothing on stdout', :aggregate_failures do
+        expect { cli.apply('example.yml') }
+          .to raise_error(Thor::Error, described_class::EMPTY_FEED_MESSAGE)
+          .and output('').to_stdout
+      end
+
+      it 'exits 1 with the message on stderr and an empty stdout', :aggregate_failures do
+        expect { described_class.start(%w[apply example.yml]) }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
+          .and output(/#{Regexp.escape(described_class::EMPTY_FEED_MESSAGE)}/o).to_stderr
+          .and output('').to_stdout
+      end
+
+      it 'does not gate scrape output', :aggregate_failures do
+        allow(Html2rss).to receive(:scrape).and_return(feed_res)
+
+        expect { cli.scrape('https://example.com') }.to output("#{rss_xml}\n").to_stdout
+      end
     end
 
     it 'supports --format jsonfeed and --explain' do

@@ -224,30 +224,15 @@ module Html2rss
           # @param yaml [String, nil]
           # @return [Outcome]
           def apply_outcome(url:, config: nil, yaml: nil)
-            feed_config = HashUtil.deep_dup(ConfigArgument.parse(config:, yaml:).config)
+            feed_config = ConfigArgument.parse(config:, yaml:).config
             feed_config[:channel] ||= {}
             feed_config[:channel][:url] ||= url
-            outcome, feed_result = FeedPipeline.new(feed_config).to_outcome_and_result
-            apply_feed_outcome(feed_config, feed_result, outcome)
-          end
-
-          private
-
-          def apply_feed_outcome(feed_config, feed_result, outcome) # rubocop:disable Metrics/MethodLength -- quality_report + RSS payload
-            rss = feed_result.to_rss
-            quality_report = Html2rss::Test::Quality.report_for(
-              rss.items,
-              channel_url: feed_config.dig(:channel, :url).to_s,
-              config: Html2rss::Config.from_hash(feed_config),
-              feed_result:,
-              pipeline_outcome: outcome,
-              probe_native_feed: false
-            )
+            result = Html2rss.apply(feed_config)
             Outcome.apply(
-              rss: rss.to_s,
-              item_count: rss.items.size,
-              empty: feed_result.empty?,
-              quality_report: quality_report.to_h
+              rss: result.to_rss.to_s,
+              item_count: result.item_count,
+              empty: result.empty?,
+              quality_report: result.quality_report.to_h
             )
           end
         end

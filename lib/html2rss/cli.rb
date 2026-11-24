@@ -15,6 +15,8 @@ module Html2rss
 
     # Supported CLI strategy names.
     STRATEGY_OPTION_ENUM = Html2rss::FeedPipeline::StrategyPlan.accepted_names.map(&:to_s).freeze
+    # Ship-gate failure for +apply+ on a feed with zero items.
+    EMPTY_FEED_MESSAGE = 'Feed has no items; nothing printed. Run `html2rss test` to diagnose.'
     # CLI strategy option description text.
     STRATEGY_OPTION_DESC =
       'Optional request strategy (defaults to auto; ' \
@@ -193,7 +195,7 @@ module Html2rss
 
     feed_transport_options
     feed_emit_options
-    desc 'apply [CONFIG_INPUT] [feed_name]', 'Print RSS built from YAML config to stdout'
+    desc 'apply [CONFIG_INPUT] [feed_name]', 'Print RSS built from YAML config to stdout (fails on 0 items)'
     method_option :params, type: :hash, default: {}
     # @param source [String, nil] YAML file path or '-'
     # @param feed_name [String, nil] optional named feed
@@ -204,7 +206,7 @@ module Html2rss
       execute_feed { apply_runtime_request_overrides!(config) }
       apply_local_file_input!(config, options[:input]) if options[:input]
 
-      run_feed_command { Html2rss.apply(config) }
+      run_feed_command(ship_gate: true) { Html2rss.apply(config) }
     end
 
     feed_transport_options
@@ -318,9 +320,11 @@ module Html2rss
       raise Thor::Error, "No results matched verdict #{options[:verdict].upcase}"
     end
 
-    def run_feed_command(&)
+    def run_feed_command(ship_gate: false, &)
       feed_res = execute_feed(&)
       explain_json!(feed_res.status.to_h) if options[:explain]
+      raise Thor::Error, EMPTY_FEED_MESSAGE if ship_gate && feed_res.empty?
+
       emit_feed_result(feed_res, options.fetch(:format, 'rss'))
     end
 

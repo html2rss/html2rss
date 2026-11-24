@@ -4,15 +4,15 @@ MCP exposes the same seven user-facing verbs as the CLI and gem facades. Full co
 
 ## Verb table
 
-| Verb     | MCP tool   | Job                                                  |
-| -------- | ---------- | ---------------------------------------------------- |
-| inspect  | `inspect`  | Diagnostics (final URL, status, alternates, surface) |
-| recon    | `recon`    | Verdict + native_feed preference                     |
-| capture  | `capture`  | YAML draft config                                    |
-| validate | `validate` | Schema only                                          |
-| test     | `test`     | Schema + live extraction                             |
-| apply    | `apply`    | Ship RSS from config                                 |
-| scrape   | `scrape`   | Articles now (one-shot)                              |
+| Verb     | MCP tool   | Job                                                          |
+| -------- | ---------- | ------------------------------------------------------------ |
+| inspect  | `inspect`  | Diagnostics (final URL, status, alternates, surface)         |
+| recon    | `recon`    | Verdict + native_feed preference                             |
+| capture  | `capture`  | YAML draft config                                            |
+| validate | `validate` | Schema only                                                  |
+| test     | `test`     | Schema + live extraction                                     |
+| apply    | `apply`    | Ship RSS from config (`Apply::Result`; zero items = isError) |
+| scrape   | `scrape`   | Articles now (one-shot)                                      |
 
 Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 

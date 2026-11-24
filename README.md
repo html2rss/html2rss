@@ -44,7 +44,7 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 | capture  | YAML draft config                                             |
 | validate | Schema only                                                   |
 | test     | Schema + live extraction (min items)                          |
-| apply    | Ship RSS from config or URL                                   |
+| apply    | Ship RSS from config (CLI and MCP fail on zero items)         |
 | scrape   | Articles now (one-shot auto-source)                           |
 
 Golden path: optional **inspect → recon → capture → test → apply**. Side door: **validate**. One-shot: **scrape**.
