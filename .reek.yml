@@ -20,8 +20,26 @@ detectors:
     enabled: false
   DataClump:
     enabled: false
+  # A flag stays where it is a public option, forwarded from one, or a parsed or Data value.
   BooleanParameter:
-    enabled: false
+    exclude:
+      - Html2rss#self.inspect
+      - Html2rss#self.schema_json
+      - Html2rss#self.test
+      - Html2rss::PageRecon::Diagnostics#self.call
+      - Html2rss::Config::Schema#self.json_schema_json
+      - Html2rss::Test::Options#self.build
+      - Html2rss::Test::Quality#self.report_for
+      - Html2rss::Capture::Options#initialize
+      - Html2rss::LinkDestination::PathClassifier#initialize
+      - Html2rss::LinkDestination::TextClassifier#initialize
+      - Html2rss::LinkDestination::NoisePolicy#noise_anchor?
+      - Html2rss::Html::ArticleRules::Description#keep?
+      - Html2rss::Selectors::OptionSpec#initialize
+      - Html2rss::Selectors#each_enhance_pair
+      - Html2rss::SST::Document#self.build
+      - Html2rss::SST::Normalizer#call
+      - Html2rss::Url#self.resolve_web
   InstanceVariableAssumption:
     enabled: false
   RepeatedConditional:
