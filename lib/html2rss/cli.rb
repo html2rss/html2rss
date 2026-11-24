@@ -8,6 +8,8 @@ module Html2rss
   ##
   # The Html2rss command line interface.
   class CLI < Thor # rubocop:disable Metrics/ClassLength
+    include ErrorReporting
+
     check_unknown_options!
 
     map 'feed' => 'apply'
@@ -268,34 +270,6 @@ module Html2rss
         raise Thor::Error, result.message unless result.ok
       else
         raise Thor::Error, "Unknown doctor type: #{type}. Supported: botasaurus"
-      end
-    end
-
-    no_commands do
-      # Single owner of CLI error reporting: every command runs through here, so a
-      # gem error prints one line (exit 1) instead of a stack trace. A
-      # ContractError is a bug and keeps its trace.
-      # @return [Object] the command result
-      # @raise [Thor::Error] for any non-contract Html2rss::Error
-      def invoke_command(...)
-        super
-      rescue Html2rss::ContractError
-        raise
-      rescue Html2rss::Error => error
-        raise Thor::Error, gem_error_message(error)
-      end
-
-      # @param error [Html2rss::Error]
-      # @return [String] one-line message, with a retry hint for request limits
-      def gem_error_message(error)
-        case error
-        when Html2rss::RequestService::RedirectLimitReached
-          "#{error.message}. already retried the last redirect hop once; " \
-          'retry with higher --max-redirects or use the final URL directly.'
-        when Html2rss::RequestService::RequestBudgetExceeded
-          "#{error.message}. retry with higher --max-requests or increase request.max_requests in config."
-        else error.message
-        end
       end
     end
 
