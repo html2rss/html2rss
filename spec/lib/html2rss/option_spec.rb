@@ -3,6 +3,19 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Option do
+  describe '.optional_integer' do
+    it 'passes nil and valid values through', :aggregate_failures do
+      expect(described_class.optional_integer(:n, nil, min: 1)).to be_nil
+      expect(described_class.optional_integer(:n, 3, min: 1, max: 3)).to eq(3)
+    end
+
+    it 'applies the bounds to a present value', :aggregate_failures do
+      expect { described_class.optional_integer(:n, 0, min: 1) }.to raise_error(Html2rss::InvalidOption, /n must be/)
+      expect { described_class.optional_integer(:n, 4, min: 1, max: 3) }
+        .to raise_error(Html2rss::InvalidOption, /1\.\.3/)
+    end
+  end
+
   describe '.integer' do
     it 'returns an Integer inside the inclusive bounds', :aggregate_failures do
       expect(described_class.integer(:n, 1, min: 1, max: 3)).to eq(1)
@@ -10,8 +23,7 @@ RSpec.describe Html2rss::Option do
       expect(described_class.integer(:n, 99, min: 1)).to eq(99)
     end
 
-    it 'passes nil only when optional', :aggregate_failures do
-      expect(described_class.optional_integer(:n, nil, min: 1)).to be_nil
+    it 'rejects nil', :aggregate_failures do
       expect { described_class.integer(:n, nil, min: 1) }.to raise_error(Html2rss::InvalidOption, /got nil/)
     end
 

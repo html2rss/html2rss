@@ -26,7 +26,7 @@ module Html2rss
       # @param max [Integer, nil] inclusive upper bound
       # @return [Integer, nil] +value+ when +nil+ or valid
       # @raise [InvalidOption] when +value+ is not an Integer within bounds
-      def optional_integer(name, value, min:, max: nil) = value.nil? ? value : integer(name, value, min:, max:)
+      def optional_integer(name, value, min:, max: nil) = (integer(name, value, min:, max:) unless value.nil?)
 
       ##
       # @param value [Symbol, String, nil] strategy plan name (+nil+ means +:auto+)

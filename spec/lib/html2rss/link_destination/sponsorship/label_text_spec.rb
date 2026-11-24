@@ -6,6 +6,15 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship::LabelText do
   end.freeze
   forms = %i[nfc nfd]
 
+  describe '.attribute_kind' do
+    it 'does not read the PR badge', :aggregate_failures do
+      expect(described_class.attribute_kind('PR', vocabulary: all_scope)).to be_nil
+      expect(described_class.attribute_kind('Anzeige', vocabulary: all_scope)).to be(:label)
+      expect(described_class.attribute_kind('Sponsored content', vocabulary: all_scope)).to be(:paid_label)
+      expect(described_class.attribute_kind(nil, vocabulary: all_scope)).to be_nil
+    end
+  end
+
   describe '.kind' do
     {
       'SPONSORISÉ' => :paid_label, 'Contenu sponsorisé' => :paid_label, 'MATERIAŁ PARTNERA' => :paid_label,
@@ -23,9 +32,8 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship::LabelText do
       expect(described_class.kind(nil, vocabulary: all_scope)).to be_nil
     end
 
-    it 'reads the PR badge only as element text' do
-      expect([described_class.kind('PR', vocabulary: all_scope),
-              described_class.attribute_kind('PR', vocabulary: all_scope)]).to eq([:label, nil])
+    it 'reads the PR badge as element text' do
+      expect(described_class.kind('PR', vocabulary: all_scope)).to be(:label)
     end
 
     bidi_wrappers.each do |wrapper|
