@@ -69,10 +69,9 @@ module Html2rss
         private
 
         def media_html
-          if @player&.video? then VideoRenderer.new(url: @player.url, type: @player.type).to_html
-          elsif @player then AudioRenderer.new(url: @player.url, type: @player.type).to_html
-          else ImageRenderer.new(url: @image, title: @title).to_html
-          end
+          return Media.image(url: @image, title: @title) unless @player
+
+          Media.player(@player.video? ? :video : :audio, url: @player.url, type: @player.type)
         end
 
         def shown?(text, file)
