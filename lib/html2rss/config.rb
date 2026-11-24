@@ -155,10 +155,8 @@ module Html2rss
         }
       end
 
-      # @return [Symbol] the default feed-level strategy plan (+:auto+ or concrete)
-      def default_strategy_name
-        Html2rss.defaults.default_strategy || :auto
-      end
+      # @return [Symbol] the default feed-level strategy plan
+      def default_strategy_name = :auto
 
       ##
       # Normalizes raw config input with defaults.

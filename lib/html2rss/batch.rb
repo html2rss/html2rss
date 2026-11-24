@@ -42,7 +42,7 @@ module Html2rss
       end
 
       ##
-      # Single-URL scrape wire extraction: auto_feed_result → JSON Feed items.
+      # Single-URL scrape wire extraction: Html2rss.scrape → JSON Feed items.
       #
       # @param url [String]
       # @param strategy [Symbol, String]
@@ -53,7 +53,7 @@ module Html2rss
         plan = Option.strategy(strategy)
         feed_args = { strategy: plan, limit: }
         feed_args[:items_selector] = items_selector unless items_selector.nil?
-        feed_result = Html2rss.auto_feed_result(url, **feed_args)
+        feed_result = Html2rss.scrape(url, **feed_args)
         feed = feed_result.to_json_feed
         {
           strategy: plan,

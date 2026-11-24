@@ -26,12 +26,6 @@ module Html2rss
     # @return [Hash, Proc, nil] the globally configured headers
     attr_reader :headers
 
-    # @return [Symbol, nil] the default strategy name
-    attr_reader :default_strategy
-
-    # @return [Integer, nil] the minimum TTL in minutes
-    attr_reader :min_ttl
-
     # @return [Array<Hash>] the globally configured stylesheets
     attr_reader :stylesheets
 
@@ -45,8 +39,6 @@ module Html2rss
       @logger.formatter = @logger_formatter
       self.log_level = ENV.fetch('LOG_LEVEL', :warn)
       @headers = nil
-      @default_strategy = nil
-      @min_ttl = nil
       @stylesheets = [].freeze
     end
 
@@ -108,28 +100,6 @@ module Html2rss
     end
 
     ##
-    # Sets the default feed-level strategy plan (+:auto+ or a concrete transport strategy).
-    #
-    # +:auto+ is not a {RequestService} adapter — it is resolved by {FeedPipeline::StrategyPlan}.
-    #
-    # @param strategy [Symbol, String, nil] the strategy plan name
-    # @return [Symbol, nil] the normalized strategy plan name
-    # @raise [InvalidOption] if the strategy plan is unknown
-    def default_strategy=(strategy)
-      @default_strategy = (Option.strategy(strategy) unless strategy.nil?)
-    end
-
-    ##
-    # Sets the minimum TTL in minutes.
-    #
-    # @param ttl [Integer, String, nil] the minimum TTL
-    # @return [Integer, nil] the normalized minimum TTL
-    # @raise [InvalidOption] if ttl is not a positive integer
-    def min_ttl=(ttl)
-      @min_ttl = (positive_ttl(ttl) unless ttl.nil?)
-    end
-
-    ##
     # Sets the global stylesheets.
     #
     # @param stylesheets [Array<Hash>] the XML stylesheet processing instructions to include in the generated feed
@@ -156,13 +126,6 @@ module Html2rss
     end
 
     private
-
-    def positive_ttl(ttl)
-      val = Integer(ttl, exception: false)
-      return val if val&.positive?
-
-      raise InvalidOption, "min_ttl must be a positive integer, got #{ttl.inspect}"
-    end
 
     def normalize_log_level(level)
       if level.is_a?(Integer)

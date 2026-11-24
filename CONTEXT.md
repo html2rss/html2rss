@@ -24,7 +24,7 @@ Parallel curation work shares this vocabulary. User/agent surfaces (CLI, MCP, `n
 | validate | Schema only           | `Config`                 | validate | validate | `Html2rss.validate`                |
 | test     | Schema + live         | `Test`                   | test     | test     | `Html2rss.test`                    |
 | apply    | Ship RSS              | `feed_result`            | apply    | apply    | `Html2rss.apply`                   |
-| scrape   | Articles now          | `auto_feed_result`       | scrape   | scrape   | `Html2rss.scrape`, `.batch_scrape` |
+| scrape   | Articles now          | `Html2rss.scrape`        | scrape   | scrape   | `Html2rss.scrape`, `.batch_scrape` |
 
 Batch variants: `batch_inspect`, `batch_recon`, `batch_scrape` (CLI/MCP/facade — same bare prefix, no `_urls` suffix).
 
@@ -39,10 +39,8 @@ Pipeline internals keep existing names — do not rename `Html2rss.feed` / `feed
 | Internal API                              | Role                       | User-facing verb      |
 | ----------------------------------------- | -------------------------- | --------------------- |
 | `Html2rss.feed` / `feed_result`           | Build RSS from config Hash | **apply**             |
-| `Html2rss.auto_feed_result`               | Auto-source from URL       | **scrape**            |
-| `Html2rss.auto_source` / `auto_json_feed` | Lower-level auto helpers   | used by scrape facade |
 
-CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** calls **`auto_feed_result`**. Facades delegate — they are not renames of pipeline entrypoints.
+CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** builds an auto-source config and calls **`feed_result`**. Facades delegate — they are not renames of pipeline entrypoints.
 
 ### File ownership matrix
 

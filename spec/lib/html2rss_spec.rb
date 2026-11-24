@@ -67,7 +67,7 @@ RSpec.describe Html2rss do
       expect(result).not_to be_empty
       expect(result.status).to be_a(Html2rss::Status)
       expect(described_class.feed(config)).to be_a(RSS::Rss)
-      expect(described_class.json_feed(config)).to include(:version, :items)
+      expect(described_class.feed_result(config).to_json_feed).to include(:version, :items)
     end
 
     context 'when the enclosure selector picks an image and no image selector is configured' do
@@ -87,7 +87,7 @@ RSpec.describe Html2rss do
 
       it 'makes that image the item image in RSS and JSON Feed, never the RSS enclosure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         item = Nokogiri.XML(described_class.feed(config).to_s).at_css('channel > item')
-        json_item = described_class.json_feed(config)[:items].first
+        json_item = described_class.feed_result(config).to_json_feed[:items].first
 
         expect(item.css('enclosure')).to be_empty
         expect(Nokogiri::HTML.fragment(item.at_css('description').text).at_css('img')['src'])
@@ -437,24 +437,12 @@ RSpec.describe Html2rss do
     end
   end
 
-  describe '.json_feed' do
-    # rubocop:disable-next RSpec/ExampleLength -- stub chain asserts contributor feed_url boundary
-    it 'rejects a relative feed_url at the contributor API boundary' do
-      result = instance_double(Html2rss::FeedResult)
-      allow(described_class).to receive(:feed_result).and_return(result)
-      allow(result).to receive(:to_json_feed)
-        .with(feed_url: '/relative.json')
-        .and_raise(ArgumentError, 'URL must be absolute')
-
-      expect { described_class.json_feed({}, feed_url: '/relative.json') }
-        .to raise_error(ArgumentError, /absolute/)
-    end
-
+  describe '.feed_result JSON Feed rendering' do
     context 'with config being a Hash' do
       let(:config) do
         described_class.config_from_yaml_file(config_file, name)
       end
-      let(:feed_return) { VCR.use_cassette(name) { described_class.json_feed(config) } }
+      let(:feed_return) { VCR.use_cassette(name) { described_class.feed_result(config).to_json_feed } }
       let(:first_item) { feed_return[:items].first }
 
       it 'returns the channel metadata' do
@@ -478,11 +466,15 @@ RSpec.describe Html2rss do
     end
   end
 
-  describe '.auto_feed_result' do
+  describe '.scrape' do
+    let(:news_site_result) do
+      VCR.use_cassette('news_site') { described_class.scrape('https://www.example.com/', limit: 10_000) }
+    end
+
     it 'passes url, strategy, and limit into the config', :aggregate_failures do
       allow(described_class).to receive(:feed_result) { |config| config }
 
-      config = described_class.auto_feed_result('https://example.com/page', strategy: :default, limit: 3)
+      config = described_class.scrape('https://example.com/page', strategy: :default, limit: 3)
       expect(config.dig(:channel, :url)).to eq('https://example.com/page')
       expect(config[:strategy]).to eq(:default)
       expect(config.dig(:auto_source, :limit)).to eq(3)
@@ -491,7 +483,7 @@ RSpec.describe Html2rss do
     it 'sets local_file_path without dropping request limits', :aggregate_failures do
       allow(described_class).to receive(:feed_result) { |config| config }
 
-      config = described_class.auto_feed_result('https://example.com', local_file_path: '/tmp/p.html', max_redirects: 2)
+      config = described_class.scrape('https://example.com', local_file_path: '/tmp/p.html', max_redirects: 2)
       expect(config.dig(:request, :local_file_path)).to eq('/tmp/p.html')
       expect(config.dig(:request, :max_redirects)).to eq(2)
     end
@@ -499,14 +491,14 @@ RSpec.describe Html2rss do
     it 'passes an items selector' do
       allow(described_class).to receive(:feed_result) { |config| config }
 
-      config = described_class.auto_feed_result('https://example.com', items_selector: '.card')
+      config = described_class.scrape('https://example.com', items_selector: '.card')
       expect(config.dig(:selectors, :items)).to eq(selector: '.card', enhance: true)
     end
 
     it 'omits local_file_path when none is given', :aggregate_failures do
       allow(described_class).to receive(:feed_result) { |config| config }
 
-      config = described_class.auto_feed_result('https://example.com')
+      config = described_class.scrape('https://example.com')
       expect(config[:request]).not_to have_key(:local_file_path)
       expect(config[:request]).to include(max_requests: 4)
       expect(config).not_to have_key(:strategy)
@@ -516,110 +508,65 @@ RSpec.describe Html2rss do
       feed_result = instance_double(Html2rss::FeedResult)
       allow(described_class).to receive(:feed_result).and_return(feed_result)
 
-      expect(described_class.auto_feed_result('https://example.com')).to eq(feed_result)
+      expect(described_class.scrape('https://example.com')).to eq(feed_result)
     end
 
     it 'forwards the default auto strategy' do
       allow(described_class).to receive(:feed_result) { |config| config }
       allow(Html2rss::Config::RequestControls).to receive(:from_shortcut).and_call_original
-      described_class.auto_feed_result('https://example.com')
+      described_class.scrape('https://example.com')
       expect(Html2rss::Config::RequestControls).to have_received(:from_shortcut).with(hash_including(strategy: :auto))
+    end
+
+    it 'forwards max_requests into the request controls' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      expect(described_class.scrape('https://example.com', max_requests: 8).dig(:request, :max_requests)).to eq(8)
     end
 
     it 'forwards keep_different_domain' do
       allow(described_class).to receive(:feed_result) { |config| config }
 
-      config = described_class.auto_feed_result('https://example.com', keep_different_domain: true)
+      config = described_class.scrape('https://example.com', keep_different_domain: true)
       expect(config.dig(:auto_source, :cleanup, :keep_different_domain)).to be true
     end
 
     it 'forwards keep_sponsored' do
       allow(described_class).to receive(:feed_result) { |config| config }
 
-      config = described_class.auto_feed_result('https://example.com', keep_sponsored: true)
+      config = described_class.scrape('https://example.com', keep_sponsored: true)
       expect(config.dig(:auto_source, :cleanup, :keep_sponsored)).to be true
     end
-  end
 
-  describe '.auto_source' do
-    let(:feed_return) { VCR.use_cassette('news_site') { described_class.auto_source('https://www.example.com/', limit: 10_000) } }
+    context 'with the news_site cassette' do
+      let(:rss) { news_site_result.to_rss }
+      let(:json_feed) { news_site_result.to_json_feed }
 
-    before { stub_request(:get, %r{\Ahttps://www\.example\.com/.+}).to_return(status: 404) }
+      before { stub_request(:get, %r{\Ahttps://www\.example\.com/.+}).to_return(status: 404) }
 
-    it 'returns a RSS::Rss instance with channel and items', :aggregate_failures, :slow do
-      expect(feed_return).to be_a(RSS::Rss)
-      expect(feed_return.channel.title).to eq 'Example Daily - Latest news, background and video'
-      expect(feed_return.channel.link).to eq 'https://www.example.com/'
-      # eTLD+1 keeps same-site portal hosts (live.example.com, go.example.com) with www.example.com.
-      expect(feed_return.items.size).to eq(20)
-    end
+      it 'renders RSS with channel and items', :aggregate_failures, :slow do
+        expect(rss).to be_a(RSS::Rss)
+        expect(rss.channel.title).to eq 'Example Daily - Latest news, background and video'
+        expect(rss.channel.link).to eq 'https://www.example.com/'
+        # eTLD+1 keeps same-site portal hosts (live.example.com, go.example.com) with www.example.com.
+        expect(rss.items.size).to eq(20)
+      end
 
-    it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
-      titles = feed_return.items.map { _1.title.to_s }
+      it 'renders JSON Feed with channel metadata and items', :aggregate_failures, :slow do # rubocop:disable RSpec/ExampleLength
+        expect(json_feed).to include(
+          version: 'https://jsonfeed.org/version/1.1',
+          title: 'Example Daily - Latest news, background and video',
+          home_page_url: 'https://www.example.com/'
+        )
+        expect(json_feed[:items].size).to eq(20)
+      end
 
-      expect(titles.grep(/\A[^:]{0,40}\d{1,2}:\d{2}/)).to be_empty
-      expect(titles.grep(/\A\p{L}+:\s+\p{L}+:\s/)).to be_empty
-    end
+      it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
+        titles = json_feed[:items].map { _1[:title].to_s }
 
-    it_behaves_like 'auto source option forwarding', method: :auto_source
-
-    it 'forwards strategy and local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      feed_result = instance_double(Html2rss::FeedResult, to_rss: :rss)
-      allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
-
-      expect(described_class.auto_source('https://example.com', local_file_path: '/tmp/p.html')).to eq(:rss)
-      expect(described_class).to have_received(:auto_feed_result).with(
-        'https://example.com',
-        strategy: :auto,
-        items_selector: nil,
-        max_redirects: nil,
-        max_requests: 4,
-        local_file_path: '/tmp/p.html',
-        limit: nil
-      )
-    end
-  end
-
-  describe '.auto_json_feed' do
-    let(:feed_return) { VCR.use_cassette('news_site') { described_class.auto_json_feed('https://www.example.com/', limit: 10_000) } }
-
-    before { stub_request(:get, %r{\Ahttps://www\.example\.com/.+}).to_return(status: 404) }
-
-    it 'returns the channel metadata', :aggregate_failures, :slow do
-      expect(feed_return).to include(
-        version: 'https://jsonfeed.org/version/1.1',
-        title: 'Example Daily - Latest news, background and video',
-        home_page_url: 'https://www.example.com/'
-      )
-    end
-
-    it 'returns items', :slow do
-      expect(feed_return[:items].size).to eq(20)
-    end
-
-    it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
-      titles = feed_return[:items].map { _1[:title].to_s }
-
-      expect(titles.grep(/\A[^:]{0,40}\d{1,2}:\d{2}/)).to be_empty
-      expect(titles.grep(/\A\p{L}+:\s+\p{L}+:\s/)).to be_empty
-    end
-
-    it_behaves_like 'auto source option forwarding', method: :auto_json_feed
-
-    it 'forwards strategy and local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      feed_result = instance_double(Html2rss::FeedResult, to_json_feed: :json)
-      allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
-
-      expect(described_class.auto_json_feed('https://example.com', local_file_path: '/tmp/p.html')).to eq(:json)
-      expect(described_class).to have_received(:auto_feed_result).with(
-        'https://example.com',
-        strategy: :auto,
-        items_selector: nil,
-        max_redirects: nil,
-        max_requests: 4,
-        local_file_path: '/tmp/p.html',
-        limit: nil
-      )
+        expect(titles.grep(/\A[^:]{0,40}\d{1,2}:\d{2}/)).to be_empty
+        expect(titles.grep(/\A\p{L}+:\s+\p{L}+:\s/)).to be_empty
+      end
     end
   end
 
@@ -699,36 +646,6 @@ RSpec.describe Html2rss do
 
       expect(described_class.apply(config)).to eq(feed_result)
       expect(described_class).to have_received(:feed_result).with(config)
-    end
-  end
-
-  describe '.scrape' do
-    let(:feed_result) { instance_double(Html2rss::FeedResult) }
-
-    before { allow(described_class).to receive(:auto_feed_result).and_return(feed_result) }
-
-    it 'forwards every scrape option', :aggregate_failures do
-      options = { strategy: :default, items_selector: '.card', max_redirects: 2, max_requests: 8,
-                  local_file_path: '/tmp/p.html', limit: 3, keep_different_domain: true, keep_sponsored: true }
-
-      expect(described_class.scrape('https://example.com', **options)).to eq(feed_result)
-      expect(described_class).to have_received(:auto_feed_result).with('https://example.com', **options)
-    end
-
-    it 'defaults strategy to auto and max_requests to 4' do # rubocop:disable RSpec/ExampleLength
-      described_class.scrape('https://example.com')
-
-      expect(described_class).to have_received(:auto_feed_result).with(
-        'https://example.com',
-        strategy: :auto,
-        items_selector: nil,
-        max_redirects: nil,
-        max_requests: 4,
-        local_file_path: nil,
-        limit: nil,
-        keep_different_domain: nil,
-        keep_sponsored: nil
-      )
     end
   end
 

@@ -17,14 +17,6 @@ RSpec.describe Html2rss::Defaults do
       expect(config.headers).to be_nil
     end
 
-    it 'has default default_strategy as nil' do
-      expect(config.default_strategy).to be_nil
-    end
-
-    it 'has default min_ttl as nil' do
-      expect(config.min_ttl).to be_nil
-    end
-
     it 'has default stylesheets as empty array' do
       expect(config.stylesheets).to eq([])
     end
@@ -93,72 +85,6 @@ RSpec.describe Html2rss::Defaults do
       expect(config.headers).to be_frozen
       headers_hash['user-agent'] = 'mutated'
       expect(config.headers['user-agent']).to eq('custom')
-    end
-  end
-
-  describe '#default_strategy=' do
-    subject(:config) { described_class.new }
-
-    it 'accepts a registered concrete strategy' do
-      config.default_strategy = :httpx
-      expect(config.default_strategy).to eq(:httpx)
-    end
-
-    it 'accepts the feed-level :auto plan' do
-      config.default_strategy = :auto
-      expect(config.default_strategy).to eq(:auto)
-    end
-
-    it 'accepts string and normalizes to symbol' do
-      config.default_strategy = 'httpx'
-      expect(config.default_strategy).to eq(:httpx)
-    end
-
-    it 'accepts nil' do
-      config.default_strategy = nil
-      expect(config.default_strategy).to be_nil
-    end
-
-    it 'raises InvalidOption for unregistered strategy' do
-      expect do
-        config.default_strategy = :invalid_strategy
-      end.to raise_error(Html2rss::InvalidOption, /strategy must be one of/)
-    end
-
-    it 'raises InvalidOption for invalid types', :aggregate_failures do
-      expect { config.default_strategy = 123 }.to raise_error(Html2rss::InvalidOption, /strategy must be one of/)
-      expect { config.default_strategy = { strategy: :httpx } }.to raise_error(Html2rss::InvalidOption)
-    end
-  end
-
-  describe '#min_ttl=' do
-    subject(:config) { described_class.new }
-
-    it 'accepts positive integer' do
-      config.min_ttl = 60
-      expect(config.min_ttl).to eq(60)
-    end
-
-    it 'accepts numeric string' do
-      config.min_ttl = '120'
-      expect(config.min_ttl).to eq(120)
-    end
-
-    it 'accepts nil' do
-      config.min_ttl = nil
-      expect(config.min_ttl).to be_nil
-    end
-
-    it 'raises InvalidOption for zero or negative numbers', :aggregate_failures do
-      expect { config.min_ttl = 0 }.to raise_error(Html2rss::InvalidOption, /must be a positive integer/)
-      expect { config.min_ttl = -10 }.to raise_error(Html2rss::InvalidOption, /must be a positive integer/)
-    end
-
-    it 'raises InvalidOption naming the rejected value', :aggregate_failures do
-      expect { config.min_ttl = 'abc' }
-        .to raise_error(Html2rss::InvalidOption, 'min_ttl must be a positive integer, got "abc"')
-      expect { config.min_ttl = [] }
-        .to raise_error(Html2rss::InvalidOption, 'min_ttl must be a positive integer, got []')
     end
   end
 
@@ -268,17 +194,15 @@ RSpec.describe Html2rss::Defaults do
   end
 
   describe 'global defaults integration' do
-    context 'when configuring min_ttl and stylesheets' do
+    context 'when configuring stylesheets' do
       before do
         Html2rss.configure do |config|
-          config.min_ttl = 45
           config.stylesheets = [{ href: 'global.css' }]
         end
       end
 
       it 'freezes the defaults', :aggregate_failures do
         expect(Html2rss.defaults).to be_frozen
-        expect(Html2rss.defaults.min_ttl).to eq(45)
         expect(Html2rss.defaults.stylesheets).to eq([{ href: 'global.css' }])
       end
     end
@@ -288,7 +212,7 @@ RSpec.describe Html2rss::Defaults do
 
       before do
         Html2rss.configure do |config|
-          config.min_ttl = 15
+          config.stylesheets = [{ href: 'rcu.css' }]
         end
       end
 
@@ -300,7 +224,7 @@ RSpec.describe Html2rss::Defaults do
     end
 
     it 'raises FrozenError when trying to modify defaults directly' do
-      expect { Html2rss.defaults.min_ttl = 15 }.to raise_error(FrozenError)
+      expect { Html2rss.defaults.stylesheets = [] }.to raise_error(FrozenError)
     end
 
     context 'with global static headers' do
@@ -337,64 +261,11 @@ RSpec.describe Html2rss::Defaults do
     end
 
     describe 'integration with ClassMethods' do
-      before do
-        Html2rss.configure do |config|
-          config.default_strategy = :botasaurus
-        end
-      end
-
-      it 'uses global default strategy when strategy in config is default_strategy_name', :aggregate_failures do
-        expect(Html2rss::Config.default_strategy_name).to eq(:botasaurus)
-        expect(Html2rss::Config.default_config[:strategy]).to eq(:botasaurus)
-      end
-
-      it 'allows configure to set the feed-level :auto plan', :aggregate_failures do
-        Html2rss.configure { |config| config.default_strategy = :auto }
-
-        expect(Html2rss.defaults.default_strategy).to eq(:auto)
-        expect(Html2rss::Config.default_strategy_name).to eq(:auto)
-        expect(Html2rss::Config.default_config[:strategy]).to eq(:auto)
-      end
-
       it 'uses global stylesheets in default_config' do
         global_stylesheets = [{ href: 'global.css', type: 'text/css' }]
         Html2rss.configure { |config| config.stylesheets = global_stylesheets }
 
         expect(Html2rss::Config.default_config[:stylesheets]).to eq(global_stylesheets)
-      end
-    end
-
-    describe 'integration with Html2rss::Channel#ttl' do
-      let(:response) do
-        instance_double(
-          Html2rss::RequestService::Response,
-          url: 'http://example.com',
-          headers: { 'cache-control' => 'max-age=1800' }, # 30 minutes
-          header: nil,
-          html_response?: false,
-          parsed_body: nil
-        )
-      end
-
-      it 'enforces min_ttl as a strict lower bound' do
-        Html2rss.configure { |config| config.min_ttl = 60 }
-
-        channel = Html2rss::Channel.from_response(response)
-        expect(channel.ttl).to eq(60) # 30 mins clamped to min_ttl (60)
-      end
-
-      it 'does not clamp if computed ttl is larger than min_ttl' do
-        Html2rss.configure { |config| config.min_ttl = 15 }
-
-        channel = Html2rss::Channel.from_response(response)
-        expect(channel.ttl).to eq(30) # 30 mins is > 15, so unchanged
-      end
-
-      it 'clamps config overrides for ttl as well' do
-        Html2rss.configure { |config| config.min_ttl = 60 }
-
-        channel = Html2rss::Channel.from_response(response, overrides: { ttl: 20 })
-        expect(channel.ttl).to eq(60) # override 20 clamped to min_ttl (60)
       end
     end
   end

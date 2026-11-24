@@ -15,7 +15,7 @@ require 'html2rss/defaults'
 
 ##
 # The Html2rss namespace.
-module Html2rss # rubocop:disable Metrics/ModuleLength
+module Html2rss
   ##
   # Forwards debug/info/warn/error to {Html2rss.logger}.
   module Log
@@ -129,7 +129,9 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # rubocop:disable Metrics/ParameterLists
 
   ##
-  # One-shot auto-source scrape from a URL (user-facing verb for {.auto_feed_result}).
+  # One-shot auto-source scrape from a URL, without hand-written selectors.
+  # Builds an auto_source config; FeedPipeline runs structured scrapers and, when needed, the SST
+  # heuristic path (see lib/html2rss/auto_source/README.md).
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy to use
@@ -150,8 +152,8 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
                   limit: nil,
                   keep_different_domain: nil,
                   keep_sponsored: nil)
-    auto_feed_result(url, strategy:, items_selector:, max_redirects:, max_requests:,
-                          local_file_path:, limit:, keep_different_domain:, keep_sponsored:)
+    feed_result(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
+                                         local_file_path:, limit:, keep_different_domain:, keep_sponsored:))
   end
 
   ##
@@ -229,97 +231,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   def self.feed(raw_config)
     feed_result(raw_config).to_rss
   end
-
-  ##
-  # Returns a JSONFeed 1.1 hash generated from the provided configuration.
-  #
-  # @param raw_config [Hash{Symbol => Object}] feed configuration
-  # @param feed_url [String, nil] optional self URL for the feed (JSON Feed +feed_url+)
-  # @return [Hash] JSONFeed-compliant hash
-  def self.json_feed(raw_config, feed_url: nil)
-    feed_result(raw_config).to_json_feed(feed_url:)
-  end
-
-  # rubocop:disable Metrics/ParameterLists
-
-  ##
-  # Scrapes the provided URL without hand-written selectors and returns {FeedResult}.
-  #
-  # Prefer this when callers need {FeedResult#status} (MCP envelope payload, CLI +--explain+).
-  #
-  # @param url [String] source page URL
-  # @param strategy [Symbol] request strategy to use
-  # @param items_selector [String, nil] optional selector hint for item extraction
-  # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
-  # @param local_file_path [String, nil] optional local HTML file path
-  # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
-  # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
-  # @param keep_sponsored [Boolean, nil] when set, overrides cleanup.keep_sponsored
-  # @return [Html2rss::FeedResult]
-  def self.auto_feed_result(url,
-                            strategy: :auto,
-                            items_selector: nil,
-                            max_redirects: nil,
-                            max_requests: 4,
-                            local_file_path: nil,
-                            limit: nil,
-                            keep_different_domain: nil,
-                            keep_sponsored: nil)
-    feed_result(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
-                                         local_file_path:, limit:, keep_different_domain:, keep_sponsored:))
-  end
-
-  ##
-  # Scrapes the provided URL without hand-written selectors and returns an RSS object.
-  #
-  # Builds an auto_source config, then FeedPipeline runs structured scrapers and
-  # (when needed) the SST heuristic path — see lib/html2rss/auto_source/README.md.
-  #
-  # @param url [String] source page URL
-  # @param strategy [Symbol] request strategy to use
-  # @param items_selector [String, nil] optional selector hint for item extraction
-  # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
-  # @param local_file_path [String, nil] optional local HTML file path
-  # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
-  # @return [RSS::Rss] generated RSS feed
-  def self.auto_source(url,
-                       strategy: :auto,
-                       items_selector: nil,
-                       max_redirects: nil,
-                       max_requests: 4,
-                       local_file_path: nil,
-                       limit: nil)
-    auto_feed_result(url, strategy:, items_selector:, max_redirects:, max_requests:,
-                          local_file_path:, limit:).to_rss
-  end
-
-  ##
-  # Scrapes the provided URL without hand-written selectors and returns a JSONFeed 1.1 hash.
-  #
-  # Same auto_source pipeline as {.auto_source}; see lib/html2rss/auto_source/README.md.
-  #
-  # @param url [String] source page URL
-  # @param strategy [Symbol] request strategy to use
-  # @param items_selector [String, nil] optional selector hint for item extraction
-  # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
-  # @param local_file_path [String, nil] optional local HTML file path
-  # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
-  # @return [Hash] JSONFeed-compliant hash
-  def self.auto_json_feed(url,
-                          strategy: :auto,
-                          items_selector: nil,
-                          max_redirects: nil,
-                          max_requests: 4,
-                          local_file_path: nil,
-                          limit: nil)
-    auto_feed_result(url, strategy:, items_selector:, max_redirects:, max_requests:,
-                          local_file_path:, limit:).to_json_feed
-  end
-
-  # rubocop:enable Metrics/ParameterLists
 
   # rubocop:disable-next ThreadSafety/ClassInstanceVariable
   class << self

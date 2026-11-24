@@ -134,16 +134,10 @@ module Html2rss
       end
 
       def ttl_for(response, overrides)
-        calculated = if overrides[:ttl]
-                       overrides[:ttl].to_i
-                     elsif (max_age = headers(response)['cache-control']&.match(/max-age=(\d+)/)&.[](1))
-                       max_age.to_i.fdiv(60).ceil
-                     else
-                       default_ttl_in_minutes
-                     end
+        return overrides[:ttl].to_i if overrides[:ttl]
 
-        min_ttl = Html2rss.defaults.min_ttl
-        min_ttl ? [calculated, min_ttl].max : calculated
+        max_age = headers(response)['cache-control']&.match(/max-age=(\d+)/)&.[](1)
+        max_age ? max_age.to_i.fdiv(60).ceil : default_ttl_in_minutes
       end
 
       def root_language(document)
