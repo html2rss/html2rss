@@ -152,6 +152,29 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
 
     it_behaves_like 'article extractor title pieces'
 
+    describe 'a card whose kicker is found by walking the tree' do
+      let(:card) do
+        '<article><h2><span class="box"><span class="premium">Plus</span>' \
+          '<span class="box__head">Transit</span></span> ' \
+          '<span class="title"><a href="/news/story">Tram line extends</a></span></h2></article>'
+      end
+
+      it 'keeps the kicker prefix after a GC while the example holds the document' do
+        segment = segment_for(card)
+        GC.start
+
+        expect(described_class.call(segment, base_url: 'https://example.com').title).to eq('Transit: Tram line extends')
+      end
+
+      it 'raises rather than dropping the kicker prefix once the document is collected' do
+        segment = build_orphan_segment(card)
+        3.times { GC.start }
+
+        expect { described_class.call(segment, base_url: 'https://example.com') }
+          .to raise_error(Html2rss::SST::Index::InvalidError)
+      end
+    end
+
     it 'keeps only the topic of a kicker that also holds a clock, a time element and a field label' do
       html = '<article><header><div class="overline"><span class="date">11:46</span><i></i>' \
              '<time datetime="2026-10-20">Oct 20</time><span class="sr-only">Section:</span>' \
@@ -397,29 +420,11 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(zip.url.to_s).to eq('https://example.com/downloads/bundle.zip')
   end
 
-  it 'never turns an iframe on an SST segment into an enclosure' do # rubocop:disable RSpec/ExampleLength
-    link = Html2rss::SST::Node.build(
-      name: :a,
-      attrs: Html2rss::SST::Attrs.build(href: '/news/embed'),
-      own_text: 'Embed Story'
-    )
-    iframe = Html2rss::SST::Node.build(
-      name: :iframe,
-      attrs: Html2rss::SST::Attrs.build(src: '/embeds/player.html')
-    )
-    root = Html2rss::SST::Node.build(
-      name: :article,
-      children: [
-        Html2rss::SST::Node.build(name: :h2, children: [link]),
-        Html2rss::SST::Node.build(name: :p, own_text: 'Useful context paragraph with enough words.'),
-        iframe
-      ]
-    )
-    segment = Html2rss::AutoSource::Segment.build(
-      root_node: root, primary_link: link, strategy: :semantic, position: 0
-    )
+  it 'never turns an iframe on an SST segment into an enclosure' do
+    html = '<article><h2><a href="/news/embed">Embed Story</a></h2>' \
+           '<p>Useful context paragraph with enough words.</p><iframe src="/embeds/player.html"></iframe></article>'
 
-    article = described_class.call(segment, base_url: 'https://example.com')
+    article = described_class.call(segment_for(html, href: '/news/embed'), base_url: 'https://example.com')
 
     expect(article.enclosures).to be_empty
   end

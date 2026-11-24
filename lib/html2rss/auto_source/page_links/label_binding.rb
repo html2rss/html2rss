@@ -66,7 +66,7 @@ module Html2rss
         # The label and its wrappers up to the frame's child holding it, innermost first.
         def path
           @path ||= begin
-            index = SST::Index.for_node(@label)
+            index = SST::Index.for_node!(@label)
             nodes = [@label]
             nodes << index.parent_of(nodes.last) until index.parent_of(nodes.last).equal?(@node)
             nodes
