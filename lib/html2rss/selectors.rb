@@ -157,21 +157,6 @@ module Html2rss
       raise InvalidSelectorName, "Selector for '#{name}' is not defined."
     end
 
-    ##
-    # Resolves a selector name to +[key, config]+. Used by category field dispatch.
-    #
-    # @param name [Symbol, String]
-    # @param allow_nil [Boolean]
-    # @return [Array(Symbol, Hash, nil)]
-    def selector_config_for(name, allow_nil: false)
-      selector_key = name.to_sym
-
-      return [selector_key, @selectors[selector_key]] if @selectors.key?(selector_key)
-      return [selector_key, nil] if allow_nil
-
-      raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined."
-    end
-
     private
 
     attr_reader :response
@@ -344,38 +329,21 @@ module Html2rss
       end
     end
 
-    def select_regular(_name, scope:, config:)
-      value = Extractors.call(config, scope.item, base_url: scope.base_url)
-
-      apply_post_process_steps(scope:, value:, post_process_steps: config[:post_process])
+    def select_regular_compiled(field, scope)
+      run_field(field, scope.item, scope, selector: field.config[:selector])
     end
 
-    def select_regular_compiled(field, scope)
+    # The one extract-then-post-process path for every field, whatever node it runs on.
+    def run_field(field, node, scope, selector:)
       value = field.extractor_class.new(
-        scope.item,
-        selector: field.config[:selector],
+        node,
+        selector:,
         attribute: field.config[:attribute],
         static: field.config[:static],
         base_url: scope.base_url
       ).call
 
       apply_compiled_post_process(scope, value, field.post_process_steps)
-    end
-
-    def apply_post_process_steps(scope:, value:, post_process_steps:)
-      return value unless value && post_process_steps
-
-      steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-      post_process(scope, value, steps)
-    end
-
-    def post_process(scope, value, post_process_steps)
-      value = step_input(value)
-      post_process_steps.each do |step_config|
-        value = PostProcessors.call(step_config[:name], value, scope.context_for(step_config:))
-      end
-
-      value
     end
 
     # Post-processors work on text, so a URL value (from the href extractor) enters them as a String.
@@ -408,18 +376,17 @@ module Html2rss
     end
 
     def extract_category_values(selector_name, scope:)
-      _selector_key, config = selector_config_for(selector_name, allow_nil: true)
-      return [] unless config
+      field = @compiled_fields[selector_name.to_sym]
+      return [] unless field&.config
 
-      nodes = extract_nodes(item: scope.item, config:)
+      nodes = extract_nodes(item: scope.item, config: field.config)
       return Array(scope.select(selector_name)) unless node_set_with_multiple_elements?(nodes)
 
-      Array(nodes).flat_map { |node| extract_categories_from_node(node, scope:, config:) }
+      nodes.flat_map { |node| extract_categories_from_node(node, scope:, field:) }
     end
 
-    def extract_categories_from_node(node, scope:, config:)
-      values = Extractors.call(config, node, base_url: scope.base_url, selector: nil)
-      values = apply_post_process_steps(scope:, value: values, post_process_steps: config[:post_process])
+    def extract_categories_from_node(node, scope:, field:)
+      values = run_field(field, node, scope, selector: nil)
 
       Array(values).filter_map { |category| extract_category_text(category) }
     end
@@ -442,7 +409,7 @@ module Html2rss
     # @return [Hash, nil] enclosure details, or nil when the selector yields nothing or no http(s) URL
     #   ({Url.resolve_web})
     def enclosure(scope:, config:)
-      selected = select_regular(:enclosure, scope:, config:)
+      selected = select_regular_compiled(@compiled_fields.fetch(:enclosure), scope)
       return unless (url = Url.resolve_web(selected, scope.base_url))
 
       { url:, type: config[:content_type] }

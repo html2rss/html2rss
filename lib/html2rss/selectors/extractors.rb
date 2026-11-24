@@ -36,30 +36,6 @@ module Html2rss
 
           first ? xml.at_css(selector) : xml.css(selector)
         end
-
-        ##
-        # Registry dispatcher: resolves the extractor strategy for +config+,
-        # instantiates it with options, and executes its +#call+.
-        #
-        # +base_url+ and +selector+ can be supplied without merging a new Hash
-        # into the (static) field config on every item.
-        #
-        # @param config [Hash{Symbol => Object}]
-        #   Should contain at least `:extractor` (the name) and options for that extractor.
-        # @param xml [Nokogiri::XML::Node, Nokogiri::XML::NodeSet]
-        # @param base_url [String, Html2rss::Url, nil] page base URL for relative hrefs
-        # @param selector [String, nil] CSS selector override (pass +nil+ to use +xml+ as-is)
-        # @return [Object] extracted value from the strategy instance
-        def call(config, xml, base_url: nil, selector: config[:selector])
-          extractor_class = NAME_TO_CLASS[config[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
-          extractor_class.new(
-            xml,
-            selector:,
-            attribute: config[:attribute],
-            static: config[:static],
-            base_url: base_url || config[:base_url]
-          ).call
-        end
       end
     end
   end
