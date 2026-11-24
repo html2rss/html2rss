@@ -296,11 +296,33 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
       end
     end
 
-    # Residual: the retry shares the feed budget, so its scraper follow-ups can spend the slot that the
-    # tournament left for the next strategy (AutoFallback#retry_resolved builds the retry session on the
-    # shared resources). Pinned as behavior, not endorsed.
-    it 'can leave the next strategy without its initial request' do
-      expect { result }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded)
+    # The retry shares the feed budget; the hold keeps the next strategy's initial request out of its reach.
+    it 'leaves the next strategy its initial request', :aggregate_failures do
+      expect(result.status.selected_strategy).to eq(:botasaurus)
+      expect(result.status.strategy_attempts.map { |attempt| attempt[:strategy] }).to eq(%i[default botasaurus])
+    end
+  end
+
+  context 'when an explicit small max_requests meets a paginated strong page on the first strategy' do
+    let(:raw_config) do
+      { channel: { url: "#{origin}/news/" }, strategy: :auto, request: { max_requests: 3 },
+        selectors: {
+          items: { selector: 'article', pagination: { strategy: 'url_template', param: 'page', max_pages: 5 } },
+          title: { selector: 'h2' }, url: { selector: 'a', extractor: 'href' }
+        } }
+    end
+    let(:page_two) { listing_html.gsub('post-', 'more-') }
+    let(:pages) do
+      { default: { "#{origin}/news/" => response_for(listing_html, "#{origin}/news/", html_headers),
+                   "#{origin}/news/?page=2" => response_for(page_two, "#{origin}/news/?page=2", html_headers) },
+        botasaurus: {} }
+    end
+
+    # Pinned trade-off: the held slot comes out of the first strategy's follow-ups, even when it succeeds.
+    it 'gives the first strategy its entry and one follow-up, then stops pagination', :aggregate_failures do
+      expect(result.status.selected_strategy).to eq(:default)
+      expect(requests.map { |request| request[:url] }).to eq(["#{origin}/news/", "#{origin}/news/?page=2"])
+      expect(Html2rss::Log).to have_received(:warn).with(/pagination stopped at .*page=3 - Request budget exhausted/)
     end
   end
 end
