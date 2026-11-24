@@ -33,6 +33,11 @@ module SstTestHelpers
 
   def usable_card?(node) = Html2rss::Html::Navigator.usable_card_parent?(node, vocabulary: all_scope)
 
+  # The page's link resolver, as AutoSource builds it once per page.
+  def page_resolver(base_url = 'https://example.com', vocabulary: Html2rss::Vocabulary[nil])
+    Html2rss::Scoring::LinkResolver.new(base_url, vocabulary:)
+  end
+
   # The fields of the +item+ (CSS selector) in +html+, read the way +selectors.items.enhance+ reads a selected item:
   # its first link is the primary one. The SST document is held until the fields are read.
   def item_fields_for(html, item: 'article', nth: 0, base_url: 'https://example.com', time_zone: 'UTC', # rubocop:disable Metrics/ParameterLists
@@ -42,7 +47,9 @@ module SstTestHelpers
     root = document.index.node_for(parsed.css(item)[nth])
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?),
                                                   strategy: :list, position: 0)
-    [Html2rss::Html::SstArticleExtractor::Item.call(segment, base_url:, time_zone:, vocabulary:), document].first
+    resolver = page_resolver(base_url, vocabulary:)
+    [Html2rss::Html::SstArticleExtractor::Item.call(segment, base_url:, time_zone:, link_resolver: resolver),
+     document].first
   end
 
   # A node of a document nothing references any more, so its index is free to be collected.

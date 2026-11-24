@@ -19,12 +19,12 @@ module Html2rss
         # @param base_url [String, Html2rss::Url]
         # @param scraper [Class, nil]
         # @param time_zone [String, nil] channel time zone for naive leftover dates; nil reads as UTC
-        # @param link_resolver [Scoring::LinkResolver, nil] the page's resolver, built for the same +base_url+;
+        # @param link_resolver [Scoring::LinkResolver] the page's resolver, built for the same +base_url+;
         #   its already resolved URL of the primary link is reused instead of resolving it again, and it
         #   owns the page's +vocabulary+ (read for title type markers) and +text_classifier+ (the page-scoped
-        #   label reader, so a label is normalized once); nil reads the nil-language vocabulary
+        #   label reader, so a label is normalized once)
         # @return [Html2rss::Article, nil] nil when the segment has no primary link (no URL of its own)
-        def call(ranked_or_segment, base_url:, time_zone:, scraper: nil, link_resolver: nil)
+        def call(ranked_or_segment, base_url:, time_zone:, link_resolver:, scraper: nil)
           new(ranked_or_segment, base_url:, scraper:, time_zone:, link_resolver:).call
         end
       end
@@ -33,7 +33,7 @@ module Html2rss
       # @param base_url [String, Html2rss::Url]
       # @param scraper [Class, nil]
       # @param time_zone [String, nil] channel time zone for naive leftover dates; nil reads as UTC
-      # @param link_resolver [Scoring::LinkResolver, nil] see {.call}
+      # @param link_resolver [Scoring::LinkResolver] see {.call}
       def initialize(ranked_or_segment, base_url:, scraper:, time_zone:, link_resolver:)
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
@@ -44,8 +44,8 @@ module Html2rss
         @scraper = scraper
         @time_zone = time_zone
         @link_resolver = link_resolver
-        @vocabulary = link_resolver&.vocabulary || Vocabulary[nil]
-        @classifier = link_resolver&.text_classifier || LinkDestination::TextClassifier.for(@vocabulary)
+        @vocabulary = link_resolver.vocabulary
+        @classifier = link_resolver.text_classifier
       end
 
       ##
@@ -82,12 +82,7 @@ module Html2rss
       private
 
       def extract_url
-        @extract_url ||= if @link_resolver
-                           @link_resolver.destination_facts(@selected_anchor)&.url
-                         else
-                           href = @selected_anchor&.attrs&.href.to_s
-                           Url.resolve_web(href.split('#').first, @base_url, web_only: false)
-                         end
+        @extract_url ||= @link_resolver.destination_facts(@selected_anchor)&.url
       end
 
       # Kicker and headline text ({TitlePieces}) of this card.

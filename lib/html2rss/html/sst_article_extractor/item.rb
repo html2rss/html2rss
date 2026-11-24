@@ -19,19 +19,6 @@ module Html2rss
         FALLBACK_HEADING_NAMES = Set[:strong, :b].freeze
         private_constant :LABEL_ATTRIBUTES, :FALLBACK_HEADING_NAMES
 
-        class << self
-          ##
-          # @param segment [AutoSource::Segment] the configured item, as a segment of its own
-          # @param base_url [String, Html2rss::Url]
-          # @param time_zone [String, nil]
-          # @param vocabulary [Vocabulary::Scope] the page language's scope
-          # @return [Hash{Symbol => Object}] see {SstArticleExtractor#fields}
-          def call(segment, base_url:, time_zone:, vocabulary:)
-            resolver = Scoring::LinkResolver.new(base_url, vocabulary:)
-            new(segment, base_url:, scraper: nil, time_zone:, link_resolver: resolver).call
-          end
-        end
-
         ##
         # @return [Hash{Symbol => Object}] see {SstArticleExtractor#fields}
         alias call fields

@@ -44,11 +44,15 @@ module Html2rss
 
         segment = AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :list,
                                             position: 0)
-        Html::SstArticleExtractor::Item.call(segment, base_url: @base_url, time_zone: @time_zone,
-                                                      vocabulary: @vocabulary)
+        Html::SstArticleExtractor::Item.call(segment, base_url: @base_url, time_zone: @time_zone, link_resolver:)
       end
 
       private
+
+      # The region's one resolver: it owns the language's label reader, so a label is normalized once.
+      def link_resolver
+        @link_resolver ||= Scoring::LinkResolver.new(@base_url, vocabulary: @vocabulary)
+      end
 
       # The SST document of the region, normalized for items.
       def document
