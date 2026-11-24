@@ -120,7 +120,8 @@ module Html2rss
   # Ships RSS from a validated config. Golden path step 5.
   #
   # Returns the result even when the feed has no items (check {Apply::Result#empty?}); the CLI and
-  # MCP surfaces turn an empty result into a failure.
+  # MCP surfaces turn an empty result into a failure. The result is not cacheable: cache
+  # {.feed_result} instead.
   #
   # @param raw_config [Hash{Symbol => Object}] feed configuration
   # @return [Html2rss::Apply::Result] responds to +to_rss+, +to_json_feed+, +status+, +empty?+

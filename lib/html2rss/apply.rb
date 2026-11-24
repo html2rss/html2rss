@@ -52,7 +52,7 @@ module Html2rss
       def quality_report
         @quality_report ||= Test::Quality.report_for(
           to_rss.items,
-          channel_url: @raw_config.dig(:channel, :url),
+          channel_url: @raw_config.dig(:channel, :url).to_s,
           config: Config.from_hash(@raw_config),
           feed_result:,
           pipeline_outcome: @pipeline_outcome,

@@ -224,7 +224,7 @@ module Html2rss
           # @param yaml [String, nil]
           # @return [Outcome]
           def apply_outcome(url:, config: nil, yaml: nil)
-            feed_config = HashUtil.deep_dup(ConfigArgument.parse(config:, yaml:).config)
+            feed_config = ConfigArgument.parse(config:, yaml:).config
             feed_config[:channel] ||= {}
             feed_config[:channel][:url] ||= url
             result = Html2rss.apply(feed_config)
