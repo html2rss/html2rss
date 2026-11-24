@@ -210,6 +210,20 @@ RSpec.describe Html2rss::RequestSession do
         )
       end
       let(:feed_body) { '<rss version="2.0"><channel></channel></rss>' }
+      let(:redirected_feed) do
+        stub_request(:get, own_feed.to_s).to_return(status: 301,
+                                                    headers: { 'Location' => 'https://cdn.example.net/show.xml' })
+        stub_request(:get, 'https://cdn.example.net/show.xml').to_return(status: 200, body: feed_body)
+        session.follow_up(url: own_feed, origin_url: page_url, relation: :advertised_feed,
+                          advertisement: own_advertisement)
+      end
+      let(:own_advertisement) do
+        Html2rss::RequestService::FeedAdvertisement.from_document(
+          Nokogiri::HTML('<head><link rel="alternate" type="application/rss+xml" href="/feed.xml"></head>'),
+          page_url:
+        )
+      end
+      let(:own_feed) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
 
       before do
         allow(Html2rss::RequestService).to receive(:execute).and_call_original
@@ -236,8 +250,26 @@ RSpec.describe Html2rss::RequestSession do
         session.fetch_initial_response
         session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:)
 
-        expect { session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:) }
+        expect { session.follow_up(url: 'https://example.com/other', relation: :auto_source, origin_url: page_url) }
           .to raise_error(Html2rss::RequestService::RequestBudgetExceeded)
+      end
+
+      it 'fetches a URL once per session without spending a second request', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one fetch, one reuse, two counts
+        session.fetch_initial_response
+        args = { url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement: }
+        first = session.follow_up(**args)
+
+        expect(session.follow_up(**args)).to equal(first)
+        expect(a_request(:get, feed_url.to_s)).to have_been_made.once
+        expect(budget.remaining_requests).to eq(0)
+      end
+
+      it 'still applies the policy of the reusing relation' do
+        session.fetch_initial_response
+        session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:)
+
+        expect { session.follow_up(url: feed_url, relation: :entry_resolution, origin_url: page_url) }
+          .to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
       end
 
       it 'denies a non-advertised URL on the same feed host' do
@@ -266,6 +298,31 @@ RSpec.describe Html2rss::RequestSession do
 
         expect(response.url.to_s).to eq('https://cdn.example.net/show.xml')
       end
+
+      it 'denies reuse of a cross-origin URL that redirected back to the origin under a stricter relation' do
+        stub_request(:get, feed_url.to_s).to_return(status: 301, headers: { 'Location' => 'https://example.com/s.xml' })
+        stub_request(:get, 'https://example.com/s.xml').to_return(status: 200, body: feed_body)
+        session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:)
+
+        expect { session.follow_up(url: feed_url, relation: :entry_resolution, origin_url: page_url) }
+          .to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+
+      it 'reuses a redirected feed for the same relation' do
+        redirected_feed
+
+        reused = session.follow_up(url: own_feed, origin_url: page_url, relation: :advertised_feed,
+                                   advertisement: own_advertisement)
+
+        expect(reused).to equal(redirected_feed)
+      end
+
+      it 'denies reuse of a redirected feed under a stricter relation, as a fresh request would' do
+        redirected_feed
+
+        expect { session.follow_up(url: own_feed, origin_url: page_url, relation: :entry_resolution) }
+          .to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
     end
   end
 
@@ -288,6 +345,44 @@ RSpec.describe Html2rss::RequestSession do
       described_class.new(context:, strategy: :default).effective_page_budget(20)
 
       expect(Html2rss::Log).to have_received(:warn).with(/pagination max_pages=20 exceeds system ceiling=10/)
+    end
+  end
+
+  describe '#follow_up reuse of a fetched URL' do
+    let(:resolver) { instance_double(Resolv) }
+    let(:session) do
+      described_class.new(
+        context: Html2rss::RequestService::Context.new(
+          url: 'https://example.com/news',
+          policy: Html2rss::RequestService::Policy.new(max_requests: 3, resolver:),
+          budget: Html2rss::RequestService::Budget.new(max_requests: 3, total_timeout_seconds: 60)
+        ),
+        strategy: :default, logger:
+      )
+    end
+
+    before do
+      allow(resolver).to receive(:each_address) { |_host, &block| block.call('8.8.8.8') }
+      allow(Html2rss::RequestService).to receive(:execute) do |request_context, **|
+        Html2rss::RequestService::Response.new(body: 'x', url: request_context.url, status:)
+      end
+      2.times { session.follow_up(url: 'https://example.com/feed.xml', relation: :pagination, origin_url: 'https://example.com/news') }
+    end
+
+    [nil, 200, 299].each do |reused|
+      context "when the status is #{reused.inspect}" do
+        let(:status) { reused }
+
+        it { expect(Html2rss::RequestService).to have_received(:execute).once }
+      end
+    end
+
+    [199, 300, 404].each do |refetched|
+      context "when the status is #{refetched}" do
+        let(:status) { refetched }
+
+        it { expect(Html2rss::RequestService).to have_received(:execute).twice }
+      end
     end
   end
 

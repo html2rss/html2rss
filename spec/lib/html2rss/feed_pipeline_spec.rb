@@ -1050,4 +1050,35 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
   end
+
+  describe 'an advertised feed' do
+    let(:page) do
+      '<html><head><title>Blog</title><link rel="alternate" type="application/rss+xml" href="/feed.xml"></head>' \
+        '<body><a href="/a">A</a></body></html>'
+    end
+    let(:rss) do
+      items = (1..3).map do |i|
+        "<item><title>Post #{i}</title><link>https://example.com/p#{i}</link><guid>p#{i}</guid>" \
+          "<description>Body #{i} text</description></item>"
+      end
+      '<?xml version="1.0"?><rss version="2.0"><channel><title>T</title><link>https://example.com/</link>' \
+        "<description>d</description>#{items.join}</channel></rss>"
+    end
+
+    before do
+      stub_request(:get, %r{\Ahttps://example\.com/(?!feed\.xml\z)}).to_return(
+        status: 200, body: page, headers: { 'Content-Type' => 'text/html' }
+      )
+      stub_request(:get, 'https://example.com/feed.xml').to_return(
+        status: 200, body: rss, headers: { 'Content-Type' => 'application/rss+xml' }
+      )
+    end
+
+    it 'is fetched once per build', :aggregate_failures do
+      feed = Html2rss.feed(channel: { url: 'https://example.com/' }, auto_source: {})
+
+      expect(feed.items.size).to eq(3)
+      expect(a_request(:get, 'https://example.com/feed.xml')).to have_been_made.once
+    end
+  end
 end
