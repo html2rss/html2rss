@@ -281,6 +281,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       it 'logs a fallback root at debug, not warn', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss::Log).to receive(:warn)
         allow(Html2rss::Log).to receive(:debug)
+        allow(Html2rss.logger).to receive(:debug?).and_return(true)
         fragment = Nokogiri::HTML5.fragment('<object><a href="/p">Post</a></object>')
 
         described_class.call(fragment, vocabulary: all_scope, items: true)

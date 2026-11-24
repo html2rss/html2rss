@@ -36,11 +36,11 @@ module Html2rss
           feed = RSS::Parser.parse(body.to_s, false)
           Feed.new(articles: articles_from(feed, body, base_url:), channel: ChannelFacts.from(feed))
         rescue RSS::Error => error
-          Log.warn({
-            event_name: 'syndication.parse_failed',
+          Log.event(
+            :warn, 'syndication.parse_failed',
             error_class: error.class.name,
             message: "Syndication::Parser: failed to parse feed (#{error.class}: #{error.message})"
-          }.to_json)
+          )
           Feed::NONE
         end
 

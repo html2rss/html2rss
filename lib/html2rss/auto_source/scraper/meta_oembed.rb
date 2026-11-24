@@ -126,12 +126,12 @@ module Html2rss
         rescue Html2rss::ContractError
           raise
         rescue Html2rss::Error, RequestService::UnsupportedResponseContentType, JSON::ParserError => error
-          Log.warn({
-            event_name: 'meta_oembed.fetch_failed',
+          Log.event(
+            :warn, 'meta_oembed.fetch_failed',
             host: url.host,
             error_class: error.class.name,
             message: "#{self.class}: failed to fetch oEmbed payload (#{error.class}: #{error.message})"
-          }.to_json)
+          )
           {}
         end
 

@@ -98,14 +98,14 @@ module Html2rss
       # The SST root of +item+ normalized by itself, kept alive with the rest, or +nil+ for an item that is no
       # SST node at all (a +script+, +style+, +svg+ or +iframe+ element).
       def root_alone(item)
-        Log.debug { { event_name: 'selectors.enhance.alone', node: item.name }.to_json }
+        Log.event(:debug, 'selectors.enhance.alone', node: item.name)
         alone = normalize(item)
         @alone << alone if alone
         alone&.root
       end
 
       def skipped(item)
-        Log.debug { { event_name: 'selectors.enhance.skipped', node: item.name }.to_json }
+        Log.event(:debug, 'selectors.enhance.skipped', node: item.name)
         nil
       end
     end

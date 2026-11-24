@@ -22,6 +22,7 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
 
   describe '#fields_for' do
     before do
+      allow(Html2rss.logger).to receive(:debug?).and_return(true)
       allow(Html2rss::Log).to receive(:debug) { |*text, &message| logged << (message ? message.call : text.first) }
     end
 

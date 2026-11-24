@@ -153,8 +153,7 @@ module Html2rss
       # @return [Nokogiri::XML::Node] +root+, after logging the fallback that chose it
       def log_root_fallback(reason, root)
         message = "sst.normalizer root fallback: #{reason.tr('_', ' ')}"
-        payload = { event_name: 'sst.normalizer.root_fallback', reason:, message: }.to_json
-        @items ? Html2rss::Log.debug(payload) : Html2rss::Log.warn(payload)
+        Html2rss::Log.event(@items ? :debug : :warn, 'sst.normalizer.root_fallback', reason:, message:)
         root
       end
 
@@ -197,11 +196,11 @@ module Html2rss
         return unless !@items && @node_count >= MAX_NODES && !@degraded
 
         @degraded = true
-        Log.warn({
-          event_name: 'sst.normalizer.max_nodes',
+        Log.event(
+          :warn, 'sst.normalizer.max_nodes',
           max_nodes: MAX_NODES,
           message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
-        }.to_json)
+        )
       end
 
       # The node whose children to normalize, or nil for a stripped tag. A +noscript+ is kept only for the

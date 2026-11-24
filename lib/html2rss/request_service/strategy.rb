@@ -132,12 +132,12 @@ module Html2rss
           "budget_remaining=#{remaining_label}",
           "reason=#{reason}"
         ]
-        Log.info({
-          event_name: 'request_service.timeout',
+        Log.event(
+          :info, 'request_service.timeout',
           host:,
           strategy: self.class.name,
           message: "#{self.class}: request timeout #{detail.join(' ')}"
-        }.to_json)
+        )
       end
 
       # @param error [StandardError]

@@ -287,12 +287,8 @@ module Html2rss
       def slots_left(next_strategy) = budget.remaining_requests - (next_strategy ? 1 : 0)
 
       def log_resolution_failure(event, summary, error_class: nil)
-        Log.warn({
-          event_name: "feed_resolution.#{event}",
-          host: Url.from_absolute(config.url).host,
-          error_class:,
-          message: "FeedResolution: #{summary}"
-        }.compact.to_json)
+        fields = { host: Url.from_absolute(config.url).host, error_class:, message: "FeedResolution: #{summary}" }
+        Log.event(:warn, "feed_resolution.#{event}", **fields.compact)
       end
 
       def record_success(response:, strategy:, extraction:, state:, scrape_target: self.scrape_target)
@@ -303,15 +299,15 @@ module Html2rss
       end
 
       def log_selected(response:, strategy:, attempt_count:)
-        Log.info({
-          event_name: 'auto_fallback.selected',
+        Log.event(
+          :info, 'auto_fallback.selected',
           host: response.url.host,
           strategy: strategy.to_s,
           attempt_count:,
           message: "#{self.class}: auto selected strategy=#{strategy} after attempts=#{attempt_count} " \
                    "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                    "budget_remaining=#{budget_remaining_label}"
-        }.to_json)
+        )
       end
 
       def monotonic_ms = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
@@ -322,30 +318,29 @@ module Html2rss
         detail = "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                  "budget_remaining=#{budget_remaining_label}"
         timed_out = error.is_a?(RequestService::RequestTimedOut)
-        payload = {
-          event_name: timed_out ? 'auto_fallback.timeout' : 'auto_fallback.error',
+        Log.event(
+          timed_out ? :info : :warn, timed_out ? 'auto_fallback.timeout' : 'auto_fallback.error',
           host:,
           strategy: strategy.to_s,
           next_strategy: next_strategy.to_s,
           error_class: error.class.name,
           message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
                    "after #{timed_out ? "timeout=#{error.class}" : "error=#{error.class}"} #{detail}"
-        }.to_json
-        timed_out ? Log.info(payload) : Log.warn(payload)
+        )
         Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message} #{detail}")
       end
 
       def log_info_fallback_zero_items(strategy:, next_strategy:, response:)
         host = response.url.host
-        Log.info({
-          event_name: 'auto_fallback.zero_items',
+        Log.event(
+          :info, 'auto_fallback.zero_items',
           host:,
           strategy: strategy.to_s,
           next_strategy: next_strategy.to_s,
           message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} after zero extracted items " \
                    "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                    "budget_remaining=#{budget_remaining_label}"
-        }.to_json)
+        )
       end
 
       def budget_remaining_label

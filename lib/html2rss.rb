@@ -35,6 +35,27 @@ module Html2rss
       ##
       # @return [true]
       def error(...) = Html2rss.logger.error(...)
+
+      ##
+      # Emits one structured log line: JSON with +event_name+ first, then +fields+ in order. The JSON of a
+      # +:debug+ event is built only when the logger has debug enabled.
+      #
+      # @param level [Symbol] one of +:debug+, +:info+, +:warn+, +:error+
+      # @param name [String] the event name
+      # @param fields [Hash{Symbol => Object}] JSON-serializable payload fields
+      # @option fields [Object] :* any field, serialized in the order given
+      # @return [true]
+      def event(level, name, **fields)
+        return true if level == :debug && !Html2rss.logger.debug?
+
+        line = { event_name: name, **fields }.to_json
+        case level
+        when :debug then debug(line)
+        when :info then info(line)
+        when :warn then Log.warn(line)
+        else error(line)
+        end
+      end
     end
   end
 
