@@ -50,6 +50,11 @@ RSpec.describe Html2rss::Apply do
       expect(Html2rss::Test::Quality).to have_received(:report_for).once.with(result.to_rss.items, expected)
     end
 
+    it 'forwards feed_url to the JSON Feed', :aggregate_failures do
+      expect(result.to_json_feed(feed_url: 'https://example.com/feed.json')).to include(feed_url: 'https://example.com/feed.json')
+      expect(result.to_json_feed).not_to have_key(:feed_url)
+    end
+
     context 'when the selectors match nothing' do
       let(:selector) { 'section' }
 
