@@ -74,7 +74,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     let(:cleaned) { result.articles }
     let(:keep_different_domain) { false }
 
-    # rubocop:disable-next RSpec/ExampleLength -- articles + multi-reason tallies
+    let!(:fixed_facts) { Html2rss::LinkDestination::DestinationFacts.build(url, vocabulary:) }
+
     it 'removes invalid articles and tallies the drop', :aggregate_failures do
       expect(cleaned).not_to include(articles[2])
       expect(result.drop_tallies).to include(
@@ -87,10 +88,9 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     end
 
     it 'reads route facts through the injected lookup, never building them itself', :aggregate_failures do
-      facts = Html2rss::LinkDestination::DestinationFacts.build(url, vocabulary:)
       seen = []
       allow(Html2rss::LinkDestination::DestinationFacts).to receive(:build)
-      described_class.call(articles, vocabulary:, url:, facts: ->(arg) { facts.tap { seen << arg } })
+      described_class.call(articles, vocabulary:, url:, facts: ->(arg) { fixed_facts.tap { seen << arg } })
 
       expect(seen).not_to be_empty
       expect(Html2rss::LinkDestination::DestinationFacts).not_to have_received(:build)
