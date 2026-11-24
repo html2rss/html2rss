@@ -145,7 +145,7 @@ Whether a follow-up may leave the page origin. Owned by `RequestService::Policy`
 
 ## Request Budget
 
-Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion). `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.
+Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion). `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`. The derived reservation can exceed the ceiling of 10, and steps share the budget first come, first served, with the fallback slot held: `AutoFallback` runs each non-last strategy's work after its entry fetch inside `Budget#holding(1)`, so scrapers, the tournament, and the zero-item retry cannot take the next strategy's initial request.
 
 ## HTML-ness
 

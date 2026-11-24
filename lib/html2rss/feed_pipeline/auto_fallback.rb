@@ -197,10 +197,13 @@ module Html2rss
           config, strategy:, resources:, scrape_url: scrape_target.effective_url
         )
         response = request_session.fetch_initial_response
-        process_response(
-          response:, strategy:, next_strategy:, request_session:, state:,
-          elapsed_ms: monotonic_ms - started_ms
-        )
+        # Everything after the entry fetch leaves the next strategy its initial request slot.
+        budget.holding(next_strategy ? 1 : 0) do
+          process_response(
+            response:, strategy:, next_strategy:, request_session:, state:,
+            elapsed_ms: monotonic_ms - started_ms
+          )
+        end
       rescue *NON_FALLBACK_ERRORS => error
         state.record_error(strategy:, error:, elapsed_ms: monotonic_ms - started_ms)
         state.abort!
@@ -219,7 +222,7 @@ module Html2rss
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")
 
-        return if resolve_entry(response:, strategy:, next_strategy:, request_session:, extraction:, state:)
+        return if resolve_entry(response:, strategy:, request_session:, extraction:, state:)
         return record_success(response:, strategy:, extraction:, state:) if extraction.articles.any?
 
         if DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
@@ -240,15 +243,15 @@ module Html2rss
       end
 
       # Runs the entry-resolution tournament once per chain and retries the winner's page.
-      # The tournament never spends the request slot a later strategy needs for its initial fetch.
+      # The hold around the strategy's work keeps the later strategy's initial request slot from the tournament.
       #
       # @return [Boolean] true when the retry extraction yielded items and ended the chain
-      # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- eligibility, record, retry, error policy
-      def resolve_entry(response:, strategy:, next_strategy:, request_session:, extraction:, state:)
+      # rubocop:disable-next Metrics/MethodLength -- eligibility, record, retry, error policy
+      def resolve_entry(response:, strategy:, request_session:, extraction:, state:)
         return false if state.resolution_tried?
 
         resolution = FeedResolution.call(
-          response:, session: request_session, config:, articles: extraction.articles, slots: slots_left(next_strategy)
+          response:, session: request_session, config:, articles: extraction.articles, slots: budget.remaining_requests
         )
         return false unless resolution
 
@@ -282,9 +285,6 @@ module Html2rss
         retry_session.remember!(resolution.response.url)
         pipeline.extract(config:, response: resolution.response, request_session: retry_session)
       end
-
-      # Request slots the tournament may spend: all that are left, minus the initial fetch of a later strategy.
-      def slots_left(next_strategy) = budget.remaining_requests - (next_strategy ? 1 : 0)
 
       def log_resolution_failure(event, summary, error_class: nil)
         fields = { host: Url.from_absolute(config.url).host, error_class:, message: "FeedResolution: #{summary}" }

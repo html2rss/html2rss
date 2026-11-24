@@ -16,6 +16,7 @@ module Html2rss
         @remaining_requests = max_requests
         @start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @total_timeout_seconds = total_timeout_seconds
+        @held = 0
         @mutex = Mutex.new
       end
 
@@ -23,19 +24,34 @@ module Html2rss
       # Consumes one HTTP request slot.
       #
       # @return [Integer] remaining request slots after consumption
-      # @raise [RequestBudgetExceeded] if no request slots remain
+      # @raise [RequestBudgetExceeded] if no request slots remain beyond the held ones
       def consume!
         @mutex.synchronize do
-          raise RequestBudgetExceeded, 'Request budget exhausted' if @remaining_requests.zero?
+          raise RequestBudgetExceeded, 'Request budget exhausted' if spendable.zero?
 
           @remaining_requests -= 1
         end
       end
 
       ##
-      # @return [Integer] HTTP request slots still available
+      # Keeps +slots+ request slots unspendable inside the block, so work in it cannot take the slot a later
+      # step needs. The floor is restored when the block ends, also on error. A nested call replaces the
+      # floor for its own block.
+      #
+      # @param slots [Integer] request slots to keep back
+      # @yieldreturn [Object] the block's result
+      # @return [Object] the block's result
+      def holding(slots)
+        previous = @mutex.synchronize { @held.tap { @held = slots } }
+        yield
+      ensure
+        @mutex.synchronize { @held = previous }
+      end
+
+      ##
+      # @return [Integer] HTTP request slots still spendable, excluding slots held by {#holding}
       def remaining_requests
-        @mutex.synchronize { @remaining_requests }
+        @mutex.synchronize { spendable }
       end
 
       ##
@@ -61,6 +77,10 @@ module Html2rss
 
         timeout
       end
+
+      private
+
+      def spendable = [@remaining_requests - @held, 0].max
     end
   end
 end

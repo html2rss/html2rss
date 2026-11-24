@@ -296,11 +296,10 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
       end
     end
 
-    # Residual: the retry shares the feed budget, so its scraper follow-ups can spend the slot that the
-    # tournament left for the next strategy (AutoFallback#retry_resolved builds the retry session on the
-    # shared resources). Pinned as behavior, not endorsed.
-    it 'can leave the next strategy without its initial request' do
-      expect { result }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded)
+    # The retry shares the feed budget; the hold keeps the next strategy's initial request out of its reach.
+    it 'leaves the next strategy its initial request', :aggregate_failures do
+      expect(result.status.selected_strategy).to eq(:botasaurus)
+      expect(result.status.strategy_attempts.map { |attempt| attempt[:strategy] }).to eq(%i[default botasaurus])
     end
   end
 end
