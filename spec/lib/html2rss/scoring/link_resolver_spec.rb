@@ -138,6 +138,18 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     end
   end
 
+  describe '#facts_for' do
+    let(:url) { Html2rss::Url.from_relative('/news/2024/launch', 'https://example.com') }
+
+    it 'builds facts once per URL and shares them with #destination_facts', :aggregate_failures do
+      facts = resolver.facts_for(url)
+
+      expect(facts.destination).to eq('https://example.com/news/2024/launch')
+      expect(resolver.facts_for(url)).to be(facts)
+      expect(resolver.destination_facts('/news/2024/launch')).to be(facts)
+    end
+  end
+
   describe '#destination_facts memoization and href extraction' do
     let(:launch_href) { '/news/2024/launch' }
 

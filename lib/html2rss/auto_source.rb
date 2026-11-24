@@ -290,10 +290,15 @@ module Html2rss
     def cleanup_result(articles)
       return @cleanup_memo.last if @cleanup_memo&.first == articles.size
 
-      Cleanup.call(articles.dup, url:, vocabulary:, classifier: link_resolver.text_classifier,
-                                 corroboration:, page_links: -> { page_links },
-                                 feed_url: @native_feed&.feed_url, **cleanup_options)
+      Cleanup.call(articles.dup, **page_inputs, feed_url: @native_feed&.feed_url, **cleanup_options)
              .tap { @cleanup_memo = [articles.size, _1] }
+    end
+
+    # What {Cleanup} reads of the page: its language and URL, and the page-scoped label reader, route-facts memo
+    # and page check, so each text and URL is read once per run.
+    def page_inputs
+      { url:, vocabulary:, classifier: link_resolver.text_classifier, facts: facts_lookup,
+        corroboration:, page_links: -> { page_links } }
     end
 
     # Page SST shared by the heuristic tiers and the page check; nil for a JSON response
@@ -304,12 +309,15 @@ module Html2rss
       @page_document = (SST::Normalizer.call(parsed_body, vocabulary:) unless json_response?)
     end
 
+    # The page's route-facts memo as a lookup, for the stages that read a URL's destination facts.
+    def facts_lookup = ->(url) { link_resolver.facts_for(url) }
+
     def link_resolver
       @link_resolver ||= Scoring::LinkResolver.new(url, vocabulary:)
     end
 
     def corroboration
-      @corroboration ||= Corroboration.new(vocabulary) { page_links }
+      @corroboration ||= Corroboration.new(vocabulary, facts: facts_lookup) { page_links }
     end
 
     # Rendered links of the page, built once for the page check and sponsorship.
