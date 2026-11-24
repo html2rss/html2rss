@@ -70,14 +70,14 @@ module Html2rss
       ##
       # @param channel [Html2rss::Channel] The channel information for the RSS feed.
       # @param articles [Array<Html2rss::Article>] The articles to include; those with nothing to show
-      #   ({Html2rss::Article#renderable?}) are left out.
+      #   ({ItemPresentation.renderable?}) are left out.
       # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
       # @param generator [String] required preformatted generator comment (from {Status})
       def initialize(channel:, articles:, generator:, stylesheets: [])
         raise InvalidOption, 'generator must be a non-blank String' if blank_string?(generator)
 
         @channel = channel
-        @articles = articles.select(&:renderable?)
+        @articles = articles.select { |article| ItemPresentation.renderable?(article) }
         @stylesheets = stylesheets
         @generator = generator
         @media_feed = ItemPresentation.media_feed?(@articles)

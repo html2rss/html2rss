@@ -66,7 +66,7 @@ module Html2rss
       ##
       # @return [Array<Hash>]
       def item_hashes
-        articles.filter_map { |article| Item.new(article).to_h }
+        articles.select { |article| ItemPresentation.renderable?(article) }.map { |article| Item.new(article).to_h }
       end
 
       ##

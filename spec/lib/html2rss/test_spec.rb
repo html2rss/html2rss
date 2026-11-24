@@ -445,8 +445,13 @@ RSpec.describe Html2rss::Test do
             <article><h2>First Example Article Title</h2><a href="/news/1">go</a></article>
             <article><a href="/news/2">go</a></article>
             <article><h2>Third Example Article Title</h2><a href="/news/3">go</a></article>
+            <article><a href="/news/4">go</a><script>x</script></article>
           </body></html>
         HTML
+      end
+      let(:with_description) do
+        valid_config.merge(selectors: valid_config[:selectors].merge(description: { selector: 'script',
+                                                                                    extractor: 'html' }))
       end
       let(:response) do
         Html2rss::RequestService::Response.new(url: Html2rss::Url.from_absolute('https://example.com/news'),
@@ -459,7 +464,7 @@ RSpec.describe Html2rss::Test do
       end
 
       it 'keeps the feed, the count, the samples and the items in agreement', :aggregate_failures do
-        result = described_class.call(valid_config)
+        result = described_class.call(with_description)
 
         expect(result.item_count).to eq(2)
         expect(Nokogiri::XML(result.rss).css('item link').map(&:text))

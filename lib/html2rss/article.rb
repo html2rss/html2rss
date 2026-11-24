@@ -51,14 +51,6 @@ module Html2rss
     # @return [Boolean] true when the article carries a URL
     def linked? = !url.to_s.empty?
 
-    # Sole owner of "an RSS item needs content": a title, a description, or media (an image or an
-    # audio/video enclosure) that the item description shows. {FeedBuilder::Rss} renders only these, and
-    # {Html2rss::Test} samples only these, so the feed and its samples agree.
-    # @return [Boolean] true when the article has anything for an RSS item to show
-    def renderable?
-      !title.to_s.empty? || !description.to_s.empty? || !image.nil? || enclosures.any?(&:media?)
-    end
-
     # Checks if the article is valid based on the presence of URL, ID, and either title or description.
     # @return [Boolean] True if the article is valid, otherwise false.
     def valid?

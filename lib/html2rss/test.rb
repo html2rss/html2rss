@@ -217,9 +217,15 @@ module Html2rss
 
       build_test_result(raw_config, feed_result, rss_doc, duration, quality_report, enhance_compare,
                         min_items:, strict_quality:, response_body: pipeline_outcome.response.body,
-                        articles: pipeline_outcome.articles.select(&:renderable?), sample_limit:)
+                        articles: renderable_articles(pipeline_outcome), sample_limit:)
     end
     private_class_method :execute_timed_pipeline
+
+    # The articles the feed renders, so samples and items agree with the feed's own item count.
+    def self.renderable_articles(pipeline_outcome)
+      pipeline_outcome.articles.select { |article| FeedBuilder::ItemPresentation.renderable?(article) }
+    end
+    private_class_method :renderable_articles
 
     def self.build_test_result(raw_config, feed_result, rss_doc, duration, quality_report, enhance_compare, # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
                                min_items:, strict_quality:, response_body:, articles:, sample_limit:)
