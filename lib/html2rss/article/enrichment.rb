@@ -113,7 +113,7 @@ module Html2rss
       end
 
       def page?(response)
-        (response.status.nil? || response.status.between?(200, 299)) && response.html_response?
+        response.successful? && response.html_response?
       end
 
       def page_metadata(response)

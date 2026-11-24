@@ -129,6 +129,9 @@ module Html2rss
         end
       end
 
+      # @return [Boolean] whether the status is unknown (local file, browser scrape) or 2xx
+      def successful? = status.nil? || status.between?(200, 299)
+
       # @return [String] normalized content type header value
       def content_type = header('content-type').to_s
 

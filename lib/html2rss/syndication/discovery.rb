@@ -125,9 +125,8 @@ module Html2rss
         # @return [Boolean]
         def feedish?(response)
           return false unless response
-          return false unless successful_status?(response)
 
-          response.feed_response?
+          response.successful? && response.feed_response?
         end
 
         ##
@@ -144,8 +143,6 @@ module Html2rss
         end
 
         private
-
-        def successful_status?(response) = response.status.nil? || response.status.between?(200, 299)
 
         def first_feedish_response(urls, request_session:, origin_url:, advertisement:, max_probes: nil)
           scoped = max_probes.nil? ? urls.lazy : urls.lazy.take(max_probes)

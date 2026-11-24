@@ -12,6 +12,16 @@ RSpec.describe Html2rss::RequestService::Response do
     end
   end
 
+  describe '#successful?' do
+    { nil => true, 199 => false, 200 => true, 299 => true, 300 => false, 404 => false }.each do |status, expected|
+      it "is #{expected} for status #{status.inspect}" do
+        response = described_class.new(body: '', url: Html2rss::Url.from_absolute('https://example.com'), status:)
+
+        expect(response.successful?).to be(expected)
+      end
+    end
+  end
+
   describe '#headers' do
     subject(:returned_headers) { instance.headers }
 

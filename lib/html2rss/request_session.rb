@@ -163,7 +163,7 @@ module Html2rss
 
     def remember_follow_up!(requested_url, response)
       remember!(response.url)
-      @follow_ups[requested_url] = response if response.status.nil? || response.status.between?(200, 299)
+      @follow_ups[requested_url] = response if response.successful?
     end
 
     def execute(request_context)
