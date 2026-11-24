@@ -12,15 +12,15 @@ YAML / MCP wire vocabulary is unchanged (`selectors`, `extractor`, `post_process
 
 1. **Parse** — HTML stays on `Response#parsed_body`. JSON responses are converted once via `JsonXml` into an HTML5 fragment so CSS selectors still run.
 2. **Items** — `items.selector` finds each card/node. Omitted, blank, and `Selectors::DEFAULT_ITEMS_SELECTOR` expand to `Html::Navigator::MAIN_ANCHOR_SELECTOR` (permalink anchors). Any other selector, including `a` and `.card`, is used as written. `Config.prepare_defaults` fills that default, with `enhance: true`, only when `selectors:` is present. `enhance: true` fills missing fields through `Selectors::ItemEnhancer` and `Html::SstArticleExtractor::Item` (list-card enrichment on the page's SST document; an item they cannot read stays as selected, never dropped); an item with no link of its own gets no `url`, never a `page#id` fragment, and is left out of the feed (`Article#linked?`, the rule auto-source applies too). An item needs a resolvable link: configure a `url` selector when the items are not anchors or do not contain one. Enhancement is skipped when title, url, description, published_at, enclosures, and categories are already populated.
-3. **Field dispatch** (private on `Selectors`) — for each selectable key (`title`, `url`, `enclosure`, `categories`, …):
-   - Every field is compiled once into a `CompiledField` (extractor class + post-processor steps) and runs through one private `run_field` path
+3. **Field dispatch** (`Selectors::ItemFields` over `Selectors::FieldPlan`) — for each selectable key (`title`, `url`, `enclosure`, `categories`, …):
+   - `FieldPlan` compiles every field once into a `CompiledField` (extractor class + post-processor steps, options validated there) and runs it through one private `run_field` path; `ItemFields` builds the article hash and the anchor `href` `url` default
    - Special keys → enclosure wrap, guid fan-out, multi-node categories (category nodes reuse the category field's compiled plan)
 4. **Article** — values land on `Html2rss::Article` (`enclosure` YAML → `enclosures` on the Article).
 
 ```text
 Selectors (orchestrator)
   └─ ItemEnv
-       └─ field dispatch (private)
+       └─ ItemFields → FieldPlan (field dispatch)
             ├─ Extractors::*#call(**config, xml:) + OPTIONS: [OptionSpec]
             └─ PostProcessors::*#call + StepEnv(base_url:, time_zone:, step_config:, item_env:)
 ```
@@ -38,10 +38,10 @@ Selectors (orchestrator)
 
 | Role | Registry | Verb | Config |
 | --- | --- | --- | --- |
-| Extractor | `Extractors::NAME_TO_CLASS` | `#call` (class from `CompiledField`) | YAML `extractor:` + strategy `OPTIONS` |
-| Post-processor | `PostProcessors::NAME_TO_CLASS` | `#call` (class from `CompiledField`) | YAML `post_process:` steps with `name:` + `OPTIONS` |
+| Extractor | `Extractors::NAME_TO_CLASS` | `#call` (class from `FieldPlan`) | YAML `extractor:` + strategy `OPTIONS` |
+| Post-processor | `PostProcessors::NAME_TO_CLASS` | `#call` (class from `FieldPlan`) | YAML `post_process:` steps with `name:` + `OPTIONS` |
 
-`Extractors::Attribute` is the HTML-attribute strategy — not the field-dispatch layer (that is private on `Selectors`).
+`Extractors::Attribute` is the HTML-attribute strategy — not the field-dispatch layer (that is `Selectors::FieldPlan`).
 
 ## ItemEnv and StepEnv
 

@@ -14,7 +14,7 @@ module Html2rss
   # extending its versatility for diverse data processing workflows.
   #
   # {include:file:lib/html2rss/selectors/README.md}
-  class Selectors # rubocop:disable Metrics/ClassLength -- public API + private field dispatch
+  class Selectors
     # Raised when a selector key is missing or not allowed for extraction.
     class InvalidSelectorName < Html2rss::Error; end
 
@@ -30,22 +30,12 @@ module Html2rss
     ITEMS_SELECTOR_KEY = :items
     # Supported RSS item attributes extractable through selectors.
     ITEM_TAGS = %i[title url description author comments published_at guid enclosure categories].freeze
-    # Item attributes that require dedicated extraction logic.
-    SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
-    # Config selector keys that map onto a different {Article} attribute.
-    # +:enclosure+ stays singular in YAML; Article stores +:enclosures+.
-    SELECTOR_TO_ARTICLE_KEY = { enclosure: :enclosures }.freeze
     # Admission-drop reason tallied for selector items that carry no URL (same shape as
     # {AutoSource#admission_drops}).
     MISSING_URL_REASON = 'missing_url'
 
-    # Selector keys that may be copied onto an Article (PROVIDED_KEYS + mapped aliases).
-    SELECTABLE_SELECTOR_KEYS = Set[*(Html2rss::Article::PROVIDED_KEYS + SELECTOR_TO_ARTICLE_KEY.keys)].freeze
     # Item keys that enhance can fill. Skip the extractor when all are already present.
     ENHANCEABLE_KEYS = %i[title url description published_at enclosures categories].freeze
-    # Per-field extraction plan compiled once from the static selector config.
-    CompiledField = Data.define(:name, :article_key, :config, :extractor_class, :post_process_steps, :special)
-    private_constant :CompiledField
 
     ##
     # Initializes a new Selectors instance.
@@ -60,11 +50,9 @@ module Html2rss
       @url = response.base_url
       @selectors = selectors
       @time_zone = time_zone
-      @rss_item_attributes = @selectors.keys.select { SELECTABLE_SELECTOR_KEYS.include?(_1) }
       @parsed_body = @selected_items = @item_enhancer = nil
       @unlinked_count = 0
-      @compiled_fields = compile_selector_fields
-      @compiled_item_fields = @rss_item_attributes.filter_map { @compiled_fields[_1] }
+      @item_fields = ItemFields.new(selectors, items_key: ITEMS_SELECTOR_KEY)
     end
 
     ##
@@ -150,11 +138,7 @@ module Html2rss
       name = name.to_sym
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
 
-      field = @compiled_fields[name]
-      return select_compiled(field, scope) if field
-      return select_field(name, scope:) if name == :url
-
-      raise InvalidSelectorName, "Selector for '#{name}' is not defined."
+      @item_fields.select(name, scope)
     end
 
     private
@@ -200,36 +184,7 @@ module Html2rss
 
     def build_article(article_hash) = Article.new(**article_hash, scraper: self.class)
 
-    def extract_article(item)
-      scope = item_env_for(item, @url)
-      hash = @compiled_item_fields.each_with_object({}) do |field, h|
-        value = select_compiled(field, scope)
-        next if value.nil?
-
-        article_key = field.article_key
-        h[article_key] = article_value(article_key, value, scope)
-      end
-
-      hash[:url] ||= default_item_url(item) if anchor_element?(item)
-      hash
-    end
-
-    def article_value(article_key, value, scope)
-      case article_key
-      when :enclosures then wrap_enclosure_value(value)
-      when :url then resolve_url_value(value, scope.base_url)
-      else value
-      end
-    end
-
-    # A +url+ selector value that is a single whitespace-free string token (a +static+ value or a post-processor
-    # result) resolves against the page URL like an +href+; a value that is no http(s) reference stays as given.
-    # Text with surrounding words is left to +Article#url+'s sanitizer, which extracts the embedded URL.
-    def resolve_url_value(value, base_url)
-      return value unless value.is_a?(String) && value.match?(/\A\S+\z/)
-
-      Url.resolve_web(value, base_url) || value
-    end
+    def extract_article(item) = @item_fields.article_hash(item_env_for(item, @url))
 
     def enhance_article_hash(article_hash, article_tag)
       return article_hash if enhanceable_fields_present?(article_hash)
@@ -253,187 +208,8 @@ module Html2rss
       ENHANCEABLE_KEYS.all? { |key| article_hash[key] }
     end
 
-    def wrap_enclosure_value(value)
-      value.is_a?(Array) ? value : [value]
-    end
-
-    # Only reached for +:url+ without a configured selector, so the item must be an anchor.
-    def select_field(selector_key, scope:)
-      return default_item_url(scope.item, scope.base_url) if anchor_element?(scope.item)
-
-      raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined."
-    end
-
-    def select_compiled(field, scope)
-      if fallback_url_selector?(field.name, field.config, scope.item)
-        return default_item_url(scope.item, scope.base_url)
-      end
-      raise InvalidSelectorName, "Selector for '#{field.name}' is not defined." if field.config.nil?
-
-      if field.special
-        select_special(field.name, scope:, config: field.config)
-      else
-        select_regular_compiled(field, scope)
-      end
-    end
-
-    def compile_selector_fields
-      @selectors.each_key.with_object({}) do |name, acc|
-        next if name == ITEMS_SELECTOR_KEY
-
-        acc[name] = compile_field(name)
-      end
-    end
-
-    def compile_field(name)
-      config = @selectors[name]
-      CompiledField.new(
-        name:,
-        article_key: SELECTOR_TO_ARTICLE_KEY.fetch(name, name),
-        config:,
-        extractor_class: extractor_class_for(config),
-        post_process_steps: compile_post_process_steps(config),
-        special: SPECIAL_ATTRIBUTES.member?(name)
-      )
-    end
-
-    def extractor_class_for(config)
-      return unless config.is_a?(Hash)
-
-      Extractors::NAME_TO_CLASS[config[:extractor]&.to_sym || Extractors::DEFAULT_EXTRACTOR]
-    end
-
-    def compile_post_process_steps(config)
-      return unless config.is_a?(Hash) && config[:post_process]
-
-      steps = config[:post_process]
-      (steps.is_a?(Array) ? steps : [steps]).map { |step| compile_post_process_step(step) }
-    end
-
-    def compile_post_process_step(step)
-      klass = PostProcessors::NAME_TO_CLASS[step[:name].to_sym]
-      raise PostProcessors::UnknownPostProcessorName, "Unknown name '#{step[:name]}'" unless klass
-
-      klass.validate_options!(StepEnv.new(step_config: step, time_zone: @time_zone))
-      [klass, step]
-    end
-
-    def select_special(name, scope:, config:)
-      case name
-      when :enclosure
-        enclosure(scope:, config:)
-      when :guid
-        Array(config).map { |selector_name| scope.select(selector_name) }
-      when :categories
-        select_categories(category_selectors: config, scope:)
-      end
-    end
-
-    def select_regular_compiled(field, scope)
-      run_field(field, scope.item, scope, selector: field.config[:selector])
-    end
-
-    # The one extract-then-post-process path for every field, whatever node it runs on.
-    def run_field(field, node, scope, selector:)
-      value = field.extractor_class.new(
-        node,
-        selector:,
-        attribute: field.config[:attribute],
-        static: field.config[:static],
-        base_url: scope.base_url
-      ).call
-
-      apply_compiled_post_process(scope, value, field.post_process_steps)
-    end
-
-    # Post-processors work on text, so a URL value (from the href extractor) enters them as a String.
-    def step_input(value)
-      value.is_a?(Url) ? value.to_s : value
-    end
-
-    def apply_compiled_post_process(scope, value, steps)
-      return value unless value && steps
-
-      value = step_input(value)
-      steps.each do |klass, step_config|
-        value = klass.new(value, scope.context_for(step_config:)).call
-      end
-
-      value
-    end
-
-    # Flattens configured category selector names into discrete category strings.
-    # When a selector matches multiple nodes, each node is extracted independently
-    # (with optional post-processors) so multi-tag UIs become multiple categories.
-    #
-    # @param category_selectors [Array, String, Symbol]
-    # @param scope [ItemEnv]
-    # @return [Array<String>]
-    def select_categories(category_selectors:, scope:)
-      Array(category_selectors).flat_map do |selector_name|
-        extract_category_values(selector_name, scope:)
-      end
-    end
-
-    def extract_category_values(selector_name, scope:)
-      field = @compiled_fields[selector_name.to_sym]
-      return [] unless field&.config
-
-      nodes = extract_nodes(item: scope.item, config: field.config)
-      return Array(scope.select(selector_name)) unless node_set_with_multiple_elements?(nodes)
-
-      nodes.flat_map { |node| extract_categories_from_node(node, scope:, field:) }
-    end
-
-    def extract_categories_from_node(node, scope:, field:)
-      values = run_field(field, node, scope, selector: nil)
-
-      Array(values).filter_map { |category| extract_category_text(category) }
-    end
-
-    def extract_category_text(category)
-      stripped = category.to_s.strip
-      stripped unless stripped.empty?
-    end
-
-    def node_set_with_multiple_elements?(nodes)
-      nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
-    end
-
-    def extract_nodes(item:, config:)
-      return unless config.is_a?(Hash) && config[:selector]
-
-      Extractors.element(item, config[:selector])
-    end
-
-    # @return [Hash, nil] enclosure details, or nil when the selector yields nothing or no http(s) URL
-    #   ({Url.resolve_web})
-    def enclosure(scope:, config:)
-      selected = select_regular_compiled(@compiled_fields.fetch(:enclosure), scope)
-      return unless (url = Url.resolve_web(selected, scope.base_url))
-
-      { url:, type: config[:content_type] }
-    end
-
-    def fallback_url_selector?(selector_key, config, item)
-      selector_key == :url && config.nil? && anchor_element?(item)
-    end
-
-    def anchor_element?(item)
-      item.name.to_s.casecmp('a').zero?
-    end
-
-    def default_item_url(item, base_url = @url)
-      Url.resolve_web(item['href'], base_url, web_only: false)
-    end
-
     def item_env_for(item, base_url)
-      ItemEnv.new(
-        item:,
-        base_url:,
-        scraper: self,
-        time_zone: @time_zone
-      )
+      ItemEnv.new(item:, base_url:, scraper: self, time_zone: @time_zone)
     end
   end
 end
