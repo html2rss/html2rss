@@ -27,8 +27,8 @@ module Html2rss
       # @option options [Integer, nil] :total_timeout_seconds wall-clock bound for the request chain
       # @option options [Object] :items_selector, :limit, :keep_different_domain, :keep_sponsored, :local_file_path
       #   see {#initialize}
-      # @raise [InvalidOption] when +options+ contains +:url+
       # @return [AutoSourceRequest]
+      # @raise [InvalidOption] when +options+ contains +:url+
       def self.from_shortcut(url, strategy:, **options)
         raise InvalidOption, 'unknown keyword: :url' if options.key?(:url)
 
