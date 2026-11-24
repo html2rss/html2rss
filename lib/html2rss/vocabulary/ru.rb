@@ -65,7 +65,16 @@ module Html2rss
           'старые записи', 'новые записи', 'более ранние', 'более поздние'
         ],
         clock_suffix: %w[мск],
-        date_piece: NONE,
+        # A whole chip: day + genitive month or abbreviation (+12 ноября+, +12 ноя. 2026+), nominative month with a
+        # year (+ноябрь 2026+; a bare +Май+ opens headlines), +сегодня+ or +вчера+ with an optional +в+ before a
+        # clock. The date piece regex is case-sensitive, so a leading letter is a pair.
+        date_piece: [
+          /\d{1,2}\s+(?:(?:январ|феврал|апрел|июн|июл|сентябр|октябр|ноябр|декабр)я|марта|мая|августа)(?:\s+\d{4})?/,
+          /\d{1,2}\s+(?:янв|февр?|мар|апр|июн|июл|авг|сент?|окт|нояб?|дек)\.?(?:\s+\d{4})?/,
+          /(?:[Яя]нварь|[Фф]евраль|[Мм]арт|[Аа]прель|[Мм]ай|[Ии]юнь|[Ии]юль|[Аа]вгуст)\s+\d{4}/,
+          /(?:[Сс]ентябрь|[Оо]ктябрь|[Нн]оябрь|[Дд]екабрь)\s+\d{4}/,
+          /(?:[Сс]егодня|[Вв]чера)(?:\s+в(?=\s+\d))?/
+        ],
         element_label: NONE,
         podcast_word: %w[подкаст подкасты подкастов],
         podcast_unspaced: NONE
