@@ -178,7 +178,7 @@ module Html2rss
           # @param value [Object] url candidate
           # @return [Html2rss::Url, nil] absolute url, or nil when missing or unusable
           def build_url(value)
-            return Url.from_relative(value, base_url || value) if StringUtil.present?(value, strip: false)
+            return Url.from_relative(value, base_url || value) if StringUtil.present?(value)
 
             Log.debug("Schema#Thing.url: no usable url in schema_object: #{schema_object.inspect}")
             nil
