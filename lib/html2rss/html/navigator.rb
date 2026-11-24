@@ -31,41 +31,6 @@ module Html2rss
 
       class << self
         ##
-        # Extracts visible text from a given node and its children.
-        #
-        # @param tag [Nokogiri::XML::Node] the node from which to extract visible text
-        # @param separator [String] separator used to join text fragments (default is a space)
-        # @param exclude_nodes [Array<Nokogiri::XML::Node>, nil] nodes to exclude from extraction
-        # @return [String, nil] the concatenated visible text, or nil if none is found
-        def extract_visible_text(tag, separator: ' ', exclude_nodes: nil)
-          TextExtractor.call(tag, separator:, exclude_nodes:)
-        end
-
-        ##
-        # @param article_tag [Nokogiri::XML::Node] article-like container to search within
-        # @return [Nokogiri::XML::Node, nil] first eligible descendant anchor
-        def main_anchor_for(article_tag)
-          return article_tag if Probe.tag(article_tag) == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
-
-          article_tag.at_css(MAIN_ANCHOR_SELECTOR)
-        end
-
-        ##
-        # Returns the first parent that satisfies the condition.
-        # If the condition is met, it returns the node itself.
-        #
-        # @param node [Nokogiri::XML::Node] The node to start the search from.
-        # @param condition [Proc] The condition to be met.
-        # @return [Nokogiri::XML::Node, nil] The first parent that satisfies the condition.
-        def parent_until_condition(node, condition)
-          while node && !node.is_a?(Nokogiri::XML::Document) && Probe.tag(node) != 'html'
-            return node if condition.call(node)
-
-            node = node.parent
-          end
-        end
-
-        ##
         # Immediate parent is a usable article card (not html/body/landmark chrome).
         # A header/footer inside article/section/aside/main belongs to its card.
         #
@@ -85,50 +50,15 @@ module Html2rss
         end
 
         ##
-        # Think of it as `css_upwards` method.
-        # It searches for the closest parent that matches the given selector.
+        # Folds {SST::Tags.chrome_scope} over a Nokogiri node's ancestors, root first.
         #
-        # @param current_tag [Nokogiri::XML::Node, nil] starting node
-        # @param selector [String] CSS selector to search upwards for
-        # @return [Nokogiri::XML::Node, nil] first matching node in upward traversal
-        def find_closest_selector_upwards(current_tag, selector)
-          while current_tag
-            found = current_tag.at_css(selector)
-            return found if found
-            break if current_tag.is_a?(Nokogiri::XML::Document)
-
-            current_tag = current_tag.parent
+        # @param node [Nokogiri::XML::Node]
+        # @param vocabulary [Vocabulary::Scope]
+        # @return [Symbol] +:page+, +:sectioned+, +:peripheral+, or +:chrome+
+        def nokogiri_chrome_scope(node, vocabulary)
+          (node.ancestors.reverse << node).reduce(:page) do |scope, el|
+            el.element? ? SST::Tags.chrome_scope(el, scope, vocabulary) : scope
           end
-        end
-
-        ##
-        # Searches for the closest parent that matches the given tag name.
-        #
-        # @param current_tag [Nokogiri::XML::Node] starting node
-        # @param tag_name [String] tag name to find in ancestors
-        # @return [Nokogiri::XML::Node, nil] matching ancestor node
-        def find_tag_in_ancestors(current_tag, tag_name)
-          return current_tag if Probe.tag(current_tag) == Probe.fold(tag_name)
-
-          current_tag.ancestors(tag_name).first
-        end
-
-        ##
-        # Returns true if child_node is a descendant of parent_node.
-        # Walks up using parent pointers to avoid NodeSet allocations.
-        #
-        # @param child_node [Nokogiri::XML::Node] potential descendant
-        # @param parent_node [Nokogiri::XML::Node] potential ancestor
-        # @return [Boolean] true when child_node is a descendant of parent_node
-        def descendant_of?(child_node, parent_node)
-          curr = child_node.is_a?(Nokogiri::XML::Document) ? nil : child_node.parent
-          while curr
-            return true if curr == parent_node
-            break if curr.is_a?(Nokogiri::XML::Document)
-
-            curr = curr.parent
-          end
-          false
         end
 
         private
@@ -147,17 +77,6 @@ module Html2rss
           end
 
           nokogiri_chrome_scope(node, vocabulary) == :chrome
-        end
-
-        # Folds {SST::Tags.chrome_scope} over a Nokogiri node's ancestors, root first.
-        #
-        # @param node [Nokogiri::XML::Node]
-        # @param vocabulary [Vocabulary::Scope]
-        # @return [Symbol] +:page+, +:sectioned+, or +:chrome+
-        def nokogiri_chrome_scope(node, vocabulary)
-          (node.ancestors.reverse << node).reduce(:page) do |scope, el|
-            el.element? ? SST::Tags.chrome_scope(el, scope, vocabulary) : scope
-          end
         end
       end
     end

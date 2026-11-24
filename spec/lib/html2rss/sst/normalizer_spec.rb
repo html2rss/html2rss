@@ -243,6 +243,137 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.degraded).to be(true)
     end
 
+    context 'when normalizing for items' do
+      let(:parsed) do
+        Nokogiri::HTML(<<~HTML)
+          <html><body><article><a href="/p">Post</a><script>x()</script>
+          <noscript><img src="/p.png"></noscript></article></body></html>
+        HTML
+      end
+
+      it 'maps each parsed node to its SST node and drops the stripped ones', :aggregate_failures do
+        doc = described_class.call(parsed, vocabulary: all_scope, items: true)
+
+        expect(doc.index.node_for(parsed.at_css('a'))).to equal(doc.root.find(&:link?))
+        expect(doc.index.node_for(parsed.at_css('script'))).to be_nil
+      end
+
+      it 'keeps the content of a noscript, which auto-source drops', :aggregate_failures do
+        items = described_class.call(parsed, vocabulary: all_scope, items: true)
+        heuristic = described_class.call(parsed, vocabulary: all_scope)
+
+        expect(items.root.find(&:image?)&.attrs&.src).to eq('/p.png')
+        expect(heuristic.root.find(&:image?)).to be_nil
+      end
+
+      it 'never degrades at the node ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
+        allow(Html2rss::Log).to receive(:warn)
+
+        doc = described_class.call('<html><body><span>x</span><p>y</p></body></html>', vocabulary: all_scope,
+                                                                                       items: true)
+
+        expect(doc.degraded).to be(false)
+        expect(doc.root.find { |node| node.name == :span }).not_to be_nil
+        expect(Html2rss::Log).not_to have_received(:warn)
+      end
+
+      it 'logs a fallback root at debug, not warn', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        allow(Html2rss::Log).to receive(:warn)
+        allow(Html2rss::Log).to receive(:debug)
+        fragment = Nokogiri::HTML5.fragment('<object><a href="/p">Post</a></object>')
+
+        described_class.call(fragment, vocabulary: all_scope, items: true)
+
+        expect(Html2rss::Log).not_to have_received(:warn)
+        expect(Html2rss::Log).to have_received(:debug).with(/first element child/)
+      end
+
+      it 'normalizes only the first root of a fragment with several', :aggregate_failures do
+        fragment = Nokogiri::HTML5.fragment('<p><a href="/a">A</a></p><p><a href="/b">B</a></p>')
+
+        doc = described_class.call(fragment, vocabulary: all_scope, items: true)
+
+        expect(doc.index.node_for(fragment.css('a').first)).not_to be_nil
+        expect(doc.index.node_for(fragment.css('a').last)).to be_nil
+      end
+    end
+
+    context 'when normalizing a region of the page' do
+      let(:parsed) do
+        Nokogiri::HTML('<html><body><nav><div id="r"><a href="/p">Post</a></div></nav><p>after</p></body></html>')
+      end
+      let(:region) { parsed.at_css('#r') }
+
+      it 'roots the tree at the region and seeds the chrome scope its parent gives it', :aggregate_failures do
+        doc = described_class.call(region, vocabulary: all_scope, items: true, within: :chrome)
+
+        expect(doc.root.attrs.id).to eq('r')
+        expect(doc.index.ignored_chrome?(doc.root.find(&:link?))).to be(true)
+        expect(doc.index.node_for(parsed.at_css('p'))).to be_nil
+      end
+
+      it 'scopes the region by the seed, not by the page', :aggregate_failures do
+        page = described_class.call(region, vocabulary: all_scope, items: true, within: :page)
+        peripheral = described_class.call(region, vocabulary: all_scope, items: true, within: :peripheral)
+
+        expect(page.index.ignored_chrome?(page.root)).to be(false)
+        expect(peripheral.index.peripheral?(peripheral.root)).to be(true)
+      end
+    end
+
+    context 'when the region root is a template' do
+      let(:parsed) { Nokogiri::HTML('<html><body><template id="t"><a href="/t">T</a></template></body></html>') }
+
+      it 'keeps it as the item whose content is read, and strips it elsewhere', :aggregate_failures do
+        region = described_class.call(parsed.at_css('#t'), vocabulary: all_scope, items: true, within: :page)
+        page = described_class.call(parsed, vocabulary: all_scope, items: true)
+
+        expect(region.root.name).to eq(:template)
+        expect(region.root.find(&:link?).attrs.href).to eq('/t')
+        expect(page.root.find { _1.name == :template }).to be_nil
+      end
+
+      it 'strips a template inside the region' do
+        parsed = Nokogiri::HTML('<div id="r"><template><a href="/t">T</a></template><p>x</p></div>')
+        region = described_class.call(parsed.at_css('#r'), vocabulary: all_scope, items: true, within: :page)
+
+        expect(region.root.find_all { _1.name == :template }).to be_empty
+      end
+
+      it 'strips any other stripped tag as a region root, and a template that is a page root',
+         :aggregate_failures do
+        normalize = ->(root, within) { described_class.call(root, vocabulary: all_scope, items: true, within:) }
+
+        expect(normalize.call(Nokogiri::HTML('<script id="s">x()</script>').at_css('#s'), :page)).to be_nil
+        expect(normalize.call(Nokogiri::HTML5.fragment('<template><a href="/t">T</a></template>'), nil)).to be_nil
+        expect(normalize.call(Nokogiri::HTML('<template id="t">x</template>').at_css('#t'), nil)).to be_nil
+      end
+
+      it 'does not keep a template as the root of a page' do
+        parsed = Nokogiri::HTML('<template id="t"><a href="/t">T</a></template>')
+
+        expect(described_class.call(parsed.at_css('#t'), vocabulary: all_scope, items: true).root.name).to eq(:a)
+      end
+    end
+
+    describe '.kept_tag?' do
+      it 'keeps a noscript for items only, never a stripped tag', :aggregate_failures do
+        expect(described_class.kept_tag?('div', items: false)).to be(true)
+        expect(described_class.kept_tag?('noscript', items: false)).to be(false)
+        expect(described_class.kept_tag?('noscript', items: true)).to be(true)
+        expect(described_class.kept_tag?('template', items: true)).to be(false)
+      end
+    end
+
+    it 'allocates no node map unless normalizing for items', :aggregate_failures do
+      parsed = Nokogiri::HTML('<html><body><a href="/p">Post</a></body></html>')
+      doc = described_class.call(parsed, vocabulary: all_scope)
+
+      expect(doc.index.node_for(parsed.at_css('a'))).to be_nil
+      expect(doc.index.instance_variable_get(:@sources)).to be_nil
+    end
+
     it 'records path, depth, chrome, text, and node count', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       html = '<html><body><header><a href="/home">Home</a></header><article><p>Post</p></article></body></html>'
       doc = described_class.call(html, vocabulary: all_scope)

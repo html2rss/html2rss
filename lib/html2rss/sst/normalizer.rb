@@ -11,7 +11,8 @@ module Html2rss
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
-      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links (see {#kept_children}).
+      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links, or all its content for
+      # items (see {#kept_children}).
       STRIPPED_TAGS = Set['script', 'style', 'noscript', 'iframe', 'svg', 'template'].freeze
 
       # Kept when MAX_NODES forces semantic-tag-only degrade.
@@ -30,6 +31,7 @@ module Html2rss
           src |
           srcset |
           poster\z |
+          title\z |
           style |
           datetime |
           itemprop |
@@ -66,13 +68,25 @@ module Html2rss
         #   HTML string or already-parsed node (String is parsed once here)
         # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the pager words that make a
         #   list or nav chrome
+        # @param items [Boolean] normalize for items a selector config picked in the parsed page ({Selectors}),
+        #   not for the heuristic: record which parsed node each SST node came from ({Index#node_for}), never
+        #   degrade at {MAX_NODES}, keep the content of a +noscript+, and log a fallback root at debug (the page may
+        #   be a parsed fragment). Off allocates no node map.
+        # @param within [Symbol, nil] +input+ is the root element of a region of the page, not the page: the
+        #   chrome scope (+:page+, +:sectioned+, +:peripheral+, +:chrome+) its parent gives it
         # @return [Document, nil] +nil+ when no SST nodes survive normalization
         # @raise [InvalidError] when input is nil or unsupported
-        def call(input, vocabulary:)
+        def call(input, vocabulary:, items: false, within: nil)
           raise InvalidError, 'input is required' if input.nil?
 
-          new(coerce(input), vocabulary).call
+          new(coerce(input), vocabulary, items:, within:).call
         end
+
+        ##
+        # @param tag [String] folded tag name of a parsed element
+        # @param items [Boolean] see {.call}
+        # @return [Boolean] whether the element becomes an SST node (a +noscript+ only for items)
+        def kept_tag?(tag, items:) = !STRIPPED_TAGS.include?(tag) || (items && tag == 'noscript')
 
         private
 
@@ -90,9 +104,14 @@ module Html2rss
 
       # @param parsed_body [Nokogiri::HTML::Document, Nokogiri::XML::Node]
       # @param vocabulary [Vocabulary::Scope]
-      def initialize(parsed_body, vocabulary)
+      # @param items [Boolean] see {.call}
+      # @param within [Symbol, nil] see {.call}
+      def initialize(parsed_body, vocabulary, items:, within:) # rubocop:disable Metrics/MethodLength -- per-run state
         @parsed_body = parsed_body
         @vocabulary = vocabulary
+        @items = items
+        @within = within
+        @sources = ({}.compare_by_identity if items)
         @node_count = 0
         @degraded = false
         @parents = {}.compare_by_identity
@@ -105,18 +124,17 @@ module Html2rss
       ##
       # @return [Document, nil] +nil+ when no SST nodes survive normalization
       def call
-        root_nk = resolve_root_nk
-        root = normalize_element(root_nk, depth: 0, path: '', scope: :page)
+        root_nk = @within ? @parsed_body : resolve_root_nk
+        root = normalize_element(root_nk, depth: 0, path: '', scope: @within || :page)
         return unless root
 
-        index = Index.new(root:, parents: @parents, depths: @depths, scopes: @scopes)
+        index = Index.new(root:, parents: @parents, depths: @depths, scopes: @scopes, sources: @sources)
         Document.build(root:, index:, degraded: @degraded, node_count: @node_count)
       end
 
       private
 
       # @return [Nokogiri::XML::Node]
-      # rubocop:disable-next Metrics/MethodLength -- explicit root discovery fallback chain
       def resolve_root_nk
         parsed = @parsed_body
 
@@ -124,36 +142,23 @@ module Html2rss
         return html if html
 
         body = parsed.at_css('body')
-        if body
-          Html2rss::Log.warn({
-            event_name: 'sst.normalizer.root_fallback',
-            reason: 'body',
-            message: 'sst.normalizer root fallback: body'
-          }.to_json)
-          return body
-        end
+        return log_root_fallback('body', body) if body
 
         first = parsed.element_children.find { |child| element_root?(child) }
-        if first
-          Html2rss::Log.warn({
-            event_name: 'sst.normalizer.root_fallback',
-            reason: 'first_element_child',
-            message: 'sst.normalizer root fallback: first element child'
-          }.to_json)
-          return first
-        end
+        return log_root_fallback('first_element_child', first) if first
 
-        Html2rss::Log.warn({
-          event_name: 'sst.normalizer.root_fallback',
-          reason: 'self',
-          message: 'sst.normalizer root fallback: self'
-        }.to_json)
-        parsed
+        log_root_fallback('self', parsed)
       end
 
-      def element_root?(node)
-        node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
+      # @return [Nokogiri::XML::Node] +root+, after logging the fallback that chose it
+      def log_root_fallback(reason, root)
+        message = "sst.normalizer root fallback: #{reason.tr('_', ' ')}"
+        payload = { event_name: 'sst.normalizer.root_fallback', reason:, message: }.to_json
+        @items ? Html2rss::Log.debug(payload) : Html2rss::Log.warn(payload)
+        root
       end
+
+      def element_root?(node) = self.class.kept_tag?(Html2rss::Html::Probe.tag(node), items: @items)
 
       # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
       def normalize_element(nk_node, depth:, path:, scope:)
@@ -175,15 +180,21 @@ module Html2rss
         own_text = join_text(tails.shift, tails)
 
         node = Node.build(name: tag, attrs:, own_text:, children:, tag_path:, tails:)
+        index_node(node, nk_node, depth, scope_here)
+      end
+
+      # Records the index entries of +node+ and its children, and returns +node+.
+      def index_node(node, nk_node, depth, scope)
         @depths[node] = depth
-        @scopes[node] = scope_here
-        children.each { |child| @parents[child] = node }
+        @sources[nk_node] = node if @sources
+        @scopes[node] = scope
+        node.children.each { |child| @parents[child] = node }
 
         node
       end
 
       def degrade_when_full
-        return unless @node_count >= MAX_NODES && !@degraded
+        return unless !@items && @node_count >= MAX_NODES && !@degraded
 
         @degraded = true
         Log.warn({
@@ -197,16 +208,19 @@ module Html2rss
       # file links inside it ({Html::ArticleRules::Enclosure.file_link?}), as its only children, so a
       # card's no-script download link still names its enclosure; its text stays invisible
       # ({Tags::INVISIBLE_NAMES}) and a +noscript+ without one is stripped; its file links come back as an
-      # Array standing in for its children.
+      # Array standing in for its children. The root of a region is a +template+ the config selected as an
+      # item: its content is the item, so it is kept.
       #
       # @return [Nokogiri::XML::Node, Array<Nokogiri::XML::Node>, nil]
       def kept_children(nk_node, tag)
-        return nk_node unless STRIPPED_TAGS.include?(tag)
+        return nk_node if self.class.kept_tag?(tag, items: @items) || region_template?(nk_node, tag)
         return unless tag == 'noscript'
 
         links = nk_node.xpath('.//a[@href]').select { Html::ArticleRules::Enclosure.file_link?(_1['href']) }
         links unless links.empty?
       end
+
+      def region_template?(nk_node, tag) = @within && tag == 'template' && nk_node.equal?(@parsed_body)
 
       def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength
         attr_nodes = nk_node.attribute_nodes

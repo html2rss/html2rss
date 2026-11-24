@@ -480,7 +480,7 @@
               "not": {
                 "type": "null"
               },
-              "description": "Fills missing title, link, description, date, image and categories from each item's own markup via Html::ArticleExtractor. Explicit selectors win; no extra requests are made."
+              "description": "Fills missing title, link, description, date, image and categories from each item's own markup via Selectors::ItemEnhancer. Explicit selectors win; no extra requests are made."
             },
             "pagination": {
               "description": "Pagination configuration or maximum page count integer.",

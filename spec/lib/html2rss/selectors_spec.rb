@@ -524,14 +524,43 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
-    context 'when extractor returns nil' do
-      before do
-        allow(Html2rss::Html::ArticleExtractor).to receive(:call).and_return(nil)
+    describe 'an item the page document has no node for' do
+      let(:selectors) { { items: { selector: '.i', enhance: true } } }
+      let(:articles_for) do
+        lambda do |html|
+          response = Html2rss::RequestService::Response.new(url: 'http://example.com',
+                                                            headers: { 'content-type': 'text/html' }, body: html)
+          described_class.new(response, selectors:, time_zone:, vocabulary: Html2rss::Vocabulary[nil]).articles
+        end
       end
 
-      it 'returns the baseline unchanged' do
-        baseline, enhanced, = instance.each_enhance_pair.first
-        expect(enhanced).to eq(baseline)
+      it 'keeps a selected template, read through its content, beside a normal item', :aggregate_failures do
+        page = '<html><body><template class="i"><a href="/t">T</a><p>d</p></template>' \
+               '<div class="i"><a href="/a">A</a></div></body></html>'
+        articles = articles_for.call(page)
+
+        expect(articles.map { [_1.title, _1.url.to_s] }).to eq([['T', 'http://example.com/t'],
+                                                                ['A', 'http://example.com/a']])
+      end
+
+      it 'keeps a lone selected template' do
+        articles = articles_for.call('<html><body><template class="i"><a href="/t">T</a></template></body></html>')
+
+        expect(articles.map(&:title)).to eq(['T'])
+      end
+
+      {
+        'inside a template' => '<html><body><template>%<item>s</template></body></html>',
+        'after the closing html tag' => '<html><body><p>x</p></body></html>%<item>s',
+        'beside a listed one' => '<html><body>%<item>s<template>%<item>s</template></body></html>'
+      }.each do |name, page|
+        it "keeps and fills an item #{name}", :aggregate_failures do
+          articles = articles_for.call(format(page, item: '<div class="i"><a href="/a">A</a></div>'))
+
+          expect(articles.map { _1.url.to_s }).to all(eq('http://example.com/a'))
+          expect(articles.map(&:title)).to all(eq('A'))
+          expect(articles.size).to eq(page.scan('%<item>s').size)
+        end
       end
     end
 
@@ -580,12 +609,12 @@ RSpec.describe Html2rss::Selectors do
         }
       end
 
-      it 'does not call ArticleExtractor and keeps the baseline', :aggregate_failures do
-        allow(Html2rss::Html::ArticleExtractor).to receive(:call)
+      it 'does not read the item and keeps the baseline', :aggregate_failures do
+        allow(Html2rss::Html::SstArticleExtractor::Item).to receive(:call)
 
         _baseline, enhanced, = instance.each_enhance_pair.first
 
-        expect(Html2rss::Html::ArticleExtractor).not_to have_received(:call)
+        expect(Html2rss::Html::SstArticleExtractor::Item).not_to have_received(:call)
         expect(enhanced).to include(:title, :url, :description)
       end
     end
