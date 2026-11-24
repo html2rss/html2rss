@@ -33,6 +33,12 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
       expect(fields[:title]).to eq('Second Title')
     end
 
+    it 'resolves a relative image against the base url' do
+      page = Nokogiri::HTML('<div class="card"><h3><a href="/s">T</a></h3><img src="/i.png"></div>')
+
+      expect(enhancer_for.call(page).fields_for(page.at_css('.card'))[:image].to_s).to eq('https://example.com/i.png')
+    end
+
     it 'builds the SST document once for all items' do
       allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
 
