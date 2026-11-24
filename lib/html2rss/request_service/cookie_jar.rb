@@ -82,10 +82,7 @@ module Html2rss
       end
 
       def log(action, count)
-        Log.event(
-          :info, 'botasaurus.cookie_jar',
-          action:, host:, cookie_count: count
-        )
+        Log.event(:info, 'botasaurus.cookie_jar', action:, host:, cookie_count: count)
       end
     end
   end

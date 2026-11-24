@@ -36,6 +36,10 @@ RSpec.describe Html2rss::Log do
       expect(field).not_to have_received(:to_json)
     end
 
+    it 'rejects an unknown level' do
+      expect { described_class.event(:fatal, 'x') }.to raise_error(described_class::UnknownLevelError, /:fatal/)
+    end
+
     it 'still emits info and warn when debug is off', :aggregate_failures do
       logger.level = Logger::INFO
 

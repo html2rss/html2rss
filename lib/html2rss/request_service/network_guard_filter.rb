@@ -57,10 +57,7 @@ module Html2rss
 
           @warned_inactive = true
           # rubocop:enable ThreadSafety/ClassInstanceVariable
-          Log.event(
-            :warn, 'network_guard.nat64_inactive',
-            httpx_version: HTTPX::VERSION
-          )
+          Log.event(:warn, 'network_guard.nat64_inactive', httpx_version: HTTPX::VERSION)
         end
 
         # @param ipaddr [IPAddr]

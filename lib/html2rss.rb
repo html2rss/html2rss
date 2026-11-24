@@ -19,6 +19,9 @@ module Html2rss
   ##
   # Forwards debug/info/warn/error to {Html2rss.logger}.
   module Log
+    # Raised by {.event} for a level outside +:debug+, +:info+, +:warn+, +:error+.
+    class UnknownLevelError < Html2rss::ContractError; end
+
     class << self
       ##
       # @return [true]
@@ -45,6 +48,7 @@ module Html2rss
       # @param fields [Hash{Symbol => Object}] JSON-serializable payload fields
       # @option fields [Object] :* any field, serialized in the order given
       # @return [true]
+      # @raise [UnknownLevelError] when +level+ is not one of the four
       def event(level, name, **fields)
         return true if level == :debug && !Html2rss.logger.debug?
 
@@ -53,7 +57,8 @@ module Html2rss
         when :debug then debug(line)
         when :info then info(line)
         when :warn then Log.warn(line)
-        else error(line)
+        when :error then error(line)
+        else raise UnknownLevelError, "unknown log level: #{level.inspect}"
         end
       end
     end
