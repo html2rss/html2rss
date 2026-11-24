@@ -128,7 +128,7 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
 
     it 'normalizes repeated link text once per resolver', :aggregate_failures do
       resolver = described_class.new('https://example.com/')
-      texts = Array.new(2) { +'Contact us' }
+      texts = Array.new(2) { +"Contact us\u200F" }
       texts.each do |text|
         allow(text).to receive(:unicode_normalize).and_call_original
         resolver.utility_text?(text)

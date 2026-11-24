@@ -290,7 +290,8 @@ module Html2rss
     def cleanup_result(articles)
       return @cleanup_memo.last if @cleanup_memo&.first == articles.size
 
-      Cleanup.call(articles.dup, url:, vocabulary:, corroboration:, page_links: -> { page_links },
+      Cleanup.call(articles.dup, url:, vocabulary:, classifier: link_resolver.text_classifier,
+                                 corroboration:, page_links: -> { page_links },
                                  feed_url: @native_feed&.feed_url, **cleanup_options)
              .tap { @cleanup_memo = [articles.size, _1] }
     end

@@ -199,7 +199,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
       expect(deduplicator.article_for(ranked)).to be(article)
       expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
-        ranked, base_url: 'https://example.com', scraper: scraper_class, vocabulary: Html2rss::Vocabulary[nil]
+        ranked, base_url: 'https://example.com', scraper: scraper_class, vocabulary: Html2rss::Vocabulary[nil],
+                classifier: be_a(Html2rss::LinkDestination::TextClassifier)
       )
     end
 
@@ -211,7 +212,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       described_class.new('https://example.com', scraper: scraper_class, link_resolver: resolver).article_for(ranked)
 
       expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
-        ranked, base_url: 'https://example.com', scraper: scraper_class, vocabulary: resolver.vocabulary
+        ranked, base_url: 'https://example.com', scraper: scraper_class, vocabulary: resolver.vocabulary,
+                classifier: resolver.text_classifier
       )
     end
 
