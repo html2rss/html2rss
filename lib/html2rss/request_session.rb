@@ -36,6 +36,7 @@ module Html2rss
       @strategy = strategy
       @logger = logger
       @visited_urls = Set.new
+      @follow_ups = {}
     end
 
     ##
@@ -71,7 +72,10 @@ module Html2rss
     end
 
     ##
-    # Executes a follow-up request sharing policy, headers, and budget.
+    # Executes a follow-up request sharing policy, headers, and budget. A URL answered with a
+    # successful response is fetched once per session: a later follow-up to it (another relation
+    # included) passes the policy for its own relation, then reuses the response without spending a
+    # request. The memo dies with the session, and the budget bounds its size.
     #
     # @param url [String, Html2rss::Url] follow-up request url
     # @param relation [Symbol] why the follow-up is being made
@@ -80,9 +84,16 @@ module Html2rss
     #   with relation +:advertised_feed+, {RequestService::Policy} lets a listed feed leave the origin
     # @return [RequestService::Response] follow-up response
     def follow_up(url:, relation:, origin_url:, advertisement: nil)
-      execute(context.follow_up(url:, relation:, origin_url:, advertisement:)).tap do |response|
-        remember!(response.url)
+      request_context = context.follow_up(url:, relation:, origin_url:, advertisement:)
+      memoized = @follow_ups[request_context.url]
+      unless memoized
+        return execute(request_context).tap do |response|
+          remember_follow_up!(request_context.url, response)
+        end
       end
+
+      validate_reuse!(request_context)
+      memoized
     end
 
     ##
@@ -141,6 +152,18 @@ module Html2rss
         url:, headers: context.headers, request: context.request, policy: context.policy, budget:,
         origin_url: context.origin_url
       )
+    end
+
+    def validate_reuse!(request_context)
+      request_context.policy.validate_request!(
+        url: request_context.url, origin_url: request_context.origin_url,
+        relation: request_context.relation, advertisement: request_context.advertisement
+      )
+    end
+
+    def remember_follow_up!(requested_url, response)
+      remember!(response.url)
+      @follow_ups[requested_url] = response if response.status.nil? || response.status.between?(200, 299)
     end
 
     def execute(request_context)
