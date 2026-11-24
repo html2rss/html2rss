@@ -36,6 +36,9 @@ module Html2rss
         RequestService::ConnectionFailed
       ].freeze
 
+      # One strategy attempt: the strategy, its successor, its session and the chain's run state.
+      Hop = Data.define(:strategy, :next_strategy, :request_session, :state)
+
       ##
       # Mutable run state for one auto-fallback chain: attempts plus selected result.
       class AttemptState
@@ -67,14 +70,12 @@ module Html2rss
         # @return [Boolean] whether entry resolution already ran for this chain
         def resolution_tried? = @resolution_tried
 
-        # @return [void]
-        def mark_resolution_tried!
-          @resolution_tried = true
-        end
-
+        # Records the diagnostic and marks the tournament as run for this chain.
+        #
         # @param result [Html2rss::FeedResolution::Result]
         # @return [void]
         def remember_entry_resolution(result)
+          @resolution_tried = true
           @entry_resolution = FeedResolution::Diag.from_result(result)
         end
 
@@ -198,12 +199,8 @@ module Html2rss
         )
         response = request_session.fetch_initial_response
         # Everything after the entry fetch leaves the next strategy its initial request slot.
-        budget.holding(next_strategy ? 1 : 0) do
-          process_response(
-            response:, strategy:, next_strategy:, request_session:, state:,
-            elapsed_ms: monotonic_ms - started_ms
-          )
-        end
+        hop = Hop.new(strategy:, next_strategy:, request_session:, state:)
+        budget.holding(next_strategy ? 1 : 0) { process_response(hop, response, monotonic_ms - started_ms) }
       rescue *NON_FALLBACK_ERRORS => error
         state.record_error(strategy:, error:, elapsed_ms: monotonic_ms - started_ms)
         state.abort!
@@ -214,32 +211,31 @@ module Html2rss
         log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy && request_session
       end
 
-      # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Metrics/ParameterLists -- extract + resolution delegate
-      def process_response(response:, strategy:, next_strategy:, request_session:, state:, elapsed_ms: nil)
-        extraction = pipeline.extract(config:, response:, request_session:)
-        record_extraction(state:, strategy:, response:, extraction:, elapsed_ms:)
-        Log.debug("#{self.class}: strategy=#{strategy} items=#{extraction.articles.size} " \
+      # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
+      def process_response(hop, response, elapsed_ms)
+        extraction = pipeline.extract(config:, response:, request_session: hop.request_session)
+        record_extraction(hop, response, extraction, elapsed_ms)
+        Log.debug("#{self.class}: strategy=#{hop.strategy} items=#{extraction.articles.size} " \
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")
 
-        return if resolve_entry(response:, strategy:, request_session:, extraction:, state:)
-        return record_success(response:, strategy:, extraction:, state:) if extraction.articles.any?
+        return if resolve_entry(hop, response, extraction)
+        return record_success(hop, response, extraction) if extraction.articles.any?
 
         if DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
-          state.abort!
+          hop.state.abort!
           Log.debug("#{self.class}: deterministic HTTP #{response.status}; aborting auto fallback")
           return
         end
 
-        log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
+        log_info_fallback_zero_items(hop, response) if hop.next_strategy
       end
 
       # The one record path for an extraction, whether it came from the entry fetch or the resolved retry.
-      def record_extraction(state:, strategy:, response:, extraction:, elapsed_ms: nil)
-        state.remember_response(response)
-        state.record_items(
-          strategy:, items_count: extraction.articles.size, transport_meta: response.transport_meta, elapsed_ms:
-        )
+      def record_extraction(hop, response, extraction, elapsed_ms = nil)
+        hop.state.remember_response(response)
+        hop.state.record_items(strategy: hop.strategy, items_count: extraction.articles.size,
+                               transport_meta: response.transport_meta, elapsed_ms:)
       end
 
       # Runs the entry-resolution tournament once per chain and retries the winner's page.
@@ -247,17 +243,13 @@ module Html2rss
       #
       # @return [Boolean] true when the retry extraction yielded items and ended the chain
       # rubocop:disable-next Metrics/MethodLength -- eligibility, record, retry, error policy
-      def resolve_entry(response:, strategy:, request_session:, extraction:, state:)
-        return false if state.resolution_tried?
+      def resolve_entry(hop, response, extraction)
+        return false if hop.state.resolution_tried?
 
-        resolution = FeedResolution.call(
-          response:, session: request_session, config:, articles: extraction.articles, slots: budget.remaining_requests
-        )
-        return false unless resolution
+        return false unless (resolution = run_tournament(hop, response, extraction))
 
-        state.mark_resolution_tried!
-        state.remember_entry_resolution(resolution)
-        resolution.applied && retry_succeeded?(resolution:, strategy:, state:)
+        hop.state.remember_entry_resolution(resolution)
+        resolution.applied && retry_succeeded?(hop, resolution)
       rescue RequestService::RequestBudgetExceeded
         log_resolution_failure('budget_exhausted', 'entry resolution skipped (request budget exhausted)')
         false
@@ -269,14 +261,19 @@ module Html2rss
         false
       end
 
+      def run_tournament(hop, response, extraction)
+        FeedResolution.call(response:, session: hop.request_session, config:, articles: extraction.articles,
+                            slots: budget.remaining_requests)
+      end
+
       # Extracts the winner's already fetched response; the target turns sticky only when it yields items.
-      def retry_succeeded?(resolution:, strategy:, state:)
+      def retry_succeeded?(hop, resolution)
         target = scrape_target.with_effective(resolution.scrape_url)
-        extraction = extract_resolved(resolution:, strategy:, target:)
-        record_extraction(state:, strategy:, response: resolution.response, extraction:)
+        extraction = extract_resolved(resolution:, strategy: hop.strategy, target:)
+        record_extraction(hop, resolution.response, extraction)
         return false if extraction.articles.empty?
 
-        record_success(response: resolution.response, strategy:, extraction:, state:, scrape_target: target)
+        record_success(hop, resolution.response, extraction, scrape_target: target)
         true
       end
 
@@ -291,9 +288,10 @@ module Html2rss
         Log.event(:warn, "feed_resolution.#{event}", **fields.compact)
       end
 
-      def record_success(response:, strategy:, extraction:, state:, scrape_target: self.scrape_target)
-        attempt_count = state.attempts.size
-        state.succeed!(response:, extraction:, selected_strategy: strategy, attempt_count:, scrape_target:)
+      def record_success(hop, response, extraction, scrape_target: self.scrape_target)
+        strategy = hop.strategy
+        attempt_count = hop.state.attempts.size
+        hop.state.succeed!(response:, extraction:, selected_strategy: strategy, attempt_count:, scrape_target:)
         # Extra attempts under the first strategy are its entry-resolution retry, not a fallback hop.
         log_selected(response:, strategy:, attempt_count:) unless strategy == strategies.first
       end
@@ -330,14 +328,12 @@ module Html2rss
         Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message} #{detail}")
       end
 
-      def log_info_fallback_zero_items(strategy:, next_strategy:, response:)
+      def log_info_fallback_zero_items(hop, response)
         host = response.url.host
         Log.event(
           :info, 'auto_fallback.zero_items',
-          host:,
-          strategy: strategy.to_s,
-          next_strategy: next_strategy.to_s,
-          message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} after zero extracted items " \
+          host:, strategy: hop.strategy, next_strategy: hop.next_strategy,
+          message: "#{self.class}: auto fallback #{hop.strategy} -> #{hop.next_strategy} after zero extracted items " \
                    "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                    "budget_remaining=#{budget_remaining_label}"
         )

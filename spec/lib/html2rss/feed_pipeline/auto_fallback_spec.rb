@@ -102,20 +102,12 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       expect { state.raise_failure! }.to raise_error(Html2rss::NoFeedItemsExtracted)
     end
 
-    it 'tracks resolution attempts once marked', :aggregate_failures do
-      expect(state.resolution_tried?).to be(false)
-
-      state.mark_resolution_tried!
-
-      expect(state.resolution_tried?).to be(true)
-    end
-
-    it 'stores the diagnostic built from the entry resolution result' do
+    it 'stores the diagnostic built from the entry resolution result and marks the tournament run',
+       :aggregate_failures do
       diag = instance_double(Html2rss::FeedResolution::Diag)
       allow(Html2rss::FeedResolution::Diag).to receive(:from_result).with(:resolution).and_return(diag)
 
-      state.remember_entry_resolution(:resolution)
-
+      expect { state.remember_entry_resolution(:resolution) }.to change(state, :resolution_tried?).from(false).to(true)
       expect(state.entry_resolution).to be(diag)
     end
 
@@ -392,12 +384,12 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       let(:strategy_results) do
         {
           default: empty_response,
-          botasaurus: RuntimeError.new('late')
+          botasaurus: Html2rss::RequestService::ConnectionFailed.new('late')
         }
       end
 
       it 'does not log a next hop after the last strategy', :aggregate_failures do
-        expect { pipeline.to_result }.to raise_error(RuntimeError, 'late')
+        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::ConnectionFailed, 'late')
         expect(Html2rss::Log).not_to have_received(:warn).with(a_string_including('botasaurus ->'))
       end
     end
@@ -417,10 +409,20 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
     end
 
     context 'when the session cannot be opened' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      before { allow(pipeline).to receive(:request_session_for).and_raise(RuntimeError, 'no session') }
+      let(:strategy_results) { { botasaurus: item_response } }
 
-      it 'does not log a fallback for a missing session' do
-        expect { pipeline.to_result }.to raise_error(RuntimeError, 'no session')
+      before do
+        allow(pipeline).to receive(:request_session_for).and_wrap_original do |original, *args, strategy:, **kwargs|
+          raise Html2rss::Url::InvalidUrlError, 'bad url' if strategy == :default
+
+          original.call(*args, strategy:, **kwargs)
+        end
+      end
+
+      it 'falls back to the next strategy without logging a fallback hop', :aggregate_failures do
+        expect(pipeline.to_result.status.selected_strategy).to eq(:botasaurus)
+        expect(Html2rss::Log).not_to have_received(:warn)
+        expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.error'))
       end
     end
 
