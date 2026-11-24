@@ -105,6 +105,7 @@ module Html2rss
             input_schema: Contract::CAPTURE_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |url:, strategy: 'auto', **options|
+              # the input schema is the allowlist: it keeps local_file_path (and any file access) out of MCP
               capture_outcome(url:, strategy:, **options.slice(*Contract::CAPTURE_INPUT_SCHEMA[:properties].keys))
             }
           ),

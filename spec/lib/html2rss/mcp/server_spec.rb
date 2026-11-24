@@ -254,6 +254,13 @@ RSpec.describe Html2rss::MCP::Server do
         )
         expect(envelope.dig(:payload, :yaml)).to include('yaml-language-server')
       end
+
+      it 'keeps local_file_path out of the schema and drops it when passed', :aggregate_failures do
+        call_tool.call('capture', { url: 'https://example.com', local_file_path: '/etc/passwd' })
+
+        expect(Html2rss::MCP::Contract::CAPTURE_INPUT_SCHEMA[:properties]).not_to have_key(:local_file_path)
+        expect(Html2rss::Capture).to have_received(:build).with('https://example.com', strategy: :auto)
+      end
     end
 
     describe 'test' do
