@@ -213,7 +213,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
       expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
         ranked, base_url: 'https://example.com', scraper: scraper_class, vocabulary: resolver.vocabulary,
-                classifier: resolver.text_classifier
+                classifier: be(resolver.text_classifier)
       )
     end
 
