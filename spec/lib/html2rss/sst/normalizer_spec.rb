@@ -299,6 +299,38 @@ RSpec.describe Html2rss::SST::Normalizer do
       end
     end
 
+    context 'when normalizing a region of the page' do
+      let(:parsed) do
+        Nokogiri::HTML('<html><body><nav><div id="r"><a href="/p">Post</a></div></nav><p>after</p></body></html>')
+      end
+      let(:region) { parsed.at_css('#r') }
+
+      it 'roots the tree at the region and seeds the chrome scope its parent gives it', :aggregate_failures do
+        doc = described_class.call(region, vocabulary: all_scope, items: true, within: :chrome)
+
+        expect(doc.root.attrs.id).to eq('r')
+        expect(doc.index.ignored_chrome?(doc.root.find(&:link?))).to be(true)
+        expect(doc.index.node_for(parsed.at_css('p'))).to be_nil
+      end
+
+      it 'scopes the region by the seed, not by the page', :aggregate_failures do
+        page = described_class.call(region, vocabulary: all_scope, items: true, within: :page)
+        peripheral = described_class.call(region, vocabulary: all_scope, items: true, within: :peripheral)
+
+        expect(page.index.ignored_chrome?(page.root)).to be(false)
+        expect(peripheral.index.peripheral?(peripheral.root)).to be(true)
+      end
+    end
+
+    describe '.kept_tag?' do
+      it 'keeps a noscript for items only, never a stripped tag', :aggregate_failures do
+        expect(described_class.kept_tag?('div', items: false)).to be(true)
+        expect(described_class.kept_tag?('noscript', items: false)).to be(false)
+        expect(described_class.kept_tag?('noscript', items: true)).to be(true)
+        expect(described_class.kept_tag?('template', items: true)).to be(false)
+      end
+    end
+
     it 'allocates no node map unless normalizing for items', :aggregate_failures do
       parsed = Nokogiri::HTML('<html><body><a href="/p">Post</a></body></html>')
       doc = described_class.call(parsed, vocabulary: all_scope)

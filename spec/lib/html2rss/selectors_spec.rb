@@ -524,20 +524,28 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
-    context 'when the item has no SST node' do
-      let(:selectors) do
-        { items: { selector: 'template article', enhance: true }, title: { selector: 'h1' },
-          url: { selector: 'a', extractor: 'href' } }
-      end
-      let(:body) do
-        '<html><body><template><article><h1>Hidden</h1><a href="/hidden">More</a></article></template></body></html>'
+    describe 'an item the page document has no node for' do
+      let(:selectors) { { items: { selector: '.i', enhance: true } } }
+      let(:articles_for) do
+        lambda do |html|
+          response = Html2rss::RequestService::Response.new(url: 'http://example.com',
+                                                            headers: { 'content-type': 'text/html' }, body: html)
+          described_class.new(response, selectors:, time_zone:, vocabulary: Html2rss::Vocabulary[nil]).articles
+        end
       end
 
-      it 'returns the baseline unchanged and still lists the item', :aggregate_failures do
-        baseline, enhanced, = instance.each_enhance_pair.first
+      {
+        'inside a template' => '<html><body><template>%<item>s</template></body></html>',
+        'after the closing html tag' => '<html><body><p>x</p></body></html>%<item>s',
+        'beside a listed one' => '<html><body>%<item>s<template>%<item>s</template></body></html>'
+      }.each do |name, page|
+        it "keeps and fills an item #{name}", :aggregate_failures do
+          articles = articles_for.call(format(page, item: '<div class="i"><a href="/a">A</a></div>'))
 
-        expect(enhanced).to eq(baseline)
-        expect(instance.articles.map(&:title)).to eq(['Hidden'])
+          expect(articles.map { _1.url.to_s }).to all(eq('http://example.com/a'))
+          expect(articles.map(&:title)).to all(eq('A'))
+          expect(articles.size).to eq(page.scan('%<item>s').size)
+        end
       end
     end
 

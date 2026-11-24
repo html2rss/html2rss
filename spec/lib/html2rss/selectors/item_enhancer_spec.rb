@@ -10,6 +10,7 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
     end
   end
 
+  let(:logged) { [] }
   let(:html) do
     <<~HTML
       <html><body>
@@ -21,6 +22,10 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
   let(:parsed) { Nokogiri::HTML(html) }
 
   describe '#fields_for' do
+    before do
+      allow(Html2rss::Log).to receive(:debug) { |*text, &message| logged << (message ? message.call : text.first) }
+    end
+
     it 'reads the item, taking its first eligible link as the primary one', :aggregate_failures do
       fields = enhancer.fields_for(parsed.css('.card').last)
 
@@ -83,12 +88,20 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
         '<html><body><template><div class="card"><a href="/t">In a template</a></div></template></body></html>'
       end
 
-      it 'returns nil and logs the item as skipped', :aggregate_failures do
-        allow(Html2rss::Log).to receive(:debug)
+      it 'reads the item from its own root and logs that at debug', :aggregate_failures do
+        fields = enhancer.fields_for(parsed.at_css('.card'))
 
-        expect(enhancer.fields_for(parsed.at_css('.card'))).to be_nil
-        expect(Html2rss::Log).to have_received(:debug)
-          .with({ event_name: 'selectors.enhance.skipped', reason: 'unmapped_item', node: 'div' }.to_json)
+        expect(fields.values_at(:title, :url).map(&:to_s)).to eq(['In a template', 'https://example.com/t'])
+        expect(logged).to eq([{ event_name: 'selectors.enhance.alone', node: 'div' }.to_json])
+      end
+
+      it 'seeds the chrome scope its ancestors give it', :aggregate_failures do
+        page = Nokogiri::HTML('<template><nav><div class="card"><a href="/n">Nav card</a></div></nav></template>')
+        allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
+
+        expect(enhancer_for.call(page).fields_for(page.at_css('.card'))[:title]).to eq('Nav card')
+        expect(Html2rss::SST::Normalizer).to have_received(:call)
+          .with(page.at_css('.card'), hash_including(items: true, within: :chrome))
       end
     end
 
@@ -97,34 +110,42 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
         Nokogiri::HTML5.fragment('<p class="card"><a href="/one">One</a></p><p class="card"><a href="/two">Two</a></p>')
       end
 
-      it 'reads the items of the first root only', :aggregate_failures do
+      it 'reads the items of every root', :aggregate_failures do
         first, second = parsed.css('.card')
 
         expect(enhancer.fields_for(first)[:title]).to eq('One')
-        expect(enhancer.fields_for(second)).to be_nil
+        expect(enhancer.fields_for(second)[:title]).to eq('Two')
       end
 
-      it 'logs the unread item at debug, and nothing at warn', :aggregate_failures do
+      it 'logs the item read apart at debug, and nothing at warn', :aggregate_failures do
         allow(Html2rss::Log).to receive(:warn)
-        allow(Html2rss::Log).to receive(:debug)
 
         enhancer.fields_for(parsed.css('.card').last)
 
         expect(Html2rss::Log).not_to have_received(:warn)
-        expect(Html2rss::Log).to have_received(:debug).with(/"reason":"unmapped_item"/)
+        expect(logged).to include({ event_name: 'selectors.enhance.alone', node: 'p' }.to_json)
+      end
+
+      it 'keeps every document alive across garbage collection, so a card walk still finds its parent',
+         :aggregate_failures do
+        card = parsed.css('.card').last
+        enhancer.fields_for(card)
+        3.times { GC.start }
+
+        expect(enhancer.fields_for(card)[:title]).to eq('Two')
       end
     end
 
     context 'when no SST tree can be built from the page' do
       let(:parsed) { Nokogiri::XML('<!-- no element -->') }
 
-      it 'warns once and leaves every item unread', :aggregate_failures do
-        allow(Html2rss::Log).to receive(:warn)
-        allow(Html2rss::Log).to receive(:debug)
-        item = Nokogiri::XML::Node.new('a', parsed)
+      it 'reads an item by itself, and skips one that is no SST node at all', :aggregate_failures do
+        anchor = Nokogiri::XML::Node.new('a', parsed)
+        script = Nokogiri::XML::Node.new('script', parsed)
 
-        expect([enhancer.fields_for(item), enhancer.fields_for(item)]).to eq([nil, nil])
-        expect(Html2rss::Log).to have_received(:warn).with({ event_name: 'selectors.enhance.no_document' }.to_json).once
+        expect(enhancer.fields_for(anchor)).to include(url: nil, title: nil)
+        expect(enhancer.fields_for(script)).to be_nil
+        expect(logged.last).to eq({ event_name: 'selectors.enhance.skipped', node: 'script' }.to_json)
       end
     end
   end

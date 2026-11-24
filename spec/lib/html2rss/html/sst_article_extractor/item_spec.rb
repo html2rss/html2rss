@@ -133,6 +133,9 @@ RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
         ['<div class="card"><div class="font-semibold">Semibold item</div></div>', 'Semibold item'],
       'the kicker alone for a card without heading or anchor' =>
         ['<article><span class="kicker">Weather</span><p>Storm ahead.</p></article>', 'Weather'],
+      'the first text, not the text of a script or style' =>
+        ['<article><script>var x = 1</script><style>.a { color: red }</style><p>Real text</p></article>', 'Real text'],
+      'the first text, not a comment' => ['<article><!-- hidden note --><p>Real text</p></article>', 'Real text'],
       'the first text, not the item own label' =>
         ['<div class="card" title="Tooltip"><span>Alpha</span><span>Beta</span></div>', 'Alpha'],
       'the first text, trimmed on both sides' =>
@@ -203,6 +206,13 @@ RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
       fields = item_fields_for('<article id="plain"><h2>Plain Story</h2></article>')
 
       expect(fields.values_at(:id, :url)).to eq(['plain', nil])
+    end
+
+    it 'skips a link with a blank href or inside an svg for the next one', :aggregate_failures do
+      blank = item_fields_for('<article><a href="">x</a><a href="/s">Story</a></article>')
+      svg = item_fields_for('<article><svg><a href="/icon">i</a></svg><a href="/s">Story</a></article>')
+
+      expect([blank[:url], svg[:url]].map(&:to_s)).to eq(['https://example.com/s'] * 2)
     end
 
     it 'has none for an anchor with an empty href' do
@@ -411,6 +421,11 @@ RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
       'the largest srcset source without spaces between sources' =>
         ['<article><picture><img srcset="/i.88w.jpg 88w,/i.175w.jpg 175w"></picture></article>',
          'https://example.com/i.175w.jpg'],
+      'the srcset of a source outside a picture' =>
+        ['<article><video><source srcset="/poster.jpg 100w"></video></article>', 'https://example.com/poster.jpg'],
+      'the later of two sources of the same width' =>
+        ['<article><picture><source srcset="/a.webp 200w"><img srcset="/a.jpg 200w"></picture></article>',
+         'https://example.com/a.jpg'],
       'a background-image url' =>
         ['<article><div style="background-image: url(&quot;image.jpg&quot;);"></div></article>',
          'https://example.com/image.jpg'],

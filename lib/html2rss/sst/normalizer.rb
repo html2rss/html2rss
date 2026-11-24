@@ -72,13 +72,21 @@ module Html2rss
         #   not for the heuristic: record which parsed node each SST node came from ({Index#node_for}), never
         #   degrade at {MAX_NODES}, keep the content of a +noscript+, and log a fallback root at debug (the page may
         #   be a parsed fragment). Off allocates no node map.
+        # @param within [Symbol, nil] +input+ is the root element of a region of the page, not the page: the
+        #   chrome scope (+:page+, +:sectioned+, +:peripheral+, +:chrome+) its parent gives it
         # @return [Document, nil] +nil+ when no SST nodes survive normalization
         # @raise [InvalidError] when input is nil or unsupported
-        def call(input, vocabulary:, items: false)
+        def call(input, vocabulary:, items: false, within: nil)
           raise InvalidError, 'input is required' if input.nil?
 
-          new(coerce(input), vocabulary, items:).call
+          new(coerce(input), vocabulary, items:, within:).call
         end
+
+        ##
+        # @param tag [String] folded tag name of a parsed element
+        # @param items [Boolean] see {.call}
+        # @return [Boolean] whether the element becomes an SST node (a +noscript+ only for items)
+        def kept_tag?(tag, items:) = !STRIPPED_TAGS.include?(tag) || (items && tag == 'noscript')
 
         private
 
@@ -97,10 +105,12 @@ module Html2rss
       # @param parsed_body [Nokogiri::HTML::Document, Nokogiri::XML::Node]
       # @param vocabulary [Vocabulary::Scope]
       # @param items [Boolean] see {.call}
-      def initialize(parsed_body, vocabulary, items:) # rubocop:disable Metrics/MethodLength -- per-run state
+      # @param within [Symbol, nil] see {.call}
+      def initialize(parsed_body, vocabulary, items:, within:) # rubocop:disable Metrics/MethodLength -- per-run state
         @parsed_body = parsed_body
         @vocabulary = vocabulary
         @items = items
+        @within = within
         @sources = ({}.compare_by_identity if items)
         @node_count = 0
         @degraded = false
@@ -114,8 +124,8 @@ module Html2rss
       ##
       # @return [Document, nil] +nil+ when no SST nodes survive normalization
       def call
-        root_nk = resolve_root_nk
-        root = normalize_element(root_nk, depth: 0, path: '', scope: :page)
+        root_nk = @within ? @parsed_body : resolve_root_nk
+        root = normalize_element(root_nk, depth: 0, path: '', scope: @within || :page)
         return unless root
 
         index = Index.new(root:, parents: @parents, depths: @depths, scopes: @scopes, sources: @sources)
@@ -204,7 +214,7 @@ module Html2rss
       #
       # @return [Nokogiri::XML::Node, Array<Nokogiri::XML::Node>, nil]
       def kept_children(nk_node, tag)
-        return nk_node if !STRIPPED_TAGS.include?(tag) || (@items && tag == 'noscript')
+        return nk_node if self.class.kept_tag?(tag, items: @items)
         return unless tag == 'noscript'
 
         links = nk_node.xpath('.//a[@href]').select { Html::ArticleRules::Enclosure.file_link?(_1['href']) }

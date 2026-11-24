@@ -49,6 +49,18 @@ module Html2rss
           !CARD_WALK_STOP_TAGS.include?(tag) && !SST::Tags.utility_landmark?(tag, role)
         end
 
+        ##
+        # Folds {SST::Tags.chrome_scope} over a Nokogiri node's ancestors, root first.
+        #
+        # @param node [Nokogiri::XML::Node]
+        # @param vocabulary [Vocabulary::Scope]
+        # @return [Symbol] +:page+, +:sectioned+, +:peripheral+, or +:chrome+
+        def nokogiri_chrome_scope(node, vocabulary)
+          (node.ancestors.reverse << node).reduce(:page) do |scope, el|
+            el.element? ? SST::Tags.chrome_scope(el, scope, vocabulary) : scope
+          end
+        end
+
         private
 
         # Whether a header/footer is page-level chrome. SST nodes defer to the
@@ -65,17 +77,6 @@ module Html2rss
           end
 
           nokogiri_chrome_scope(node, vocabulary) == :chrome
-        end
-
-        # Folds {SST::Tags.chrome_scope} over a Nokogiri node's ancestors, root first.
-        #
-        # @param node [Nokogiri::XML::Node]
-        # @param vocabulary [Vocabulary::Scope]
-        # @return [Symbol] +:page+, +:sectioned+, or +:chrome+
-        def nokogiri_chrome_scope(node, vocabulary)
-          (node.ancestors.reverse << node).reduce(:page) do |scope, el|
-            el.element? ? SST::Tags.chrome_scope(el, scope, vocabulary) : scope
-          end
         end
       end
     end

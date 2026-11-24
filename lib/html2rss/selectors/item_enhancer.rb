@@ -7,13 +7,13 @@ module Html2rss
     # parsed page into an SST document once, maps each selected node onto it, and reads the item with
     # {Html::SstArticleExtractor::Item}.
     #
-    # It owns the document's lifetime: an SST node finds its relationships through an index that only the
-    # document keeps alive, so the document stays referenced here for as long as items are read.
+    # It owns the documents' lifetime: an SST node finds its relationships through an index that only its
+    # document keeps alive, so every document stays referenced here for as long as items are read.
     #
-    # An item it cannot read is left as the selectors made it, never dropped: enhance adds fields, it does not
-    # remove items. That covers a page with no SST tree and a selected node that has no SST node, such as one
-    # inside a +template+ or +script+, or under a second root of a parsed JSON fragment (only the first root of
-    # a fragment is normalized). Each case is logged.
+    # An item the page document has no node for (inside a +template+ or +script+, or under a second root of a
+    # parsed JSON fragment: only the first root of a fragment is normalized) is read from its own root, with
+    # the chrome scope its ancestors give it, so enhance never drops an item. Such an item has no parent card
+    # to walk to.
     #
     # The SST node is found by the parsed node's identity, which only a Nokogiri-parsed page offers. A parser
     # that does not keep node identity would need a document-order index here instead.
@@ -27,14 +27,15 @@ module Html2rss
         @base_url = base_url
         @time_zone = time_zone
         @vocabulary = vocabulary
+        @alone = []
       end
 
       ##
       # @param item [Nokogiri::XML::Node] a node selected from the parsed page
       # @return [Hash{Symbol => Object}, nil] the item's extracted fields, +nil+ when it cannot be read
       def fields_for(item)
-        root = document&.index&.node_for(item)
-        return skipped('unmapped_item', item) unless root
+        root = document&.index&.node_for(item) || root_alone(item)
+        return skipped(item) unless root
 
         segment = AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :list,
                                             position: 0)
@@ -49,12 +50,20 @@ module Html2rss
         return @document if defined?(@document)
 
         @document = SST::Normalizer.call(@parsed_body, vocabulary: @vocabulary, items: true)
-        Log.warn({ event_name: 'selectors.enhance.no_document' }.to_json) unless @document
-        @document
       end
 
-      def skipped(reason, item)
-        Log.debug({ event_name: 'selectors.enhance.skipped', reason:, node: item.name }.to_json)
+      # The SST root of +item+ normalized by itself, kept alive with the rest, or +nil+ for an item that is no
+      # SST node at all (a +script+ or +template+ element).
+      def root_alone(item)
+        Log.debug { { event_name: 'selectors.enhance.alone', node: item.name }.to_json }
+        scope = item.parent ? Html::Navigator.nokogiri_chrome_scope(item.parent, @vocabulary) : :page
+        alone = SST::Normalizer.call(item, vocabulary: @vocabulary, items: true, within: scope)
+        @alone << alone if alone
+        alone&.root
+      end
+
+      def skipped(item)
+        Log.debug { { event_name: 'selectors.enhance.skipped', node: item.name }.to_json }
         nil
       end
     end
