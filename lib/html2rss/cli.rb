@@ -8,6 +8,8 @@ module Html2rss
   ##
   # The Html2rss command line interface.
   class CLI < Thor # rubocop:disable Metrics/ClassLength
+    include ErrorReporting
+
     check_unknown_options!
 
     map 'feed' => 'apply'
@@ -120,22 +122,20 @@ module Html2rss
       strategy, local_file_path, url = prepare_auto_inputs(target, options[:input])
       topics = options[:topics]&.split(',')&.map(&:strip)
 
-      result = execute_feed do
-        Html2rss::Capture.build(
-          url,
-          strategy:,
-          items_selector: options[:items_selector],
-          topics:,
-          title: options[:title],
-          summary: options[:summary],
-          force: options[:force],
-          enhance: options[:enhance],
-          limit: options[:limit],
-          max_redirects: options[:max_redirects],
-          max_requests: options[:max_requests],
-          local_file_path:
-        )
-      end
+      result = Html2rss::Capture.build(
+        url,
+        strategy:,
+        items_selector: options[:items_selector],
+        topics:,
+        title: options[:title],
+        summary: options[:summary],
+        force: options[:force],
+        enhance: options[:enhance],
+        limit: options[:limit],
+        max_redirects: options[:max_redirects],
+        max_requests: options[:max_requests],
+        local_file_path:
+      )
 
       if result.native_feed? && !options[:force]
         $stderr.puts "First-party RSS/Atom/RDF feed detected at #{result.native_feed}. Use --force to capture anyway." # rubocop:disable Style/StderrPuts
@@ -162,17 +162,15 @@ module Html2rss
     # @return [void]
     def test(config_input = nil, feed_name = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       raw_content, input_source = read_config_input(config_input)
-      result = execute_feed do
-        Html2rss.test(
-          raw_content,
-          feed_name,
-          min_items: options.fetch(:min_items, 1),
-          params: options[:params] || {},
-          strategy: options[:strategy],
-          strict_quality: options.fetch(:strict_quality, false),
-          compare_enhance: options.fetch(:compare_enhance, false)
-        )
-      end
+      result = Html2rss.test(
+        raw_content,
+        feed_name,
+        min_items: options.fetch(:min_items, 1),
+        params: options[:params] || {},
+        strategy: options[:strategy],
+        strict_quality: options.fetch(:strict_quality, false),
+        compare_enhance: options.fetch(:compare_enhance, false)
+      )
 
       if options[:json]
         puts JSON.pretty_generate(result.to_h)
@@ -201,9 +199,9 @@ module Html2rss
     # @param feed_name [String, nil] optional named feed
     # @return [void]
     def apply(source = nil, feed_name = nil)
-      config = execute_feed { load_apply_config(source, feed_name) }
+      config = load_apply_config(source, feed_name)
       config[:params] = options[:params] || {}
-      execute_feed { apply_runtime_request_overrides!(config) }
+      apply_runtime_request_overrides!(config)
       apply_local_file_input!(config, options[:input]) if options[:input]
 
       run_feed_command(ship_gate: true) { Html2rss.apply(config) }
@@ -320,8 +318,8 @@ module Html2rss
       raise Thor::Error, "No results matched verdict #{options[:verdict].upcase}"
     end
 
-    def run_feed_command(ship_gate: false, &)
-      feed_res = execute_feed(&)
+    def run_feed_command(ship_gate: false)
+      feed_res = yield
       explain_json!(feed_res.status.to_h) if options[:explain]
       raise Thor::Error, EMPTY_FEED_MESSAGE if ship_gate && feed_res.empty?
 
@@ -420,26 +418,6 @@ module Html2rss
 
       raw_content, = read_config_input(source)
       Config.from_yaml(raw_content)
-    end
-
-    def execute_feed # rubocop:disable Metrics/MethodLength
-      yield
-    rescue Html2rss::RequestService::RedirectLimitReached => error
-      raise Thor::Error,
-            "#{error.message}. already retried the last redirect hop once; " \
-            'retry with higher --max-redirects or use the final URL directly.'
-    rescue Html2rss::RequestService::RequestBudgetExceeded => error
-      raise Thor::Error,
-            "#{error.message}. retry with higher --max-requests or increase request.max_requests in config."
-    rescue Html2rss::RequestService::BotasaurusConfigurationError,
-           Html2rss::RequestService::BotasaurusConnectionFailed,
-           Html2rss::RequestService::BotasaurusServiceError,
-           Html2rss::RequestService::BlockedSurfaceDetected,
-           Html2rss::NoFeedItemsExtracted,
-           Html2rss::InvalidOption,
-           Html2rss::Config::InvalidConfig,
-           Html2rss::Url::InvalidUrlError => error
-      raise Thor::Error, error.message
     end
 
     def scrape_feed_result_for(url, strategy, local_file_path)
