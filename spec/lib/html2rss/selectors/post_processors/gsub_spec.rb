@@ -13,8 +13,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       let(:step_config) { { replacement: 'world' } }
 
       it do
-        expect { subject }.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
-                                          /The `pattern` option is missing in: {/)
+        expect { described_class.validate_options!(context) }
+          .to raise_error(Html2rss::Selectors::PostProcessors::MissingOption, /The `pattern` option is missing in: {/)
       end
     end
 
@@ -22,8 +22,9 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       let(:step_config) { { pattern: 'world' } }
 
       it do
-        expect { subject }.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
-                                          /The `replacement` option is missing in: {/)
+        expect { described_class.validate_options!(context) }
+          .to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
+                          /The `replacement` option is missing in: {/)
       end
     end
 
@@ -31,8 +32,9 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       let(:step_config) { { pattern: 'world', replacement: [] } }
 
       it do
-        expect { subject }.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType,
-                                          /The type of `replacement` must be String or Hash, but is: Array in: {/)
+        expect { described_class.validate_options!(context) }
+          .to raise_error(Html2rss::Selectors::PostProcessors::InvalidType,
+                          /The type of `replacement` must be String or Hash, but is: Array in: {/)
       end
     end
   end
