@@ -104,44 +104,15 @@ module Html2rss
       # Builds a scraper when enabled; returns nil when disabled.
       #
       # @param scraper [Class]
-      # @param parsed_body [Nokogiri::HTML::Document]
-      # @param opts [Hash] full scraper options map
-      # @param url [Html2rss::Url, String]
-      # @param request_session [Html2rss::RequestSession, nil]
-      # @param body [String, nil]
-      # @param document [SST::Document, nil]
-      # @param link_resolver [Scoring::LinkResolver, nil]
-      # @param time_zone [String, nil] channel time zone for naive leftover dates
-      # @param captured_responses [Array<Hash>] browser-captured JSON XHR/fetch bodies
-      # @option opts [Hash] :wordpress_api scraper toggle and configuration
-      # @option opts [Hash] :schema scraper toggle and configuration
-      # @option opts [Hash] :microdata scraper toggle and configuration
-      # @option opts [Hash] :microformats2 scraper toggle and configuration
-      # @option opts [Hash] :json_state scraper toggle and configuration
-      # @option opts [Hash] :json_document scraper toggle and configuration
-      # @option opts [Hash] :xhr_articles scraper toggle and configuration
-      # @option opts [Hash] :meta_oembed scraper toggle and configuration
-      # @option opts [Hash] :semantic_html scraper toggle and configuration
-      # @option opts [Hash] :html scraper toggle and configuration
-      # @option opts [Hash] :sitemap scraper toggle and configuration
+      # @param context [Context] the page's inputs; its +opts+ hold each scraper's toggle and configuration
+      # @option context.opts [Hash] each scraper's +options_key+ => +:enabled+ toggle and its configuration
       # @return [Object, nil]
-      # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- construction context for structured and heuristic scrapers
-      def self.build_instance(scraper, parsed_body, opts:, url:, request_session: nil, body: nil, document: nil,
-                              link_resolver: nil, time_zone: nil, captured_responses: [])
-        return unless opts.dig(scraper.options_key, :enabled)
-        return if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
+      def self.build_instance(scraper, context)
+        return unless context.opts.dig(scraper.options_key, :enabled)
+        return if HEURISTIC_SCRAPERS.include?(scraper) && context.document.nil?
 
-        scraper_opts = opts.fetch(scraper.options_key, {}).except(:enabled)
-        kwargs = construction_kwargs(
-          scraper,
-          request_session:,
-          body:,
-          document:,
-          link_resolver:,
-          time_zone:,
-          captured_responses:
-        )
-        scraper.new(parsed_body, url:, **kwargs, **scraper_opts)
+        scraper_opts = context.opts.fetch(scraper.options_key, {}).except(:enabled)
+        scraper.new(context.parsed_body, url: context.url, **construction_kwargs(scraper, context), **scraper_opts)
       end
 
       ##
@@ -152,15 +123,14 @@ module Html2rss
         NoScraperFound.new(category: Html2rss::SurfaceCategory.classify(parsed_body, body:))
       end
 
-      def self.construction_kwargs(scraper, request_session:, body:, document:, link_resolver:, time_zone:, # rubocop:disable Metrics/ParameterLists -- scraper construction bag
-                                   captured_responses:)
+      def self.construction_kwargs(scraper, context)
         if HEURISTIC_SCRAPERS.include?(scraper)
-          { document:, link_resolver:, time_zone: }.compact
+          context.to_h.slice(:document, :link_resolver, :time_zone).compact
         else
           {}.tap do |kwargs|
-            kwargs[:request_session] = request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
-            kwargs[:body] = body if scraper == Sitemap
-            kwargs[:captured_responses] = captured_responses if CAPTURED_RESPONSE_SCRAPERS.include?(scraper)
+            kwargs[:request_session] = context.request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
+            kwargs[:body] = context.body if scraper == Sitemap
+            kwargs[:captured_responses] = context.captured_responses if CAPTURED_RESPONSE_SCRAPERS.include?(scraper)
           end
         end
       end

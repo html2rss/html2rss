@@ -174,44 +174,38 @@ module Html2rss
 
     attr_reader :url, :parsed_body, :body, :request_session, :captured_responses, :vocabulary
 
-    # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
       return extract_json_document_articles if json_response?
 
       articles = []
       matched = false
-      scraper_opts = @opts.fetch(:scraper, {})
-
       Scraper::SCRAPER_TIERS.each do |tier|
-        break if enough_articles?(articles)
-        break if skip_html_padding?(tier, articles)
+        break if enough_articles?(articles) || skip_html_padding?(tier, articles)
 
-        @cards_read = true if Scraper.heuristic_tier?(tier)
-        tier.each do |scraper_class|
-          instance = Scraper.build_instance(
-            scraper_class,
-            parsed_body,
-            opts: scraper_opts,
-            url:,
-            request_session:,
-            body:,
-            document: (page_document if Scraper.heuristic_tier?(tier)),
-            link_resolver:,
-            time_zone: @time_zone,
-            captured_responses:
-          )
-          next unless instance
-          next unless instance.extractable?
-
-          matched = true
-          articles.concat(run_scraper(instance))
-          @native_feed = instance if instance.is_a?(Scraper::NativeFeed)
-        end
+        matched |= run_tier(tier, articles).any?
       end
-
       raise Scraper.no_scraper_found_for(parsed_body, body:) unless matched
 
       finish_articles(articles)
+    end
+
+    # Runs every enabled, extractable scraper of +tier+, appending its articles.
+    #
+    # @return [Array<Object>] the scrapers that matched
+    def run_tier(tier, articles)
+      heuristic = Scraper.heuristic_tier?(tier)
+      @cards_read = true if heuristic
+      context = scraper_context(document: (page_document if heuristic), link_resolver:, time_zone: @time_zone)
+      tier.filter_map { run_instance(_1, context, articles) }
+    end
+
+    def run_instance(scraper_class, context, articles)
+      instance = Scraper.build_instance(scraper_class, context)
+      return unless instance&.extractable?
+
+      articles.concat(run_scraper(instance))
+      @native_feed = instance if instance.is_a?(Scraper::NativeFeed)
+      instance
     end
 
     def json_response?
@@ -229,15 +223,12 @@ module Html2rss
     end
 
     def json_document_instance
-      Scraper.build_instance(
-        Scraper::JsonDocument,
-        parsed_body,
-        opts: @opts.fetch(:scraper, {}),
-        url:,
-        request_session:,
-        body:,
-        captured_responses:
-      )
+      Scraper.build_instance(Scraper::JsonDocument, scraper_context)
+    end
+
+    def scraper_context(**page_state)
+      Scraper::Context.new(parsed_body:, opts: @opts.fetch(:scraper, {}), url:, request_session:, body:,
+                           captured_responses:, **page_state)
     end
 
     def finish_articles(articles)

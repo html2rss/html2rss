@@ -40,10 +40,13 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       end
     end
 
-    it 'reads a Han type marker kicker as text only on a Chinese page', :aggregate_failures do
+    it 'reads a Han type marker kicker as text only on a Chinese page', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      resolver = ->(vocabulary) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary:) }
+
       expect(article_for.call.title).to eq('政府が新しい港湾計画を発表した')
-      expect(article_for.call(vocabulary: Html2rss::Vocabulary[:ja]).title).to eq('政府が新しい港湾計画を発表した')
-      expect(article_for.call(vocabulary: Html2rss::Vocabulary['zh-Hans-CN']).title)
+      expect(article_for.call(link_resolver: resolver.call(Html2rss::Vocabulary[:ja])).title)
+        .to eq('政府が新しい港湾計画を発表した')
+      expect(article_for.call(link_resolver: resolver.call(Html2rss::Vocabulary['zh-Hans-CN'])).title)
         .to eq('独自: 政府が新しい港湾計画を発表した')
     end
 
@@ -62,19 +65,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
         expect(Html2rss::LinkDestination::TextClassifier).not_to have_received(:for)
       end
 
-      it 'lets an explicit vocabulary win over the resolver' do
-        title = article_for.call(link_resolver: resolver, vocabulary: Html2rss::Vocabulary[:ja]).title
-
-        expect(title).to eq('政府が新しい港湾計画を発表した')
-      end
-
-      it 'builds the classifier of the vocabulary when no resolver is given', :aggregate_failures do
-        article_for.call(vocabulary: han)
-
-        expect(Html2rss::LinkDestination::TextClassifier).to have_received(:for).with(han)
-      end
-
-      it 'builds the classifier of the nil vocabulary when neither is given', :aggregate_failures do
+      it 'builds the classifier of the nil vocabulary when no resolver is given', :aggregate_failures do
         article_for.call
 
         expect(Html2rss::LinkDestination::TextClassifier).to have_received(:for).with(Html2rss::Vocabulary[nil])
