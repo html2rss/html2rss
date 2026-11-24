@@ -320,25 +320,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
   end
 
-  describe 'channel time zone' do
-    let(:dated) do
-      Nokogiri::HTML.parse <<~HTML
-            <html><body>
-          <article><h2><a href="/news/one">First dated story headline</a></h2><span>12 March 2024</span></article>
-          <article><h2><a href="/news/two">Second dated story headline</a></h2><span>13 March 2024</span></article>
-        </body></html>
-      HTML
-    end
-
-    it 'reads a naive leftover date in the given zone', :aggregate_failures do
-      zones = [nil, 'Europe/Berlin'].map do |zone|
-        described_class.new(dated, url: 'https://example.com', time_zone: zone).to_a.first.published_at.zone
-      end
-
-      expect(zones).to eq(['+00:00', '+01:00'])
-    end
-  end
-
   describe '.request_slots' do
     it 'reserves no request slots regardless of options', :aggregate_failures do
       expect(described_class.request_slots).to eq(0)
@@ -371,6 +352,18 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       articles = described_class.new(Nokogiri::HTML.parse(html), url: 'https://example.net/').to_a
 
       expect(articles.map { _1.url.to_s }).to include('https://example.net/article1/')
+    end
+
+    it 'reads a naive leftover date in the given time zone', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      cards = %w[one two].map do |slug|
+        %(<article><h2><a href="/news/#{slug}">Dated story #{slug} headline</a></h2><span>12 July 2024</span></article>)
+      end
+      dated = Nokogiri::HTML("<html><body>#{cards.join}</body></html>")
+      zones = [nil, 'Europe/Berlin'].map do |zone|
+        described_class.new(dated, url: 'https://example.com', time_zone: zone).to_a.first.published_at.zone
+      end
+
+      expect(zones).to eq(['+00:00', '+02:00'])
     end
   end
 

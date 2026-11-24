@@ -293,12 +293,13 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       opts = { semantic_html: { enabled: true, max: 3 } }
 
       result = described_class.build_instance(
-        described_class::SemanticHtml, parsed_body, opts:, url:, document:, link_resolver: resolver
+        described_class::SemanticHtml, parsed_body, opts:, url:, document:, link_resolver: resolver,
+                                                    time_zone: 'Europe/Berlin'
       )
 
       expect(result).to eq(:semantic)
       expect(described_class::SemanticHtml).to have_received(:new)
-        .with(parsed_body, url:, document:, link_resolver: resolver, max: 3)
+        .with(parsed_body, url:, document:, link_resolver: resolver, time_zone: 'Europe/Berlin', max: 3)
     end
 
     it 'omits link_resolver for heuristic scrapers when none is given' do

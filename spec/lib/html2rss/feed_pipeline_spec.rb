@@ -680,8 +680,9 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       it 'scopes auto-source by the channel language, the config override first', :aggregate_failures do
-        config = Html2rss::Config.from_hash({ channel: { url: 'https://example.com/news', language: 'sv' },
-                                              auto_source: {} })
+        config = Html2rss::Config.from_hash(
+          { channel: { url: 'https://example.com/news', language: 'sv', time_zone: 'Europe/Berlin' }, auto_source: {} }
+        )
         allow(Html2rss::AutoSource).to receive(:new).and_return(
           instance_double(Html2rss::AutoSource, articles: [], admission_drops: {}, feed_channel: nil)
         )
@@ -690,7 +691,7 @@ RSpec.describe Html2rss::FeedPipeline do
 
         expect(Html2rss::AutoSource).to have_received(:new)
           .with(anything, anything, request_session: session, vocabulary: be(Html2rss::Vocabulary[:sv]),
-                                    time_zone: 'UTC')
+                                    time_zone: 'Europe/Berlin')
       end
 
       it 'builds the selectors with the configured time zone' do

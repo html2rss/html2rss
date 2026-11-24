@@ -204,6 +204,17 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       )
     end
 
+    it 'extracts with the channel time zone', :aggregate_failures do
+      ranked = build_ranked.call
+      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
+
+      described_class.new('https://example.com', scraper: scraper_class, time_zone: 'Europe/Berlin')
+                     .article_for(ranked)
+
+      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call)
+        .with(ranked, hash_including(time_zone: 'Europe/Berlin'))
+    end
+
     it 'extracts with the page resolver, which carries the page language', :aggregate_failures do
       resolver = Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary['zh-Hant'])
       ranked = build_ranked.call
