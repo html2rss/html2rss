@@ -228,6 +228,9 @@ Enhance never invents a URL: an item's `url` comes from its own anchor `href` (f
 
 When a heading-only item or wrapping `<a>` lacks leftover description and date, the extractor climbs via `SST::Index#parent_until`, for selector items within the normalized region (§ Selector item enhance). Walk policy (`miss?` / `thin_wrapper?` / `crowded?` from heading count + distinct main hrefs) is owned by `Html2rss::Html::CardWalk`. The SST extractor traverses. Capture's items-selector lift is a second job: it shares only `Navigator.usable_card_parent?` stop tags and aborts with `contains_other_root?` (listing-root set).
 
+## Scraper contract
+Owned by `Scraper::Base` (plain superclass, no hooks): `Enumerable`, `initialize(parsed_body, url:)`, private `parsed_body`/`url` readers, and `extractable?` defaulting to `self.class.articles?(parsed_body)`. The base calls only the public surface every scraper exposes, never a subclass-private method. Each scraper defines `options_key`, `request_slots`, `articles?` and `each` itself; `request_slots` has no base default because a default of 0 once hid a real miscount (`scraper_spec` asserts every `SCRAPERS` entry declares its own). `Scraper::PageCards < Base` shares only the heuristic page plumbing of `SemanticHtml` and `Html` (constructor, memoized `document`/`link_resolver`, `articles?` probe); each keeps its own `each` and `extractable?`. Scrapers that normalize `url` call `super(parsed_body, url: Url.from_absolute(url))`.
+
 ## Semantic card-group ranking
 
 `Segmenter::Semantic` owns `Segment#group_size` (cards of main content sharing a structural path; media and peripheral cards stay 1); `Scraper::SemanticHtml.group_bonus` turns it into a bounded score bonus ranked before the `TOP_K` cap. See `lib/html2rss/auto_source/README.md`.

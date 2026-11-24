@@ -4,9 +4,7 @@ module Html2rss
   class AutoSource
     module Scraper
       # Scrapes Schema.org Microdata items embedded directly in HTML markup.
-      class Microdata
-        include Enumerable
-
+      class Microdata < Base
         # Selector matching nodes that define a microdata item scope.
         ITEM_SELECTOR = '[itemscope][itemtype]'
         # Schema.org types supported for article extraction via Microdata.
@@ -76,21 +74,6 @@ module Html2rss
         end
 
         ##
-        # Builds a Microdata scraper for an already parsed response body.
-        #
-        # @param parsed_body [Nokogiri::HTML5::Document, Nokogiri::HTML4::Document, Nokogiri::XML::Node, nil]
-        #   the parsed response body to inspect for top-level Microdata items.
-        # @param url [Html2rss::Url] the absolute page URL used to resolve relative links.
-        # @return [void]
-        def initialize(parsed_body, url:)
-          @parsed_body = parsed_body
-          @url = url
-        end
-
-        # @return [Boolean]
-        def extractable? = self.class.articles?(parsed_body)
-
-        ##
         # Iterates over normalized article hashes extracted from supported Microdata roots.
         #
         # @yieldparam article [Hash{Symbol => Object}] the normalized article attributes.
@@ -105,8 +88,6 @@ module Html2rss
         end
 
         private
-
-        attr_reader :parsed_body, :url
 
         # @param root [Nokogiri::XML::Element] supported Microdata root node
         # @return [Hash{Symbol => Object, nil}] normalized article hash

@@ -8,9 +8,7 @@ module Html2rss
       # or custom window globals. The scraper searches `<script type="application/json">`
       # tags and well-known JavaScript globals for arrays of article-like hashes
       # and normalises them to a structure compatible with Html2rss::Html::SstArticleExtractor::Item.
-      class JsonState
-        include Enumerable
-
+      class JsonState < Base
         # @return [Symbol] scraper config key
         def self.options_key = :json_state
 
@@ -55,15 +53,6 @@ module Html2rss
           end
         end
 
-        # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
-        # @param url [String, Html2rss::Url] page URL used to resolve relative links
-        def initialize(parsed_body, url:)
-          @parsed_body = parsed_body
-          @url = url
-        end
-
-        attr_reader :parsed_body
-
         # @return [Boolean] true when the page contains article-like arrays in JSON state
         def extractable?
           json_documents.any? { CandidateDetector.candidate_array?(_1) }
@@ -82,8 +71,6 @@ module Html2rss
         end
 
         private
-
-        attr_reader :url
 
         def json_documents
           DocumentScanner.json_documents(parsed_body)

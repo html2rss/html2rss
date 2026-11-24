@@ -7,9 +7,7 @@ module Html2rss
   class AutoSource
     module Scraper
       # Scrapes WordPress sites through their REST API instead of parsing article HTML.
-      class WordpressApi # rubocop:disable Metrics/ClassLength
-        include Enumerable
-
+      class WordpressApi < Base # rubocop:disable Metrics/ClassLength
         # Selector for WordPress API discovery link tags.
         API_LINK_SELECTOR = 'link[rel="https://api.w.org/"][href]'
         # Selector for canonical link tags used for scope normalization.
@@ -48,14 +46,10 @@ module Html2rss
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @return [void]
         def initialize(parsed_body, url:, request_session: nil)
-          @parsed_body = parsed_body
-          @url = Html2rss::Url.from_absolute(url)
+          super(parsed_body, url: Html2rss::Url.from_absolute(url))
           @request_session = request_session
-          @page_scope = PageScope.from(parsed_body:, url: @url)
+          @page_scope = PageScope.from(parsed_body:, url:)
         end
-
-        # @return [Boolean]
-        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # Yields article hashes from the WordPress posts API.
@@ -71,7 +65,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session, :page_scope
+        attr_reader :request_session, :page_scope
 
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured rescue logs
         def fetch_posts

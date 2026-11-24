@@ -8,9 +8,7 @@ module Html2rss
     module Scraper
       ##
       # Scrapes OpenGraph meta tags and oEmbed JSON descriptors from HTML pages.
-      class MetaOembed # rubocop:disable Metrics/ClassLength -- request_slots + extractable? stay on the scraper
-        include Enumerable
-
+      class MetaOembed < Base # rubocop:disable Metrics/ClassLength -- request_slots + extractable? stay on the scraper
         # Selector for OpenGraph meta tags.
         OG_META_SELECTOR = 'meta[property^="og:"], meta[property^="article:"], meta[name^="twitter:"]'
         # Mapping of meta property names to article attribute keys.
@@ -62,13 +60,9 @@ module Html2rss
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @return [void]
         def initialize(parsed_body, url:, request_session: nil)
-          @parsed_body = parsed_body
-          @url = Html2rss::Url.from_absolute(url)
+          super(parsed_body, url: Html2rss::Url.from_absolute(url))
           @request_session = request_session
         end
-
-        # @return [Boolean]
-        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # Yields normalized article hash extracted from OpenGraph meta tags and optional oEmbed data.
@@ -84,7 +78,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session
+        attr_reader :request_session
 
         # @return [Hash{Symbol => Object}, nil] assembled article hash or nil
         def build_article

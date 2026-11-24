@@ -12,9 +12,7 @@ module Html2rss
       #
       # @see https://schema.org/docs/full.html
       # @see https://developers.google.com/search/docs/appearance/structured-data/article#microdata
-      class Schema # rubocop:disable Metrics/ClassLength -- scraper + structured warn paths
-        include Enumerable
-
+      class Schema < Base # rubocop:disable Metrics/ClassLength -- scraper + structured warn paths
         # Matches a leading schema.org URL prefix on @type values (http or https).
         SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
 
@@ -212,16 +210,6 @@ module Html2rss
           end
         end
 
-        # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
-        # @param url [String, Html2rss::Url] base page URL
-        def initialize(parsed_body, url:)
-          @parsed_body = parsed_body
-          @url = url
-        end
-
-        # @return [Boolean]
-        def extractable? = self.class.articles?(parsed_body)
-
         ##
         # @yield [Hash] Each scraped article_hash
         # @return [Array<Hash>] the scraped article_hashes
@@ -243,11 +231,9 @@ module Html2rss
         private
 
         def schema_objects
-          ::Html2rss::Html::Probe.scripts(@parsed_body, ::Html2rss::Html::Probe::APPLICATION_LD_JSON)
+          ::Html2rss::Html::Probe.scripts(parsed_body, ::Html2rss::Html::Probe::APPLICATION_LD_JSON)
                                  .flat_map { |tag| Schema.from_script(tag) }
         end
-
-        attr_reader :parsed_body, :url
       end
     end
   end

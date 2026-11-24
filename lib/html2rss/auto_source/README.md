@@ -20,6 +20,8 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
    3. Heuristic: SemanticHtml
    4. Heuristic: Html (skipped when earlier tiers already admitted at least one clean article)
 
+Every scraper subclasses `Scraper::Base` (`SemanticHtml` and `Html` via `Scraper::PageCards`), which owns the shared constructor and `extractable?` default; `request_slots` stays explicit on each (`CONTEXT.md` § Scraper contract).
+
 4. **Structured / API scrapers** — Schema, Microdata, MF2, JSON state, XHR JSON, oEmbed, WordPress REST, and Sitemap work on Nokogiri CSS/XPath or JSON/XML parsers. They do not extract from SST. `JsonDocument` walks a JSON response body (JSON Feed mapping or `JsonState.discover_articles`).
 5. **Heuristic scrapers** — `SemanticHtml` and `Html` share the page `SST::Document` (built lazily, at most once per page, by the first consumer: a heuristic tier or the page check), then:
 
