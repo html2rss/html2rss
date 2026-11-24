@@ -349,8 +349,7 @@ module Html2rss
       end
 
       def budget_remaining_label
-        remaining = budget.remaining_timeout_seconds
-        remaining.nil? ? 'untracked' : format('%.3f', remaining)
+        format('%.3f', budget.remaining_timeout_seconds)
       end
     end
   end

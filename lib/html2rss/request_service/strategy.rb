@@ -93,7 +93,7 @@ module Html2rss
       def skip_postflight? = false
 
       def check_timeout!
-        ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+        ctx.budget.effective_timeout_seconds
       rescue RequestTimedOut
         log_timeout!(reason: 'budget_exhausted')
         raise
@@ -123,8 +123,7 @@ module Html2rss
       # @return [void]
       # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured timeout fields stay in one log line
       def log_timeout!(reason:)
-        remaining = ctx.budget.remaining_timeout_seconds
-        remaining_label = remaining.nil? ? 'untracked' : format('%.3f', remaining)
+        remaining_label = format('%.3f', ctx.budget.remaining_timeout_seconds)
         host = ctx.url.host
         detail = [
           "strategy=#{self.class.name}",

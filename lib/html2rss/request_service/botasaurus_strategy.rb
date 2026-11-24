@@ -141,7 +141,7 @@ module Html2rss
 
       def attempt_timeout_seconds
         @attempt_timeout_seconds ||= begin
-          budget = ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+          budget = ctx.budget.effective_timeout_seconds
           [budget, BotasaurusContract::SCRAPE_TIMEOUT_SECONDS + BotasaurusContract::TRANSPORT_BUFFER_SECONDS].min
         end
       end

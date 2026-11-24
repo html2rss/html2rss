@@ -65,7 +65,7 @@ module Html2rss
       #
       # @return [Float] monotonic deadline
       def request_deadline
-        budget_timeout = ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+        budget_timeout = ctx.budget.effective_timeout_seconds
         Process.clock_gettime(Process::CLOCK_MONOTONIC) + [budget_timeout, attempt_timeout_ceiling].min
       end
 

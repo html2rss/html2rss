@@ -11,7 +11,7 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
     instance_double(
       Html2rss::RequestService::Budget,
       consume!: nil,
-      remaining_timeout_seconds: nil,
+      remaining_timeout_seconds: 30.0,
       effective_timeout_seconds: 30.0,
       elapsed_seconds: 0.0
     )

@@ -9,7 +9,7 @@ RSpec.describe Html2rss::RequestService::Context do
     let(:url) { 'http://www.example.com' }
     let(:headers) { {} }
     let(:request) { {} }
-    let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 1) }
+    let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 1, total_timeout_seconds: 60) }
 
     context 'with a valid URL (String)' do
       it 'does not raise an error' do
@@ -152,7 +152,7 @@ RSpec.describe Html2rss::RequestService::Context do
     subject(:follow_up) { instance.follow_up(url: 'https://example.com/page/2', relation: :pagination) }
 
     let(:policy) { Html2rss::RequestService::Policy.new }
-    let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 2) }
+    let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 2, total_timeout_seconds: 60) }
     let(:instance) do
       described_class.new(
         url: 'https://example.com',

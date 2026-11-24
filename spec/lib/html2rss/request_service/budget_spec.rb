@@ -5,18 +5,18 @@ require 'spec_helper'
 RSpec.describe Html2rss::RequestService::Budget do
   describe '.new' do
     it 'rejects non-positive request slot limits' do
-      expect { described_class.new(max_requests: 0) }
+      expect { described_class.new(max_requests: 0, total_timeout_seconds: 60) }
         .to raise_error(Html2rss::InvalidOption, /max_requests must be an Integer in 1\.\./)
     end
 
     it 'rejects non-integer request slot limits' do
-      expect { described_class.new(max_requests: 1.5) }
+      expect { described_class.new(max_requests: 1.5, total_timeout_seconds: 60) }
         .to raise_error(Html2rss::InvalidOption, /max_requests must be an Integer in 1\.\./)
     end
   end
 
   describe '#consume!' do
-    let(:budget) { described_class.new(max_requests: 2) }
+    let(:budget) { described_class.new(max_requests: 2, total_timeout_seconds: 60) }
     let(:mutex) { instance_double(Mutex) }
 
     before do
@@ -52,7 +52,7 @@ RSpec.describe Html2rss::RequestService::Budget do
     end
 
     it 'synchronizes reading remaining requests with the mutex', :aggregate_failures do
-      expect(described_class.new(max_requests: 2).remaining_requests).to eq(2)
+      expect(described_class.new(max_requests: 2, total_timeout_seconds: 60).remaining_requests).to eq(2)
       expect(mutex).to have_received(:synchronize)
     end
   end
@@ -61,17 +61,12 @@ RSpec.describe Html2rss::RequestService::Budget do
     it 'reports wall-clock time since budget creation' do
       allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 105.0)
 
-      budget = described_class.new(max_requests: 2)
+      budget = described_class.new(max_requests: 2, total_timeout_seconds: 60)
       expect(budget.elapsed_seconds).to eq(5.0)
     end
   end
 
   describe '#remaining_timeout_seconds' do
-    it 'returns nil when total_timeout_seconds is not provided' do
-      budget = described_class.new(max_requests: 2)
-      expect(budget.remaining_timeout_seconds).to be_nil
-    end
-
     it 'returns the remaining time' do
       allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 103.0)
 
@@ -88,31 +83,25 @@ RSpec.describe Html2rss::RequestService::Budget do
   end
 
   describe '#effective_timeout_seconds' do
-    it 'owns remaining-or-fallback resolution as float so adapters do not reimplement it', :aggregate_failures do
-      budget = described_class.new(max_requests: 2)
+    it 'returns the remaining time as a float so adapters do not reimplement it' do
+      allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 103.5)
 
-      expect(budget.effective_timeout_seconds(fallback: 30)).to be_a(Float)
-      expect(budget.effective_timeout_seconds(fallback: 30.5)).to eq(30.5)
+      budget = described_class.new(max_requests: 2, total_timeout_seconds: 10)
+      expect(budget.effective_timeout_seconds).to eq(6.5)
     end
 
-    it 'raises when the tracked deadline is exhausted' do
+    it 'raises when the deadline is exhausted' do
       budget = described_class.new(max_requests: 2, total_timeout_seconds: 0)
 
-      expect { budget.effective_timeout_seconds(fallback: 30) }
-        .to raise_error(Html2rss::RequestService::RequestTimedOut, 'Request timed out')
-    end
-
-    it 'raises when fallback is non-positive' do
-      budget = described_class.new(max_requests: 2)
-
-      expect { budget.effective_timeout_seconds(fallback: -1) }
+      expect { budget.effective_timeout_seconds }
         .to raise_error(Html2rss::RequestService::RequestTimedOut, 'Request timed out')
     end
 
     it 'permits sub-second timeouts above zero' do
-      budget = described_class.new(max_requests: 2)
+      allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 109.5)
 
-      expect(budget.effective_timeout_seconds(fallback: 0.5)).to eq(0.5)
+      budget = described_class.new(max_requests: 2, total_timeout_seconds: 10)
+      expect(budget.effective_timeout_seconds).to eq(0.5)
     end
   end
 end

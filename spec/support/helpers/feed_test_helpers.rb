@@ -73,7 +73,7 @@ module FeedTestHelpers
 
   def request_session_context(url: 'https://example.com/news', max_requests: 3)
     policy = Html2rss::RequestService::Policy.new(max_requests:)
-    budget = Html2rss::RequestService::Budget.new(max_requests: policy.max_requests)
+    budget = Html2rss::RequestService::Budget.new(max_requests: policy.max_requests, total_timeout_seconds: 60)
     Html2rss::RequestService::Context.new(url:, headers: { 'User-Agent' => 'RSpec' }, policy:, budget:)
   end
 

@@ -10,7 +10,7 @@ RSpec.describe Html2rss::Article::Enrichment do
   let(:session) do
     context = Html2rss::RequestService::Context.new(
       url: 'https://example.com/news', policy:,
-      budget: Html2rss::RequestService::Budget.new(max_requests: 1)
+      budget: Html2rss::RequestService::Budget.new(max_requests: 1, total_timeout_seconds: 60)
     )
     Html2rss::RequestSession.new(context:, strategy: :default)
   end

@@ -149,7 +149,7 @@ RSpec.describe Html2rss::RequestService do
     context 'when a follow-up context uses a deprecated strategy' do
       # rubocop:disable-next RSpec/ExampleLength -- builds initial+follow_up contexts to assert once-per-session
       it 'does not re-emit strategy_deprecated', :aggregate_failures do
-        budget = described_class::Budget.new(max_requests: 2)
+        budget = described_class::Budget.new(max_requests: 2, total_timeout_seconds: 60)
         initial = described_class::Context.new(url: 'https://example.com/news', budget:)
         follow_up = initial.follow_up(url: 'https://example.com/news?page=2', relation: :pagination)
         allow(described_class::HttpxStrategy).to receive(:new).and_return(strategy_instance)
@@ -329,7 +329,8 @@ RSpec.describe Html2rss::RequestService do
     let(:strategy_instance) { instance_double(described_class::HttpxStrategy) }
     let(:context) do
       Html2rss::RequestService::Context.new(
-        url: 'https://example.com/', budget: Html2rss::RequestService::Budget.new(max_requests: 1)
+        url: 'https://example.com/', budget: Html2rss::RequestService::Budget.new(max_requests: 1,
+                                                                                  total_timeout_seconds: 60)
       )
     end
 

@@ -27,7 +27,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     instance_double(
       Html2rss::RequestService::Budget,
       consume!: nil,
-      remaining_timeout_seconds: nil,
+      remaining_timeout_seconds: 30.0,
       effective_timeout_seconds: 30.0,
       elapsed_seconds: 0.0
     )
@@ -316,7 +316,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
        :aggregate_failures do
       allow(policy).to receive_messages(total_timeout_seconds: 50, connect_timeout_seconds: 5,
                                         read_timeout_seconds: 10)
-      allow(budget).to receive(:effective_timeout_seconds).with(fallback: 50).and_return(50.0)
+      allow(budget).to receive(:effective_timeout_seconds).and_return(50.0)
       timeouts = deadline_probe.fetch(:timeouts)
 
       execute
@@ -331,7 +331,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
        :aggregate_failures do
       allow(policy).to receive_messages(total_timeout_seconds: 50, connect_timeout_seconds: 5,
                                         read_timeout_seconds: 10)
-      allow(budget).to receive(:effective_timeout_seconds).with(fallback: 50).and_return(4.0)
+      allow(budget).to receive(:effective_timeout_seconds).and_return(4.0)
       timeouts = deadline_probe.fetch(:timeouts)
 
       execute

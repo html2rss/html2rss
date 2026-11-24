@@ -8,7 +8,7 @@ RSpec.describe Html2rss::RequestSession::Pager do
     context = Html2rss::RequestService::Context.new(
       url: 'https://example.com/news',
       policy: Html2rss::RequestService::Policy.new(max_requests: 5),
-      budget: Html2rss::RequestService::Budget.new(max_requests: 5)
+      budget: Html2rss::RequestService::Budget.new(max_requests: 5, total_timeout_seconds: 60)
     )
     Html2rss::RequestSession.new(context:, strategy: :default, logger:)
   end
@@ -60,7 +60,7 @@ RSpec.describe Html2rss::RequestSession::Pager do
       context = Html2rss::RequestService::Context.new(
         url: 'https://example.com/news',
         policy: Html2rss::RequestService::Policy.new(max_requests: 3),
-        budget: Html2rss::RequestService::Budget.new(max_requests: 3)
+        budget: Html2rss::RequestService::Budget.new(max_requests: 3, total_timeout_seconds: 60)
       )
       Html2rss::RequestSession.new(context:, strategy: :default, logger:)
     end
