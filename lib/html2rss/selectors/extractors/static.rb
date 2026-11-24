@@ -29,9 +29,6 @@ module Html2rss
           'static'
         ].freeze
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_export = SchemaExport.for_extractor(name: :static, klass: self)
-
         ##
         # Initializes the Static extractor.
         #

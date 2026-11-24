@@ -15,9 +15,9 @@ RSpec.describe Html2rss::Selectors::Extractors::Static do
     expect(described_class.new(nil).call).to be_nil
   end
 
-  describe '.schema_export' do
+  describe 'schema export' do
     it 'exports the static extractor schema', :aggregate_failures do
-      expect(described_class.schema_export).to eq(
+      expect(Html2rss::Selectors::SchemaExport.for_extractor(name: :static, klass: described_class)).to eq(
         type: 'string', const: 'static', title: 'static',
         description: described_class::DESCRIPTION, examples: ['static']
       )

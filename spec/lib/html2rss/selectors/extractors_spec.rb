@@ -19,14 +19,4 @@ RSpec.describe Html2rss::Selectors::Extractors do
       expect(first.text).to eq('a')
     end
   end
-
-  describe 'schema export of every extractor' do
-    it 'exports each extractor class with its own registry name, description and examples', :aggregate_failures do
-      described_class::NAME_TO_CLASS.each do |name, klass|
-        expect(klass.schema_export).to eq(
-          Html2rss::Selectors::SchemaExport.for_extractor(name:, klass:)
-        )
-      end
-    end
-  end
 end

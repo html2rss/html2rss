@@ -38,9 +38,6 @@ module Html2rss
           'attribute'
         ].freeze
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_export = SchemaExport.for_extractor(name: :attribute, klass: self)
-
         ##
         # Initializes the Attribute extractor.
         #

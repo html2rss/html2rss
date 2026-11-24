@@ -37,9 +37,6 @@ module Html2rss
           { 'name' => 'parse_uri' }
         ].freeze
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :parse_uri, klass: self)
-
         # @param value [String] extracted selector value
         # @param _context [Selectors::StepEnv] post-processor context
         # @return [void]

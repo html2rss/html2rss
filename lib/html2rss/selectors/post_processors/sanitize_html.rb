@@ -109,9 +109,6 @@ module Html2rss
           'source' => %w[src type]
         }.freeze
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :sanitize_html, klass: self)
-
         ##
         # Cached standalone helper: sanitizes an HTML string with a memoized fragment cache.
         # Used outside the selector pipeline (e.g. by DescriptionBuilder).

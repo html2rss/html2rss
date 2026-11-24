@@ -124,7 +124,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     end
 
     it 'exports the gsub name, the pattern cap and the description', :aggregate_failures do
-      fragment = described_class.schema_export
+      fragment = Html2rss::Selectors::SchemaExport.for_post_processor(name: :gsub, klass: described_class)
 
       expect(fragment.fetch(:properties).fetch(:name)).to eq(type: 'string', const: 'gsub')
       expect(fragment.fetch(:properties).fetch(:pattern)).to eq(type: 'string', maxLength: 256)

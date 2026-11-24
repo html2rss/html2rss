@@ -35,9 +35,6 @@ module Html2rss
           'html'
         ].freeze
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_export = SchemaExport.for_extractor(name: :html, klass: self)
-
         ##
         # Initializes the Html extractor.
         #

@@ -32,15 +32,15 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
-        # Config-facing options contract (validator / SchemaExport / Base.validate_options!).
-        OPTIONS = [
-          OptionSpec.new(name: :pattern, type: String),
-          OptionSpec.new(name: :replacement, type: [String, Hash])
-        ].freeze
-
         # Character cap for the authored +pattern+ string (before slash stripping).
         # Same unit as JSON Schema +maxLength+.
         MAX_PATTERN_LENGTH = 256
+
+        # Config-facing options contract (validator / SchemaExport / Base.validate_options!).
+        OPTIONS = [
+          OptionSpec.new(name: :pattern, type: String, max_length: MAX_PATTERN_LENGTH),
+          OptionSpec.new(name: :replacement, type: [String, Hash])
+        ].freeze
 
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = format(
@@ -54,13 +54,6 @@ module Html2rss
         EXAMPLES = [
           { 'name' => 'gsub', 'pattern' => 'boo', 'replacement' => 'baz' }
         ].freeze
-
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export
-          fragment = SchemaExport.for_post_processor(name: :gsub, klass: self)
-          fragment.fetch(:properties).fetch(:pattern)[:maxLength] = MAX_PATTERN_LENGTH
-          fragment
-        end
 
         ##
         # Compiles and memoizes a gsub +pattern+ string as a Regexp.

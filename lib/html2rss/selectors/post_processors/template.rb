@@ -53,9 +53,6 @@ module Html2rss
         ].freeze
         # rubocop:enable Style/FormatStringToken
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :template, klass: self)
-
         ##
         # Ensures a non-empty template +string+ option and an +item_env+ for sibling lookup.
         #

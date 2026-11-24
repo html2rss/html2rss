@@ -42,9 +42,6 @@ module Html2rss
           { 'name' => 'parse_time' }
         ].freeze
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :parse_time, klass: self)
-
         # @param identifier [String] IANA time zone name
         # @return [TZInfo::Timezone]
         def self.timezone(identifier)

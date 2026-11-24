@@ -48,9 +48,6 @@ module Html2rss
           { 'name' => 'markdown_to_html' }
         ].freeze
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :markdown_to_html, klass: self)
-
         ##
         # Converts Markdown to sanitized HTML.
         #

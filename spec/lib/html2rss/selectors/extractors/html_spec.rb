@@ -12,9 +12,9 @@ RSpec.describe Html2rss::Selectors::Extractors::Html do
     expect { described_class.new(xml) }.not_to raise_error
   end
 
-  describe '.schema_export' do
+  describe 'schema export' do
     it 'exports the html extractor schema', :aggregate_failures do
-      expect(described_class.schema_export).to eq(
+      expect(Html2rss::Selectors::SchemaExport.for_extractor(name: :html, klass: described_class)).to eq(
         type: 'string', const: 'html', title: 'html',
         description: described_class::DESCRIPTION, examples: ['html']
       )

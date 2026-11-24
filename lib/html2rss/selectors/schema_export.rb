@@ -49,6 +49,7 @@ module Html2rss
           properties = { name: { type: 'string', const: name } }
           OptionSpec.for(klass).each do |spec|
             properties[spec.name] = property_schema_for(spec.type)
+            properties[spec.name][:maxLength] = spec.max_length if spec.max_length
           end
           properties
         end

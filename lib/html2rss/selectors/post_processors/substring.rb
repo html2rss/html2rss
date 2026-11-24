@@ -48,9 +48,6 @@ module Html2rss
           { 'name' => 'substring', 'start' => 4, 'end' => 6 }
         ].freeze
 
-        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :substring, klass: self)
-
         ##
         # Extracts the substring from the original string based on the provided start and end indices.
         #
