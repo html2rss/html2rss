@@ -12,7 +12,7 @@ module Html2rss
         # Attribute names checked first for microdata property values.
         VALUE_ATTRIBUTES = %w[content datetime href src data value].freeze
         # Text properties handed to {Schema::Thing} as one string; its own precedence picks among them.
-        TEXT_KEYS = %i[description articleBody abstract datePublished dateCreated dateModified uploadDate].freeze
+        TEXT_KEYS = %i[description abstract datePublished dateCreated dateModified uploadDate].freeze
         # Properties handed to {Schema::Thing} unchanged.
         PASS_KEYS = %i[author publisher video audio associatedMedia].freeze
         # Image properties, in precedence order; the first present one is the only candidate.
@@ -257,9 +257,11 @@ module Html2rss
 
             # @param props [Hash{Symbol => Object}] parsed properties
             # @param id [String, nil] item identifier
-            # @return [Hash{Symbol => Object}] identity, title, url and image
+            # @return [Hash{Symbol => Object}] identity, title, url and image; the body goes under `schema_object_body`,
+            #   which Thing ranks last, so an equally long abstract wins
             def base(props, id)
               { '@id': id, headline: text(*props.values_at(:headline, :title, :name)),
+                schema_object_body: text(props[:articleBody]),
                 url: url_value(props, id), image: first_value(props.values_at(*IMAGE_KEYS).compact) }
             end
 
@@ -276,7 +278,7 @@ module Html2rss
             def text(*values)
               values.each do |value|
                 value = value.first if value.is_a?(Array)
-                return value if value.is_a?(String)
+                return value if value.is_a?(String) && !value.strip.empty?
               end
 
               nil
@@ -296,9 +298,9 @@ module Html2rss
 
             # @param props [Hash{Symbol => Object}] parsed properties
             # @param id [String, nil] item identifier
-            # @return [String, nil] first of `url`, `mainEntityOfPage` (or its url or id), a root-relative id
+            # @return [String, nil] first of `url`, `mainEntityOfPage` (or its url or id), a URL-like id
             def url_value(props, id)
-              url_like = id if id&.start_with?('/')
+              url_like = id if id&.match?(%r{\A(/|https?://)})
               [props[:url], props[:mainEntityOfPage], url_like].each do |value|
                 value = first_value([value])
                 value = value.values_at(:url, :@id).compact.first if value.is_a?(Hash)
