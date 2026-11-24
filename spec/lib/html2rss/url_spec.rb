@@ -1,6 +1,34 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Url do
+  describe '.from_relative normalization' do
+    let(:uri) { Addressable::URI.parse(href) }
+
+    before do
+      allow(uri).to receive(:normalize).and_call_original
+      allow(Addressable::URI).to receive(:parse).and_call_original
+      allow(Addressable::URI).to receive(:parse).with(href).and_return(uri)
+    end
+
+    context 'when the URL is already in normal form' do
+      let(:href) { 'https://example.com/a/b?x=1' }
+
+      it 'keeps it as parsed', :aggregate_failures do
+        expect(described_class.from_relative(href, 'https://example.com').to_s).to eq(href)
+        expect(uri).not_to have_received(:normalize)
+      end
+    end
+
+    context 'when normalization would change the URL' do
+      let(:href) { 'HTTPS://Example.com:443/a/./b' }
+
+      it 'normalizes it', :aggregate_failures do
+        expect(described_class.from_relative(href, 'https://example.com').to_s).to eq('https://example.com/a/b')
+        expect(uri).to have_received(:normalize).once
+      end
+    end
+  end
+
   describe '.from_relative normalization skip' do
     let(:normalized) do
       ->(ref, base) { Addressable::URI.parse(base).join(Addressable::URI.parse(ref)).normalize.to_s }
