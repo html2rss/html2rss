@@ -429,6 +429,20 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     end
   end
 
+  describe 'whitespace-only envelope strings' do
+    it 'treats a blank timeout_phase as absent' do
+      payload = { 'error' => 'x', 'error_category' => 'timeout',
+                  'diagnostics' => { 'request_id' => 'r', 'timeout_phase' => '  ' } }
+      error = described_class::Error.new(payload:, transport_status: 504)
+      expect(error.timeout_phase).to be_nil
+    end
+
+    it 'drops a blank metadata_error from transport_meta' do
+      payload = { 'html' => '<html></html>', 'metadata_error' => ' ', 'diagnostics' => { 'request_id' => 'r' } }
+      expect(described_class::Success.new(payload:).transport_meta).not_to include('metadata_error')
+    end
+  end
+
   describe 'Error#challenge_block?' do
     subject(:parsed) { described_class::Error.new(payload:, transport_status: 502) }
 

@@ -77,26 +77,14 @@ module Html2rss
         end
 
         ##
-        # @param yaml [String]
-        # @param articles_count [Integer]
-        # @param has_selectors [Boolean]
-        # @param channel_title [String, nil]
+        # @param result [Html2rss::Capture::CaptureResult]
         # @param requested_strategy [String, Symbol]
-        # @param segment_strategy [Symbol, String, nil]
-        # @param selected_strategy [Symbol, String, nil]
-        # @param admission_drops [Hash]
-        # @param native_feed [String, nil]
-        # @param suggested_channel_url [String, nil]
         # @return [Outcome]
-        def capture(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
-                    segment_strategy: nil, selected_strategy: nil, admission_drops: {}, native_feed: nil,
-                    suggested_channel_url: nil)
-          next_step = capture_next_step(articles_count:, has_selectors:, native_feed:)
-          new(ok: true, next_step:, guidance: next_step.guidance, payload: capture_payload(
-            yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:,
-            segment_strategy:, selected_strategy:, admission_drops:, native_feed:,
-            suggested_channel_url:
-          ))
+        def capture(result:, requested_strategy:)
+          next_step = capture_next_step(articles_count: result.articles_count, has_selectors: result.has_selectors,
+                                        native_feed: result.native_feed)
+          new(ok: true, next_step:, guidance: next_step.guidance,
+              payload: capture_payload(result, requested_strategy))
         end
 
         ##
@@ -229,17 +217,22 @@ module Html2rss
           ' Items were dropped for having no URL: fix the selectors.url selector (it must match a link on each item).'
         end
 
-        def capture_payload(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
-                            segment_strategy:, selected_strategy:, admission_drops:, native_feed:,
-                            suggested_channel_url:)
+        def capture_payload(result, requested_strategy)
           {
-            yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy: requested_strategy.to_s,
-            **(native_feed ? { native_feed: native_feed.to_s } : {}),
-            **(suggested_channel_url ? { suggested_channel_url: suggested_channel_url.to_s } : {}),
-            **(segment_strategy ? { segment_strategy: segment_strategy.to_s } : {}),
-            **(selected_strategy ? { selected_strategy: selected_strategy.to_s } : {}),
-            **(admission_drops.any? ? { admission_drops: } : {})
+            yaml: result.yaml, articles_count: result.articles_count, has_selectors: result.has_selectors,
+            channel_title: result.channel_title, requested_strategy: requested_strategy.to_s,
+            **optional_capture_fields(result)
           }
+        end
+
+        def optional_capture_fields(result)
+          {
+            native_feed: result.native_feed&.to_s,
+            suggested_channel_url: result.suggested_channel_url&.to_s,
+            segment_strategy: result.segment_strategy&.to_s,
+            selected_strategy: result.selected_strategy&.to_s,
+            admission_drops: (result.admission_drops if result.admission_drops.any?)
+          }.compact
         end
 
         def next_step_for_error(error)

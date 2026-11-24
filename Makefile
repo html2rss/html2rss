@@ -67,7 +67,7 @@ validate-fixtures: ## Validate fixture configs
 	! $(RUBY_RUNNER)bundle exec exe/html2rss validate spec/fixtures/invalid_selectors.test.yml
 
 docs: ## Generate documentation
-	$(RUBY_RUNNER)bundle exec yard doc
+	$(RUBY_RUNNER)bundle exec yard doc --fail-on-warning
 
 perf-baseline: ## Record auto-source wall/alloc baseline markdown
 	$(RUBY_RUNNER)bin/heuristic-perf-baseline --write spec/perf/baseline-auto-source.md

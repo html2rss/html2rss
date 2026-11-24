@@ -33,21 +33,15 @@ module Html2rss
 
         ##
         # Validates presence and types from the strategy's +OPTIONS+ contract.
+        # Called once per step when {Selectors} compiles a field; instances do not re-validate.
         #
         # @param context [Selectors::StepEnv]
         # @return [void]
         # @raise [MissingOption] if a required option key is absent
         # @raise [InvalidType] if a present option has the wrong type
         def self.validate_options!(context)
-          specs = option_specs
-          return if specs.empty?
-
           step_config = context.step_config
-          cache = validated_step_configs
-          return if cache[step_config]
-
-          specs.each { |spec| validate_option_spec!(spec, step_config, context) }
-          cache[step_config] = true
+          option_specs.each { |spec| validate_option_spec!(spec, step_config, context) }
         end
 
         # rubocop:disable-next ThreadSafety/ClassInstanceVariable
@@ -55,12 +49,6 @@ module Html2rss
           @option_specs ||= OptionSpec.for(self)
         end
         private_class_method :option_specs
-
-        # rubocop:disable-next ThreadSafety/ClassInstanceVariable
-        def self.validated_step_configs
-          @validated_step_configs ||= {}.compare_by_identity
-        end
-        private_class_method :validated_step_configs
 
         ##
         # @param spec [Selectors::OptionSpec]
@@ -97,7 +85,7 @@ module Html2rss
         # @param value [Object] the value to be processed
         # @param context [Selectors::StepEnv] runtime selector context and options
         # @raise [InvalidType] if +context+ is not a {Selectors::StepEnv} or +VALUE_TYPE+ mismatches
-        def initialize(value, context) # rubocop:disable Metrics/MethodLength -- type guard + VALUE_TYPE + validate_args
+        def initialize(value, context)
           unless context.is_a?(Selectors::StepEnv)
             raise InvalidType,
                   "The type of `context` must be #{Selectors::StepEnv}, but is: #{context.class}",
@@ -105,7 +93,6 @@ module Html2rss
           end
 
           klass = self.class
-          klass.validate_options!(context)
           klass.assert_type(value, klass::VALUE_TYPE, :value, context:) if klass::VALUE_TYPE
           klass.validate_args!(value, context)
 

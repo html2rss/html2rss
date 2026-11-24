@@ -22,8 +22,6 @@ detectors:
     enabled: false
   BooleanParameter:
     enabled: false
-  ManualDispatch:
-    enabled: false
   InstanceVariableAssumption:
     enabled: false
   RepeatedConditional:

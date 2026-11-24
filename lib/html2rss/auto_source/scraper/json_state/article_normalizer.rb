@@ -100,11 +100,8 @@ module Html2rss
             # @param value [Object] candidate scalar, or Hash wrapping +rendered+/+value+/+text+
             # @return [String, nil] normalized non-empty string (HTML preserved for descriptions)
             def string(value)
-              value = unwrap_scalar(value)
-              return unless value.is_a?(String) || value.is_a?(Numeric)
-
-              trimmed = value.to_s.strip
-              trimmed unless trimmed.empty?
+              scalar = unwrap_scalar(value)
+              StringUtil.presence(scalar.to_s)&.strip if scalar in String | Numeric
             end
 
             # @param value [Object] candidate scalar or nested Hash
@@ -159,12 +156,10 @@ module Html2rss
             # @return [Object, nil] first string or numeric value whose key matches {DATE_KEY_SUFFIX}
             def suffix_date_value(sources)
               case sources
-              when Hash
-                sources.each do |key, value|
-                  return value if date_suffix_key?(key) && (value.is_a?(String) || value.is_a?(Numeric))
-                end
-                nil
-              when Array then sources.filter_map { suffix_date_value(_1) }.first
+              in Hash
+                sources.find { |key, value| date_suffix_key?(key) && (value in String | Numeric) }&.last
+              in Array then sources.filter_map { suffix_date_value(_1) }.first
+              else nil
               end
             end
 
@@ -180,15 +175,15 @@ module Html2rss
             def categories(sources)
               raw = ValueFinder.fetch(sources, CATEGORY_KEYS)
               names = case raw
-                      when Array then raw
-                      when Hash then raw.values
-                      when String then [raw]
+                      in Array then raw
+                      in Hash then raw.values
+                      in String then [raw]
                       else []
                       end
 
               result = names.flat_map do |value|
                 case value
-                when Hash
+                in Hash
                   string(ValueFinder.fetch(value, %i[name title label]))
                 else
                   string(value)

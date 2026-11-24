@@ -896,14 +896,7 @@ RSpec.describe Html2rss::Capture do
         )
         expect(result.has_selectors).to be true
         expect(result.segment_strategy).to eq(:default)
-        next_step = Html2rss::MCP::Outcome.capture(
-          yaml: result.yaml,
-          articles_count: result.articles_count,
-          has_selectors: result.has_selectors,
-          channel_title: result.channel_title,
-          requested_strategy: 'auto',
-          segment_strategy: result.segment_strategy
-        ).next_step
+        next_step = Html2rss::MCP::Outcome.capture(result:, requested_strategy: 'auto').next_step
         expect(next_step.name).to eq(:test)
       end
     end
@@ -950,13 +943,7 @@ RSpec.describe Html2rss::Capture do
       )
       expect(result.segment_strategy).to eq(:default)
       expect(result.candidates).to eq(Html2rss::SelectorCandidates.empty)
-      expect(Html2rss::MCP::Outcome.capture(
-        yaml: result.yaml,
-        articles_count: result.articles_count,
-        has_selectors: result.has_selectors,
-        channel_title: result.channel_title,
-        requested_strategy: 'auto'
-      ).next_step.name).to eq(:inspect)
+      expect(Html2rss::MCP::Outcome.capture(result:, requested_strategy: 'auto').next_step.name).to eq(:inspect)
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- JSON response must not inherit the HTML default
@@ -1001,13 +988,7 @@ RSpec.describe Html2rss::Capture do
       expect(result.candidates[:items].map { |c| c[:selector] }).not_to include(
         Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR
       )
-      expect(Html2rss::MCP::Outcome.capture(
-        yaml: result.yaml,
-        articles_count: result.articles_count,
-        has_selectors: result.has_selectors,
-        channel_title: result.channel_title,
-        requested_strategy: 'auto'
-      ).next_step.name).to eq(:test)
+      expect(Html2rss::MCP::Outcome.capture(result:, requested_strategy: 'auto').next_step.name).to eq(:test)
     end
 
     it 'emits unique heading tags for mixed heading runs instead of a parent path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

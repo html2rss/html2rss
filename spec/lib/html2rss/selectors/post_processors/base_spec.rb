@@ -107,6 +107,12 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
       expect(described_class).to have_received(:validate_args!).with(value, context)
     end
 
+    it 'leaves option validation to the compile step', :aggregate_failures do
+      allow(described_class).to receive(:validate_options!)
+      described_class.new(value, context)
+      expect(described_class).not_to have_received(:validate_options!)
+    end
+
     it 'rejects legacy hash context' do # rubocop:disable RSpec/ExampleLength
       expect do
         described_class.new(value, { step_config: { key1: 'value1' } })
@@ -132,13 +138,6 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
     it 'rejects a value that does not match VALUE_TYPE' do
       expect { typed.new(1, context) }
         .to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /must be String/)
-    end
-
-    it 'validates the step options against the given context' do
-      allow(typed).to receive(:validate_options!)
-      typed.new('text', context)
-
-      expect(typed).to have_received(:validate_options!).with(context)
     end
   end
 end

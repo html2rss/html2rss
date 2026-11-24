@@ -256,9 +256,7 @@ module Html2rss
     end
 
     def blank_string_to_nil(value)
-      return if value.is_a?(String) && value.strip.empty?
-
-      value
+      value if !value.is_a?(String) || StringUtil.present?(value)
     end
   end
 end

@@ -73,7 +73,7 @@ module Html2rss
         ##
         # Converts the provided time string to RFC822 format, taking into account the time_zone.
         #
-        # Uses in-memory {TZInfo::Timezone} conversion so parsing never mutates +ENV['TZ']+
+        # Uses in-memory +TZInfo::Timezone+ conversion so parsing never mutates +ENV['TZ']+
         # (which would invalidate libc +tzset+ and re-read zoneinfo from disk).
         #
         # @return [String] RFC822 formatted time
