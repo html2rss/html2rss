@@ -28,7 +28,7 @@ module Html2rss
         class << self
           ##
           # @param srcset_strings [Array<String>] raw srcset attribute values
-          # @return [String, nil] URL of the largest width/height candidate
+          # @return [String, nil] URL of the largest width/height candidate; of equal ones, the later
           def largest_from_srcsets(srcset_strings)
             by_size = {}
             Array(srcset_strings).each { |srcset| merge_srcset!(by_size, srcset) }
