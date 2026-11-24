@@ -142,12 +142,21 @@ RSpec.describe LanguageCheck do
   end
 
   describe '.with_base_worktree' do
+    before do
+      [%w[init -q], %w[-c user.name=t -c user.email=t@t commit -q --allow-empty -m init],
+       ['worktree', 'add', '--detach', '--quiet', File.join(pages_dir, 'other')]].each do |args|
+        Open3.capture2e('git', '-C', pages_dir, *args)
+      end
+      stub_const('LanguageCheck::REPO_ROOT', pages_dir)
+    end
+
     it 'removes its own worktree when the block raises, leaving every other worktree entry', :aggregate_failures do
-      list = -> { `git -C #{described_class::REPO_ROOT} worktree list --porcelain`.lines.grep(/\Aworktree /) }
-      before = list.call
+      entries = -> { Open3.capture2('git', '-C', pages_dir, 'worktree', 'list').first.lines }
+      before = entries.call
 
       expect { described_class.with_base_worktree('HEAD') { raise 'forced' } }.to raise_error('forced')
-      expect(list.call).to eq(before)
+      expect(before.size).to eq(2)
+      expect(entries.call).to eq(before)
     end
   end
 
