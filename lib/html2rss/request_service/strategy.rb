@@ -44,14 +44,30 @@ module Html2rss
       end
 
       ##
-      # Consumes a request slot and validates the destination before transport work.
+      # Spends the request slot, then validates the destination before transport work.
+      # Adapters that retry charge once here or via {#charge_budget!} and re-validate per attempt.
       #
-      # @param consume_budget [Boolean] whether to decrement the request budget
       # @return [void]
-      def preflight!(consume_budget: true)
+      def preflight!
+        charge_budget!
+        validate_request!
+      end
+
+      ##
+      # Spends one request budget slot for the logical request.
+      #
+      # @return [void]
+      def charge_budget!
+        ctx.budget.consume! unless skip_preflight?
+      end
+
+      ##
+      # Validates the current destination against the request policy; spends nothing.
+      #
+      # @return [void]
+      def validate_request!
         return if skip_preflight?
 
-        ctx.budget.consume! if consume_budget
         ctx.policy.validate_request!(
           url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation, advertisement: ctx.advertisement
         )
