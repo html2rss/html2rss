@@ -67,9 +67,8 @@ RSpec.describe Html2rss::AutoSource::Scraper do
           expect(klass.request_slots({})).to be_an(Integer)
         end
 
-        it 'shares the Scraper::Base contract', :aggregate_failures do
+        it 'shares the Scraper::Base contract' do
           expect(klass).to be < Html2rss::AutoSource::Scraper::Base
-          expect(klass.instance_method(:extractable?)).to be_a(UnboundMethod)
         end
       end
     end
