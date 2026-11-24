@@ -87,6 +87,16 @@ RSpec.describe Html2rss::Test do
     end
   end
 
+  describe '.call feed_name' do
+    it 'resolves the named feed of a multi-feed config' do
+      allow(Html2rss::Config).to receive(:resolve_and_validate).and_call_original
+      described_class.call('feeds: {}', 'named')
+
+      expect(Html2rss::Config).to have_received(:resolve_and_validate)
+        .with('feeds: {}', feed_name: 'named', params: {})
+    end
+  end
+
   describe '.call' do
     context 'when schema validation fails' do
       it 'returns a failed Test::Result with validation errors', :aggregate_failures do
