@@ -271,4 +271,27 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata, '#each' do
       expect(article[:author]).to eq('Pub Org')
     end
   end
+
+  context 'with the saved newsroom page' do
+    let(:html) { File.read('spec/fixtures/auto_source/microdata_article_cards.html') }
+
+    it 'maps id and title of every card' do
+      expect(articles.map { |a| [a[:id], a[:title]] }).to eq(
+        [['/news/city-council-vote', 'City council approves the new transit budget'],
+         ['/blog/notes-from-the-archive', 'Notes from the archive'],
+         ['/news/library-hours', 'Library extends opening hours']]
+      )
+    end
+
+    it 'maps the image of every card' do
+      expect(articles.map { _1[:image]&.to_s }).to eq(
+        ['https://example.com/img/transit.jpg', nil, 'https://example.com/img/library.jpg']
+      )
+    end
+
+    it 'maps author, date and categories of the first card' do
+      expect(articles.first).to include(author: 'Ada Reporter', published_at: '2024-03-05T08:30:00Z',
+                                        categories: %w[transit budget])
+    end
+  end
 end
