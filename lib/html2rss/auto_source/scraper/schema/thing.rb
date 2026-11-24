@@ -79,8 +79,8 @@ module Html2rss
           def title
             schema_object.values_at(:headline, :name, :alternativeHeadline, :title)
                          .lazy
-                         .map { first_scalar(_1).to_s.strip }
-                         .find { !_1.empty? }
+                         .filter_map { StringUtil.presence(first_scalar(_1).to_s)&.strip }
+                         .first
           end
 
           # @return [String, nil] longest available description field
@@ -178,7 +178,7 @@ module Html2rss
           # @param value [Object] url candidate
           # @return [Html2rss::Url, nil] absolute url, or nil when missing or unusable
           def build_url(value)
-            return Url.from_relative(value, base_url || value) if value.is_a?(String) && !value.empty?
+            return Url.from_relative(value, base_url || value) if StringUtil.present?(value, strip: false)
 
             Log.debug("Schema#Thing.url: no usable url in schema_object: #{schema_object.inspect}")
             nil
@@ -210,32 +210,33 @@ module Html2rss
           def first_scalar(value)
             return value unless value.is_a?(Array)
 
-            value.find { _1.is_a?(String) && !_1.strip.empty? }
+            value.find { StringUtil.present?(_1) }
           end
 
           # @param obj [String, Hash, Array, nil] schema author or publisher field
           # @return [String, nil] extracted author name
           def extract_author_name(obj)
             case obj
-            when String then obj.strip unless obj.strip.empty?
-            when Hash then obj[:name].to_s.strip unless obj[:name].to_s.strip.empty?
-            when Array
+            in String then StringUtil.presence(obj)&.strip
+            in Hash then StringUtil.presence(obj[:name].to_s)&.strip
+            in Array
               names = obj.filter_map { extract_author_name(_1) }
               names.join(', ') unless names.empty?
+            else nil
             end
           end
 
           # @param obj [String, Hash, Array, nil] image node or list of image nodes
           # @return [String, nil] image URL string (first usable entry for lists)
           def image_url_from(obj)
-            return obj if obj.is_a?(String)
-            return obj.filter_map { image_url_from(_1) }.first if obj.is_a?(Array)
-            return unless obj.is_a?(Hash)
-
-            types = Schema.normalize_types(obj[:@type])
-            return unless types.empty? || types.include?('ImageObject')
-
-            obj[:url] || obj[:contentUrl]
+            case obj
+            in String then obj
+            in Array then obj.filter_map { image_url_from(_1) }.first
+            in Hash
+              types = Schema.normalize_types(obj[:@type])
+              obj[:url] || obj[:contentUrl] if types.empty? || types.include?('ImageObject')
+            else nil
+            end
           end
 
           # @param value [String, Symbol, nil] candidate schema identifier

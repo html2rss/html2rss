@@ -123,14 +123,14 @@ module Html2rss
 
         def metadata_error
           value = payload['metadata_error']
-          value.is_a?(String) && !value.empty? ? value : nil
+          StringUtil.presence(value, strip: false)
         end
 
         def normalize_xhr_entry(entry)
           return unless entry.is_a?(Hash)
 
           body = xhr_field(entry, :body)
-          return unless body.is_a?(String) && !body.empty?
+          return unless StringUtil.present?(body, strip: false)
 
           {
             'url' => xhr_field(entry, :url).to_s,
@@ -189,14 +189,14 @@ module Html2rss
 
         # @return [String] normalized challenge error message
         def challenge_message
-          [error, challenge_marker].find { |value| value.is_a?(String) && !value.empty? } ||
+          [error, challenge_marker].find { StringUtil.present?(_1, strip: false) } ||
             'Botasaurus challenge block detected.'
         end
 
         # @return [String, nil] scrape-api timeout stage when present on diagnostics
         def timeout_phase
           value = diagnostics['timeout_phase']
-          value.is_a?(String) && !value.empty? ? value : nil
+          StringUtil.presence(value, strip: false)
         end
 
         # @return [String] actionable upstream failure summary

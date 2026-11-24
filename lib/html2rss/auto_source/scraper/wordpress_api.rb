@@ -127,7 +127,7 @@ module Html2rss
         end
 
         def article_id(article_url)
-          root_path_query_id(article_url) || present_string(article_url.path)
+          root_path_query_id(article_url) || StringUtil.presence(article_url.path.to_s)&.strip
         end
 
         def article_title(post)
@@ -135,7 +135,7 @@ module Html2rss
         end
 
         def article_description(post)
-          rendered_html(rendered_field(post, :content)) || rendered_html(rendered_field(post, :excerpt))
+          %i[content excerpt].filter_map { StringUtil.presence(rendered_field(post, _1).to_s)&.strip }.first
         end
 
         # Only Hash fields carry `rendered`; a String or other malformed field yields nil.
@@ -147,13 +147,13 @@ module Html2rss
         end
 
         def article_published_at(post)
-          gmt = present_string(post[:date_gmt])
+          gmt = StringUtil.presence(post[:date_gmt].to_s)&.strip
           # WordPress reports unset GMT dates (drafts, imports) as 0000-00-00.
-          gmt && !gmt.start_with?('0000') ? "#{gmt}Z" : present_string(post[:date])
+          gmt && !gmt.start_with?('0000') ? "#{gmt}Z" : StringUtil.presence(post[:date].to_s)&.strip
         end
 
         def article_categories(post)
-          Array(post[:categories]).filter_map { |value| present_string(value) }
+          Array(post[:categories]).filter_map { |value| StringUtil.presence(value.to_s)&.strip }
         end
 
         def article_attributes(post, article_url)
@@ -168,7 +168,7 @@ module Html2rss
         end
 
         def absolute_link(link)
-          value = present_string(link)
+          value = StringUtil.presence(link.to_s)&.strip
           return unless value
 
           Html2rss::Url.from_relative(value, url)
@@ -177,25 +177,15 @@ module Html2rss
         end
 
         def rendered_text(value)
-          html = rendered_html(value)
+          html = StringUtil.presence(value.to_s)&.strip
           return unless html
 
           text = CGI.unescapeHTML(html.gsub(/<[^>]*>/m, ' ')).gsub(/\s+/, ' ').strip
           text unless text.empty?
         end
 
-        def rendered_html(value)
-          text = present_string(value)
-          text unless text.nil?
-        end
-
-        def present_string(value)
-          text = value.to_s.strip
-          text unless text.empty?
-        end
-
         def root_path_query_id(article_url)
-          query = present_string(article_url.query)
+          query = StringUtil.presence(article_url.query.to_s)&.strip
           return unless query
 
           path = article_url.path.to_s
