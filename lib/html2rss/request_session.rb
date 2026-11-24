@@ -84,16 +84,13 @@ module Html2rss
     #   with relation +:advertised_feed+, {RequestService::Policy} lets a listed feed leave the origin
     # @return [RequestService::Response] follow-up response
     def follow_up(url:, relation:, origin_url:, advertisement: nil)
-      request_context = context.follow_up(url:, relation:, origin_url:, advertisement:)
-      memoized = @follow_ups[request_context.url]
-      unless memoized
-        return execute(request_context).tap do |response|
-          remember_follow_up!(request_context.url, response)
-        end
+      requested = normalize_url(url)
+      if (memoized = @follow_ups[requested])
+        return reuse(memoized, requested:, relation:, origin_url: normalize_url(origin_url), advertisement:)
       end
 
-      validate_reuse!(request_context)
-      memoized
+      request_context = context.follow_up(url: requested, relation:, origin_url:, advertisement:)
+      execute(request_context).tap { |response| remember_follow_up!(requested, response) }
     end
 
     ##
@@ -154,11 +151,12 @@ module Html2rss
       )
     end
 
-    def validate_reuse!(request_context)
-      request_context.policy.validate_request!(
-        url: request_context.url, origin_url: request_context.origin_url,
-        relation: request_context.relation, advertisement: request_context.advertisement
-      )
+    # The reusing relation's policy covers the requested URL and the URL a redirect ended on.
+    def reuse(response, requested:, relation:, origin_url:, advertisement:)
+      policy = context.policy
+      policy.validate_request!(url: requested, origin_url:, relation:, advertisement:)
+      policy.validate_redirect!(from_url: requested, to_url: response.url, origin_url:, relation:, advertisement:)
+      response
     end
 
     def remember_follow_up!(requested_url, response)

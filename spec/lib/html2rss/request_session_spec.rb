@@ -210,6 +210,20 @@ RSpec.describe Html2rss::RequestSession do
         )
       end
       let(:feed_body) { '<rss version="2.0"><channel></channel></rss>' }
+      let(:redirected_feed) do
+        stub_request(:get, own_feed.to_s).to_return(status: 301,
+                                                    headers: { 'Location' => 'https://cdn.example.net/show.xml' })
+        stub_request(:get, 'https://cdn.example.net/show.xml').to_return(status: 200, body: feed_body)
+        session.follow_up(url: own_feed, origin_url: page_url, relation: :advertised_feed,
+                          advertisement: own_advertisement)
+      end
+      let(:own_advertisement) do
+        Html2rss::RequestService::FeedAdvertisement.from_document(
+          Nokogiri::HTML('<head><link rel="alternate" type="application/rss+xml" href="/feed.xml"></head>'),
+          page_url:
+        )
+      end
+      let(:own_feed) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
 
       before do
         allow(Html2rss::RequestService).to receive(:execute).and_call_original
@@ -283,6 +297,31 @@ RSpec.describe Html2rss::RequestSession do
         response = session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:)
 
         expect(response.url.to_s).to eq('https://cdn.example.net/show.xml')
+      end
+
+      it 'denies reuse of a cross-origin URL that redirected back to the origin under a stricter relation' do
+        stub_request(:get, feed_url.to_s).to_return(status: 301, headers: { 'Location' => 'https://example.com/s.xml' })
+        stub_request(:get, 'https://example.com/s.xml').to_return(status: 200, body: feed_body)
+        session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:)
+
+        expect { session.follow_up(url: feed_url, relation: :entry_resolution, origin_url: page_url) }
+          .to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+
+      it 'reuses a redirected feed for the same relation' do
+        redirected_feed
+
+        reused = session.follow_up(url: own_feed, origin_url: page_url, relation: :advertised_feed,
+                                   advertisement: own_advertisement)
+
+        expect(reused).to equal(redirected_feed)
+      end
+
+      it 'denies reuse of a redirected feed under a stricter relation, as a fresh request would' do
+        redirected_feed
+
+        expect { session.follow_up(url: own_feed, origin_url: page_url, relation: :entry_resolution) }
+          .to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
       end
     end
   end

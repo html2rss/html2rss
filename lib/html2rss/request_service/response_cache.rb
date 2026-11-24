@@ -101,6 +101,7 @@ module Html2rss
         @bytes -= entry.bytes
       end
 
+      # Real HTTP 2xx only: deliberately not Response#successful?, which also admits an unknown status.
       def cacheable?(response)
         (200..299).cover?(response.status) && response.body.bytesize <= @max_bytes
       end
