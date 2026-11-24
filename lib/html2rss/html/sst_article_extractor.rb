@@ -41,9 +41,7 @@ module Html2rss
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
       # @param classifier [LinkDestination::TextClassifier] the page's label reader
       # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
-      def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', link_resolver: nil,
-                     vocabulary: link_resolver&.vocabulary || Vocabulary[nil],
-                     classifier: link_resolver&.text_classifier || LinkDestination::TextClassifier.for(vocabulary))
+      def initialize(ranked_or_segment, base_url:, scraper:, time_zone:, link_resolver:, vocabulary:, classifier:)
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 

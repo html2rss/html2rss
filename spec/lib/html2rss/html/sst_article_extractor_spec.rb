@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::Html::SstArticleExtractor do
   it 'rejects a value that is not a segment' do
-    expect { described_class.new(Object.new, base_url: 'https://example.com') }
+    expect { described_class.call(Object.new, base_url: 'https://example.com') }
       .to raise_error(Html2rss::Html::InvalidError, 'segment is required')
   end
 
@@ -48,6 +48,36 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
 
     it 'stamps the scraper class on the article' do
       expect(article_for.call.scraper).to be(scraper_class)
+    end
+
+    describe 'with a page resolver' do
+      let(:han) { Html2rss::Vocabulary['zh-Hans-CN'] }
+      let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: han) }
+
+      before { allow(Html2rss::LinkDestination::TextClassifier).to receive(:for).and_call_original }
+
+      it "takes the resolver's vocabulary and classifier", :aggregate_failures do
+        expect(article_for.call(link_resolver: resolver).title).to eq('独自: 政府が新しい港湾計画を発表した')
+        expect(Html2rss::LinkDestination::TextClassifier).not_to have_received(:for)
+      end
+
+      it 'lets an explicit vocabulary win over the resolver' do
+        title = article_for.call(link_resolver: resolver, vocabulary: Html2rss::Vocabulary[:ja]).title
+
+        expect(title).to eq('政府が新しい港湾計画を発表した')
+      end
+
+      it 'builds the classifier of the vocabulary when no resolver is given', :aggregate_failures do
+        article_for.call(vocabulary: han)
+
+        expect(Html2rss::LinkDestination::TextClassifier).to have_received(:for).with(han)
+      end
+
+      it 'builds the classifier of the nil vocabulary when neither is given', :aggregate_failures do
+        article_for.call
+
+        expect(Html2rss::LinkDestination::TextClassifier).to have_received(:for).with(Html2rss::Vocabulary[nil])
+      end
     end
   end
 
