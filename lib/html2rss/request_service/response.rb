@@ -46,7 +46,7 @@ module Html2rss
       # @return [String, nil] scheme, host and path only (no credentials, query or fragment)
       def self.redacted_endpoint(capture)
         raw = capture['url'] || capture[:url]
-        uri = URI.parse(raw)
+        uri = URI.parse(raw.to_s)
         return unless uri.scheme && uri.host
 
         "#{uri.scheme}://#{uri.host}#{uri.path}"

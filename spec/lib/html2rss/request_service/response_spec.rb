@@ -820,6 +820,10 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(described_class.redacted_endpoint({ 'url' => '//api.example.com/feed' })).to be_nil
     end
 
+    it 'stringifies a Symbol URL' do
+      expect(described_class.redacted_endpoint({ url: :'https://api.example.com/feed' })).to eq('https://api.example.com/feed')
+    end
+
     it 'accepts a URI object' do
       expect(described_class.redacted_endpoint({ url: URI.parse('https://api.example.com/feed?a=1') }))
         .to eq('https://api.example.com/feed')

@@ -3,6 +3,7 @@
 require 'ipaddr'
 require 'resolv'
 require 'socket'
+require 'timeout'
 
 module Html2rss
   class RequestService
@@ -128,7 +129,7 @@ module Html2rss
         else
           addresses_from_each_address(host)
         end
-      rescue Resolv::ResolvError, SocketError, SystemCallError
+      rescue Resolv::ResolvError, SocketError, SystemCallError, Timeout::Error
         []
       end
 

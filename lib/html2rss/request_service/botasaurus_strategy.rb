@@ -88,17 +88,32 @@ module Html2rss
       # A capture feeds article extraction only when its URL passes the public-network check applied to the
       # final URL. Cross-origin public hosts (APIs) are legitimate; anything else is dropped, not fatal.
       def public_captures(captures)
-        captures.select { |capture| public_capture?(capture) }
+        denials = {}
+        captures.select { |capture| public_capture?(capture, denials) }
       end
 
-      def public_capture?(capture)
+      # +denials+ memoizes the verdict per host for one call, so a host costs a single DNS lookup.
+      def public_capture?(capture, denials)
         url = Url.from_absolute_web(capture.fetch('url'))
-        ctx.policy.enforce_public_network!(url)
-        true
-      rescue Html2rss::Url::InvalidUrlError, PrivateNetworkDenied => error
-        Log.event(:warn, 'botasaurus.capture_dropped', reason: error.class.name,
-                                                       endpoint: Response.redacted_endpoint(capture))
+        reason = denials.fetch(url.host) { denials[url.host] = denial_reason(url) }
+        return true unless reason
+
+        log_dropped(reason, capture)
         false
+      rescue Html2rss::Url::InvalidUrlError => error
+        log_dropped(error.class.name, capture)
+        false
+      end
+
+      def denial_reason(url)
+        ctx.policy.enforce_public_network!(url)
+        nil
+      rescue PrivateNetworkDenied => error
+        error.class.name
+      end
+
+      def log_dropped(reason, capture)
+        Log.event(:warn, 'botasaurus.capture_dropped', reason:, endpoint: Response.redacted_endpoint(capture))
       end
 
       def raise_from_error!(error)

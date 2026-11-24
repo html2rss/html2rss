@@ -50,6 +50,14 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
       end
     end
 
+    context 'when the resolver times out' do
+      before { allow(resolver).to receive(:each_address).and_raise(Resolv::ResolvTimeout) }
+
+      it 'fails closed' do
+        expect { guard.enforce_public_network!(url) }.to raise_error(denied, /example.com/)
+      end
+    end
+
     context 'when a getaddrinfo-only object is not Socket' do
       let(:resolver) do
         Class.new do
