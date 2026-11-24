@@ -801,6 +801,16 @@ RSpec.describe Html2rss::Capture do
         expect(selector).to eq('article.research-card')
       end
 
+      it 'raises when a segment root has no live index' do
+        stub_outcome(html_response('<html><body></body></html>'), articles:)
+        segments = %w[/pub/1 /pub/2].map do |href|
+          build_segment(root: build_node(name: :h3), link: build_node(name: :a, href:), position: 0)
+        end
+        allow(Html2rss::AutoSource::Segmenter).to receive(:call).and_return(segments)
+
+        expect { selector }.to raise_error(Html2rss::SST::Index::InvalidError)
+      end
+
       it 'stops at a wrapper holding several roots' do
         stub_roots.call("<div class=\"grid\">#{card}#{second_card}</div>")
 
@@ -1115,26 +1125,23 @@ RSpec.describe Html2rss::Capture do
     end
 
     it 'falls back to cluster when list yields too few matches', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      response = html_response('<html><body><div id="root"></div></body></html>')
+      response = html_response('<html><body><div class="card">Alpha</div></body></html>')
       articles = [
         Html2rss::Article.new(url: Html2rss::Url.from_absolute("#{url}/a"), title: 'Alpha Beta Gamma', id: '1'),
         Html2rss::Article.new(url: Html2rss::Url.from_absolute("#{url}/b"), title: 'Delta Epsilon Zeta', id: '2')
       ]
       stub_outcome(response, articles:)
 
-      attrs = instance_double(Html2rss::SST::Attrs, class_names: ['card'], href: nil)
-      cluster_root = instance_double(
-        Html2rss::SST::Node, name: 'div', tag_path: '/html/body/div.card', attrs:, visible_text: 'Alpha'
-      )
       link_a = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/a'))
       link_b = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/b'))
-      # rubocop:disable RSpec/VerifiedDoubles -- Segment is a Struct-like collaborator without a stable class API here
-      seg_a = double('segment', primary_link: link_a, root_node: cluster_root)
-      seg_b = double('segment', primary_link: link_b, root_node: cluster_root)
-      # rubocop:enable RSpec/VerifiedDoubles
 
-      allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |_sst, strategy:, **|
-        strategy == :list ? [] : [seg_a, seg_b]
+      allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |sst, strategy:, **|
+        cluster_root = sst.index.each_node.find { _1.name.to_s == 'div' }
+        next [] if strategy == :list
+
+        [link_a, link_b].map do |link|
+          instance_double(Html2rss::AutoSource::Segment, primary_link: link, root_node: cluster_root)
+        end
       end
       allow(Html2rss::Url).to receive(:from_relative).with('/a', url)
                                                      .and_return(Html2rss::Url.from_absolute("#{url}/a"))

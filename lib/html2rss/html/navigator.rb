@@ -64,17 +64,14 @@ module Html2rss
         private
 
         # Whether a header/footer is page-level chrome. SST nodes defer to the
-        # Normalizer's chrome index (unindexed nodes stay chrome); Nokogiri nodes
-        # check for a sectioning ancestor.
+        # Normalizer's chrome index; Nokogiri nodes check for a sectioning ancestor.
         #
         # @param node [Nokogiri::XML::Node, SST::Node]
         # @param vocabulary [Vocabulary::Scope]
         # @return [Boolean]
+        # @raise [SST::Index::InvalidError] when an SST +node+ has no live index
         def page_chrome?(node, vocabulary)
-          if node.is_a?(SST::Node)
-            index = SST::Index.for_node(node)
-            return index.nil? || index.ignored_chrome?(node)
-          end
+          return SST::Index.for_node!(node).ignored_chrome?(node) if node.is_a?(SST::Node)
 
           nokogiri_chrome_scope(node, vocabulary) == :chrome
         end
