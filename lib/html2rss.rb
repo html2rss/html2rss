@@ -166,7 +166,7 @@ module Html2rss
   # @param strategy [Symbol] request strategy to use
   # @param items_selector [String, nil] optional selector hint for item extraction
   # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
+  # @param max_requests [Integer, nil] optional request budget override (nil derives it from the config, max 10)
   # @param local_file_path [String, nil] optional local HTML file path
   # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
   # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
@@ -176,7 +176,7 @@ module Html2rss
                   strategy: :auto,
                   items_selector: nil,
                   max_redirects: nil,
-                  max_requests: 4,
+                  max_requests: nil,
                   local_file_path: nil,
                   limit: nil,
                   keep_different_domain: nil,

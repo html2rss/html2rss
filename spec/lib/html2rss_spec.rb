@@ -495,13 +495,20 @@ RSpec.describe Html2rss do
       expect(config.dig(:selectors, :items)).to eq(selector: '.card', enhance: true)
     end
 
-    it 'omits local_file_path when none is given', :aggregate_failures do
+    it 'omits local_file_path and the request budget when none is given', :aggregate_failures do
       allow(described_class).to receive(:feed_result) { |config| config }
 
       config = described_class.scrape('https://example.com')
-      expect(config[:request]).not_to have_key(:local_file_path)
-      expect(config[:request]).to include(max_requests: 4)
+      expect(config[:request]).to be_nil
       expect(config).not_to have_key(:strategy)
+    end
+
+    it 'derives the request budget by default and honors an explicit one', :aggregate_failures do
+      allow(described_class).to receive(:feed_result) { |config| config }
+      budget = ->(config) { Html2rss::FeedPipeline::RuntimePolicy.from_config(Html2rss::Config.from_hash(config)).max_requests }
+
+      expect(budget.call(described_class.scrape('https://example.com'))).to eq(10)
+      expect(budget.call(described_class.scrape('https://example.com', max_requests: 4))).to eq(4)
     end
 
     it 'returns the feed result from the pipeline' do
