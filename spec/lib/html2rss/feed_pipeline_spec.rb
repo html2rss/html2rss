@@ -184,7 +184,7 @@ RSpec.describe Html2rss::FeedPipeline do
 
       context 'when the empty page is a dense high-entropy hub' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:empty_response) do
-          links = Array.new(Html2rss::AutoSource::Scraper::HIGH_ENTROPY_MIN_ANCHORS) do |index|
+          links = Array.new(Html2rss::SurfaceCategory::HIGH_ENTROPY_MIN_ANCHORS) do |index|
             %(<a href="/dating/pad-#{index}">Pad #{index} Extra Words</a>)
           end.join
           build_response.call(body: "<html><body>#{links}</body></html>")

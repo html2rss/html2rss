@@ -130,7 +130,7 @@ Probe score weights, drop penalties, and winner pick for the entry URL tournamen
 
 ## Surface category
 
-Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::SurfaceCategory` (`weak?` / `blocked?` / `listing_bonus?`). `PageRecon::Assessment` exposes those predicates; `FeedResolution::Policy` and `Scorer` call them.
+Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::SurfaceCategory` (`weak?` / `blocked?` / `listing_bonus?`), including `SurfaceCategory.classify` (the page probe) and `MESSAGES` (guidance text); `AutoSource::Scraper` keeps only the registry. `PageRecon::Assessment` exposes those predicates; `FeedResolution::Policy` and `Scorer` call them.
 
 ## Entry-resolution options
 

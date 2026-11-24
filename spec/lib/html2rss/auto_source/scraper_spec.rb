@@ -154,17 +154,17 @@ RSpec.describe Html2rss::AutoSource::Scraper do
 
     context 'when the document is a dense high-entropy hub with no extractable articles' do
       let(:parsed_body) do
-        links = Array.new(Html2rss::AutoSource::Scraper::HIGH_ENTROPY_MIN_ANCHORS) do |index|
+        links = Array.new(Html2rss::SurfaceCategory::HIGH_ENTROPY_MIN_ANCHORS) do |index|
           %(<a href="/dating/pad-#{index}">Pad #{index}</a>)
         end.join
         Nokogiri::HTML("<html><body>#{links}</body></html>")
       end
 
       it 'classifies the surface as high_entropy_surface', :aggregate_failures do
-        category = described_class.classify_no_scraper_surface(parsed_body)
+        category = Html2rss::SurfaceCategory.classify(parsed_body)
 
         expect(category).to eq(:high_entropy_surface)
-        expect(Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(category))
+        expect(Html2rss::SurfaceCategory::MESSAGES.fetch(category))
           .to include('listing/update URL')
       end
     end
@@ -353,163 +353,6 @@ RSpec.describe Html2rss::AutoSource::Scraper do
                                                                                 captured_responses: captured)
 
       expect(described_class::XhrArticles).to have_received(:new).with(parsed_body, url:, captured_responses: captured)
-    end
-  end
-
-  describe '.classify_no_scraper_surface' do
-    let(:classify) { ->(html) { described_class.classify_no_scraper_surface(Nokogiri::HTML(html)) } }
-    let(:interstitial_html) do
-      '<html><head><title>Just a moment...</title></head>' \
-        '<body>Checking your browser before accessing example.com.</body></html>'
-    end
-    let(:benign_html) { '<html><body><p>Plain page</p></body></html>' }
-
-    it 'prefers the raw body over the parsed document for blocked detection', :aggregate_failures do
-      expect(described_class.classify_no_scraper_surface(Nokogiri::HTML(benign_html), body: interstitial_html))
-        .to eq(:blocked_surface)
-      expect(described_class.classify_no_scraper_surface(Nokogiri::HTML(interstitial_html), body: benign_html))
-        .to eq(:unsupported_surface)
-    end
-
-    it 'falls back to the parsed document when no body is given' do
-      expect(classify.call(interstitial_html)).to eq(:blocked_surface)
-    end
-
-    it 'classifies blocked surfaces before high-entropy surfaces' do
-      links = Array.new(described_class::HIGH_ENTROPY_MIN_ANCHORS) { |index| %(<a href="/x/#{index}">X #{index}</a>) }
-      html = interstitial_html.sub('<body>', "<body>#{links.join}")
-
-      expect(classify.call(html)).to eq(:blocked_surface)
-    end
-
-    it 'classifies app shells, and high-entropy hubs ahead of app shells', :aggregate_failures do
-      links = Array.new(described_class::HIGH_ENTROPY_MIN_ANCHORS) { |index| %(<a href="/x/#{index}">X #{index}</a>) }
-
-      expect(classify.call('<html><body><div id="root"></div></body></html>')).to eq(:app_shell)
-      expect(classify.call("<html><body>#{links.join}</body></html>")).to eq(:high_entropy_surface)
-      expect(classify.call(%(<html><body><div id="root"></div>#{links.join}</body></html>)))
-        .to eq(:high_entropy_surface)
-    end
-
-    it 'classifies an empty page as unsupported' do
-      expect(classify.call('<html><body></body></html>')).to eq(:unsupported_surface)
-    end
-  end
-
-  describe '.app_shell_surface?' do
-    let(:classify) { ->(html) { described_class.classify_no_scraper_surface(Nokogiri::HTML(html)) } }
-
-    it 'detects app shells for every root marker', :aggregate_failures do
-      markers = [
-        '<div id="app"></div>', '<div id="root"></div>', '<div id="__next"></div>',
-        '<div data-reactroot></div>', '<div ng-app></div>', '<div id="site-app-shell"></div>'
-      ]
-
-      expect(markers.map { |marker| classify.call("<html><body>#{marker}</body></html>") })
-        .to all(eq(:app_shell))
-    end
-
-    it 'does not treat a page without a root marker as an app shell' do
-      expect(classify.call('<html><body><div id="main"></div></body></html>')).to eq(:unsupported_surface)
-    end
-
-    it 'tolerates up to APP_SHELL_MAX_ANCHORS anchors but not one more', :aggregate_failures do
-      limit = described_class::APP_SHELL_MAX_ANCHORS
-      within = Array.new(limit) { |index| %(<a href="/n/#{index}">N #{index}</a>) }.join
-      over = Array.new(limit + 1) { |index| %(<a href="/n/#{index}">N #{index}</a>) }.join
-
-      expect(classify.call(%(<html><body><div id="root"></div>#{within}</body></html>))).to eq(:app_shell)
-      expect(classify.call(%(<html><body><div id="root"></div>#{over}</body></html>))).to eq(:unsupported_surface)
-    end
-
-    it 'rejects pages that carry article markers', :aggregate_failures do
-      markers = [
-        '<article>Story</article>',
-        '<div itemtype="https://schema.org/NewsArticle">Story</div>',
-        '<div itemprop="articleBody">Story</div>'
-      ]
-
-      expect(markers.map { |marker| classify.call(%(<html><body><div id="root"></div>#{marker}</body></html>)) })
-        .to all(eq(:unsupported_surface))
-    end
-
-    it 'accepts visible text up to APP_SHELL_MAX_VISIBLE_TEXT_LENGTH but not one more', :aggregate_failures do
-      limit = described_class::APP_SHELL_MAX_VISIBLE_TEXT_LENGTH
-
-      expect(classify.call(%(<html><body><div id="root"><p>#{'a' * limit}</p></div></body></html>)))
-        .to eq(:app_shell)
-      expect(classify.call(%(<html><body><div id="root"><p>#{'a' * (limit + 1)}</p></div></body></html>)))
-        .to eq(:unsupported_surface)
-    end
-  end
-
-  describe '.visible_text_length' do
-    let(:classify) { ->(html) { described_class.classify_no_scraper_surface(Nokogiri::HTML(html)) } }
-
-    it 'ignores script, style and noscript content', :aggregate_failures do
-      html = '<html><body><div id="root"></div>' \
-             "<noscript>#{'n' * 1_000}</noscript><style>#{'s' * 1_000}</style></body></html>"
-
-      expect(classify.call(html)).to eq(:app_shell)
-    end
-
-    it 'collapses whitespace-only text to zero length' do
-      html = %(<html><body><div id="root"></div><p>#{' ' * 1_000}</p></body></html>)
-
-      expect(classify.call(html)).to eq(:app_shell)
-    end
-
-    it 'trims and collapses whitespace before measuring', :aggregate_failures do
-      limit = described_class::APP_SHELL_MAX_VISIBLE_TEXT_LENGTH
-      padded = %(<html><body><div id="root"><p>   #{'a' * limit}   </p></div></body></html>)
-      spaced = %(<html><body><div id="root"><p>a#{' ' * 1_000}b</p></div></body></html>)
-      word_run = %(<html><body><div id="root"><p>#{'a ' * limit.div(2)}a</p></div></body></html>)
-
-      expect(classify.call(padded)).to eq(:app_shell)
-      expect(classify.call(spaced)).to eq(:app_shell)
-      expect(classify.call(word_run)).to eq(:unsupported_surface)
-    end
-
-    it 'joins separate text nodes with a single space' do
-      half = described_class::APP_SHELL_MAX_VISIBLE_TEXT_LENGTH / 2
-      html = %(<html><body><div id="root"><p>#{'a' * half}</p><p>#{'b' * half}</p></div></body></html>)
-
-      expect(classify.call(html)).to eq(:unsupported_surface)
-    end
-
-    it 'ignores text outside the body element' do
-      html = %(<html><head><title>#{'t' * 300}</title></head><body><div id="root"></div></body></html>)
-
-      expect(classify.call(html)).to eq(:app_shell)
-    end
-
-    it 'returns zero for a document without a body element' do
-      document = Nokogiri::HTML::Document.new
-      html_node = document.add_child(Nokogiri::XML::Node.new('html', document))
-      html_node.add_child(Nokogiri::XML::Node.new('div', document).tap { |node| node['id'] = 'root' })
-
-      expect(described_class.classify_no_scraper_surface(document)).to eq(:app_shell)
-    end
-  end
-
-  describe '.high_entropy_surface?' do
-    let(:classify) { ->(html) { described_class.classify_no_scraper_surface(Nokogiri::HTML(html)) } }
-
-    it 'holds for hubs well beyond HIGH_ENTROPY_MIN_ANCHORS' do
-      links = Array.new(described_class::HIGH_ENTROPY_MIN_ANCHORS + 5) do |index|
-        %(<a href="/q/#{index}">Q #{index}</a>)
-      end
-
-      expect(classify.call("<html><body>#{links.join}</body></html>")).to eq(:high_entropy_surface)
-    end
-
-    it 'requires HIGH_ENTROPY_MIN_ANCHORS anchors', :aggregate_failures do
-      limit = described_class::HIGH_ENTROPY_MIN_ANCHORS
-      at_limit = Array.new(limit) { |index| %(<a href="/p/#{index}">P #{index}</a>) }.join
-      below = Array.new(limit - 1) { |index| %(<a href="/p/#{index}">P #{index}</a>) }.join
-
-      expect(classify.call("<html><body>#{at_limit}</body></html>")).to eq(:high_entropy_surface)
-      expect(classify.call("<html><body>#{below}</body></html>")).to eq(:unsupported_surface)
     end
   end
 
