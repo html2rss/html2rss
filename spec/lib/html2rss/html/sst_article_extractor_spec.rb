@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::Html::SstArticleExtractor do
   it 'rejects a value that is not a segment' do
-    expect { described_class.call(Object.new, base_url: 'https://example.com') }
+    expect { described_class.call(Object.new, base_url: 'https://example.com', time_zone: 'UTC') }
       .to raise_error(Html2rss::Html::InvalidError, 'segment is required')
   end
 
@@ -35,7 +35,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     let(:scraper_class) { Html2rss::AutoSource::Scraper::SemanticHtml }
     let(:article_for) do
       lambda do |**options|
-        described_class.call(segment_for(html), base_url: 'https://example.com', scraper: scraper_class, **options)
+        described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                scraper: scraper_class, **options)
       end
     end
 
@@ -83,7 +84,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
 
   describe 'in-heading kickers' do
     let(:title_for) do
-      ->(html) { described_class.call(segment_for(html), base_url: 'https://example.com')&.title }
+      ->(html) { described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC')&.title }
     end
 
     it 'takes the single title-classed child of a multi-span heading and drops a type-marker kicker before it' do
@@ -177,7 +178,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
 
   describe 'card kicker prefix' do
     let(:title_for) do
-      ->(html) { described_class.call(segment_for(html), base_url: 'https://example.com')&.title }
+      ->(html) { described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC')&.title }
     end
 
     it_behaves_like 'article extractor title pieces'
@@ -193,14 +194,15 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
         segment = segment_for(card)
         GC.start
 
-        expect(described_class.call(segment, base_url: 'https://example.com').title).to eq('Transit: Tram line extends')
+        expect(described_class.call(segment, base_url: 'https://example.com',
+                                             time_zone: 'UTC').title).to eq('Transit: Tram line extends')
       end
 
       it 'raises rather than dropping the kicker prefix once the document is collected' do
         segment = build_orphan_segment(card)
         3.times { GC.start }
 
-        expect { described_class.call(segment, base_url: 'https://example.com') }
+        expect { described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC') }
           .to raise_error(Html2rss::SST::Index::InvalidError)
       end
     end
@@ -269,7 +271,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     subject(:id_for) do
       lambda do |href|
         html = %(<article><h2><a href="#{href}">Story Title</a></h2><p>Useful context paragraph here.</p></article>)
-        described_class.call(segment_for(html, href:), base_url: 'https://example.com')&.id
+        described_class.call(segment_for(html, href:), base_url: 'https://example.com', time_zone: 'UTC')&.id
       end
     end
 
@@ -305,7 +307,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       end
 
       it 'reuses its URL of the primary link instead of resolving it again', :aggregate_failures do
-        article = described_class.call(segment, base_url: 'https://example.com', link_resolver: resolver)
+        article = described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC',
+                                                link_resolver: resolver)
 
         expect(article.url.to_s).to eq('https://example.com/a?p=1')
         expect(Html2rss::Url).not_to have_received(:from_relative)
@@ -315,7 +318,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
         broken = segment_for('<article><h2><a href="http://">Story Title</a></h2><p>Useful context here.</p></article>',
                              href: 'http://')
 
-        expect(described_class.call(broken, base_url: 'https://example.com', link_resolver: resolver)).to be_nil
+        expect(described_class.call(broken, base_url: 'https://example.com', time_zone: 'UTC',
+                                            link_resolver: resolver)).to be_nil
       end
     end
 
@@ -326,13 +330,15 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     it 'prefers a nested DOM id over the link path' do
       html = '<article><h2 id="headline"><a href="/news/story">Story Title</a></h2><p>Useful context.</p></article>'
 
-      expect(described_class.call(segment_for(html), base_url: 'https://example.com').id).to eq('headline')
+      expect(described_class.call(segment_for(html), base_url: 'https://example.com',
+                                                     time_zone: 'UTC').id).to eq('headline')
     end
 
     it 'skips an empty DOM id and falls back to the link path' do
       html = '<article id=""><h2><a href="/news/story">Story Title</a></h2><p>Useful context here.</p></article>'
 
-      expect(described_class.call(segment_for(html), base_url: 'https://example.com').id).to eq('/news/story')
+      expect(described_class.call(segment_for(html), base_url: 'https://example.com',
+                                                     time_zone: 'UTC').id).to eq('/news/story')
     end
   end
 
@@ -349,7 +355,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com', scraper: Object)
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                      scraper: Object)
 
     expect(article.title).to eq('Story Title')
     expect(article.id).to eq('story-1')
@@ -377,7 +384,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       )
     )
 
-    expect(described_class.call(ranked, base_url: 'https://example.com')&.title).to eq('Linked card text here')
+    expect(described_class.call(ranked, base_url: 'https://example.com',
+                                        time_zone: 'UTC')&.title).to eq('Linked card text here')
   end
 
   it 'emits no article for a card without a primary link (no page#fragment URL)' do
@@ -385,7 +393,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     root = Html2rss::SST::Normalizer.call(html, vocabulary: all_scope).root.find { |n| n.name == :div }
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :cluster, position: 0)
 
-    expect(described_class.call(segment, base_url: 'https://example.com')).to be_nil
+    expect(described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC')).to be_nil
   end
 
   it 'prefers heading over credit-shaped anchor text', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -399,7 +407,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC')
 
     expect(article.title).to eq('Real Headline About The Story')
   end
@@ -414,7 +422,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC')
 
     expect(article).to be_a(Html2rss::Article)
     expect(article.title).to be_nil
@@ -430,7 +438,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC')
 
     expect(article.title).to eq('story-has-edit-branch')
     expect(Html2rss::AutoSource::Cleanup.junk_reason(article.title,
@@ -448,7 +456,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC')
 
     expect(article.title).to eq('Real Headline About The Story')
   end
@@ -464,7 +472,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html, href: '/news/style'), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html, href: '/news/style'), base_url: 'https://example.com',
+                                                                           time_zone: 'UTC')
 
     expect(article.image.to_s).to include('hero-banner.jpg')
   end
@@ -480,7 +489,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html, href: '/news/media'), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html, href: '/news/media'), base_url: 'https://example.com',
+                                                                           time_zone: 'UTC')
     zip = article.enclosures.find { |enclosure| enclosure.type == 'application/zip' }
 
     expect(zip).not_to be_nil
@@ -491,7 +501,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     html = '<article><h2><a href="/news/embed">Embed Story</a></h2>' \
            '<p>Useful context paragraph with enough words.</p><iframe src="/embeds/player.html"></iframe></article>'
 
-    article = described_class.call(segment_for(html, href: '/news/embed'), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html, href: '/news/embed'), base_url: 'https://example.com',
+                                                                           time_zone: 'UTC')
 
     expect(article.enclosures).to be_empty
   end
@@ -509,7 +520,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com',
+                                                                          time_zone: 'UTC')
 
     expect(article.enclosures.map { [_1.url.to_s, _1.type] }).to eq(
       [%w[https://example.com/videos/clip.mp4 video/mp4],
@@ -532,7 +544,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com')
+    article = described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com',
+                                                                          time_zone: 'UTC')
 
     expect(article.enclosures.map { [_1.url.to_s, _1.type] }).to eq(
       [%w[https://example.com/stream/clip video/webm], %w[https://example.com/stream/episode audio/mpeg]]
@@ -553,7 +566,8 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
           #{extra}
         </article></body></html>
       HTML
-      described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com').image.to_s
+      described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com',
+                                                                  time_zone: 'UTC').image.to_s
     end
 
     expect(card.call('')).to eq('https://example.com/posters/clip.jpg')
@@ -571,6 +585,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       </article></body></html>
     HTML
 
-    expect(described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com').image).to be_nil
+    expect(described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com',
+                                                                       time_zone: 'UTC').image).to be_nil
   end
 end

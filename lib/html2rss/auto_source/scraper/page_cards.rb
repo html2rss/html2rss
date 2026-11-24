@@ -23,13 +23,17 @@ module Html2rss
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
         # @param document [SST::Document, nil] shared document built once per page
         # @param link_resolver [Scoring::LinkResolver, nil] shared link resolver
-        def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil)
+        # @param time_zone [String, nil] channel time zone for naive leftover dates
+        def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, time_zone: nil)
           super(parsed_body, url:)
+          @time_zone = time_zone
           @provided_document = document
           @provided_link_resolver = link_resolver
         end
 
         private
+
+        attr_reader :time_zone
 
         def link_resolver
           @link_resolver ||= @provided_link_resolver || Scoring::LinkResolver.new(url)

@@ -199,7 +199,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
       expect(deduplicator.article_for(ranked)).to be(article)
       expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
-        ranked, base_url: 'https://example.com', scraper: scraper_class,
+        ranked, base_url: 'https://example.com', time_zone: nil, scraper: scraper_class,
                 link_resolver: be_a(Html2rss::Scoring::LinkResolver)
       )
     end
@@ -212,7 +212,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       described_class.new('https://example.com', scraper: scraper_class, link_resolver: resolver).article_for(ranked)
 
       expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
-        ranked, base_url: 'https://example.com', scraper: scraper_class, link_resolver: resolver
+        ranked, base_url: 'https://example.com', time_zone: nil, scraper: scraper_class, link_resolver: resolver
       )
     end
 

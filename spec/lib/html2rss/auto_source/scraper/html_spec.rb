@@ -320,6 +320,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
   end
 
+  describe 'channel time zone' do
+    let(:dated) do
+      Nokogiri::HTML.parse <<~HTML
+            <html><body>
+          <article><h2><a href="/news/one">First dated story headline</a></h2><span>12 March 2024</span></article>
+          <article><h2><a href="/news/two">Second dated story headline</a></h2><span>13 March 2024</span></article>
+        </body></html>
+      HTML
+    end
+
+    it 'reads a naive leftover date in the given zone', :aggregate_failures do
+      zones = [nil, 'Europe/Berlin'].map do |zone|
+        described_class.new(dated, url: 'https://example.com', time_zone: zone).to_a.first.published_at.zone
+      end
+
+      expect(zones).to eq(['+00:00', '+01:00'])
+    end
+  end
+
   describe '.request_slots' do
     it 'reserves no request slots regardless of options', :aggregate_failures do
       expect(described_class.request_slots).to eq(0)

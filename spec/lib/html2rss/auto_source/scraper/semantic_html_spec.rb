@@ -135,6 +135,18 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(articles.map(&:scraper).uniq).to eq([described_class])
     end
 
+    it 'reads a naive leftover date in the channel time zone', :aggregate_failures do
+      dated = Nokogiri::HTML.parse <<~HTML
+        <html><body><article><h2><a href="/news/dated">Dated story headline</a></h2>
+        <p>12 March 2024</p></article></body></html>
+      HTML
+      zones = [nil, 'Europe/Berlin'].map do |zone|
+        described_class.new(dated, url: 'https://example.com', time_zone: zone).to_a.first.published_at.zone
+      end
+
+      expect(zones).to eq(['+00:00', '+01:00'])
+    end
+
     it 'collapses containers that point at the same destination' do
       duplicated = Nokogiri::HTML.parse <<~HTML
         <html><body>

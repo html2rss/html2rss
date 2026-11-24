@@ -26,7 +26,7 @@ module Html2rss
         # @param classifier [LinkDestination::TextClassifier] the page's label reader
         # @return [Html2rss::Article, nil] nil when the segment has no primary link (no URL of its own)
         # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
-        def call(ranked_or_segment, base_url:, scraper: nil, time_zone: nil, link_resolver: nil,
+        def call(ranked_or_segment, base_url:, time_zone:, scraper: nil, link_resolver: nil,
                  vocabulary: link_resolver&.vocabulary || Vocabulary[nil],
                  classifier: link_resolver&.text_classifier || LinkDestination::TextClassifier.for(vocabulary))
           new(ranked_or_segment, base_url:, scraper:, time_zone:, vocabulary:, classifier:, link_resolver:).call

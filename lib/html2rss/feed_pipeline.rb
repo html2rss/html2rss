@@ -216,7 +216,7 @@ module Html2rss
       return syndication_articles(response) if response.feed_response?
 
       vocabulary = Vocabulary[Channel.language_for(response, config.channel)]
-      source = AutoSource.new(response, auto_source, request_session:, vocabulary:)
+      source = AutoSource.new(response, auto_source, request_session:, vocabulary:, time_zone: config.time_zone)
       [source.articles, source.admission_drops, source.feed_channel]
     end
 
