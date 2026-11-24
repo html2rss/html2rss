@@ -24,17 +24,9 @@ module Html2rss
         # @param page_number [Integer]
         # @return [Html2rss::Url]
         def next_page_url(page_response, page_number:)
-          param = config.fetch(:param, DEFAULT_PARAM)
-          url = Html2rss::Url.from_absolute(page_response.url)
-          url.with_query_values(url.query_values.merge(param.to_s => target_offset_for(page_number).to_s))
-        end
-
-        # @param page_number [Integer]
-        # @return [Integer]
-        def target_offset_for(page_number)
-          start_offset = config.fetch(:start_offset, DEFAULT_START_OFFSET)
-          increment = config.fetch(:increment, DEFAULT_INCREMENT)
-          start_offset + ((page_number - 1) * increment)
+          stepped_url(page_response, page_number:, param: config.fetch(:param, DEFAULT_PARAM),
+                                     start: config.fetch(:start_offset, DEFAULT_START_OFFSET),
+                                     step: config.fetch(:increment, DEFAULT_INCREMENT))
         end
       end
     end

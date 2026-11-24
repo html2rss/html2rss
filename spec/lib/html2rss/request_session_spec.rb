@@ -50,7 +50,7 @@ RSpec.describe Html2rss::RequestSession do
     end
 
     it 'uses the provided budget object for the session context' do
-      budget = Html2rss::RequestService::Budget.new(max_requests: 2)
+      budget = Html2rss::RequestService::Budget.new(max_requests: 2, total_timeout_seconds: 60)
       allow(Html2rss::RequestService::Context).to receive(:new).and_call_original
 
       described_class.build(config:, strategy: :botasaurus, budget:, policy: resources.policy, logger:)
@@ -201,7 +201,7 @@ RSpec.describe Html2rss::RequestSession do
       let(:feed_url) { Html2rss::Url.from_absolute('https://feeds.example.net/show.xml') }
       let(:resolver) { instance_double(Resolv) }
       let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 2, resolver:) }
-      let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 2) }
+      let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 2, total_timeout_seconds: 60) }
       let(:context) { Html2rss::RequestService::Context.new(url: page_url, policy:, budget:) }
       let(:advertisement) do
         Html2rss::RequestService::FeedAdvertisement.from_document(
@@ -336,9 +336,8 @@ RSpec.describe Html2rss::RequestSession do
   describe '#with_budget_allowance' do
     let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 1) }
     let(:session) do
-      context = Html2rss::RequestService::Context.new(
-        url: 'https://example.com/news', policy:, budget: Html2rss::RequestService::Budget.new(max_requests: 1)
-      )
+      budget = Html2rss::RequestService::Budget.new(max_requests: 1, total_timeout_seconds: 60)
+      context = Html2rss::RequestService::Context.new(url: 'https://example.com/news', policy:, budget:)
       described_class.new(context:, strategy: :default, logger:)
     end
 

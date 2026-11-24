@@ -15,7 +15,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
   let(:budget) do
     instance_double(
       Html2rss::RequestService::Budget,
-      consume!: nil, remaining_timeout_seconds: nil, effective_timeout_seconds: 30.0, elapsed_seconds: 0.0
+      consume!: nil, remaining_timeout_seconds: 30.0, effective_timeout_seconds: 30.0, elapsed_seconds: 0.0
     )
   end
   let(:botasaurus) { {} }
@@ -106,6 +106,24 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
 
       expect(posted.last).not_to include('cookies', 'execution_mode')
       expect(Html2rss::RequestService.cookie_store.fetch(stored_key)).to eq('datadome' => 'browser')
+    end
+  end
+
+  context 'when the HTTP-tier replay returns an interstitial body' do
+    let(:interstitial) do
+      html = Pathname(__dir__).join('../../../fixtures/challenge/cloudflare_interstitial.html').expand_path.read
+      { status: 200, body: { html:, cookies: {}, diagnostics: }.to_json }
+    end
+    let(:responses) { [success.call('datadome' => 'v1'), interstitial, success.call('datadome' => 'browser')] }
+
+    it 'scans each of the three responses exactly once', :aggregate_failures do
+      allow(Html2rss::RequestService::BlockedSurface).to receive(:interstitial_signature_for).and_call_original
+
+      run
+      run
+
+      expect(Html2rss::RequestService::BlockedSurface).to have_received(:interstitial_signature_for).exactly(3).times
+      expect(posted.last).not_to include('cookies', 'execution_mode')
     end
   end
 

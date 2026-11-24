@@ -136,7 +136,7 @@ module Html2rss
 
     def allowance_context(max_requests)
       remaining = context.budget.remaining_timeout_seconds
-      budget = RequestService::Budget.new(max_requests:, total_timeout_seconds: remaining && [remaining.ceil, 1].max)
+      budget = RequestService::Budget.new(max_requests:, total_timeout_seconds: [remaining.ceil, 1].max)
       RequestService::Context.new(
         url:, headers: context.headers, request: context.request, policy: context.policy, budget:,
         origin_url: context.origin_url

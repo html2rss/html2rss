@@ -9,8 +9,8 @@ module Html2rss
     class Budget
       ##
       # @param max_requests [Integer] maximum HTTP request slots
-      # @param total_timeout_seconds [Integer, nil] wall-clock timeout for the feed build
-      def initialize(max_requests:, total_timeout_seconds: nil)
+      # @param total_timeout_seconds [Integer] wall-clock timeout for the feed build
+      def initialize(max_requests:, total_timeout_seconds:)
         Option.integer(:max_requests, max_requests, min: 1)
 
         @remaining_requests = max_requests
@@ -39,12 +39,9 @@ module Html2rss
       end
 
       ##
-      # @return [Float, nil] the remaining timeout in seconds, or nil if not tracked
+      # @return [Float] the remaining timeout in seconds, never negative
       def remaining_timeout_seconds
-        return unless @total_timeout_seconds
-
-        remaining = @total_timeout_seconds - elapsed_seconds
-        [remaining, 0.0].max
+        [@total_timeout_seconds - elapsed_seconds, 0.0].max
       end
 
       ##
@@ -56,17 +53,13 @@ module Html2rss
       ##
       # Resolves wall-clock seconds for the next adapter attempt.
       #
-      # Prefers the tracked deadline remainder; falls back to the policy total when
-      # this Budget was constructed without a timeout (common in unit tests).
-      #
-      # @param fallback [Numeric] policy total timeout when remaining is untracked
       # @return [Float] seconds available for this attempt
       # @raise [RequestTimedOut] when no time remains
-      def effective_timeout_seconds(fallback:)
-        timeout = remaining_timeout_seconds || fallback
-        raise RequestTimedOut, 'Request timed out' if timeout <= 0
+      def effective_timeout_seconds
+        timeout = remaining_timeout_seconds
+        raise RequestTimedOut, 'Request timed out' if timeout.zero?
 
-        timeout.to_f
+        timeout
       end
     end
   end

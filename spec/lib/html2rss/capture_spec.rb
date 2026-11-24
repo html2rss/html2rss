@@ -23,7 +23,7 @@ RSpec.describe Html2rss::Capture do
       allow(Html2rss::Log).to receive(:info)
       allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
         ctx.budget.consume!
-        ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+        ctx.budget.effective_timeout_seconds
         hops << strategy
         sleep(1.1) if strategy == :default
         empty_page
