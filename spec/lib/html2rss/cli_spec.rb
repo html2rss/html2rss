@@ -69,11 +69,27 @@ RSpec.describe Html2rss::CLI do
           .and output('').to_stdout
       end
 
+      it 'writes no explain JSON for scrape by default' do
+        allow(Html2rss).to receive(:scrape).and_return(feed_res)
+
+        expect { cli.scrape('https://example.com') }.not_to output.to_stderr
+      end
+
       it 'does not gate scrape output', :aggregate_failures do
         allow(Html2rss).to receive(:scrape).and_return(feed_res)
 
         expect { cli.scrape('https://example.com') }.to output("#{rss_xml}\n").to_stdout
       end
+    end
+
+    it 'writes no explain JSON to stderr by default' do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      expect { cli.invoke(:apply, ['example.yml'], {}) }.not_to output.to_stderr
+    end
+
+    it 'prints RSS without --format' do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      expect { cli.invoke(:apply, ['example.yml'], {}) }.to output("#{rss_xml}\n").to_stdout
     end
 
     it 'supports --format jsonfeed and --explain' do
@@ -267,9 +283,23 @@ RSpec.describe Html2rss::CLI do
         .to output(/"verdict": "build"/).to_stdout
     end
 
+    it 'prints a single json object for one target' do
+      expect { cli.invoke(:recon, ['https://example.com/news'], { format: 'json' }) }
+        .to output(satisfy { |text| JSON.parse(text).is_a?(Hash) }).to_stdout
+    end
+
     it 'supports --format tsv' do
       expect { cli.invoke(:recon, ['https://example.com/news'], { format: 'tsv' }) }
         .to output(/BUILD\t/).to_stdout
+    end
+
+    it 'prints a json list for batch targets' do # rubocop:disable RSpec/ExampleLength
+      Tempfile.create('urls') do |f|
+        f.puts('https://example.com/news')
+        f.flush
+        expect { cli.invoke(:recon, nil, { file: f.path, format: 'json' }) }
+          .to output(satisfy { |text| JSON.parse(text).is_a?(Array) }).to_stdout
+      end
     end
 
     it 'supports batch mode with --verdict filter and --url-only' do # rubocop:disable RSpec/ExampleLength

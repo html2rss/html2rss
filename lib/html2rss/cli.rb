@@ -89,12 +89,7 @@ module Html2rss
         filtered = filter_recon_results(results, options[:verdict])
         assert_recon_verdict_match!(filtered, results, batch_mode:)
 
-        Render.recon_output(
-          filtered,
-          format: options[:format],
-          batch_mode:,
-          url_only: options[:url_only]
-        )
+        render_recon(filtered, batch_mode)
 
         return if batch_mode || filtered.empty?
 
@@ -189,7 +184,7 @@ module Html2rss
       apply_runtime_request_overrides!(config)
       apply_local_file_input!(config, options[:input]) if options[:input]
 
-      run_feed_command(ship_gate: true) { Html2rss.apply(config) }
+      print_shipped_feed(Html2rss.apply(config))
     end
 
     feed_transport_options
@@ -206,7 +201,7 @@ module Html2rss
     # @return [void]
     def scrape(url = nil)
       strategy, local_file_path, url = prepare_auto_inputs(url, options[:input])
-      run_feed_command { scrape_feed_result_for(url, strategy, local_file_path) }
+      print_feed(scrape_feed_result_for(url, strategy, local_file_path))
     end
 
     desc 'validate [CONFIG_FILES...]', 'Validate one or more YAML configs against the JSON Schema'
@@ -303,16 +298,31 @@ module Html2rss
       raise Thor::Error, "No results matched verdict #{options[:verdict].upcase}"
     end
 
-    def run_feed_command(ship_gate: false)
-      feed_res = yield
-      explain_json!(feed_res.status.to_h) if options[:explain]
-      raise Thor::Error, EMPTY_FEED_MESSAGE if ship_gate && feed_res.empty?
+    def render_recon(results, batch_mode)
+      return Render.recon_urls(results) if options[:url_only]
 
-      emit_feed_result(feed_res, options.fetch(:format, 'rss'))
+      case options[:format]
+      when 'json' then Render.recon_json(results, batch_mode)
+      when 'tsv' then Render.recon_tsv(results)
+      else Render.recon_cards(results)
+      end
     end
 
-    def emit_feed_result(feed_res, format)
-      payload = format == 'jsonfeed' ? JSON.pretty_generate(feed_res.to_json_feed) : feed_res.to_rss
+    def print_feed(feed_res)
+      explain_json!(feed_res.status.to_h) if options[:explain]
+      emit_feed_result(feed_res)
+    end
+
+    def print_shipped_feed(feed_res)
+      explain_json!(feed_res.status.to_h) if options[:explain]
+      raise Thor::Error, EMPTY_FEED_MESSAGE if feed_res.empty?
+
+      emit_feed_result(feed_res)
+    end
+
+    def emit_feed_result(feed_res)
+      jsonfeed = options[:format] == 'jsonfeed'
+      payload = jsonfeed ? JSON.pretty_generate(feed_res.to_json_feed) : feed_res.to_rss
       puts payload
     end
 

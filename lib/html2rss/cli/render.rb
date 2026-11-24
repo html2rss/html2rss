@@ -26,31 +26,32 @@ module Html2rss
 
         ##
         # @param results [Array<Html2rss::Recon::Result>]
-        # @param format [String]
-        # @param batch_mode [Boolean]
-        # @param url_only [Boolean]
         # @return [void]
-        def recon_output(results, format:, batch_mode:, url_only: false) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-          if url_only
-            results.each { |r| puts r.requested_url }
-          elsif format == 'json'
-            json(results.map(&:to_h), batch_mode)
-          elsif format == 'tsv'
-            puts %w[verdict status requested_url final_url native_feed notes].join("\t")
-            results.each do |r|
-              row = [
-                r.verdict.to_s.upcase,
-                r.status || '-',
-                r.requested_url,
-                r.final_url,
-                r.native_feed || '-',
-                r.notes.join('; ')
-              ]
-              puts row.join("\t")
-            end
-          else
-            results.each { |r| probe_card(ProbeView.from_recon(r)) }
-          end
+        def recon_urls(results)
+          results.each { |r| puts r.requested_url }
+        end
+
+        ##
+        # @param results [Array<Html2rss::Recon::Result>]
+        # @param batch_mode [Boolean]
+        # @return [void]
+        def recon_json(results, batch_mode)
+          json(results.map(&:to_h), batch_mode)
+        end
+
+        ##
+        # @param results [Array<Html2rss::Recon::Result>]
+        # @return [void]
+        def recon_tsv(results)
+          puts %w[verdict status requested_url final_url native_feed notes].join("\t")
+          results.each { |r| puts tsv_row(r).join("\t") }
+        end
+
+        ##
+        # @param results [Array<Html2rss::Recon::Result>]
+        # @return [void]
+        def recon_cards(results)
+          results.each { |r| probe_card(ProbeView.from_recon(r)) }
         end
 
         ##
@@ -110,6 +111,16 @@ module Html2rss
         end
 
         private
+
+        ##
+        # @param result [Html2rss::Recon::Result]
+        # @return [Array<String>]
+        def tsv_row(result)
+          [
+            result.verdict.to_s.upcase, result.status || '-', result.requested_url,
+            result.final_url, result.native_feed || '-', result.notes.join('; ')
+          ]
+        end
 
         ##
         # @param view [ProbeView]
