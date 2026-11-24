@@ -48,13 +48,24 @@ module SstTestHelpers
   # A node of a document nothing references any more, so its index is free to be collected.
   def orphan_node_for(html) = document_for(html).root.find(&:link?)
 
+  # A segment of +html+ whose document nothing references, so its index is free to be collected.
+  def build_orphan_segment(html)
+    root = document_for(html).root.find { _1.name == :article }
+    Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :semantic,
+                                        position: 0)
+  end
+
+  def hold_document(doc) = (@sst_documents ||= []) << doc
+
   def document_for(html)
     Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)
   end
 
+  # The segment's SST document is held by the example, as production holds it, so its index stays live.
   # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity -- test segment fixture builder
   def segment_for(html, href: '/news/story')
     doc = Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)
+    hold_document(doc)
     root = doc.root.find { |n| n.name == :article } || doc.root.find { |n| n.name == :div }
     link = root.find { |n| n.link? && n.attrs.href == href } || root.find(&:link?)
     Html2rss::AutoSource::Segment.build(root_node: root, primary_link: link, strategy: :semantic, position: 0)

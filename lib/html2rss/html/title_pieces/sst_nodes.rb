@@ -26,7 +26,8 @@ module Html2rss
         ##
         # @param node [SST::Node]
         # @return [SST::Node, nil] the parent of an indexed node
-        def parent(node) = SST::Index.for_node(node)&.parent_of(node)
+        # @raise [SST::Index::InvalidError] when +node+ has no live index
+        def parent(node) = SST::Index.for_node!(node).parent_of(node)
 
         ##
         # @param node [SST::Node]
@@ -45,8 +46,6 @@ module Html2rss
         #   sits between them and +node+
         def siblings_before(node)
           up = parent(node)
-          return unless up
-
           index = up.children.index { _1.equal?(node) }
           up.children.take(index) unless [up.lead_text, *up.tails][..index].any? { _1.match?(WORD) }
         end

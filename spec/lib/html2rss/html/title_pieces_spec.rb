@@ -90,18 +90,18 @@ RSpec.describe Html2rss::Html::TitlePieces do
         expect(pieces.headline_text(heading)).to eq('Tram')
       end
 
-      it 'finds no piece before a title piece without parents' do
+      it 'raises on a title piece without an index to walk' do
         title = kicker.with(attrs: kicker.attrs.with(class_names: ['title']), own_text: 'Tram')
         box = heading.with(children: [kicker.with(attrs: Html2rss::SST::Attrs.build), title])
-        bare = described_class.new(Html2rss::SST::Node.build(name: :article, children: [box]), box,
-                                   vocabulary: all_scope)
+        article = Html2rss::SST::Node.build(name: :article, children: [box])
 
-        expect([bare.kicker, bare.headline_text(box)]).to eq([nil, 'Tram'])
+        expect { described_class.new(article, box, vocabulary: all_scope).kicker }.to raise_error(Html2rss::SST::Index::InvalidError)
       end
 
-      it 'drops a time element without a parent to read running text from' do
+      it 'raises on a time element without an index to read running text from' do
         time = Html2rss::SST::Node.build(name: :time, own_text: 'Friday')
-        expect(pieces.headline_text(heading.with(children: [time, *heading.children]))).to eq('Tram')
+        expect { pieces.headline_text(heading.with(children: [time, *heading.children])) }
+          .to raise_error(Html2rss::SST::Index::InvalidError)
       end
     end
   end
