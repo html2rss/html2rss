@@ -973,6 +973,14 @@ RSpec.describe Html2rss::Selectors do
     end
   end
 
+  describe 'the items selector' do
+    it 'is not compiled as a field, so its keys are never validated as post-processors' do
+      selectors[:items][:post_process] = [{ name: 'no_such_processor' }]
+
+      expect { instance }.not_to raise_error
+    end
+  end
+
   describe '#select :url resolution' do
     subject(:value) { instance.select(:url, item) }
 
@@ -994,6 +1002,13 @@ RSpec.describe Html2rss::Selectors do
       item = Nokogiri::HTML('<html><body><a href="/target">x</a></body></html>').at('a')
 
       expect(instance.select(:url, item).to_s).to eq('http://example.com/target')
+    end
+
+    it 'raises for an undefined selector that is not url, even on an anchor item' do
+      anchor = Nokogiri::HTML('<html><body><a href="/target">x</a></body></html>').at('a')
+
+      expect { instance.select(:description, anchor) }
+        .to raise_error(described_class::InvalidSelectorName, "Selector for 'description' is not defined.")
     end
 
     it 'raises for a configured-as-nil selector that is not url' do
