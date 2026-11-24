@@ -295,8 +295,8 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'points a min_items failure at the url selector when items lack a URL' do # rubocop:disable RSpec/ExampleLength
-      report = Html2rss::Test::QualityReport.new(warnings: [:items_without_url], metrics: {}, native_feed: nil,
-                                                 defer_reason: nil)
+      report = Html2rss::Test::QualityReport.new(warnings: [:items_without_url], metrics: { items_without_url: 2 },
+                                                 native_feed: nil, defer_reason: nil)
       outcome = described_class.test(test_result(error_message: 'Extracted 0 items (minimum required: 1)',
                                                  quality_report: report))
 

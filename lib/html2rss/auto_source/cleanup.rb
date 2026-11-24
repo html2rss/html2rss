@@ -57,14 +57,8 @@ module Html2rss
       # Owner of the read-more vocabulary ("Read more", "More about X" in every {Vocabulary::LANGUAGES}
       # language): a +:cta+ title.
 
-      # Minimum present-title length before short-title warnings.
-      MIN_TITLE_LENGTH = 4
-
       # Admitted articles plus reason → count tallies for drops.
       Result = Data.define(:articles, :drop_tallies)
-
-      # Read-only ship-quality audit on RSS/article-like items (no mutation).
-      AuditResult = Data.define(:warnings, :metrics, :violations)
 
       # Config key / CLI flag named when different_domain drops emptied admission.
       # Opt-in trusts the remote source for off-domain link targets (no affiliation check).
@@ -133,105 +127,12 @@ module Html2rss
             (:cta if classifier.read_more?(normalized))
         end
 
-        # @param items [Array<Html2rss::Article, RSS::Rss::Channel::Item>]
-        # @param vocabulary [Vocabulary::Scope] the scope of the page the feed was built from, so a page-only
-        #   language's read-more titles count as junk like the feed's own cleanup
-        # @return [AuditResult]
-        def audit_feed_items(items, vocabulary:)
-          articles = items.map { |item| feed_item_as_article(item) }
-          metrics = initial_audit_metrics(articles.size)
-          violations = Hash.new(0)
-          warnings = audit_url_diversity(articles, metrics, violations)
-          audit_item_titles(articles, metrics, violations, vocabulary)
-          warnings = finalize_audit_warnings(warnings, metrics)
-          log_audit(metrics, warnings, violations)
-          AuditResult.new(warnings:, metrics: metrics.freeze, violations: violations.freeze)
-        end
-
         private
-
-        def initial_audit_metrics(item_count)
-          {
-            item_count:,
-            unique_url_count: 0,
-            junk_title_count: 0,
-            short_title_count: 0,
-            low_word_count: 0
-          }
-        end
-
-        def audit_url_diversity(items, metrics, violations)
-          unique_urls = items.filter_map { |item| item_url(item)&.article_identity }.uniq
-          metrics[:unique_url_count] = unique_urls.size
-          return [] unless items.size >= 2 && unique_urls.size < 2
-
-          violations[:duplicate_urls] += 1
-          [:duplicate_urls]
-        end
-
-        def audit_item_titles(items, metrics, violations, vocabulary)
-          items.each do |item|
-            title = normalize_title(item.title)
-            next if title.empty?
-
-            audit_short_title(title, metrics, violations)
-            audit_title_quality(title, metrics, violations, vocabulary)
-          end
-        end
-
-        def audit_short_title(title, metrics, violations)
-          return unless title.length < MIN_TITLE_LENGTH
-
-          metrics[:short_title_count] += 1
-          violations[:short_title] += 1
-        end
-
-        def audit_title_quality(title, metrics, violations, vocabulary)
-          reason = junk_reason(title, vocabulary:)
-          if reason
-            metrics[:junk_title_count] += 1
-            violations[reason] += 1
-          elsif !WordCount.at_least?(title, MIN_WORDS)
-            metrics[:low_word_count] += 1
-            violations[:low_word_count] += 1
-          end
-        end
-
-        def finalize_audit_warnings(warnings, metrics)
-          warnings = warnings.dup
-          warnings << :generic_titles if metrics[:junk_title_count].positive?
-          warnings << :short_titles if metrics[:short_title_count].positive?
-          warnings << :low_word_count if metrics[:low_word_count].positive?
-          warnings.freeze
-        end
-
-        def log_audit(metrics, warnings, violations)
-          Log.debug(
-            'Cleanup.audit_feed_items: ' \
-            "item_count=#{metrics[:item_count]} unique_urls=#{metrics[:unique_url_count]} " \
-            "warnings=#{warnings.join(',')} violations=#{violations.keys.join(',')}"
-          )
-        end
 
         # The page's one article key ({PageLinks#identity}, which ignores the page's placement params);
         # the plain {Url#article_identity} without a page.
         def page_identity(page_links)
           ->(url) { page_links ? page_links.call.identity(url) : url.article_identity }
-        end
-
-        def feed_item_as_article(item)
-          case item
-          when Article then item
-          else
-            Article.new(title: item.title, url: item.link)
-          end
-        end
-
-        def item_url(item)
-          raw = item.url
-          raw.nil? || raw.to_s.empty? ? nil : Html2rss::Url.from_absolute(raw.to_s)
-        rescue Html2rss::Url::InvalidUrlError
-          nil
         end
 
         def normalize_title(title)
