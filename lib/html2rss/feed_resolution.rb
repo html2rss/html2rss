@@ -121,13 +121,13 @@ module Html2rss
       # @return [Result] the same result, after its structured log line
       def log(result)
         scrape_host = Url.from_absolute(result.scrape_url).host
-        Log.info({
-          event_name: 'feed_resolution.result',
+        Log.event(
+          :info, 'feed_resolution.result',
           host: entry_url.host,
           message: "FeedResolution: entry_host=#{entry_url.host} scrape_host=#{scrape_host} " \
                    "applied=#{result.applied} probe_count=#{result.probe_count} " \
                    "winner_score=#{result.winner_score.inspect} reason=#{result.reason}"
-        }.to_json)
+        )
         result
       end
     end

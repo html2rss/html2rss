@@ -74,20 +74,20 @@ module Html2rss
 
           Array(response.parsed_body)
         rescue RequestService::UnsupportedResponseContentType => error
-          Log.warn({
-            event_name: 'wordpress_api.unsupported_content_type',
+          Log.event(
+            :warn, 'wordpress_api.unsupported_content_type',
             host: url.host,
             error_class: error.class.name,
             message: "#{self.class}: unsupported WordPress API posts content type (#{error.message})"
-          }.to_json)
+          )
           nil
         rescue JSON::ParserError => error
-          Log.warn({
-            event_name: 'wordpress_api.parse_failed',
+          Log.event(
+            :warn, 'wordpress_api.parse_failed',
             host: url.host,
             error_class: error.class.name,
             message: "#{self.class}: failed to parse WordPress API posts JSON (#{error.message})"
-          }.to_json)
+          )
           nil
         end
 
@@ -104,12 +104,12 @@ module Html2rss
         rescue Html2rss::ContractError
           raise
         rescue Html2rss::Error => error
-          Log.warn({
-            event_name: 'wordpress_api.fetch_failed',
+          Log.event(
+            :warn, 'wordpress_api.fetch_failed',
             host: url.host,
             error_class: error.class.name,
             message: "#{self.class}: failed to fetch WordPress API posts (#{error.class}: #{error.message})"
-          }.to_json)
+          )
           nil
         end
 
@@ -211,8 +211,7 @@ module Html2rss
             parsed_body:,
             page_url: url,
             page_scope:,
-            posts_query:,
-            logger: Log
+            posts_query:
           )
         end
       end

@@ -201,11 +201,11 @@ module Html2rss
           def parse_script_tag(script_tag)
             JSON.parse(script_tag.text, symbolize_names: true)
           rescue JSON::ParserError => error
-            Log.warn({
-              event_name: 'schema.parse_failed',
+            Log.event(
+              :warn, 'schema.parse_failed',
               error_class: error.class.name,
               message: "#{name}: failed to parse JSON (#{error.message})"
-            }.to_json)
+            )
             []
           end
         end

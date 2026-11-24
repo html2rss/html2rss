@@ -64,19 +64,19 @@ module Html2rss
 
           articles = (@feed = fetch_feed).articles
           if articles.empty?
-            Log.info({
-              event_name: 'auto_source.native_feed.empty',
+            Log.event(
+              :info, 'auto_source.native_feed.empty',
               host: url.host,
               message: "#{self.class}: host=#{url.host} item_count=0 fallback=true"
-            }.to_json)
+            )
             return
           end
 
-          Log.info({
-            event_name: 'auto_source.native_feed.items',
+          Log.event(
+            :info, 'auto_source.native_feed.items',
             host: url.host,
             message: "#{self.class}: host=#{url.host} item_count=#{articles.size} fallback=false"
-          }.to_json)
+          )
           articles.each(&)
         end
 
@@ -101,12 +101,12 @@ module Html2rss
         rescue Html2rss::ContractError
           raise
         rescue Html2rss::Error => error
-          Log.warn({
-            event_name: 'auto_source.native_feed.failed',
+          Log.event(
+            :warn, 'auto_source.native_feed.failed',
             host: url.host,
             error_class: error.class.name,
             message: "#{self.class}: host=#{url.host} failed (#{error.class}: #{error.message})"
-          }.to_json)
+          )
           Syndication::Feed::NONE
         end
       end

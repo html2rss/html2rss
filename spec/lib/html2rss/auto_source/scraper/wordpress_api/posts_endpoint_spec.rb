@@ -8,8 +8,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
       parsed_body:,
       page_url:,
       page_scope:,
-      posts_query:,
-      logger:
+      posts_query:
     )
   end
 
@@ -21,7 +20,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
     instance_double(Html2rss::AutoSource::Scraper::WordpressApi::PageScope, fetchable?: true, reason: :unscoped)
   end
   let(:posts_query) { { '_fields' => 'id,title', 'per_page' => '100' } }
-  let(:logger) { instance_double(Logger, warn: nil, debug: nil) }
+  let(:logger) { Html2rss::Log }
+
+  before do
+    allow(logger).to receive(:warn).and_return(true) # as the real logger does
+    allow(logger).to receive(:debug)
+  end
 
   describe '.resolve' do
     context 'when the page advertises a collection-style API root' do
@@ -156,7 +160,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
 
       it 'returns nil and logs the invalid API root', :aggregate_failures do
         expect(posts_endpoint).to be_nil
-        expect(logger).to have_received(:warn).with(/invalid WordPress API endpoint/)
+        expect(logger).to have_received(:warn).with(/"event_name":"wordpress_api.invalid_endpoint"/)
       end
     end
   end
@@ -201,13 +205,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
     context 'when the API href is invalid' do
       let(:api_href) { '://bad url' }
 
-      let(:rejected_href_log) do
-        %r{\AHtml2rss::AutoSource::Scraper::WordpressApi: invalid WordPress API endpoint "://bad url" \(.+\)\z}
-      end
-
-      it 'logs the rejected href and the error', :aggregate_failures do
+      it 'logs the rejected href and the error as a structured event', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(posts_endpoint).to be_nil
-        expect(logger).to have_received(:warn).with(a_string_matching(rejected_href_log))
+        expect(logger).to have_received(:warn) do |line|
+          fields = JSON.parse(line)
+
+          expect(fields.keys).to eq(%w[event_name host href error_class message])
+          expect(fields.values_at('event_name', 'host', 'href', 'error_class')).to eq(
+            ['wordpress_api.invalid_endpoint', 'example.com', '://bad url', 'Html2rss::Url::InvalidUrlError']
+          )
+          expect(fields['message']).to match(
+            %r{\AHtml2rss::AutoSource::Scraper::WordpressApi: invalid WordPress API endpoint "://bad url" \(.+\)\z}
+          )
+        end
       end
     end
   end
@@ -224,6 +234,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
   end
 
   describe '#fetchable_page_scope?' do
+    context 'when the page scope is fetchable' do
+      it 'resolves the endpoint without logging', :aggregate_failures do
+        expect(posts_endpoint).to be_a(Html2rss::Url)
+        expect(logger).not_to have_received(:warn)
+        expect(logger).not_to have_received(:debug)
+      end
+    end
+
     context 'when the archive scope is unsafe' do
       let(:page_scope) do
         instance_double(
@@ -254,6 +272,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
           'Html2rss::AutoSource::Scraper::WordpressApi: page advertised WordPress API support ' \
           'without a safe WordPress archive scope'
         )
+      end
+
+      it 'does not warn about an unsafe scope' do
+        posts_endpoint
+
+        expect(logger).not_to have_received(:warn)
       end
     end
   end

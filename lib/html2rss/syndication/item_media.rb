@@ -92,10 +92,11 @@ module Html2rss
         end
 
         def warn_mismatch(elements, count, url)
-          Log.warn({
-            event_name: 'syndication.item_media_mismatch', feed_url: url,
+          Log.event(
+            :warn, 'syndication.item_media_mismatch',
+            feed_url: url,
             message: "Syndication::ItemMedia: #{elements} item elements for #{count} parsed items; no item media read"
-          }.to_json)
+          )
         end
       end
     end

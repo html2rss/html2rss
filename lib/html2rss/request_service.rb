@@ -209,13 +209,13 @@ module Html2rss
       def warn_migration_strategy(strategy, replacement, relation:, host:)
         return unless relation == :initial && claim_deprecation_warning?(strategy, host)
 
-        Log.warn({
-          event_name: 'strategy_deprecated',
+        Log.event(
+          :warn, 'strategy_deprecated',
           strategy: strategy.to_s,
           replacement: replacement.to_s,
           host:,
           message: "#{name}: strategy=#{strategy.inspect} is deprecated; using #{replacement.inspect} instead."
-        }.to_json)
+        )
       end
 
       def claim_deprecation_warning?(strategy, host)

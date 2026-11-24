@@ -143,12 +143,12 @@ module Html2rss
     def articles
       @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound => error
-      Log.warn({
-        event_name: 'auto_source.no_scraper',
+      Log.event(
+        :warn, 'auto_source.no_scraper',
         host: url.host,
         category: error.category,
         message: "#{self.class}: no scraper matched #{url} (#{error.message})"
-      }.to_json)
+      )
       @admission_drops = {}.freeze
       []
     end
@@ -247,15 +247,9 @@ module Html2rss
     end
 
     def log_admission_emptied(captured_count, result)
-      payload = {
-        event_name: 'auto_source.admission_emptied',
-        host: url.host,
-        captured_count:,
-        drop_tallies: result.drop_tallies
-      }
       hint = Cleanup.admission_hint(result.drop_tallies)
-      payload[:hint] = hint if hint
-      Log.warn(payload.to_json)
+      fields = { host: url.host, captured_count:, drop_tallies: result.drop_tallies, hint: }.compact
+      Log.event(:warn, 'auto_source.admission_emptied', **fields)
     end
 
     def enough_articles?(articles)
@@ -340,10 +334,11 @@ module Html2rss
     rescue ContractError
       raise
     rescue *OPERATIONAL_ERRORS => error
-      Log.warn({
-        event_name: 'auto_source.quarantined', host: url.host, error_class: error.class.name,
+      Log.event(
+        :warn, 'auto_source.quarantined',
+        host: url.host, error_class: error.class.name,
         message: "#{self.class}: #{instance.class} quarantined #{error.class}: #{error.message}"
-      }.to_json)
+      )
       []
     end
 

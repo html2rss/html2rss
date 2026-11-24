@@ -77,11 +77,11 @@ module Html2rss
 
           parse_sitemap_xml(xml_body)
         rescue Html2rss::RequestService::RequestBudgetExceeded
-          Log.warn({
-            event_name: 'sitemap.budget_exhausted',
+          Log.event(
+            :warn, 'sitemap.budget_exhausted',
             host: url.host,
             message: "#{self.class}: sitemap fetch stopped — request budget exhausted"
-          }.to_json)
+          )
           []
         end
 
@@ -116,11 +116,11 @@ module Html2rss
 
           Scraper::Sitemap::Parser.call(xml, min_priority:, max_age_days:).entries
         rescue Html2rss::RequestService::RequestBudgetExceeded
-          Log.warn({
-            event_name: 'sitemap.fanout_budget_exhausted',
+          Log.event(
+            :warn, 'sitemap.fanout_budget_exhausted',
             host: url.host,
             message: "#{self.class}: sitemap fan-out stopped — request budget exhausted"
-          }.to_json)
+          )
           nil
         end
 
@@ -133,12 +133,12 @@ module Html2rss
         rescue Html2rss::RequestService::RequestBudgetExceeded, Html2rss::ContractError
           raise
         rescue Html2rss::Error => error
-          Log.warn({
-            event_name: 'sitemap.fetch_failed',
+          Log.event(
+            :warn, 'sitemap.fetch_failed',
             host: url.host,
             error_class: error.class.name,
             message: "#{self.class}: failed to fetch sitemap (#{error.class}: #{error.message})"
-          }.to_json)
+          )
           nil
         end
 
