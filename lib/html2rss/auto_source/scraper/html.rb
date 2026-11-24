@@ -70,7 +70,8 @@ module Html2rss
           ranked.filter_map do |entry|
             ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: url, scraper: self.class,
                                                               vocabulary: link_resolver.vocabulary,
-                                                              classifier: link_resolver.text_classifier)
+                                                              classifier: link_resolver.text_classifier,
+                                                              link_resolver:)
           end
         end
 

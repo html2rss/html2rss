@@ -22,11 +22,13 @@ module Html2rss
         # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
         # @param classifier [LinkDestination::TextClassifier] the page's label reader; pass the page-scoped one
         #   ({Scoring::LinkResolver#text_classifier}) so a label is normalized once per page
+        # @param link_resolver [Scoring::LinkResolver, nil] the page's resolver, built for the same +base_url+;
+        #   its already resolved URL of the primary link is reused instead of resolving it again
         # @return [Html2rss::Article, nil] nil when the segment has no primary link (no URL of its own)
         # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
         def call(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil],
-                 classifier: LinkDestination::TextClassifier.for(vocabulary))
-          new(ranked_or_segment, base_url:, scraper:, time_zone:, vocabulary:, classifier:).call
+                 classifier: LinkDestination::TextClassifier.for(vocabulary), link_resolver: nil)
+          new(ranked_or_segment, base_url:, scraper:, time_zone:, vocabulary:, classifier:, link_resolver:).call
         end
       end
 
@@ -36,13 +38,13 @@ module Html2rss
       # @param time_zone [String] channel time zone for naive leftover dates
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
       # @param classifier [LinkDestination::TextClassifier] the page's label reader
+      # @param link_resolver [Scoring::LinkResolver, nil] see {.call}
       # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
       def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil],
-                     classifier: LinkDestination::TextClassifier.for(vocabulary))
+                     classifier: LinkDestination::TextClassifier.for(vocabulary), link_resolver: nil)
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
-        @segment = segment
         @root = segment.root_node
         @selected_anchor = segment.primary_link
         @base_url = base_url
@@ -50,6 +52,7 @@ module Html2rss
         @time_zone = time_zone
         @vocabulary = vocabulary
         @classifier = classifier
+        @link_resolver = link_resolver
       end
 
       ##
@@ -86,10 +89,12 @@ module Html2rss
       private
 
       def extract_url
-        @extract_url ||= begin
-          href = @selected_anchor&.attrs&.href.to_s
-          Url.resolve_web(href.split('#').first, @base_url, web_only: false)
-        end
+        @extract_url ||= if @link_resolver
+                           @link_resolver.destination_facts(@selected_anchor)&.url
+                         else
+                           href = @selected_anchor&.attrs&.href.to_s
+                           Url.resolve_web(href.split('#').first, @base_url, web_only: false)
+                         end
       end
 
       # Kicker and headline text ({TitlePieces}) of this card.

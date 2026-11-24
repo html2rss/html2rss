@@ -256,6 +256,33 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(id_for.call('mailto:?subject=news')).to be_nil
     end
 
+    describe 'with the page resolver' do
+      let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com') }
+      let(:segment) do
+        html = '<article><h2><a href="/a?p=1#top">Story Title</a></h2><p>Useful context paragraph here.</p></article>'
+        segment_for(html, href: '/a?p=1#top')
+      end
+
+      before do
+        resolver.destination_facts(segment.primary_link)
+        allow(Html2rss::Url).to receive(:from_relative).and_call_original
+      end
+
+      it 'reuses its URL of the primary link instead of resolving it again', :aggregate_failures do
+        article = described_class.call(segment, base_url: 'https://example.com', link_resolver: resolver)
+
+        expect(article.url.to_s).to eq('https://example.com/a?p=1')
+        expect(Html2rss::Url).not_to have_received(:from_relative)
+      end
+
+      it 'emits no article when the resolver has no facts for the primary link' do
+        broken = segment_for('<article><h2><a href="http://">Story Title</a></h2><p>Useful context here.</p></article>',
+                             href: 'http://')
+
+        expect(described_class.call(broken, base_url: 'https://example.com', link_resolver: resolver)).to be_nil
+      end
+    end
+
     it 'emits no article when the primary link resolves to no URL' do
       expect(id_for.call('http://')).to be_nil
     end
