@@ -217,7 +217,7 @@ module Html2rss
 
       build_test_result(raw_config, feed_result, rss_doc, duration, quality_report, enhance_compare,
                         min_items:, strict_quality:, response_body: pipeline_outcome.response.body,
-                        articles: pipeline_outcome.articles, sample_limit:)
+                        articles: pipeline_outcome.articles.select(&:renderable?), sample_limit:)
     end
     private_class_method :execute_timed_pipeline
 

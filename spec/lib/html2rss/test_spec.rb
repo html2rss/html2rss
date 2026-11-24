@@ -438,6 +438,37 @@ RSpec.describe Html2rss::Test do
       end
     end
 
+    context 'when a linked selector row has neither title nor description' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:page) do
+        <<~HTML
+          <html><body>
+            <article><h2>First Example Article Title</h2><a href="/news/1">go</a></article>
+            <article><a href="/news/2">go</a></article>
+            <article><h2>Third Example Article Title</h2><a href="/news/3">go</a></article>
+          </body></html>
+        HTML
+      end
+      let(:response) do
+        Html2rss::RequestService::Response.new(url: Html2rss::Url.from_absolute('https://example.com/news'),
+                                               headers: { 'content-type' => 'text/html' }, body: page)
+      end
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute).and_return(response)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+      end
+
+      it 'keeps the feed, the count, the samples and the items in agreement', :aggregate_failures do
+        result = described_class.call(valid_config)
+
+        expect(result.item_count).to eq(2)
+        expect(Nokogiri::XML(result.rss).css('item link').map(&:text))
+          .to eq(%w[https://example.com/news/1 https://example.com/news/3])
+        expect(result.sample_items.map { _1[:url] }).to eq(%w[https://example.com/news/1 https://example.com/news/3])
+        expect(result.items.map { _1[:url] }).to eq(%w[https://example.com/news/1 https://example.com/news/3])
+      end
+    end
+
     context 'when enhance audit is enabled' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- fixture + pipeline outcome setup
       let(:fixture_body) { File.read(File.expand_path('../../fixtures/enhance_audit/rich_card.html', __dir__)) }
       let(:pipeline_response) do

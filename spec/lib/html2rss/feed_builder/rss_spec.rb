@@ -10,19 +10,6 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
                         generator: "html2rss V. #{Html2rss::VERSION} (scrapers: RSpec (1), AutoSource::Html (1))")
   end
 
-  let(:channel) do
-    instance_double(Html2rss::Channel,
-                    title: 'Test Channel',
-                    url: 'http://example.com',
-                    description: 'A test channel',
-                    language: 'en',
-                    image: 'http://example.com/image.jpg',
-                    author: 'Channel Author',
-                    categories: [],
-                    explicit: nil,
-                    ttl: 12,
-                    last_build_date: 'Tue, 01 Jan 2019 00:00:00 GMT')
-  end
   let(:articles) do
     [
       Html2rss::Article.new(url: 'http://example.com/1',
@@ -40,6 +27,33 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
                             image: 'http://example.com/image2.jpg',
                             scraper: Html2rss::AutoSource::Scraper::Html)
     ]
+  end
+  let(:channel) do
+    instance_double(Html2rss::Channel,
+                    title: 'Test Channel',
+                    url: 'http://example.com',
+                    description: 'A test channel',
+                    language: 'en',
+                    image: 'http://example.com/image.jpg',
+                    author: 'Channel Author',
+                    categories: [],
+                    explicit: nil,
+                    ttl: 12,
+                    last_build_date: 'Tue, 01 Jan 2019 00:00:00 GMT')
+  end
+
+  describe 'an article with nothing to show' do
+    let(:articles) do
+      [Html2rss::Article.new(url: 'http://example.com/1', id: 1, title: 'Title 1'),
+       Html2rss::Article.new(url: 'http://example.com/2', id: 2)]
+    end
+
+    it 'is left out of the feed', :aggregate_failures do
+      items = instance.call.items
+
+      expect(items.size).to eq(1)
+      expect(items.first.link).to eq('http://example.com/1')
+    end
   end
 
   it { expect(described_class).to be_a Class }
