@@ -35,10 +35,11 @@ module SstTestHelpers
 
   # The fields of the +item+ (CSS selector) in +html+, read the way +selectors.items.enhance+ reads a selected item:
   # its first link is the primary one. The SST document is held until the fields are read.
-  def item_fields_for(html, item: 'article', base_url: 'https://example.com', time_zone: 'UTC', vocabulary: all_scope)
+  def item_fields_for(html, item: 'article', nth: 0, base_url: 'https://example.com', time_zone: 'UTC', # rubocop:disable Metrics/ParameterLists
+                      vocabulary: all_scope)
     parsed = Nokogiri::HTML(html)
     document = Html2rss::SST::Normalizer.call(parsed, vocabulary:, items: true)
-    root = document.index.node_for(parsed.at_css(item))
+    root = document.index.node_for(parsed.css(item)[nth])
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?),
                                                   strategy: :list, position: 0)
     [Html2rss::Html::SstArticleExtractor::Item.call(segment, base_url:, time_zone:, vocabulary:), document].first

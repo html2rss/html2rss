@@ -61,7 +61,7 @@ module Html2rss
       @selectors = selectors
       @time_zone = time_zone
       @rss_item_attributes = @selectors.keys.select { SELECTABLE_SELECTOR_KEYS.include?(_1) }
-      @parsed_body = @item_enhancer = nil
+      @parsed_body = @selected_items = @item_enhancer = nil
       @unlinked_count = 0
       @compiled_fields = compile_selector_fields
       @compiled_item_fields = @rss_item_attributes.filter_map { @compiled_fields[_1] }
@@ -96,7 +96,7 @@ module Html2rss
       enhance = enhance?
       @unlinked_count = 0
 
-      parsed_body.css(items_selector).each do |item|
+      selected_items.each do |item|
         article_hash = extract_article(item)
 
         enhance_article_hash(article_hash, item) if enhance
@@ -119,7 +119,7 @@ module Html2rss
     def each_enhance_pair(linked_only: false)
       return enum_for(:each_enhance_pair, linked_only:) unless block_given?
 
-      parsed_body.css(items_selector).each do |item|
+      selected_items.each do |item|
         baseline = extract_article(item)
         enhanced = enhance_article_hash(baseline.dup, item)
         yield baseline, enhanced, item unless linked_only && !build_article(enhanced).linked?
@@ -196,6 +196,10 @@ module Html2rss
     # @return [Boolean]
     def enhance? = !!@selectors.dig(ITEMS_SELECTOR_KEY, :enhance)
 
+    def selected_items
+      @selected_items ||= parsed_body.css(items_selector)
+    end
+
     def parsed_body
       @parsed_body ||= build_parsed_body(response)
     end
@@ -256,7 +260,8 @@ module Html2rss
     end
 
     def item_enhancer
-      @item_enhancer ||= ItemEnhancer.new(parsed_body, base_url: @url, time_zone: @time_zone, vocabulary: @vocabulary)
+      @item_enhancer ||= ItemEnhancer.new(selected_items, base_url: @url, time_zone: @time_zone,
+                                                          vocabulary: @vocabulary)
     end
 
     def enhanceable_fields_present?(article_hash)
