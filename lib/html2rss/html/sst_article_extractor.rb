@@ -20,9 +20,13 @@ module Html2rss
         # @param scraper [Class, nil]
         # @param time_zone [String] channel time zone for naive leftover dates
         # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
+        # @param classifier [LinkDestination::TextClassifier] the page's label reader; pass the page-scoped one
+        #   ({Scoring::LinkResolver#text_classifier}) so a label is normalized once per page
         # @return [Html2rss::Article, nil] nil when the segment has no primary link (no URL of its own)
-        def call(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil])
-          new(ranked_or_segment, base_url:, scraper:, time_zone:, vocabulary:).call
+        # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
+        def call(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil],
+                 classifier: LinkDestination::TextClassifier.for(vocabulary))
+          new(ranked_or_segment, base_url:, scraper:, time_zone:, vocabulary:, classifier:).call
         end
       end
 
@@ -31,7 +35,10 @@ module Html2rss
       # @param scraper [Class, nil]
       # @param time_zone [String] channel time zone for naive leftover dates
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for title type markers
-      def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil])
+      # @param classifier [LinkDestination::TextClassifier] the page's label reader
+      # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
+      def initialize(ranked_or_segment, base_url:, scraper: nil, time_zone: 'UTC', vocabulary: Vocabulary[nil],
+                     classifier: LinkDestination::TextClassifier.for(vocabulary))
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
@@ -42,6 +49,7 @@ module Html2rss
         @scraper = scraper
         @time_zone = time_zone
         @vocabulary = vocabulary
+        @classifier = classifier
       end
 
       ##
@@ -66,7 +74,8 @@ module Html2rss
           title: Article::Title.compose(title, kicker: title_pieces.kicker_text, vocabulary: @vocabulary),
           url: extract_url,
           image: extract_image,
-          description: ArticleRules::Description.from_lines(lines, vocabulary: @vocabulary, title:),
+          description: ArticleRules::Description.from_lines(lines,
+                                                            vocabulary: @vocabulary, title:, classifier: @classifier),
           id: parse_id_from_dom,
           published_at:,
           enclosures: extract_enclosures,
@@ -96,11 +105,13 @@ module Html2rss
       # @return [String, nil]
       def title_from_in_card_sources
         candidates = title_candidates
-        clean = candidates.find { |text| AutoSource::Cleanup.junk_reason(text, vocabulary: @vocabulary).nil? }
+        clean = candidates.find { |text| junk_reason(text).nil? }
         return clean if clean
 
-        candidates.find { |text| AutoSource::Cleanup.junk_reason(text, vocabulary: @vocabulary) != :credit }
+        candidates.find { |text| junk_reason(text) != :credit }
       end
+
+      def junk_reason(text) = AutoSource::Cleanup.junk_reason(text, vocabulary: @vocabulary, classifier: @classifier)
 
       # @return [Array<String>] ordered in-card title candidates (heading → anchor)
       def title_candidates
@@ -161,7 +172,8 @@ module Html2rss
         CardWalk.miss?(
           heading_or_anchor_item: heading_or_anchor_item?,
           published_at:,
-          description: ArticleRules::Description.from_lines(lines, vocabulary: @vocabulary, title:)
+          description: ArticleRules::Description.from_lines(lines,
+                                                            vocabulary: @vocabulary, title:, classifier: @classifier)
         )
       end
 
@@ -263,7 +275,8 @@ module Html2rss
       end
 
       def extract_categories(title, root: @root)
-        ArticleRules::Category::Collector.new(vocabulary: @vocabulary, title:).tap do |collector|
+        ArticleRules::Category::Collector.new(vocabulary: @vocabulary, title:,
+                                              classifier: @classifier).tap do |collector|
           root.find_all { |n| category_candidate?(n) }.each do |element|
             add_category_text!(collector, element) if category_text_node?(element, root)
             element.attrs.raw.each do |name, value|

@@ -1107,7 +1107,7 @@ RSpec.describe Html2rss::AutoSource do
       expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(swedish))
       expect(described_class::Cleanup).to have_received(:call).at_least(:once)
                                                               .with(anything, hash_including(vocabulary: be(swedish)))
-      expect(described_class::Corroboration).to have_received(:new).once.with(be(swedish))
+      expect(described_class::Corroboration).to have_received(:new).once.with(be(swedish), facts: anything)
     end
 
     it 'takes the scope its caller resolved, such as one from a channel override', :aggregate_failures do
@@ -1115,7 +1115,7 @@ RSpec.describe Html2rss::AutoSource do
       described_class.new(response, config, request_session:, vocabulary: german).articles
 
       expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(german))
-      expect(described_class::Corroboration).to have_received(:new).once.with(be(german))
+      expect(described_class::Corroboration).to have_received(:new).once.with(be(german), facts: anything)
     end
 
     context 'with a Han type marker kicker on each card' do

@@ -17,6 +17,15 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
   end
 
   describe '.date_shaped?' do
+    it 'reads a digitless line without peeling or matching date shapes', :aggregate_failures do
+      allow(described_class).to receive(:date_core).and_call_original
+
+      expect(described_class.date_shaped?('Press releases')).to be(false)
+      expect(described_class.date_shaped?(nil)).to be(false)
+      expect(described_class).not_to have_received(:date_core)
+      expect(described_class.date_shaped?('2024-03-12')).to be(true)
+    end
+
     it 'accepts whole-line date shapes', :aggregate_failures do
       expect(described_class.date_shaped?('2024-03-12')).to be(true)
       expect(described_class.date_shaped?('2024-03-12T12:00:00Z')).to be(true)

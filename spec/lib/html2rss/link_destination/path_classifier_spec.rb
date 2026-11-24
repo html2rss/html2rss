@@ -280,6 +280,14 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       expect(described_class.new(%w[2013 12 photo-12.jpg]).junk_path?).to be(false)
     end
 
+    it 'reads a dotless last segment without the document-slug regexp', :aggregate_failures do
+      dotless = +'giving-the-gift-of-life-a_b_4421799'
+      allow(dotless).to receive(:match?).and_call_original
+
+      expect(described_class.new(['some-author', dotless]).strong_post_suffix?).to be(false)
+      expect(dotless).not_to have_received(:match?).with(described_class::DOCUMENT_SLUG_SEGMENT)
+    end
+
     it 'trusts a long document slug without a content segment', :aggregate_failures do
       classifier = described_class.new(%w[some-author giving-the-gift-of-life-a_b_4421799.html])
 

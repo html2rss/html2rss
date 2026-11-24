@@ -10,8 +10,10 @@ module Html2rss
           ##
           # @param vocabulary [Vocabulary::Scope] the page language's scope
           # @param title [String, nil] article title used to reject title-echo values
-          def initialize(vocabulary:, title: nil)
+          # @param classifier [LinkDestination::TextClassifier] the page's label reader
+          def initialize(vocabulary:, title: nil, classifier: LinkDestination::TextClassifier.for(vocabulary))
             @vocabulary = vocabulary
+            @classifier = classifier
             @title = title
             @values = Set.new
           end
@@ -24,7 +26,8 @@ module Html2rss
           def add(text)
             value = text.to_s.strip
             return if value.empty?
-            return unless Description.keep?(value, vocabulary: @vocabulary, title: @title, type_chips: false)
+            return unless Description.keep?(value, vocabulary: @vocabulary, title: @title, type_chips: false,
+                                                   classifier: @classifier)
 
             @values.add(value)
           end

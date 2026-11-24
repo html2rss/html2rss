@@ -35,7 +35,8 @@ module Html2rss
             @article_cache.fetch(entry) do
               @article_cache[entry] =
                 ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: @scraper,
-                                                                  vocabulary: @link_resolver.vocabulary)
+                                                                  vocabulary: @link_resolver.vocabulary,
+                                                                  classifier: @link_resolver.text_classifier)
             end
           end
 

@@ -9,6 +9,8 @@ module Html2rss
       module Description
         # Listing section names that are chrome, not a dek.
         SECTION_NAMES = Set['press releases'].freeze
+        # An ASCII digit: every {DATE_SHAPES} entry needs one.
+        DIGIT = /\d/
         # Skip date detection / DateTime.parse above this length.
         MAX_DATE_CHARS = 128
         # Optional type-chip / clock separators (ASCII/en/em dash, pipe, bullet).
@@ -33,9 +35,10 @@ module Html2rss
           # @param lines [Array<String>, nil]
           # @param vocabulary [Vocabulary::Scope] the page language's scope, read for type chips
           # @param title [String, nil]
+          # @param classifier [LinkDestination::TextClassifier] the page's label reader (memoizing within a run)
           # @return [String, nil]
-          def from_lines(lines, vocabulary:, title: nil)
-            kept = Array(lines).select { |line| keep?(line, vocabulary:, title:) }
+          def from_lines(lines, vocabulary:, title: nil, classifier: LinkDestination::TextClassifier.for(vocabulary))
+            kept = Array(lines).select { |line| keep?(line, vocabulary:, title:, classifier:) }
             kept.empty? ? nil : kept.join("\n")
           end
 
@@ -44,18 +47,22 @@ module Html2rss
           # @param vocabulary [Vocabulary::Scope] the page language's scope, read for type chips
           # @param title [String, nil]
           # @param type_chips [Boolean] whether whole-line type chips are leftover chrome
+          # @param classifier [LinkDestination::TextClassifier] the page's label reader
           # @return [Boolean]
-          def keep?(line, vocabulary:, title: nil, type_chips: true)
+          def keep?(line, vocabulary:, title: nil, type_chips: true,
+                    classifier: LinkDestination::TextClassifier.for(vocabulary))
             normalized = normalize(line)
             return false if normalized.empty?
 
-            !chrome?(normalized, vocabulary, title:, type_chips:)
+            !chrome?(normalized, vocabulary, title:, type_chips:, classifier:)
           end
 
           ##
           # @param line [String, nil]
           # @return [Boolean]
           def date_shaped?(line)
+            return false unless line.to_s.match?(DIGIT) # every date shape holds a digit
+
             core = date_core(line)
             return false if core.empty? || core.length > MAX_DATE_CHARS
 
@@ -96,9 +103,9 @@ module Html2rss
 
           def clock_zone?(text) = Article::Title.clock_piece?(text)
 
-          def chrome?(normalized, vocabulary, title:, type_chips:)
+          def chrome?(normalized, vocabulary, title:, type_chips:, classifier:)
             key = normalized.downcase
-            LinkDestination::TextClassifier.for(vocabulary).read_more?(normalized) ||
+            classifier.read_more?(normalized) ||
               (type_chips && vocabulary.type_markers.include?(key)) ||
               SECTION_NAMES.include?(key) || normalized.end_with?(':') ||
               date_shaped?(normalized) || title_echo?(key, title)
