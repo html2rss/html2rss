@@ -377,6 +377,15 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect(second).not_to have_received(:unicode_normalize)
     end
 
+    it 'answers a repeated read-more text from its remembered verdict', :aggregate_failures do
+      memoized = described_class.new(memoize: true)
+      texts = Array.new(2) { +'Quarterly results' }
+      texts.each { |text| allow(text).to receive(:match?).and_call_original }
+
+      expect(texts.map { memoized.read_more?(_1) }).to eq([false, false])
+      expect(texts.last).not_to have_received(:match?)
+    end
+
     it 'skips NFC for ASCII-only text', :aggregate_failures do
       ascii = +'Read more'
       allow(ascii).to receive(:unicode_normalize).and_call_original
