@@ -26,7 +26,7 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return the outer HTML of the selected element. ' \
                       'Sanitize during post-processing (e.g. `sanitize_html`).'
 

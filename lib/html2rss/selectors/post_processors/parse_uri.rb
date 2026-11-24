@@ -29,7 +29,7 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Normalize a URL string; resolve relative URLs against the channel URL.'
 
         # Example post-process objects for JSON Schema +examples+.

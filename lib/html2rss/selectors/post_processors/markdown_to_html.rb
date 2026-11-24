@@ -39,7 +39,7 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Convert Markdown to HTML (Kramdown) and sanitize the result. ' \
                       'Often chained after `template`.'
 

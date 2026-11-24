@@ -34,7 +34,7 @@ module Html2rss
         # Config-facing options contract (none).
         OPTIONS = [].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Parse a time string with Time.parse and return RFC822, using the channel `time_zone`.'
 
         # Example post-process objects for JSON Schema +examples+.

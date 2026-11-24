@@ -42,7 +42,7 @@ module Html2rss
           OptionSpec.new(name: :string, type: String)
         ].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         # rubocop:disable Style/FormatStringToken -- documents Kernel#format `%{key}` placeholders
         DESCRIPTION = 'Format a string with Kernel#format-style placeholders (`%{key}` / `%<key>s`). ' \
                       '`%{self}` is the current selector value; other keys resolve sibling selectors.'

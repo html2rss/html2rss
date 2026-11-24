@@ -42,7 +42,7 @@ module Html2rss
           OptionSpec.new(name: :replacement, type: [String, Hash])
         ].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = format(
           'Replace matches of `pattern` in the extracted string with `replacement` ' \
           '(Ruby String#gsub; pattern may be a regexp-like string). ' \

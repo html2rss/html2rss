@@ -29,7 +29,7 @@ module Html2rss
           OptionSpec.new(name: :attribute, type: String)
         ].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return the value of an HTML attribute on the selected element. ' \
                       'Requires sibling selector option `attribute` (attribute name).'
 

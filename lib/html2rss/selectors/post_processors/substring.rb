@@ -39,7 +39,7 @@ module Html2rss
           OptionSpec.new(name: :end, type: Integer, required: false)
         ].freeze
 
-        # JSON Schema description exported via +schema_export+.
+        # JSON Schema description, exported by {SchemaExport}.
         DESCRIPTION = 'Return a slice of the extracted string using Integer `start` and optional `end` ' \
                       '(Ruby String#[] range semantics; end may be omitted).'
 
