@@ -158,9 +158,7 @@ module Html2rss
         root
       end
 
-      def element_root?(node)
-        node.element? && self.class.kept_tag?(Html2rss::Html::Probe.tag(node), items: @items)
-      end
+      def element_root?(node) = self.class.kept_tag?(Html2rss::Html::Probe.tag(node), items: @items)
 
       # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
       def normalize_element(nk_node, depth:, path:, scope:)

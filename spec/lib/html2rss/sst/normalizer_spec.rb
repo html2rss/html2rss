@@ -16,7 +16,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.root.find { |n| n.name == :script }).to be_nil
     end
 
-    it 'keeps a noscript only as the file links inside it, as chrome with invisible text', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'keeps a noscript only as the file links inside it, as chrome with invisible text', :aggregate_failures do
       doc = described_class.call('<html><body><article><h2>Episode</h2><noscript><p>Listen <a href="/a.mp3">Get</a>' \
                                  '<a href="/page">Page</a><img src="/i.jpg"></p></noscript></article></body></html>',
                                  vocabulary: all_scope)
@@ -50,7 +50,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(article.attrs.class_names).to include('card', 'teaser')
     end
 
-    it 'maps typed attributes and keeps only allowlisted raw attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'maps typed attributes and keeps only allowlisted raw attributes', :aggregate_failures do
       html = '<html><body><div id="i" class=" a  b " datetime="2020" itemprop="x" style="c:d" srcset="s 1x" ' \
              'type="t" data-k="v" aria-label="L" role="r" width="3" onclick="x">q</div></body></html>'
       div = described_class.call(html, vocabulary: all_scope).root.find { |n| n.name == :div }
@@ -132,7 +132,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect([chrome, plain].map { document.index.ignored_chrome?(_1) }).to eq([true, false])
     end
 
-    it 'logs which root fallback was used', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'logs which root fallback was used', :aggregate_failures do
       allow(Html2rss::Log).to receive(:warn)
       fallback = lambda do |reason, message|
         { event_name: 'sst.normalizer.root_fallback', reason:, message: }.to_json
@@ -147,7 +147,7 @@ RSpec.describe Html2rss::SST::Normalizer do
         .with(fallback.call('first_element_child', 'sst.normalizer root fallback: first element child'))
     end
 
-    it 'returns nil when the parsed input has no element to root the tree', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'returns nil when the parsed input has no element to root the tree', :aggregate_failures do
       allow(Html2rss::Log).to receive(:warn)
 
       expect(described_class.call(Nokogiri::XML('<!-- c -->'), vocabulary: all_scope)).to be_nil
@@ -157,7 +157,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       )
     end
 
-    it 'indexes the exact parent instance even for structurally identical siblings', # rubocop:disable RSpec/ExampleLength
+    it 'indexes the exact parent instance even for structurally identical siblings',
        :aggregate_failures do
       doc = described_class.call('<html><body><div><p>x</p></div><div><p>x</p></div></body></html>',
                                  vocabulary: all_scope)
@@ -186,7 +186,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(described_class.call(node, vocabulary: all_scope).root.find { |n| n.name == :article }).not_to be_nil
     end
 
-    it 'normalizes HTML fragments from the first element child', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'normalizes HTML fragments from the first element child', :aggregate_failures do
       fragment = Nokogiri::HTML.fragment('<article><a href="/p">Post</a></article>')
       allow(Html2rss::Log).to receive(:warn)
 
@@ -207,7 +207,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(Html2rss::Log).to have_received(:warn).with(/root fallback: self/)
     end
 
-    it 'degrades when MAX_NODES is breached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'degrades when MAX_NODES is breached', :aggregate_failures do
       stub_const('Html2rss::SST::Normalizer::MAX_NODES', 3)
       allow(Html2rss::Log).to receive(:warn)
 
@@ -224,7 +224,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       )
     end
 
-    it 'drops non-semantic tags once the node ceiling is reached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'drops non-semantic tags once the node ceiling is reached', :aggregate_failures do
       stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
       allow(Html2rss::Log).to receive(:warn)
       doc = described_class.call('<html><body><span>x</span><p>y</p></body></html>', vocabulary: all_scope)
@@ -266,7 +266,7 @@ RSpec.describe Html2rss::SST::Normalizer do
         expect(heuristic.root.find(&:image?)).to be_nil
       end
 
-      it 'never degrades at the node ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'never degrades at the node ceiling', :aggregate_failures do
         stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
         allow(Html2rss::Log).to receive(:warn)
 
@@ -278,7 +278,7 @@ RSpec.describe Html2rss::SST::Normalizer do
         expect(Html2rss::Log).not_to have_received(:warn)
       end
 
-      it 'logs a fallback root at debug, not warn', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'logs a fallback root at debug, not warn', :aggregate_failures do
         allow(Html2rss::Log).to receive(:warn)
         allow(Html2rss::Log).to receive(:debug)
         fragment = Nokogiri::HTML5.fragment('<object><a href="/p">Post</a></object>')
@@ -333,6 +333,28 @@ RSpec.describe Html2rss::SST::Normalizer do
         expect(region.root.find(&:link?).attrs.href).to eq('/t')
         expect(page.root.find { _1.name == :template }).to be_nil
       end
+
+      it 'strips a template inside the region' do
+        parsed = Nokogiri::HTML('<div id="r"><template><a href="/t">T</a></template><p>x</p></div>')
+        region = described_class.call(parsed.at_css('#r'), vocabulary: all_scope, items: true, within: :page)
+
+        expect(region.root.find_all { _1.name == :template }).to be_empty
+      end
+
+      it 'strips any other stripped tag as a region root, and a template that is a page root',
+         :aggregate_failures do
+        normalize = ->(root, within) { described_class.call(root, vocabulary: all_scope, items: true, within:) }
+
+        expect(normalize.call(Nokogiri::HTML('<script id="s">x()</script>').at_css('#s'), :page)).to be_nil
+        expect(normalize.call(Nokogiri::HTML5.fragment('<template><a href="/t">T</a></template>'), nil)).to be_nil
+        expect(normalize.call(Nokogiri::HTML('<template id="t">x</template>').at_css('#t'), nil)).to be_nil
+      end
+
+      it 'does not keep a template as the root of a page' do
+        parsed = Nokogiri::HTML('<template id="t"><a href="/t">T</a></template>')
+
+        expect(described_class.call(parsed.at_css('#t'), vocabulary: all_scope, items: true).root.name).to eq(:a)
+      end
     end
 
     describe '.kept_tag?' do
@@ -352,7 +374,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.index.instance_variable_get(:@sources)).to be_nil
     end
 
-    it 'records path, depth, chrome, text, and node count', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'records path, depth, chrome, text, and node count', :aggregate_failures do
       html = '<html><body><header><a href="/home">Home</a></header><article><p>Post</p></article></body></html>'
       doc = described_class.call(html, vocabulary: all_scope)
       header = doc.root.find { |node| node.name == :header }
@@ -375,7 +397,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     %w[article section aside main].each do |section|
-      it "keeps header, its link, and footer inside #{section} out of chrome" do # rubocop:disable RSpec/ExampleLength
+      it "keeps header, its link, and footer inside #{section} out of chrome" do
         doc = described_class.call("<html><body><#{section}><header><a href=\"/p\">P</a></header>" \
                                    "<footer>F</footer></#{section}></body></html>", vocabulary: all_scope)
         header = doc.root.find { _1.name == :header }
@@ -394,7 +416,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :footer })).to be(true)
     end
 
-    it 'keeps chrome for headers under a page-level nav or footer', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'keeps chrome for headers under a page-level nav or footer', :aggregate_failures do
       doc = described_class.call('<html><body><div><nav><header id="n">N</header></nav></div><footer>' \
                                  '<article><header id="f"><a href="/f">F</a></header></article></footer></body></html>',
                                  vocabulary: all_scope)
@@ -404,7 +426,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.index.ignored_chrome?(doc.root.find(&:link?))).to be(true)
     end
 
-    it 'scopes nav and ARIA roles like header/footer, keeping pagers chrome' do # rubocop:disable RSpec/ExampleLength
+    it 'scopes nav and ARIA roles like header/footer, keeping pagers chrome' do
       doc = described_class.call(<<~HTML, vocabulary: all_scope)
         <html><body>
           <div role="navigation"><a id="role_nav" href="/a">A</a></div>
@@ -476,7 +498,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       end
     end
 
-    it 'records peripheral scope for utility landmarks that are not chrome' do # rubocop:disable RSpec/ExampleLength
+    it 'records peripheral scope for utility landmarks that are not chrome' do
       doc = described_class.call(<<~HTML, vocabulary: all_scope)
         <html><body>
           <aside><header><a id="aside_header" href="/a">A</a></header></aside>
