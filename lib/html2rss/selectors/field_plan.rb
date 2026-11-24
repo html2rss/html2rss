@@ -19,6 +19,7 @@ module Html2rss
       SELECTOR_TO_ARTICLE_KEY = { enclosure: :enclosures }.freeze
       # Item attributes that require dedicated extraction logic.
       SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
+      private_constant :SPECIAL_ATTRIBUTES
 
       # @param selectors [Hash] the feed config's +selectors+
       # @param except [Symbol] selector key that is not a field (the items selector)
@@ -30,8 +31,9 @@ module Html2rss
 
       ##
       # @param name [Symbol] selector key
-      # @return [CompiledField, nil] the compiled field, or nil when the key is no field
-      def [](name) = @fields[name]
+      # @return [CompiledField] the compiled field; a key without a selector yields a field with no config,
+      #   which {#select} rejects
+      def [](name) = @fields.fetch(name) { compile_field(name, nil) }
 
       ##
       # Extracts a field's value (and post-processes it) for the item in +scope+.

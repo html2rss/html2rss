@@ -23,11 +23,7 @@ module Html2rss
       # @return [Object, Array<Object>, nil]
       # @raise [InvalidSelectorName] when +name+ is not defined for the item
       def select(name, scope)
-        field = @plan[name]
-        return select_field(field, scope) if field
-        return default_url(scope) if name == :url && anchor?(scope.item)
-
-        raise InvalidSelectorName, "Selector for '#{name}' is not defined."
+        select_field(@plan[name], scope)
       end
 
       ##
