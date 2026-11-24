@@ -268,7 +268,9 @@ module Html2rss
 
         last = segments.last
         utility = @sets.fetch(:utility) # vanity words are a subset of utility
-        last.match?(DOCUMENT_SLUG_SEGMENT) && last.split(/[-_.]/).none? { utility.include?(_1.downcase) }
+        # A match holds the literal dot of its extension, so a dotless slug skips the backtracking regexp.
+        last.include?('.') && last.match?(DOCUMENT_SLUG_SEGMENT) &&
+          last.split(/[-_.]/).none? { utility.include?(_1.downcase) }
       end
 
       def slug_last_segment?

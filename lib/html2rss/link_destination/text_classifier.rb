@@ -107,11 +107,12 @@ module Html2rss
       LABEL_CHAR = /[^\s\u200C\u200D]/
       private_constant :JOINER, :LABEL_CHAR
 
-      # @param memoize [Boolean] remember normalized texts for this instance; opt in only for an instance
-      #   scoped to one extraction, never for a shared constant
+      # @param memoize [Boolean] remember normalized texts and read-more verdicts for this instance; opt in only
+      #   for an instance scoped to one extraction, never for a shared constant
       # @param vocabulary [Vocabulary::Scope] the page language's scope; every ambiguous term by default
       def initialize(memoize: false, vocabulary: Vocabulary[nil])
         @normalized = {} if memoize
+        @read_more = {} if memoize
         @ambiguous = AMBIGUOUS.fetch(vocabulary.code)
         @own = OWN.fetch(vocabulary.code)
         @page = PageReadings::BY_SCOPE.fetch(vocabulary.code)
@@ -144,7 +145,9 @@ module Html2rss
       #   or list-level term of a page-only language with a short bracketed count (+Xem tất cả [3]+)
       def read_more?(text)
         normalized = normalize(text)
-        normalized.match?(@page.fetch(:read_more)) || normalized.match?(@page.fetch(:own_more))
+        return read_more_label?(normalized) unless @read_more
+
+        @read_more.fetch(normalized) { @read_more[normalized] = read_more_label?(normalized) }
       end
 
       # @param text [String, #to_s] visible anchor text
@@ -153,6 +156,10 @@ module Html2rss
       def list_more?(text) = normalize(text).match?(@page.fetch(:list_more))
 
       private
+
+      def read_more_label?(normalized)
+        normalized.match?(@page.fetch(:read_more)) || normalized.match?(@page.fetch(:own_more))
+      end
 
       def label?(reading, text) = reading_match?(reading, normalize(text))
 
@@ -174,7 +181,7 @@ module Html2rss
       end
 
       def compute_normal(string)
-        text = string.unicode_normalize(:nfc)
+        text = string.ascii_only? ? string : string.unicode_normalize(:nfc)
         text = self.class.strip_bidi(text).sub(@page.fetch(:new_window), '')
         text.match?(JOINER) ? trim_edges(text) : text
       end

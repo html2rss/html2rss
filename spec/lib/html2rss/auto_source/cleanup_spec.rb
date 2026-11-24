@@ -73,6 +73,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     let(:cleaned) { result.articles }
     let(:keep_different_domain) { false }
+    let!(:fixed_facts) { Html2rss::LinkDestination::DestinationFacts.build(url, vocabulary:) }
 
     # rubocop:disable-next RSpec/ExampleLength -- articles + multi-reason tallies
     it 'removes invalid articles and tallies the drop', :aggregate_failures do
@@ -84,6 +85,23 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         'bad_scheme' => 1
       )
       expect(result.drop_tallies).to be_frozen
+    end
+
+    it 'reads route facts through the injected lookup, never building them itself', :aggregate_failures do
+      seen = []
+      allow(Html2rss::LinkDestination::DestinationFacts).to receive(:build)
+      described_class.call(articles, vocabulary:, url:, facts: ->(arg) { fixed_facts.tap { seen << arg } })
+
+      expect(seen).not_to be_empty
+      expect(Html2rss::LinkDestination::DestinationFacts).not_to have_received(:build)
+    end
+
+    it 'judges titles with the injected classifier', :aggregate_failures do
+      classifier = instance_spy(Html2rss::LinkDestination::TextClassifier, read_more?: false)
+
+      described_class.call(articles, vocabulary:, url:, classifier:)
+
+      expect(classifier).to have_received(:read_more?).with('Valid Article One').at_least(:once)
     end
 
     it 'logs article counts before and after cleanup', :aggregate_failures do

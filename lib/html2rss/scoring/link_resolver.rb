@@ -50,6 +50,15 @@ module Html2rss
       end
 
       ##
+      # The page's one route-facts memo ({#destination_facts} shares it): facts of an already resolved URL.
+      #
+      # @param url [Html2rss::Url] an absolute, normalized URL
+      # @return [LinkDestination::DestinationFacts]
+      def facts_for(url)
+        @by_href[url.to_s] ||= LinkDestination::DestinationFacts.build(url, vocabulary: @vocabulary)
+      end
+
+      ##
       # @param text [String, #to_s]
       # @return [Boolean]
       def utility_text?(text) = @text_classifier.utility?(text)
@@ -89,8 +98,7 @@ module Html2rss
       end
 
       def build_facts(href)
-        url = Html2rss::Url.from_relative(href, @base_url)
-        LinkDestination::DestinationFacts.build(url, vocabulary: @vocabulary)
+        facts_for(Html2rss::Url.from_relative(href, @base_url))
       end
     end
   end

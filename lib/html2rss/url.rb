@@ -55,7 +55,13 @@ module Html2rss
     IPV4 = /\A(?:#{OCTET}\.){3}#{OCTET}\z/
     NUMERIC_LAST_LABEL = /(?:\A|\.)\d+\z/
     MAX_HOST_LENGTH = 253
-    private_constant :DNS_LABEL, :DNS_NAME, :OCTET, :IPV4, :NUMERIC_LAST_LABEL, :MAX_HOST_LENGTH
+    # A URL string +Addressable::URI#normalize+ returns unchanged (see {.normalized}); anything else is normalized.
+    NORMAL_FORM = %r{
+      \Ahttps?://(?![^/]*xn--)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?
+      (?:(?:/[A-Za-z0-9_~-]+(?:\.[A-Za-z0-9_~-]+)*)+/?|/)
+      (?:\?[A-Za-z0-9_=&/~-]+)?\z
+    }x
+    private_constant :NORMAL_FORM, :DNS_LABEL, :DNS_NAME, :OCTET, :IPV4, :NUMERIC_LAST_LABEL, :MAX_HOST_LENGTH
 
     ##
     # Creates a URL from a relative path and base URL.
@@ -66,7 +72,7 @@ module Html2rss
     # @raise [InvalidUrlError] if the URL cannot be parsed
     def self.from_relative(relative_url, base_url)
       url = parse(relative_url.to_s.strip, base_url.to_s[SCHEME_PREFIX, 1])
-      return new(url.normalize) if url.absolute?
+      return new(normalized(url)) if url.absolute?
 
       join_parsed_base(base_url, url)
     rescue Addressable::URI::InvalidURIError
@@ -78,9 +84,18 @@ module Html2rss
     # @return [Url]
     def self.join_parsed_base(base_url, url)
       uri = Addressable::URI.parse(base_url.to_s)
-      new(uri.join(url).normalize)
+      new(normalized(uri.join(url)))
     end
     private_class_method :join_parsed_base
+
+    # +uri.normalize+, skipped when +uri+ is already in the one shape normalization leaves alone: a lowercase
+    # http(s) host without port or userinfo, a path of unreserved characters without dot or empty segments,
+    # and an optional query of unreserved characters (no percent escape, no fragment).
+    #
+    # @param uri [Addressable::URI] an absolute URI
+    # @return [Addressable::URI]
+    def self.normalized(uri) = NORMAL_FORM.match?(uri.to_s) ? uri : uri.normalize
+    private_class_method :normalized
 
     ##
     # The one parse entry. Like browsers (WHATWG URL), a backslash before the query or fragment of an
@@ -293,7 +308,10 @@ module Html2rss
     #
     # @return [Array<String>] decoded path segments
     def decoded_path_segments
-      path_segments.map { Addressable::URI.unencode_component(_1).force_encoding(Encoding::UTF_8).scrub.unicode_normalize(:nfc) }
+      path_segments.map do |segment|
+        decoded = Addressable::URI.unencode_component(segment).force_encoding(Encoding::UTF_8).scrub
+        decoded.ascii_only? ? decoded : decoded.unicode_normalize(:nfc)
+      end
     end
 
     ##

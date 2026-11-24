@@ -103,14 +103,17 @@ module Html2rss
         #   (default false)
         # @param corroboration [Corroboration, nil] page check for structured-tier items, run
         #   before dedupe so a dropped structured copy leaves the URL to a later tier
+        # @param classifier [LinkDestination::TextClassifier] the page's label reader, shared across the run
+        # @param facts [#call] URL to route facts; the page's memo ({Scoring::LinkResolver#facts_for}) in a run
         # @param page_links [#call, nil] lazy source of the page's {PageLinks}: the one article identity
         #   ({PageLinks#identity}), the placement params dropped from item URLs, and the sponsorship check
         # @return [Result] cleaned articles and frozen drop tallies
         # rubocop:disable-next Metrics/ParameterLists -- the admission inputs stay explicit
         def call(articles, url:, vocabulary:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
                  keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil,
-                 feed_url: nil)
-          new(articles, identity: page_identity(page_links), vocabulary:)
+                 feed_url: nil, classifier: LinkDestination::TextClassifier.for(vocabulary),
+                 facts: ->(url) { LinkDestination::DestinationFacts.build(url, vocabulary:) })
+          new(articles, identity: page_identity(page_links), vocabulary:, classifier:, facts:)
             .admit(url:, feed_url:, corroboration:, page_links:, keep_different_domain:, keep_sponsored:)
         end
 
@@ -118,15 +121,16 @@ module Html2rss
         #
         # @param title [String, nil] candidate title text
         # @param vocabulary [Vocabulary::Scope] the page language's scope, for the read-more labels
+        # @param classifier [LinkDestination::TextClassifier] the page's label reader
         # @return [Symbol, nil]
-        def junk_reason(title, vocabulary:)
+        def junk_reason(title, vocabulary:, classifier: LinkDestination::TextClassifier.for(vocabulary))
           return if title.nil?
 
           normalized = normalize_title(title)
           return if normalized.empty?
 
           JUNK_TITLE_RULES.find { |_, pattern| pattern.match?(normalized) }&.first ||
-            (:cta if LinkDestination::TextClassifier.for(vocabulary).read_more?(normalized))
+            (:cta if classifier.read_more?(normalized))
         end
 
         # @param items [Array<Html2rss::Article, RSS::Rss::Channel::Item>]
@@ -240,10 +244,14 @@ module Html2rss
       # @param articles [Array<Article>] the candidates, filtered in place
       # @param identity [#call] the page's one article key for a URL
       # @param vocabulary [Vocabulary::Scope] the page language's scope
-      def initialize(articles, identity:, vocabulary:)
+      # @param classifier [LinkDestination::TextClassifier] the page's label reader
+      # @param facts [#call] URL to route facts
+      def initialize(articles, identity:, vocabulary:, classifier:, facts:)
         @articles = articles
         @identity = identity
         @vocabulary = vocabulary
+        @classifier = classifier
+        @facts = facts
         @tallies = Hash.new(0)
       end
 
@@ -280,9 +288,9 @@ module Html2rss
 
       private
 
-      attr_reader :articles, :identity, :tallies, :vocabulary
+      attr_reader :articles, :identity, :tallies, :vocabulary, :classifier, :facts
 
-      def junk_reason(title) = self.class.junk_reason(title, vocabulary:)
+      def junk_reason(title) = self.class.junk_reason(title, vocabulary:, classifier:)
 
       def reject_invalid!
         tally_reject!('invalid') { |article| !article.valid? }
@@ -378,7 +386,7 @@ module Html2rss
       end
 
       def excluded_destination?(url)
-        facts = LinkDestination::DestinationFacts.build(url, vocabulary:)
+        facts = self.facts.call(url)
         return true if facts.high_confidence_junk_path || facts.high_confidence_utility_destination
 
         facts.utility_path && !facts.content_path && !facts.strong_post_suffix
