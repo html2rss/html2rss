@@ -29,7 +29,6 @@ module Html2rss
     REQUEST_KEYS = %i[items_selector limit local_file_path max_redirects max_requests total_timeout_seconds].freeze
     private_constant :REQUEST_KEYS
 
-    # Capture-only inputs: directory overrides and native-feed and enhance switches.
     Options = Data.define(:topics, :title, :summary, :force, :enhance)
 
     ##
@@ -122,7 +121,17 @@ module Html2rss
     ##
     # @param url [String] source page URL
     # @param strategy [Symbol] request strategy
-    # @param options [Hash{Symbol => Object}] request keys and {Options} members
+    # @option options [String, nil] :items_selector optional selector hint
+    # @option options [Integer, nil] :limit max articles to keep
+    # @option options [String, nil] :local_file_path optional local HTML file path
+    # @option options [Integer, nil] :max_redirects optional redirect limit override
+    # @option options [Integer, nil] :max_requests optional request budget override
+    # @option options [Integer, nil] :total_timeout_seconds optional wall-clock bound for the request chain
+    # @option options [Array<String>, nil] :topics see {Options}
+    # @option options [String, nil] :title see {Options}
+    # @option options [String, nil] :summary see {Options}
+    # @option options [Boolean, nil] :force see {Options}
+    # @option options [Boolean, nil] :enhance see {Options}
     def initialize(url, strategy: :auto, **options)
       @strategy = strategy
       @request = Config::AutoSourceRequest.from_shortcut(url, strategy:, **options.slice(*REQUEST_KEYS))

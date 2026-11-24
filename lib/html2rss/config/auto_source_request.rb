@@ -2,12 +2,12 @@
 
 module Html2rss
   class Config
-    # One auto-source request (URL plus optional hints) from the shortcut APIs, CLI and MCP.
     AutoSourceRequest = Data.define(
       :url, :items_selector, :request_controls, :limit, :keep_different_domain, :keep_sponsored, :local_file_path
     )
 
     ##
+    # One auto-source request (URL plus optional hints) from the shortcut APIs, CLI and MCP.
     # Owns the mapping from shortcut inputs to a top-level auto-source feed config.
     class AutoSourceRequest
       # Optional members and their defaults.
@@ -22,7 +22,11 @@ module Html2rss
       #
       # @param url [String] source page URL
       # @param strategy [Symbol, nil] request strategy
-      # @param options [Hash{Symbol => Object}] request budgets and optional members
+      # @option options [Integer, nil] :max_redirects redirect limit override
+      # @option options [Integer, nil] :max_requests request budget override
+      # @option options [Integer, nil] :total_timeout_seconds wall-clock bound for the request chain
+      # @option options [Object] :items_selector, :limit, :keep_different_domain, :keep_sponsored, :local_file_path
+      #   see {#initialize}
       # @return [AutoSourceRequest]
       def self.from_shortcut(url, strategy:, **options)
         controls = RequestControls.from_shortcut(strategy:, **options.slice(*RequestControls::REQUEST_KEYS))
@@ -31,7 +35,12 @@ module Html2rss
 
       ##
       # @param url [String] source page URL
-      # @param optional [Hash{Symbol => Object}] optional members, see {DEFAULTS}
+      # @option optional [String, nil] :items_selector selector hint for item extraction
+      # @option optional [Config::RequestControls, nil] :request_controls explicit request controls to write
+      # @option optional [Integer, nil] :limit max articles to keep
+      # @option optional [Boolean, nil] :keep_different_domain overrides cleanup.keep_different_domain
+      # @option optional [Boolean, nil] :keep_sponsored overrides cleanup.keep_sponsored
+      # @option optional [String, nil] :local_file_path local HTML file path
       def initialize(url:, **optional)
         super(url:, **DEFAULTS, **optional)
       end

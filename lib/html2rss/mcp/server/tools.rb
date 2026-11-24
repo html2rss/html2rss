@@ -175,7 +175,7 @@ module Html2rss
           # @api private
           # @param url [String]
           # @param strategy [String, Symbol]
-          # @param options [Hash{Symbol => Object}] {Html2rss::Capture.build} keywords
+          # @option options [Object] :topics the {Html2rss::Capture.build} keywords
           # @return [Outcome]
           def capture_outcome(url:, strategy: 'auto', **)
             plan = Option.strategy(strategy)
