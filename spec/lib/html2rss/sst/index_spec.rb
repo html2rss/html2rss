@@ -164,4 +164,40 @@ RSpec.describe Html2rss::SST::Index do
       expect(described_class.for_node(Html2rss::SST::Node.build(name: :span))).to be_nil
     end
   end
+
+  describe '.for_node!' do
+    it 'returns the index of a bound node' do
+      expect(described_class.for_node!(nav_link)).to be(index)
+    end
+
+    it 'raises the owner contract error for a node without a live index', :aggregate_failures do
+      unbound = Html2rss::SST::Node.build(name: :span)
+
+      expect { described_class.for_node!(unbound) }.to raise_error(described_class::InvalidError, /<span>/)
+      expect(described_class::InvalidError).to be < Html2rss::ContractError
+    end
+
+    it 'raises once the document that held the index has been collected' do
+      orphan = orphan_node_for('<html><body><a href="/p">Post</a></body></html>')
+      3.times { GC.start }
+
+      expect { described_class.for_node!(orphan) }.to raise_error(described_class::InvalidError, /collected/)
+    end
+  end
+
+  describe '#node_for' do
+    it 'is nil for every node when the tree was built without sources' do
+      expect(index.node_for(Nokogiri::HTML('<p>x</p>').at_css('p'))).to be_nil
+    end
+
+    it 'finds the node built from a parsed node, nil for a dropped or foreign one', :aggregate_failures do
+      parsed = Nokogiri::HTML('<html><body><div id="w"><p>x</p><script>y</script></div></body></html>')
+      tracked = Html2rss::SST::Normalizer.call(parsed, vocabulary: all_scope, items: true)
+
+      found = %w[#w p script].map { tracked.index.node_for(parsed.at_css(_1))&.name }
+
+      expect(found).to eq([:div, :p, nil])
+      expect(tracked.index.node_for(Nokogiri::HTML('<p>x</p>').at_css('p'))).to be_nil
+    end
+  end
 end

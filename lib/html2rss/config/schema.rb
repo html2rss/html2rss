@@ -139,7 +139,7 @@ module Html2rss
           )
           items_schema[:properties][:enhance] = items_schema.fetch(:properties).fetch(:enhance).merge(
             description: 'Fills missing title, link, description, date, image and categories from each ' \
-                         "item's own markup via Html::ArticleExtractor. Explicit selectors win; no extra " \
+                         "item's own markup via Selectors::ItemEnhancer. Explicit selectors win; no extra " \
                          'requests are made.'
           )
           items_schema[:properties][:pagination] = {

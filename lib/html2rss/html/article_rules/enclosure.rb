@@ -6,9 +6,9 @@ module Html2rss
       ##
       # The one rule for which HTML elements become enclosures, and their URL/type normalization.
       #
-      # DOM-agnostic: {ArticleExtractor::EnclosureExtractor} (Nokogiri) and {SstArticleExtractor} (SST)
-      # only visit {ELEMENT_NAMES}, adapt their node API to {.from_element} and pass the result through
-      # {.unique}. Images (+img[src]+), players (+audio[src]+, +video[src]+), a player's +source[src]+ with
+      # DOM-agnostic: {SstArticleExtractor} (and its {SstArticleExtractor::Item} reader) only visits
+      # {ELEMENT_NAMES}, adapts its node API to {.from_element} and passes the result through {.unique}.
+      # Images (+img[src]+), players (+audio[src]+, +video[src]+), a player's +source[src]+ with
       # its +type+, and file links ({FILE_LINK}) qualify; an +iframe+ (embed player page) never does,
       # and only an http(s) URL is one (no +data:+, +blob:+, +javascript:+ or +mailto:+).
       module Enclosure

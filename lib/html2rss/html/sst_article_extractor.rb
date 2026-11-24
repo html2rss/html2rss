@@ -4,8 +4,8 @@ module Html2rss
   module Html
     ##
     # Builds an {Html2rss::Article} from an SST segment / ranked segment.
-    # Port of Html::ArticleExtractor field logic onto SST::Node.
-    # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated for parity with ArticleExtractor
+    # {Item} reads a card a selector config picked.
+    # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated
     class SstArticleExtractor
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
       # {Html2rss::SelectorCandidates}, which owns no copy of it.
@@ -46,14 +46,23 @@ module Html2rss
 
       ##
       # @return [Html2rss::Article, nil]
-      def call # rubocop:disable Metrics/MethodLength
+      def call
         return unless @selected_anchor
 
+        article = Article.new(**fields, scraper: @scraper)
+        article.valid? ? article : nil
+      end
+
+      ##
+      # The card's article attributes, before {Article} validation.
+      #
+      # @return [Hash{Symbol => Object}]
+      def fields # rubocop:disable Metrics/MethodLength
         title = title_from_in_card_sources
         lines = leftover_lines
         published_at = extract_published_at(lines)
         root, lines, published_at = parent_card_fields(title, lines, published_at)
-        article = Article.new(
+        {
           title: Article::Title.compose(title, kicker: title_pieces.kicker_text, vocabulary: @vocabulary),
           url: extract_url,
           image: extract_image,
@@ -61,17 +70,15 @@ module Html2rss
           id: parse_id_from_dom,
           published_at:,
           enclosures: extract_enclosures,
-          categories: extract_categories(title, root:),
-          scraper: @scraper
-        )
-        article.valid? ? article : nil
+          categories: extract_categories(title, root:)
+        }
       end
 
       private
 
       def extract_url
         @extract_url ||= begin
-          href = @selected_anchor.attrs.href.to_s
+          href = @selected_anchor&.attrs&.href.to_s
           Url.resolve_web(href.split('#').first, @base_url, web_only: false)
         end
       end
@@ -174,8 +181,7 @@ module Html2rss
 
       def immediate_card_parent
         parent = sst_parent
-        index = SST::Index.for_node(@root)
-        index&.parent_until(parent, ->(node) { usable_walk_parent?(node) })
+        SST::Index.for_node!(@root).parent_until(parent, ->(node) { usable_walk_parent?(node) })
       end
 
       def usable_walk_parent?(node)
@@ -202,7 +208,7 @@ module Html2rss
       end
 
       def sst_parent
-        SST::Index.for_node(@root)&.parent_of(@root)
+        SST::Index.for_node!(@root).parent_of(@root)
       end
 
       # DOM id of the card, else the link's path or query.
@@ -218,7 +224,7 @@ module Html2rss
       end
 
       def image_from_img
-        @root.find { |n| n.image? && n.attrs.src && !n.attrs.src.start_with?('data:') }&.attrs&.src
+        @root.find { |n| n.image? && ArticleRules::Image.remote_src?(n.attrs.src) }&.attrs&.src
       end
 
       # A video's poster frame: the last resort, when the card has no other image.

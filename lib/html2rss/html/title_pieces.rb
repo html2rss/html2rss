@@ -4,7 +4,7 @@ module Html2rss
   module Html
     ##
     # Picks the kicker and the headline text of one teaser card: the one rule shared by
-    # {ArticleExtractor} (Nokogiri) and {SstArticleExtractor} (SST), so both give one title for the same
+    # {SstArticleExtractor} and {SstArticleExtractor::Item}, so both give one title for the same
     # markup. The noise vocabulary and composition stay on {Article::Title}; rules: CONTEXT.md § Article title.
     #
     # Everything here reads elements, never headline wording:
@@ -53,19 +53,19 @@ module Html2rss
       private_constant :WORD, :LETTER, :LINK_NAMES
 
       ##
-      # @param root [Nokogiri::XML::Node, SST::Node] card root
-      # @param source [Nokogiri::XML::Node, SST::Node, nil] headline source: the heading, else the anchor
-      # @param anchor [Nokogiri::XML::Node, SST::Node, nil] the card's selected anchor
+      # @param root [SST::Node] card root
+      # @param source [SST::Node, nil] headline source: the heading, else the anchor
+      # @param anchor [SST::Node, nil] the card's selected anchor
       # @param vocabulary [Vocabulary::Scope] the page language's scope, read for kicker type markers
       def initialize(root, source, vocabulary:, anchor: nil)
         @anchor = anchor
         @vocabulary = vocabulary
-        @nodes = Nodes.for(root, vocabulary)
+        @nodes = SstNodes.new(vocabulary)
         @kicker = Kicker.new(@nodes, root, source, vocabulary) { headline_piece(source) }
       end
 
       ##
-      # @return [Nokogiri::XML::Node, SST::Node, nil] the kicker element ({Kicker})
+      # @return [SST::Node, nil] the kicker element ({Kicker})
       def kicker = @kicker.element
 
       ##
@@ -73,7 +73,7 @@ module Html2rss
       def kicker_text = @kicker.text
 
       ##
-      # @param node [Nokogiri::XML::Node, SST::Node, nil] heading or anchor
+      # @param node [SST::Node, nil] heading or anchor
       # @return [String, nil] its headline text (see the class notes)
       def headline_text(node)
         return unless node

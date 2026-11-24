@@ -2,11 +2,6 @@
 
 RSpec.describe Html2rss::Html::ArticleRules::Category do
   describe 'constants' do
-    it 'keeps a single vocabulary home used by both adapters' do
-      expect(Html2rss::Html::ArticleExtractor::CategoryExtractor::CATEGORY_TERMS)
-        .to equal(described_class::CATEGORY_TERMS)
-    end
-
     it 'does not treat layout label/section words as category terms' do
       expect(described_class::CATEGORY_TERMS).not_to include('label', 'labels', 'section', 'sections')
     end

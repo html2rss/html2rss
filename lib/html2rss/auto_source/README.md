@@ -4,7 +4,7 @@ How html2rss builds feed items when a config has no (or incomplete) CSS selector
 
 ## What and when
 
-`Html2rss.auto_source` / `auto_json_feed` (and any feed config with `auto_source:`) fetch a page once, then run an ordered set of scrapers against that response. Use it when you want “guess articles from this URL” without hand-writing selectors. Prefer explicit `selectors:` when you already know the list markup — that path stays on Nokogiri + `Html::Navigator`.
+`Html2rss.auto_source` / `auto_json_feed` (and any feed config with `auto_source:`) fetch a page once, then run an ordered set of scrapers against that response. Use it when you want “guess articles from this URL” without hand-writing selectors. Prefer explicit `selectors:` when you already know the list markup — that path stays on Nokogiri + `Html::Navigator`, with `enhance` reading each item's region of the page on SST (`Selectors::ItemEnhancer`).
 
 Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` → per-scraper extraction → `Cleanup`.
 
@@ -47,7 +47,7 @@ Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (car
 | `JsonDocument`                                                                                | Parsed JSON Hash/Array (no Nokogiri)                             |
 | Schema / Microdata / MF2 / JsonState / XhrArticles / MetaOembed / app-shell detection         | Nokogiri (items page-checked against SST anchors via `PageLinks`) |
 | Sitemap detection (CSS/XPath)                                                                 | Nokogiri; URL list parsing uses raw `response.body` (XML string) |
-| Selectors path / Sanitize transformers                                                        | Nokogiri (unchanged)                                             |
+| Selectors path / Sanitize transformers                                                        | Nokogiri (item enhance reads the page's SST: `Selectors::ItemEnhancer`) |
 | `SST::Normalizer`                                                                             | Sole Nokogiri consumer on the heuristic auto-source path         |
 | Segmenter, Scoring, `Html::SstArticleExtractor`, heuristic chrome (`SST::Tags` / `SST::Text`) | SST only                                                         |
 
@@ -55,7 +55,7 @@ Production heuristic scrapers and the page check reuse one `SST::Document` and o
 
 ## Constraints
 
-- **`SST::Normalizer::MAX_NODES` (5_000)** — Beyond this, normalization degrades to a semantic-tag-only keep set and logs a warning.
+- **`SST::Normalizer::MAX_NODES` (5_000)** — Beyond this, normalization degrades to a semantic-tag-only keep set and logs a warning. Normalizing for selector items (`items: true`) never degrades.
 - **Top-K** — `Scoring::Engine::TOP_K` (99) caps ranked segments materialized into articles; list strategy also budgets `use_top_selectors`.
 - **Typed stages** — Pipeline stages take `SST::Document` / `Segment` / `RankedSegment`, not ad-hoc Hash bags. Internal scraper APIs may change; the public gem surface is `lib/html2rss.rb`.
 

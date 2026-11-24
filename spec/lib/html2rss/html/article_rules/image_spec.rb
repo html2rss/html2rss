@@ -19,6 +19,12 @@ RSpec.describe Html2rss::Html::ArticleRules::Image do
       expect(described_class.largest_from_srcsets(srcsets)).to eq('https://example.com/b.jpg')
     end
 
+    it 'takes the later candidate of equal size, across attributes too' do
+      srcsets = ['https://example.com/a.webp 200w, https://example.com/b.jpg 200w', 'https://example.com/c.png 200w']
+
+      expect(described_class.largest_from_srcsets(srcsets)).to eq('https://example.com/c.png')
+    end
+
     it 'skips oversized srcset attributes' do
       oversized = "#{'a' * (described_class::MAX_ATTR_CHARS + 1)} 800w"
       expect(described_class.largest_from_srcsets([oversized])).to be_nil
