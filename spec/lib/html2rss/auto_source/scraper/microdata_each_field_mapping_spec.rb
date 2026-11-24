@@ -346,6 +346,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata, '#each' do
     end
   end
 
+  context 'with a plain http itemid and no url' do
+    let(:html) do
+      self.class.article_html('<span itemprop="headline">Http</span>', attrs: 'itemid="http://example.com/h/1#frag"')
+    end
+
+    it 'keeps the fragment' do
+      expect(resolved_url).to eq('http://example.com/h/1#frag')
+    end
+  end
+
+  context 'with a nested item as articleBody' do
+    let(:html) do
+      self.class.article_html(<<~BODY)
+        <span itemprop="headline">Body</span><span itemprop="description">Plain</span>
+        <div itemprop="articleBody" itemscope><span itemprop="name">Nested body text, longer</span></div><a itemprop="url" href="/b">o</a>
+      BODY
+    end
+
+    it 'ignores it' do
+      expect(article[:description]).to eq('Plain')
+    end
+  end
+
   context 'with an abstract as long as the article body' do
     let(:html) do
       self.class.article_html(<<~BODY)
