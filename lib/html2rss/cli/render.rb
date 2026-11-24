@@ -13,15 +13,9 @@ module Html2rss
       class << self
         ##
         # @param results [Array<Hash>]
-        # @param format [String]
-        # @param batch_mode [Boolean]
         # @return [void]
-        def inspect_output(results, format:, batch_mode:)
-          if format == 'json'
-            json(results, batch_mode)
-          else
-            results.each { |data| probe_card(ProbeView.from_wire(data)) }
-          end
+        def inspect_cards(results)
+          results.each { |data| probe_card(ProbeView.from_wire(data)) }
         end
 
         ##
@@ -29,14 +23,6 @@ module Html2rss
         # @return [void]
         def recon_urls(results)
           results.each { |r| puts r.requested_url }
-        end
-
-        ##
-        # @param results [Array<Html2rss::Recon::Result>]
-        # @param batch_mode [Boolean]
-        # @return [void]
-        def recon_json(results, batch_mode)
-          json(results.map(&:to_h), batch_mode)
         end
 
         ##
@@ -102,11 +88,9 @@ module Html2rss
         end
 
         ##
-        # @param data [Object]
-        # @param batch_mode [Boolean]
+        # @param payload [Object]
         # @return [void]
-        def json(data, batch_mode)
-          payload = batch_mode ? data : data.first
+        def json(payload)
           puts JSON.pretty_generate(payload)
         end
 

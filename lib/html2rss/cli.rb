@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require 'json'
+require 'stringio'
 require 'thor'
 
 module Html2rss
@@ -26,6 +27,15 @@ module Html2rss
 
     # CLI `--file` description for inspect/recon candidate lists.
     RECON_FILE_DESC = 'Candidate list file (one URL or slug\turl per line)'
+
+    ReconTargets = Data.define(:urls, :batch)
+
+    # Recon/inspect targets; +payload+ is the list for batch targets, else its only entry.
+    class ReconTargets
+      # @param results [Array]
+      # @return [Array, Object] the list for batch targets, else its only entry
+      def payload(results) = batch ? results : results.first
+    end
 
     ##
     # @return [Boolean] whether Thor should exit on command failure
@@ -60,14 +70,15 @@ module Html2rss
                          desc: 'Single Botasaurus diagnostic hop when BOTASAURUS_SCRAPER_URL is set'
     # @param target [String, nil] URL, file, or '-' for stdin
     # @return [void]
-    def inspect(target = nil)
-      with_recon_targets(target) do |urls, batch_mode|
-        results = if batch_mode
-                    Html2rss.batch_inspect(urls, strategy: current_strategy).results
+    def inspect(target = nil) # rubocop:disable Metrics/AbcSize
+      with_recon_targets(target) do |targets|
+        results = if targets.batch
+                    Html2rss.batch_inspect(targets.urls, strategy: current_strategy).results
                   else
-                    [Html2rss.inspect(urls.first, strategy: current_strategy, deep: options[:deep]).to_wire_h]
+                    [Html2rss.inspect(targets.urls.first, strategy: current_strategy, deep: options[:deep]).to_wire_h]
                   end
-        Render.inspect_output(results, format: options[:format], batch_mode:)
+        json = options[:format] == 'json'
+        json ? Render.json(targets.payload(results)) : Render.inspect_cards(results)
       end
     end
 
@@ -80,18 +91,18 @@ module Html2rss
     # @param target [String, nil] URL, file, or '-' for stdin
     # @return [void]
     def recon(target = nil) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
-      with_recon_targets(target) do |urls, batch_mode|
+      with_recon_targets(target) do |targets|
         results = Html2rss::Recon.batch(
-          urls,
+          targets.urls,
           strategy: current_strategy,
           cache_dir: options[:cache_dir]
         )
         filtered = filter_recon_results(results, options[:verdict])
-        assert_recon_verdict_match!(filtered, results, batch_mode:)
+        assert_recon_verdict_match!(filtered, results) unless targets.batch
 
-        render_recon(filtered, batch_mode)
+        render_recon(filtered, targets)
 
-        return if batch_mode || filtered.empty?
+        return if targets.batch || filtered.empty?
 
         exit(3) if filtered.first.defer?
         exit(1) if filtered.first.drop?
@@ -184,7 +195,7 @@ module Html2rss
       apply_runtime_request_overrides!(config)
       apply_local_file_input!(config, options[:input]) if options[:input]
 
-      print_shipped_feed(Html2rss.apply(config))
+      print_feed(Html2rss.apply(config)) { |feed_res| raise Thor::Error, EMPTY_FEED_MESSAGE if feed_res.empty? }
     end
 
     feed_transport_options
@@ -210,7 +221,7 @@ module Html2rss
     # @param files [Array<String>] file paths or globs
     # @return [void]
     def validate(*files)
-      Validate.run(files, params: options[:params] || {}, quiet: options[:quiet])
+      Validate.run(files, params: options[:params] || {}, out: options[:quiet] ? StringIO.new : $stdout)
     end
 
     desc 'schema', 'Print or export the configuration JSON Schema'
@@ -256,21 +267,19 @@ module Html2rss
     private
 
     def with_recon_targets(target)
-      urls, batch_mode = resolve_recon_targets(target, options[:file])
-      raise Thor::Error, 'A target URL, --file, or stdin (-) is required' if urls.empty?
+      targets = resolve_recon_targets(target, options[:file])
+      raise Thor::Error, 'A target URL, --file, or stdin (-) is required' if targets.urls.empty?
 
-      yield urls, batch_mode
+      yield targets
     end
 
     def resolve_recon_targets(target, file_opt)
       if file_opt
-        [parse_recon_lines(File.readlines(file_opt, chomp: true)), true]
+        ReconTargets.new(parse_recon_lines(File.readlines(file_opt, chomp: true)), true)
       elsif target == '-'
-        [parse_recon_lines($stdin.readlines.map(&:chomp)), true]
-      elsif target
-        [Array(target), false]
+        ReconTargets.new(parse_recon_lines($stdin.readlines.map(&:chomp)), true)
       else
-        [[], false]
+        ReconTargets.new(Array(target), false)
       end
     end
 
@@ -292,17 +301,17 @@ module Html2rss
       raise Thor::Error, error.message
     end
 
-    def assert_recon_verdict_match!(filtered, results, batch_mode:)
-      return if batch_mode || !options[:verdict] || !filtered.empty? || results.empty?
+    def assert_recon_verdict_match!(filtered, results)
+      return if !options[:verdict] || !filtered.empty? || results.empty?
 
       raise Thor::Error, "No results matched verdict #{options[:verdict].upcase}"
     end
 
-    def render_recon(results, batch_mode)
+    def render_recon(results, targets)
       return Render.recon_urls(results) if options[:url_only]
 
       case options[:format]
-      when 'json' then Render.recon_json(results, batch_mode)
+      when 'json' then Render.json(targets.payload(results.map(&:to_h)))
       when 'tsv' then Render.recon_tsv(results)
       else Render.recon_cards(results)
       end
@@ -310,20 +319,9 @@ module Html2rss
 
     def print_feed(feed_res)
       explain_json!(feed_res.status.to_h) if options[:explain]
-      emit_feed_result(feed_res)
-    end
-
-    def print_shipped_feed(feed_res)
-      explain_json!(feed_res.status.to_h) if options[:explain]
-      raise Thor::Error, EMPTY_FEED_MESSAGE if feed_res.empty?
-
-      emit_feed_result(feed_res)
-    end
-
-    def emit_feed_result(feed_res)
+      yield feed_res if block_given?
       jsonfeed = options[:format] == 'jsonfeed'
-      payload = jsonfeed ? JSON.pretty_generate(feed_res.to_json_feed) : feed_res.to_rss
-      puts payload
+      puts(jsonfeed ? JSON.pretty_generate(feed_res.to_json_feed) : feed_res.to_rss)
     end
 
     def handle_capture_output(result, url) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

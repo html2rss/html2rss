@@ -69,12 +69,6 @@ RSpec.describe Html2rss::CLI do
           .and output('').to_stdout
       end
 
-      it 'writes no explain JSON for scrape by default' do
-        allow(Html2rss).to receive(:scrape).and_return(feed_res)
-
-        expect { cli.scrape('https://example.com') }.not_to output.to_stderr
-      end
-
       it 'does not gate scrape output', :aggregate_failures do
         allow(Html2rss).to receive(:scrape).and_return(feed_res)
 
@@ -699,6 +693,10 @@ RSpec.describe Html2rss::CLI do
     end
 
     it_behaves_like 'a command reporting gem errors on one line', 'scrape', Html2rss, :scrape
+
+    it 'writes no explain JSON when --explain is false' do
+      expect { cli.invoke(:scrape, ['https://example.com/news'], { explain: false }) }.not_to output.to_stderr
+    end
 
     it 'prints RSS to stdout' do
       expect { cli.scrape('https://example.com/news') }.to output("#{rss_xml}\n").to_stdout

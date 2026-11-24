@@ -33,7 +33,7 @@ RSpec.describe Html2rss::CLI::Validate do
       allow(Html2rss).to receive(:validate).and_return(success)
       files = ['spec/fixtures/single.test.yml', 'spec/fixtures/feeds.test.yml']
 
-      expect { described_class.run(files, params: {}, quiet: false) }
+      expect { described_class.run(files, params: {}) }
         .to output(%r{ok   spec/fixtures/single\.test\.yml}).to_stdout
     end
 
@@ -42,13 +42,13 @@ RSpec.describe Html2rss::CLI::Validate do
         .with('spec/fixtures/feeds.test.yml', 'notitle', params: {})
         .and_return(success)
 
-      expect { described_class.run(%w[spec/fixtures/feeds.test.yml notitle], params: {}, quiet: false) }
+      expect { described_class.run(%w[spec/fixtures/feeds.test.yml notitle], params: {}) }
         .to output("Configuration is valid\n").to_stdout
     end
 
     it 'raises when the second argument looks like a missing config file' do
       expect do
-        described_class.run(%w[spec/fixtures/single.test.yml missing.yml], params: {}, quiet: false)
+        described_class.run(%w[spec/fixtures/single.test.yml missing.yml], params: {})
       end.to raise_error(Thor::Error, 'No such file: missing.yml')
     end
 
@@ -57,7 +57,7 @@ RSpec.describe Html2rss::CLI::Validate do
       allow($stdin).to receive(:read).and_return('yaml-from-stdin')
 
       expect do
-        described_class.run(['-'], params: {}, quiet: false)
+        described_class.run(['-'], params: {})
       end.to output("Configuration is valid\n").to_stdout
     end
 
@@ -65,7 +65,7 @@ RSpec.describe Html2rss::CLI::Validate do
       allow(Html2rss).to receive(:validate).and_return(failure)
 
       expect do
-        described_class.run(['bad.yml'], params: {}, quiet: false)
+        described_class.run(['bad.yml'], params: {})
       end.to raise_error(Thor::Error, /Invalid configuration/)
     end
 
@@ -74,7 +74,7 @@ RSpec.describe Html2rss::CLI::Validate do
       allow(Html2rss).to receive(:validate).with('bad.yml', params: {}).and_return(failure)
 
       expect do
-        described_class.run(%w[good.yml bad.yml], params: {}, quiet: false)
+        described_class.run(%w[good.yml bad.yml], params: {})
       end.to raise_error(Thor::Error, '1/2 configurations failed validation.')
     end
 
@@ -82,7 +82,7 @@ RSpec.describe Html2rss::CLI::Validate do
       allow(Html2rss).to receive(:validate).and_return(success)
 
       expect do
-        described_class.run(['good.yml'], params: {}, quiet: true)
+        described_class.run(['good.yml'], params: {}, out: StringIO.new)
       end.not_to output.to_stdout
     end
   end
