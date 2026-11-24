@@ -7,6 +7,25 @@ require 'tempfile'
 RSpec.describe Html2rss::CLI do
   subject(:cli) { described_class.new }
 
+  shared_examples 'a command reporting gem errors on one line' do |command, owner, verb|
+    let(:url) { 'http://127.0.0.1/' }
+
+    it 'prints a private-network denial as one stderr line and exits 1', :aggregate_failures do
+      allow(owner).to receive(verb)
+        .and_raise(Html2rss::RequestService::PrivateNetworkDenied, "Private network target denied for #{url}")
+
+      expect { described_class.start([command, url]) }
+        .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
+        .and output("Private network target denied for #{url}\n").to_stderr
+    end
+
+    it 'lets a ContractError keep its trace' do
+      allow(owner).to receive(verb).and_raise(Html2rss::ContractError, 'bug')
+
+      expect { described_class.start([command, url]) }.to raise_error(Html2rss::ContractError, 'bug')
+    end
+  end
+
   describe '#apply' do
     let(:rss_xml) { '<rss><channel><title>Example</title></channel></rss>' }
     let(:feed_res) do
@@ -72,13 +91,15 @@ RSpec.describe Html2rss::CLI do
     it 'raises Thor::Error on RedirectLimitReached' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
       allow(Html2rss).to receive(:apply).and_raise(Html2rss::RequestService::RedirectLimitReached, 'too many')
-      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /too many/)
+      expect { described_class.start(%w[apply example.yml]) }
+        .to raise_error(SystemExit).and output(/too many/).to_stderr
     end
 
     it 'raises Thor::Error on NoFeedItemsExtracted' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
       allow(Html2rss).to receive(:apply).and_raise(Html2rss::NoFeedItemsExtracted.new(attempts: []))
-      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /No feed items extracted/)
+      expect { described_class.start(%w[apply example.yml]) }
+        .to raise_error(SystemExit).and output(/No feed items extracted/).to_stderr
     end
 
     it 'raises Thor::Error for a fractional --max-requests instead of a stack trace', :aggregate_failures do
@@ -92,10 +113,10 @@ RSpec.describe Html2rss::CLI do
     it 'raises Thor::Error on malformed options and URLs instead of a stack trace', :aggregate_failures do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
       allow(Html2rss).to receive(:apply).and_raise(Html2rss::InvalidOption, 'limit must be an Integer in 1.., got 0')
-      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /limit must be/)
+      expect { cli.invoke(:apply, ['example.yml']) }.to raise_error(Thor::Error, /limit must be/)
 
       allow(Html2rss).to receive(:apply).and_raise(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
-      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /must be absolute/)
+      expect { described_class.new.invoke(:apply, ['example.yml']) }.to raise_error(Thor::Error, /must be absolute/)
     end
   end
 
@@ -115,8 +136,8 @@ RSpec.describe Html2rss::CLI do
 
         it 'fails validate, apply, and test with a clean Thor::Error', :aggregate_failures do
           expect { cli.validate(path) }.to raise_error(Thor::Error)
-          expect { cli.apply(path) }.to raise_error(Thor::Error)
-          expect { cli.test(path) }.to raise_error(Thor::Error)
+          expect { cli.invoke(:apply, [path]) }.to raise_error(Thor::Error)
+          expect { cli.invoke(:test, [path]) }.to raise_error(Thor::Error)
         end
       end
     end
@@ -125,7 +146,8 @@ RSpec.describe Html2rss::CLI do
       path = File.join(tmp_dir, 'feeds.yml').tap { File.write(_1, "feeds:\n  a:\n    - 1\n") }
 
       expect { cli.validate(path, 'a') }.to raise_error(Thor::Error, /feed 'a' must be a mapping/)
-      expect { cli.apply(path, 'a') }.to raise_error(Thor::Error, /feed 'a' must be a mapping/)
+      expect { described_class.start(['apply', path, 'a']) }
+        .to raise_error(SystemExit).and output(/feed 'a' must be a mapping/).to_stderr
     end
   end
 
@@ -323,6 +345,8 @@ RSpec.describe Html2rss::CLI do
     before do
       allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
     end
+
+    it_behaves_like 'a command reporting gem errors on one line', 'capture', Html2rss::Capture, :build
 
     it 'prints captured YAML to stdout' do
       expect { cli.capture('https://example.com') }.to output("channel:\n  url: https://example.com\n").to_stdout
@@ -643,6 +667,8 @@ RSpec.describe Html2rss::CLI do
     before do
       allow(Html2rss).to receive(:scrape).and_return(feed_res)
     end
+
+    it_behaves_like 'a command reporting gem errors on one line', 'scrape', Html2rss, :scrape
 
     it 'prints RSS to stdout' do
       expect { cli.scrape('https://example.com/news') }.to output("#{rss_xml}\n").to_stdout
