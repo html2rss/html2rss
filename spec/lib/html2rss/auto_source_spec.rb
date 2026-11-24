@@ -175,6 +175,11 @@ RSpec.describe Html2rss::AutoSource do
         expect(articles.first.published_at.iso8601).to eq('2024-07-12T09:00:00+05:00')
       end
 
+      it 'keeps the instant of a named zone' do
+        allow(response).to receive(:body).and_return(body.sub(date_published, 'Fri, 12 Jul 2024 10:00:00 GMT'))
+        expect(articles.first.published_at.iso8601).to eq('2024-07-12T10:00:00+00:00')
+      end
+
       it 'reads a naive value as UTC without a time zone' do
         zoneless = described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil])
         expect(zoneless.articles.first.published_at.iso8601).to eq('2024-07-12T09:00:00+00:00')

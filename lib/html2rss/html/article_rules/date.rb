@@ -11,8 +11,6 @@ module Html2rss
       module Date
         # Skip DateTime.parse above this length (Ruby parse is not a validator).
         MAX_DATE_CHARS = Description::MAX_DATE_CHARS
-        # Trailing offset / Zulu marker — present means the string already has a zone.
-        OFFSET = /(?:Z|[+-]\d{2}:?\d{2})\z/i
         # Prefer standard time when a local clock time occurs twice (DST fall-back).
         AMBIGUOUS_DST = false
 
@@ -65,7 +63,8 @@ module Html2rss
             parse_datetime(Description.date_core(line), time_zone:)
           end
 
-          def naive?(string) = !string.match?(OFFSET)
+          # A zone (Z, GMT, EST, +02:00, ...) is whatever the parser resolves to an offset.
+          def naive?(string) = !DateTime._parse(string, limit: MAX_DATE_CHARS).key?(:offset)
 
           def localize(datetime, time_zone)
             identifier = time_zone.to_s

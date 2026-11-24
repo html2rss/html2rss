@@ -28,6 +28,13 @@ RSpec.describe Html2rss::Html::ArticleRules::Date do
       expect(described_class.parse_datetime('2024-07-12T09:00:00+0500', time_zone: 'Europe/Berlin').hour).to eq(9)
     end
 
+    it 'keeps the instant of a named zone', :aggregate_failures do
+      gmt = described_class.parse_datetime('Fri, 12 Jul 2024 10:00:00 GMT', time_zone: 'Europe/Berlin')
+      est = described_class.parse_datetime('2024-07-12 10:00 EST', time_zone: 'Europe/Berlin')
+      expect(gmt.iso8601).to eq('2024-07-12T10:00:00+00:00')
+      expect(est.iso8601).to eq('2024-07-12T10:00:00-05:00')
+    end
+
     it 'reads a naive value as UTC without a time zone', :aggregate_failures do
       expect(described_class.parse_datetime('2024-07-12T09:00:00', time_zone: nil).iso8601)
         .to eq('2024-07-12T09:00:00+00:00')
