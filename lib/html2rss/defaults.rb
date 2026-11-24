@@ -35,7 +35,7 @@ module Html2rss
       @logger_formatter = proc do |severity, datetime, _progname, msg|
         "#{datetime} [#{severity}] #{msg}\n"
       end
-      @logger = Logger.new($stdout)
+      @logger = Logger.new($stderr)
       @logger.formatter = @logger_formatter
       self.log_level = ENV.fetch('LOG_LEVEL', :warn)
       @headers = nil
