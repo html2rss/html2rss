@@ -9,6 +9,8 @@ module Html2rss
       module Description
         # Listing section names that are chrome, not a dek.
         SECTION_NAMES = Set['press releases'].freeze
+        # An ASCII digit: every {DATE_SHAPES} entry needs one.
+        DIGIT = /\d/
         # Skip date detection / DateTime.parse above this length.
         MAX_DATE_CHARS = 128
         # Optional type-chip / clock separators (ASCII/en/em dash, pipe, bullet).
@@ -59,6 +61,8 @@ module Html2rss
           # @param line [String, nil]
           # @return [Boolean]
           def date_shaped?(line)
+            return false unless line.to_s.match?(DIGIT) # every date shape holds a digit
+
             core = date_core(line)
             return false if core.empty? || core.length > MAX_DATE_CHARS
 
