@@ -204,6 +204,15 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     end
   end
 
+  describe '#page_only_chrome_text?' do
+    it 'reads a label only a page-only language knows as chrome', :aggregate_failures do
+      zh = described_class.new('https://example.com/', vocabulary: Html2rss::Vocabulary[:zh])
+      expect(zh.page_only_chrome_text?('评论')).to be(true)
+      expect(zh.page_only_chrome_text?('Contact us')).to be(false)
+      expect(resolver.page_only_chrome_text?('评论')).to be(false)
+    end
+  end
+
   describe '#utility_prefix_text?' do
     it 'classifies utility prefixes, not general utility labels', :aggregate_failures do
       expect(resolver.utility_prefix_text?('Subscribe to newsletter')).to be(true)
