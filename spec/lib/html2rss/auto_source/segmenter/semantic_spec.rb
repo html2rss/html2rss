@@ -35,8 +35,9 @@ RSpec.describe Html2rss::AutoSource::Segmenter::Semantic do
       HTML
     end
 
-    it 'orders the deeper container first' do
-      expect(hrefs).to eq(%w[/news/2024/deep-story /news/2024/shallow-story])
+    it 'emits segments in document order with ascending positions', :aggregate_failures do
+      expect(hrefs).to eq(%w[/news/2024/shallow-story /news/2024/deep-story])
+      expect(segments.map(&:position)).to eq(segments.map(&:position).sort)
     end
   end
 
