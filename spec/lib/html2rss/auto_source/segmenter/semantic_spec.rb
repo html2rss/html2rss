@@ -242,6 +242,135 @@ RSpec.describe Html2rss::AutoSource::Segmenter::Semantic do
     end
   end
 
+  context 'when a section holds several cards that each wrap their own heading link' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><section>
+          <div><img src="/1.jpg"><h2><a href="/n1">Story headline 1</a></h2><p>Summary 1.</p></div>
+          <div><img src="/2.jpg"><h2><a href="/n2">Story headline 2</a></h2><p>Summary 2.</p></div>
+          <div><img src="/3.jpg"><h2><a href="/n3">Story headline 3</a></h2><p>Summary 3.</p></div>
+        </section></main></body></html>
+      HTML
+    end
+
+    it 'roots each card at its own div', :aggregate_failures do
+      expect(hrefs).to eq(%w[/n1 /n2 /n3])
+      expect(segments.map { _1.root_node.name }).to all(eq(:div))
+    end
+  end
+
+  context 'when heading-link cards sit inside one lone wrapper' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><section><div class="grid">
+          <div><h2><a href="/n1">Story headline 1</a></h2><p>Summary 1.</p></div>
+          <div><h2><a href="/n2">Story headline 2</a></h2><p>Summary 2.</p></div>
+        </div></section></main></body></html>
+      HTML
+    end
+
+    it 'roots each card at its own div', :aggregate_failures do
+      expect(hrefs).to eq(%w[/n1 /n2])
+      expect(segments.map { _1.root_node.name }).to all(eq(:div))
+    end
+  end
+
+  context 'when heading-link cards carry picture and background images' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><section>
+          <div><picture><source srcset="/1.jpg 800w"></picture><h2><a href="/n1">Story headline 1</a></h2><p>Summary 1.</p></div>
+          <div><div style="background-image: url(/2.jpg)"></div><h2><a href="/n2">Story headline 2</a></h2><p>Summary 2.</p></div>
+        </section></main></body></html>
+      HTML
+    end
+
+    it 'roots each card at its own div', :aggregate_failures do
+      expect(hrefs).to eq(%w[/n1 /n2])
+      expect(segments.map { _1.root_node.name }).to all(eq(:div))
+    end
+  end
+
+  context 'when heading-link cards share a loose image' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><section><img src="/x.jpg">
+          <div><h2><a href="/n1">Story headline 1</a></h2><p>Summary 1.</p></div>
+          <div><h2><a href="/n2">Story headline 2</a></h2><p>Summary 2.</p></div>
+        </section></main></body></html>
+      HTML
+    end
+
+    it 'keeps the section as the card', :aggregate_failures do
+      expect(hrefs.first).to start_with('/n1')
+      expect(segments.map { _1.root_node.name }).to include(:section)
+    end
+  end
+
+  context 'when heading-link cards share a loose date' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><section><time datetime="2024-01-01"></time>
+          <div><h2><a href="/n1">Story headline 1</a></h2><p>Summary 1.</p></div>
+          <div><h2><a href="/n2">Story headline 2</a></h2><p>Summary 2.</p></div>
+        </section></main></body></html>
+      HTML
+    end
+
+    it 'keeps the section as the card', :aggregate_failures do
+      expect(hrefs.first).to start_with('/n1')
+      expect(segments.map { _1.root_node.name }).to include(:section)
+    end
+  end
+
+  context 'when an article holds a heading link, loose text and a related heading link' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><article>
+          <h2><a href="/s1">Story headline</a></h2><p>Summary of the story.</p><time datetime="2024-01-01"></time>
+          <h3><a href="/r">Related story</a></h3>
+        </article></main></body></html>
+      HTML
+    end
+
+    it 'keeps the article as the card', :aggregate_failures do
+      expect(hrefs).to eq(%w[/s1])
+      expect(segments.first.root_node.name).to eq(:article)
+    end
+  end
+
+  context 'when a section holds one heading-link card and no loose payload' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><section>
+          <div><h2><a href="/n1">Story headline 1</a></h2></div>
+        </section></main></body></html>
+      HTML
+    end
+
+    it 'does not split the section into a run', :aggregate_failures do
+      expect(hrefs).to eq(%w[/n1 /n1])
+      expect(segments.map { _1.root_node.name }).to eq(%i[section div])
+    end
+  end
+
+  context 'when heading-link cards sit beside a plain heading' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><section>
+          <div><h2><a href="/n1">Story headline 1</a></h2><p>Summary 1.</p></div>
+          <div><h2><a href="/n2">Story headline 2</a></h2><p>Summary 2.</p></div>
+          <div><h2>Sponsored section heading</h2></div>
+        </section></main></body></html>
+      HTML
+    end
+
+    it 'keeps the section as the card', :aggregate_failures do
+      expect(hrefs.first).to eq('/n1')
+      expect(segments.map { _1.root_node.name }).to include(:section)
+    end
+  end
+
   context 'when a section holds one whole-card link and a plain link' do
     let(:html) do
       <<~HTML
