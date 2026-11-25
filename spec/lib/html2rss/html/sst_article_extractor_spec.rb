@@ -364,6 +364,56 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(article.enclosures).not_to be_empty
   end
 
+  describe 'published_at from a date chip inside the headline link' do
+    def published_for(inner)
+      html = %(<article><h3><a href="/news/story">#{inner}</a></h3></article>)
+      described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                              link_resolver: page_resolver)&.published_at
+    end
+
+    it 'reads a text date chip the title drops', :aggregate_failures do
+      expect(published_for('<span>Tram depot reopens</span><span class="date">12 November 2026</span>').to_s)
+        .to start_with('2026-11-12T00:00:00')
+      expect(published_for('<span>Tram depot reopens</span><span class="date">12 November</span>')).to be_nil
+    end
+
+    it 'reads a text date chip beside the headline link inside the heading' do
+      html = %(<article><h3><a href="/news/story">Tram depot reopens</a> ) +
+             %(<span class="date">12 November 2026</span></h3></article>)
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                        link_resolver: page_resolver)
+      expect(article.published_at.to_s).to start_with('2026-11-12T00:00:00')
+    end
+
+    it 'reads a text date chip inside a card link with no heading' do
+      html = %(<article><a href="/news/story"><span>Tram depot reopens</span>) +
+             %(<span class="date">12 November 2026</span></a></article>)
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                        link_resolver: page_resolver)
+      expect(article.published_at.to_s).to start_with('2026-11-12T00:00:00')
+    end
+
+    it 'keeps the exact instant of a time element wrapping the chip' do
+      time = '<time datetime="2026-11-12T14:30:00Z">12 November 2026</time>'
+      html = %(<article><h3><a href="/news/story"><span>Tram depot reopens</span>#{time}</a></h3></article>)
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'Europe/Berlin',
+                                                        link_resolver: page_resolver)
+      expect(article.published_at.to_s).to eq('2026-11-12T14:30:00+00:00')
+    end
+
+    it 'reads a text date chip in the channel time zone' do
+      html = %(<article><a href="/news/story"><span>Tram depot reopens</span>) +
+             %(<span class="date">12 November 2026</span></a></article>)
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'Europe/Berlin',
+                                                        link_resolver: page_resolver)
+      expect(article.published_at.to_s).to eq('2026-11-12T00:00:00+01:00')
+    end
+
+    it 'invents no date from a bare clock chip' do
+      expect(published_for('<span class="stamp">19:47</span><span>Coalition holds special sessions</span>')).to be_nil
+    end
+  end
+
   it 'accepts a RankedSegment' do # rubocop:disable RSpec/ExampleLength
     html = '<div><h3><a href="/news/card">Linked card text here</a></h3><p>More words.</p></div>'
     doc = Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)

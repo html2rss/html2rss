@@ -27,6 +27,24 @@ RSpec.describe Html2rss::Html::TitlePieces do
       expect(pieces.headline_text(source)).to be_nil
     end
 
+    it 'hands back the texts of the pieces left out of the headline, the date chip among them' do
+      pieces, _, source = pieces_for.call(%(<article><h3><a href="/s"><span>Tram depot reopens</span>) +
+                                          %(<span class="date">12 November 2026</span></a></h3></article>))
+      expect(pieces.dropped_texts(source)).to eq(['12 November 2026'])
+    end
+
+    it 'reads a date chip beside the headline piece of a heading' do
+      html = %(<article><h3><a href="/s"><span class="headline">Tram depot</span></a> ) +
+             %(<span class="date">12 November 2026</span></h3></article>)
+      pieces, _, source = pieces_for.call(html)
+      expect(pieces.dropped_texts(source)).to eq(['12 November 2026'])
+    end
+
+    it 'hands back no dropped texts for no node' do
+      pieces, = pieces_for.call(%(<article><a href="/s">Tram line extends</a></article>))
+      expect(pieces.dropped_texts(nil)).to eq([])
+    end
+
     it 'takes a data-tb-kicker element as the kicker' do
       pieces, = pieces_for.call('<article><b data-tb-kicker="">Transit</b><h2><a href="/s">Tram</a></h2></article>')
       expect(pieces.kicker_text).to eq('Transit')
