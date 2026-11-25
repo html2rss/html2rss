@@ -54,8 +54,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::CandidateDetector do
       expect(described_class.array_of_articles?([{ data: { attributes: { title: 'T', url: '/a' } } }])).to be(true)
     end
 
-    it 'rejects entries whose author and content objects compete for the article' do
-      entry = { author: { name: 'N', url: '/authors/n' }, content: { title: 'T', url: '/a' } }
+    it 'rejects entries whose nested objects both carry an article title and url' do
+      entry = { node: { title: 'A', url: '/b' }, content: { title: 'T', url: '/a' } }
 
       expect(described_class.array_of_articles?([entry])).to be(false)
     end
