@@ -119,10 +119,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       end
     end
 
-    it 'skips an entry whose author and content objects both carry a title and url' do
+    it 'reads the content node when an author object holds a name and url', :aggregate_failures do
       entry = { author: { name: 'Staff', url: '/authors/staff' }, content: { title: 'T', url: '/a' } }
+      result = described_class.normalise(entry, base_url:)
+
+      expect(result).to include(title: 'T')
+      expect(result[:url].to_s).to eq('https://example.com/a')
+    end
+
+    it 'skips an entry whose nested objects both carry a title and url' do
+      entry = { node: { title: 'A', url: '/a' }, content: { title: 'T', url: '/b' } }
 
       expect(described_class.normalise(entry, base_url:)).to be_nil
+    end
+
+    it 'skips a name-titled article competing with a category or image node', :aggregate_failures do
+      article = { name: 'Real', url: '/a' }
+
+      expect(described_class.normalise({ article:, category: { title: 'News', url: '/c/news' } }, base_url:)).to be_nil
+      expect(described_class.normalise({ article:, image: { title: 'alt', url: '/i.jpg' } }, base_url:)).to be_nil
     end
 
     it 'uses the entry own url and the content title when an author object holds a name and url',
@@ -163,7 +178,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       author = { name: 'Staff', url: '/authors/staff' }
 
       expect(described_class.normalise({ url: '/a', author: }, base_url:)).to be_nil
-      expect(described_class.normalise({ author: }, base_url:)).to include(title: 'Staff')
+      expect(described_class.normalise({ author: }, base_url:)).to be_nil
     end
 
     it 'reads a JSON:API envelope with attributes and sibling links', :aggregate_failures do
@@ -236,6 +251,20 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       node = { title: 'T', url: '/a', image: { title: 'Alt', url: '/i.jpg' } }
 
       expect(described_class.article_sources({ node: })).to eq([node, { node: }])
+    end
+
+    it 'prefers the only linked node over an unlinked titled node' do
+      node = { title: 'T', url: '/a' }
+      entry = { node:, teaser: { title: 'Teaser' } }
+
+      expect(described_class.article_sources(entry)).to eq([node, entry])
+    end
+
+    it 'ignores an attribution node among unlinked nodes' do
+      node = { title: 'T' }
+      entry = { node:, author: { name: 'Staff' } }
+
+      expect(described_class.article_sources(entry)).to eq([node, entry])
     end
 
     it 'falls back to the only titled node when none carries a url' do
