@@ -243,13 +243,12 @@ module Html2rss
       end
 
       def image_from_img
-        @root.find { |n| n.image? && ArticleRules::Image.remote_src?(n.attrs.src) }&.attrs&.src
+        @root.each_node.filter_map { |n| ArticleRules::Image.src_of(n) }.first
       end
 
       # A video's poster frame: the last resort, when the card has no other image.
       def image_from_poster
-        posters = @root.find_all { |n| n.name == :video }.map { |n| n.attrs.raw['poster'] }
-        posters.find { |src| ArticleRules::Image.remote_src?(src) }
+        @root.each_node.filter_map { |n| ArticleRules::Image.poster_of(n) }.first
       end
 
       def image_from_srcset
@@ -258,7 +257,7 @@ module Html2rss
       end
 
       def image_from_style
-        styles = @root.find_all { |n| n.attrs.style&.include?('url') }.map { |n| n.attrs.style }
+        styles = @root.each_node.filter_map { |n| ArticleRules::Image.style_of(n) }
         ArticleRules::Image.best_from_styles(styles)
       end
 
