@@ -34,6 +34,8 @@ module Html2rss
           SCALAR_KEYS = %i[rendered value text].freeze
           # Snake `_at`/`_on` or camel `At`/`On` suffix after a closed published-at miss.
           DATE_KEY_SUFFIX = /_at\z|_on\z|[a-z]At\z|[a-z]On\z/
+          # Keys of person or attribution objects (a name and URL, never the article); never article nodes.
+          ATTRIBUTION_KEYS = %i[author authors byline creator contributor publisher].freeze
           # Levels below a wrapper entry searched for its article node.
           MAX_NODE_DEPTH = 2
 
@@ -74,8 +76,9 @@ module Html2rss
             # source (e.g. an envelope's sibling +links+). A wrapper entry with its own URL is the
             # link: it delegates only to the only nested Hash carrying an article title (never a bare
             # +name+), and its URL wins over the node's. An entry whose only URL is +links+ is not that
-            # link: the node leads and +links+ stays a fallback. Competing nested nodes skip the entry, so an
-            # author object holding a name and URL never becomes the article.
+            # link: the node leads and +links+ stays a fallback. Nodes under an {ATTRIBUTION_KEYS} key
+            # (an author object holding a name and URL) never compete; if more than one other node remains
+            # the entry is skipped.
             #
             # @param entry [Object] raw article entry candidate
             # @return [Array<Hash>, nil] field sources in lookup order; nil when not a Hash or ambiguous
@@ -236,8 +239,8 @@ module Html2rss
             def titled_nodes(hash, depth)
               return [] if depth.zero?
 
-              hash.each_value.flat_map do |value|
-                next [] unless value.is_a?(Hash)
+              hash.flat_map do |key, value|
+                next [] if !value.is_a?(Hash) || ATTRIBUTION_KEYS.include?(key)
                 next value if title?(value)
 
                 titled_nodes(value, depth - 1)
