@@ -83,6 +83,16 @@ module Html2rss
         @nodes.text(node, headline_drops(node))
       end
 
+      ##
+      # @param node [SST::Node, nil] heading or anchor
+      # @return [Array<String>] texts of the pieces left out of its headline; the date chips among them
+      #   still carry the card's date
+      def dropped_texts(node)
+        return [] unless node
+
+        headline_drops(node).map { @nodes.text(_1).to_s }
+      end
+
       private
 
       # --- Headline ------------------------------------------------------------------------------------
