@@ -116,6 +116,55 @@ RSpec.describe Html2rss::AutoSource::Segmenter::Semantic do
     end
   end
 
+  context 'when a section holds several whole-card links and a linked group heading' do
+    let(:html) do
+      <<~HTML
+        <html><body><section class="group">
+          <a href="/topics/harbor/"><h2>Harbor</h2></a>
+          <a class="teaser" href="/city/ferry-returns/"><div><h2>Ferry returns</h2><p>The crossing resumes.</p></div></a>
+          <a class="teaser" href="/city/library-hours/"><div><h2>Library hours</h2><p>Open later on Saturdays.</p></div></a>
+        </section></body></html>
+      HTML
+    end
+
+    it 'roots each card at its own link, not at the section', :aggregate_failures do
+      expect(hrefs).to contain_exactly('/city/ferry-returns/', '/city/library-hours/')
+      expect(segments.map { _1.root_node.name }).to all(eq(:a))
+    end
+  end
+
+  context 'when a section holds exactly two whole-card links' do
+    let(:html) do
+      <<~HTML
+        <html><body><section>
+          <a class="teaser" href="/city/ferry-returns/"><div><h2>Ferry returns</h2><p>The crossing resumes.</p></div></a>
+          <a class="teaser" href="/city/library-hours/"><div><h2>Library hours</h2><p>Open later on Saturdays.</p></div></a>
+        </section></body></html>
+      HTML
+    end
+
+    it 'roots each card at its own link', :aggregate_failures do
+      expect(hrefs).to contain_exactly('/city/ferry-returns/', '/city/library-hours/')
+      expect(segments.map { _1.root_node.name }).to all(eq(:a))
+    end
+  end
+
+  context 'when a section holds one whole-card link and a plain link' do
+    let(:html) do
+      <<~HTML
+        <html><body><section>
+          <a class="teaser" href="/city/ferry-returns/"><div><h2>Ferry returns</h2><p>The crossing resumes.</p></div></a>
+          <a href="/city/ferry-returns/comments/">Comments</a>
+        </section></body></html>
+      HTML
+    end
+
+    it 'keeps the section as the card', :aggregate_failures do
+      expect(hrefs).to eq(%w[/city/ferry-returns/])
+      expect(segments.first.root_node.name).to eq(:section)
+    end
+  end
+
   context 'when a card div holds its own linked heading and an info div' do
     let(:html) do
       <<~HTML
