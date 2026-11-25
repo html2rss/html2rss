@@ -4,7 +4,6 @@ module Html2rss
   class AutoSource
     ##
     # Cleanup is responsible for cleaning up the extracted articles.
-    # :reek:MissingSafeMethod { enabled: false }
     # It applies various strategies to filter and refine the article list.
     # Producer of the auto-source admission drop tallies for {Html2rss::Status}; {Html2rss::Selectors} tallies
     # its own +missing_url+ drops.
