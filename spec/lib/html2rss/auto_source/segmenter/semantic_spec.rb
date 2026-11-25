@@ -154,8 +154,53 @@ RSpec.describe Html2rss::AutoSource::Segmenter::Semantic do
       <<~HTML
         <html><body><main><article>
           <a href="/s1"><img src="/a.jpg"><h2>Story</h2></a>
-          <time datetime="2026-11-01">Nov 1</time><p>summary of the story</p>
+          <p>summary of the story</p>
           <a href="/related"><h3>Related story</h3></a>
+        </article></main></body></html>
+      HTML
+    end
+
+    it 'keeps the article as the card', :aggregate_failures do
+      expect(hrefs).to eq(%w[/s1])
+      expect(segments.first.root_node.name).to eq(:article)
+    end
+  end
+
+  context 'when a card holds a loose image beside a second heading link' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><article><img src="/x1.jpg">
+          <a href="/s1"><h2>Story</h2></a><a href="/r"><h3>Related</h3></a>
+        </article></main></body></html>
+      HTML
+    end
+
+    it 'keeps the article as the card', :aggregate_failures do
+      expect(hrefs).to eq(%w[/s1])
+      expect(segments.first.root_node.name).to eq(:article)
+    end
+  end
+
+  context 'when a card holds a loose date beside a second heading link' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><article><time datetime="2024-01-01"></time>
+          <a href="/s1"><h2>Story</h2></a><a href="/r"><h3>Related</h3></a>
+        </article></main></body></html>
+      HTML
+    end
+
+    it 'keeps the article as the card', :aggregate_failures do
+      expect(hrefs).to eq(%w[/s1])
+      expect(segments.first.root_node.name).to eq(:article)
+    end
+  end
+
+  context 'when a card holds a loose video beside a second heading link' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><article><video src="/x1.mp4"></video>
+          <a href="/s1"><h2>Story</h2></a><a href="/r"><h3>Related</h3></a>
         </article></main></body></html>
       HTML
     end

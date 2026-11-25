@@ -25,15 +25,24 @@ module Html2rss
           build_segments(roots, segmenter)
         end
 
-        # A container whose text lies wholly inside several heading-wrapping links is a run of cards, not one
-        # card: each link is a whole card and roots the segment itself, so the run's headings and neighbouring
-        # cards stay out of its text. A card with loose text (date, summary) beside a second heading link,
-        # such as a related story, stays one card.
+        # A container whose payload (text, image, video, date) lies wholly inside several heading-wrapping links is
+        # a run of cards, not one card: each link is a whole card and roots the segment itself, so the run's
+        # headings and neighbouring cards stay out of its text. A card with loose payload beside a second heading
+        # link, such as a related story, stays one card.
         def self.card_run?(container)
           cards = container.find_all(&:link?).select { |anchor| anchor.find(&:heading?) }
-          cards.size > 1 && container.visible_text(exclude: cards).to_s.empty?
+          cards.size > 1 && !loose_payload?(container, cards)
         end
         private_class_method :card_run?
+
+        def self.loose_payload?(container, cards)
+          !container.visible_text(exclude: cards).to_s.empty? ||
+            payload_count(container) > cards.sum { |card| payload_count(card) }
+        end
+        private_class_method :loose_payload?
+
+        def self.payload_count(node) = node.each_node.count { |n| n.image? || n.name == :video || n.attrs.datetime }
+        private_class_method :payload_count
 
         # Each segment carries the size of its repeated-card group: the cards of main content that share
         # its structural path (see {card_path}). A card in a peripheral landmark (aside) or one linking an
