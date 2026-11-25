@@ -26,21 +26,29 @@ module Html2rss
           build_segments(roots, segmenter)
         end
 
-        # A container whose payload (text, image, video, date) lies wholly inside several heading-wrapping links is
-        # a run of cards, not one card: each link is a whole card and roots the segment itself, so the run's
-        # headings and neighbouring cards stay out of its text. A card with loose payload beside a second heading
-        # link, such as a related story, stays one card.
-        def self.card_run?(container)
-          cards = container.find_all(&:link?).select { |anchor| anchor.find(&:heading?) }
-          cards.size > 1 && !loose_payload?(container, cards)
+        # A container whose payload (text, image, video, date) lies wholly inside several cards, each owning its own
+        # headline link (a link wrapping a heading, or a heading wrapping a link), is a run of cards, not one card:
+        # each link roots its segment itself, so neighbouring cards stay out of its text. A card with loose payload
+        # beside a second headline link, such as a related story, stays one card.
+        def self.card_run?(node)
+          cards = card_units(node)
+          node.visible_text(exclude: cards).to_s.empty? && payload_count(node) == cards.sum { payload_count(_1) }
         end
         private_class_method :card_run?
 
-        def self.loose_payload?(container, cards)
-          !container.visible_text(exclude: cards).to_s.empty? ||
-            payload_count(container) > cards.sum { |card| payload_count(card) }
+        # The nodes below +node+ that each own headline links, descending through a lone wrapper.
+        def self.card_units(node)
+          holders = node.children.select { |child| headline_links?(child) }
+          holders.size == 1 ? card_units(holders.first) : holders
         end
-        private_class_method :loose_payload?
+        private_class_method :card_units
+
+        def self.headline_links?(node)
+          return node.find(&:link?) if node.heading?
+
+          node.link? ? node.find(&:heading?) : node.children.any? { |child| headline_links?(child) }
+        end
+        private_class_method :headline_links?
 
         def self.payload_count(node)
           node.each_node.count { |n| Html::ArticleRules::Image.carrier?(n) || n.name == :video || n.attrs.datetime }
