@@ -409,6 +409,37 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(article.published_at.to_s).to eq('2026-11-12T00:00:00+01:00')
     end
 
+    it 'reads the lead paragraph inside a card anchor as the description', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = '<article><a href="/news/story"><span class="teaser__title">Tram depot reopens</span>' \
+             '<p>Crews finished early.<time datetime="2026-11-12T07:25">07:25</time></p></a></article>'
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                        link_resolver: page_resolver)
+      expect(article.title).to eq('Tram depot reopens')
+      expect(article.description).to eq('Crews finished early.')
+    end
+
+    it 'leaves the paragraphs the title is built from out of the description' do
+      html = '<article><a href="/news/story"><p>Tram depot reopens</p><p>Crews finished early.</p></a></article>'
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                        link_resolver: page_resolver)
+      expect(article.description).to be_nil
+    end
+
+    it 'keeps the paragraph beside a heading title inside the anchor' do
+      html = '<article><a href="/news/story"><h3>Tram depot reopens</h3><p>Crews finished early.</p></a></article>'
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                        link_resolver: page_resolver)
+      expect(article.description).to eq('Crews finished early.')
+    end
+
+    it 'leaves a kicker paragraph the title reads out of the description' do
+      html = '<article><a href="/news/story"><p>Politics</p><span>Tram depot reopens</span>' \
+             '<p>Crews finished early.</p></a></article>'
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                        link_resolver: page_resolver)
+      expect(article.description).to be_nil
+    end
+
     it 'invents no date from a bare clock chip' do
       expect(published_for('<span class="stamp">19:47</span><span>Coalition holds special sessions</span>')).to be_nil
     end

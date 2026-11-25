@@ -11,9 +11,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
   let(:episode_url) { Html2rss::Url.from_relative('/news/story.mp3', 'https://example.com') }
 
   let(:build_ranked) do
-    lambda do |href: '/news/story', final: 65.0, quality: 75.0, position: 0|
+    lambda do |href: '/news/story', final: 65.0, quality: 75.0, position: 0, root: root_node|
       segment = Html2rss::AutoSource::Segment.build(
-        root_node:,
+        root_node: root,
         primary_link: Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href:)),
         strategy: :semantic,
         position:
@@ -38,8 +38,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
   # Builds a ranked entry and stubs the article the deduplicator resolves for it.
   let(:entry) do
-    lambda do |article:, position: 0, final: 65.0, quality: 75.0, href: '/news/story'|
-      ranked = build_ranked.call(href:, final:, quality:, position:)
+    lambda do |article:, position: 0, final: 65.0, quality: 75.0, href: '/news/story', root: root_node|
+      ranked = build_ranked.call(href:, final:, quality:, position:, root:)
       allow(Html2rss::Html::SstArticleExtractor).to receive(:call).with(ranked, any_args).and_return(article)
       ranked
     end
@@ -119,6 +119,63 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
       expect(deduplicator.stronger_entry?(two_categories, one_category)).to be(true)
       expect(deduplicator.stronger_entry?(one_category, two_categories)).to be(false)
+    end
+
+    it 'prefers the card nested in another on a score tie, whatever the payload', :aggregate_failures do
+      inner = Html2rss::SST::Node.build(name: :div)
+      outer = Html2rss::SST::Node.build(name: :section, children: [inner])
+      swollen = entry.call(article: build_article.call(description: 'one two three four'), root: outer, position: 0)
+      tight = entry.call(article: build_article.call(description: 'one'), root: inner, position: 1)
+
+      expect(deduplicator.stronger_entry?(tight, swollen)).to be(true)
+      expect(deduplicator.stronger_entry?(swollen, tight)).to be(false)
+    end
+
+    {
+      'a date' => { published_at: Time.utc(2026, 3, 28) },
+      'an image' => { image: 'https://example.com/a.jpg' },
+      'a category' => { categories: %w[city] },
+      'an enclosure' => { enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/a.mp3') }] }
+    }.each do |label, fields|
+      it "keeps a container that carries #{label} the nested card lacks", :aggregate_failures do
+        inner = Html2rss::SST::Node.build(name: :div)
+        outer = Html2rss::SST::Node.build(name: :section, children: [inner])
+        real = entry.call(article: build_article.call(**fields), root: outer, position: 1)
+        bare = entry.call(article: build_article.call, root: inner, position: 0)
+
+        expect(deduplicator.stronger_entry?(real, bare)).to be(true)
+        expect(deduplicator.stronger_entry?(bare, real)).to be(false)
+      end
+    end
+
+    it 'lets the payload decide between a container with structured fields and a wordier nested card',
+       :aggregate_failures do
+      inner = Html2rss::SST::Node.build(name: :div)
+      outer = Html2rss::SST::Node.build(name: :section, children: [inner])
+      real = entry.call(article: build_article.call(categories: %w[city]), root: outer, position: 1)
+      wordy = entry.call(article: build_article.call(description: 'one two three'), root: inner, position: 0)
+
+      expect(deduplicator.stronger_entry?(wordy, real)).to be(true)
+      expect(deduplicator.stronger_entry?(real, wordy)).to be(false)
+    end
+
+    it 'prefers a container with an article over a nested card without one', :aggregate_failures do
+      inner = Html2rss::SST::Node.build(name: :div)
+      outer = Html2rss::SST::Node.build(name: :section, children: [inner])
+      real = entry.call(article: build_article.call, root: outer, position: 1)
+      none = entry.call(article: nil, root: inner, position: 0)
+
+      expect(deduplicator.stronger_entry?(real, none)).to be(true)
+      expect(deduplicator.stronger_entry?(none, real)).to be(false)
+    end
+
+    it 'compares the payload of cards that do not nest', :aggregate_failures do
+      div = -> { Html2rss::SST::Node.build(name: :div) }
+      left = entry.call(article: build_article.call(description: 'one two'), root: div.call, position: 1)
+      right = entry.call(article: build_article.call(description: 'one'), root: div.call, position: 0)
+
+      expect(deduplicator.stronger_entry?(left, right)).to be(true)
+      expect(deduplicator.stronger_entry?(right, left)).to be(false)
     end
 
     it 'does not let a richer payload outrank a higher final score', :aggregate_failures do
