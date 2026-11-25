@@ -25,11 +25,13 @@ module Html2rss
           build_segments(roots, segmenter)
         end
 
-        # A container that holds several heading-wrapping links is a run of cards, not one card; its primary
-        # link is a whole card of that run and roots the segment itself, so the run's headings and neighbouring
-        # cards stay out of its text.
+        # A container whose text lies wholly inside several heading-wrapping links is a run of cards, not one
+        # card: each link is a whole card and roots the segment itself, so the run's headings and neighbouring
+        # cards stay out of its text. A card with loose text (date, summary) beside a second heading link,
+        # such as a related story, stays one card.
         def self.card_run?(container)
-          container.find_all(&:link?).count { |anchor| anchor.find(&:heading?) } > 1
+          cards = container.find_all(&:link?).select { |anchor| anchor.find(&:heading?) }
+          cards.size > 1 && container.visible_text(exclude: cards).to_s.empty?
         end
         private_class_method :card_run?
 

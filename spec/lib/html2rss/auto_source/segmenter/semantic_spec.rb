@@ -149,6 +149,23 @@ RSpec.describe Html2rss::AutoSource::Segmenter::Semantic do
     end
   end
 
+  context 'when a card holds loose text beside a second heading link' do
+    let(:html) do
+      <<~HTML
+        <html><body><main><article>
+          <a href="/s1"><img src="/a.jpg"><h2>Story</h2></a>
+          <time datetime="2026-11-01">Nov 1</time><p>summary of the story</p>
+          <a href="/related"><h3>Related story</h3></a>
+        </article></main></body></html>
+      HTML
+    end
+
+    it 'keeps the article as the card', :aggregate_failures do
+      expect(hrefs).to eq(%w[/s1])
+      expect(segments.first.root_node.name).to eq(:article)
+    end
+  end
+
   context 'when a section holds one whole-card link and a plain link' do
     let(:html) do
       <<~HTML
