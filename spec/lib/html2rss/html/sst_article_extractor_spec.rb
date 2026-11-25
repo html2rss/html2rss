@@ -409,6 +409,15 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(article.published_at.to_s).to eq('2026-11-12T00:00:00+01:00')
     end
 
+    it 'reads the lead paragraph inside a card anchor as the description', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = '<article><a href="/news/story"><span class="teaser__title">Tram depot reopens</span>' \
+             '<p>Crews finished early.</p></a></article>'
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+                                                        link_resolver: page_resolver)
+      expect(article.title).to eq('Tram depot reopens')
+      expect(article.description).to eq('Crews finished early.')
+    end
+
     it 'invents no date from a bare clock chip' do
       expect(published_for('<span class="stamp">19:47</span><span>Coalition holds special sessions</span>')).to be_nil
     end

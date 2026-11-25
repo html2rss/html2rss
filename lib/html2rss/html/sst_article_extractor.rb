@@ -154,7 +154,16 @@ module Html2rss
       def leftover_lines_from(node)
         times = node.find_all { |n| n.name == :time }
         exclude = [heading, @selected_anchor, title_pieces.kicker, *times].compact
-        ArticleRules::Description.lines_from(node.visible_text(exclude:))
+        text = [node.visible_text(exclude:), *anchor_paragraphs(node, exclude - [@selected_anchor])].join("\n")
+        ArticleRules::Description.lines_from(text)
+      end
+
+      # An anchor inside the card stays out of the leftover text, and a lead paragraph can sit within it next to
+      # the title; those paragraphs are read on their own. An anchor that is the card itself is read whole.
+      def anchor_paragraphs(node, exclude)
+        return [] if @selected_anchor.nil? || node.equal?(@selected_anchor)
+
+        @selected_anchor.find_all { |n| n.name == :p }.filter_map { |p| p.visible_text(exclude:) }
       end
 
       def heading_or_anchor_item?
