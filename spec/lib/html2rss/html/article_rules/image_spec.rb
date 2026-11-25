@@ -88,4 +88,103 @@ RSpec.describe Html2rss::Html::ArticleRules::Image do
       expect(described_class.best_from_styles([oversized])).to be_nil
     end
   end
+
+  describe 'image carrying nodes' do
+    let(:node) { hold_document(document_for(html)).root.find { _1.name == tag } }
+    let(:tag) { :div }
+
+    context 'with an img of a fetchable src' do
+      let(:html) { '<html><body><img src="/a.jpg"></body></html>' }
+      let(:tag) { :img }
+
+      it 'carries the src', :aggregate_failures do
+        expect(described_class.src_of(node)).to eq('/a.jpg')
+        expect(described_class.carrier?(node)).to be(true)
+      end
+    end
+
+    context 'with an img of an inline data src' do
+      let(:html) { '<html><body><img src="data:image/png;base64,AAAA"></body></html>' }
+      let(:tag) { :img }
+
+      it 'carries nothing', :aggregate_failures do
+        expect(described_class.src_of(node)).to be_nil
+        expect(described_class.carrier?(node)).to be(false)
+      end
+    end
+
+    context 'with a non-img node of a src' do
+      let(:html) { '<html><body><div src="/a.jpg"></div></body></html>' }
+
+      it 'does not read the src', :aggregate_failures do
+        expect(described_class.src_of(node)).to be_nil
+        expect(described_class.carrier?(node)).to be(false)
+      end
+    end
+
+    context 'with a video poster' do
+      let(:html) { '<html><body><video poster="/p.jpg"></video></body></html>' }
+      let(:tag) { :video }
+
+      it 'carries the poster', :aggregate_failures do
+        expect(described_class.poster_of(node)).to eq('/p.jpg')
+        expect(described_class.carrier?(node)).to be(true)
+      end
+    end
+
+    context 'with a video of an inline data poster' do
+      let(:html) { '<html><body><video poster="data:image/png;base64,AAAA"></video></body></html>' }
+      let(:tag) { :video }
+
+      it 'carries nothing', :aggregate_failures do
+        expect(described_class.poster_of(node)).to be_nil
+        expect(described_class.carrier?(node)).to be(false)
+      end
+    end
+
+    context 'with a poster on a non-video node' do
+      let(:html) { '<html><body><div poster="/p.jpg"></div></body></html>' }
+
+      it 'does not read the poster', :aggregate_failures do
+        expect(described_class.poster_of(node)).to be_nil
+        expect(described_class.carrier?(node)).to be(false)
+      end
+    end
+
+    context 'with a video without a poster' do
+      let(:html) { '<html><body><video></video></body></html>' }
+      let(:tag) { :video }
+
+      it 'carries nothing' do
+        expect(described_class.carrier?(node)).to be(false)
+      end
+    end
+
+    context 'with a style holding a url' do
+      let(:html) { '<html><body><div style="background: url(/bg.jpg)"></div></body></html>' }
+
+      it 'carries the style', :aggregate_failures do
+        expect(described_class.style_of(node)).to eq('background: url(/bg.jpg)')
+        expect(described_class.carrier?(node)).to be(true)
+      end
+    end
+
+    context 'with a style without a url' do
+      let(:html) { '<html><body><div style="color: red"></div></body></html>' }
+
+      it 'carries nothing', :aggregate_failures do
+        expect(described_class.style_of(node)).to be_nil
+        expect(described_class.carrier?(node)).to be(false)
+      end
+    end
+
+    context 'with a srcset' do
+      let(:html) { '<html><body><source srcset="/x.jpg 800w"></body></html>' }
+      let(:tag) { :source }
+
+      it 'carries the srcset' do
+        expect(described_class.carrier?(node)).to be(true)
+      end
+    end
+  end
 end

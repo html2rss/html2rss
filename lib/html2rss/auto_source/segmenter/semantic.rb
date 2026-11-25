@@ -41,7 +41,9 @@ module Html2rss
         end
         private_class_method :loose_payload?
 
-        def self.payload_count(node) = node.each_node.count { |n| n.image? || n.name == :video || n.attrs.datetime }
+        def self.payload_count(node)
+          node.each_node.count { |n| Html::ArticleRules::Image.carrier?(n) || n.name == :video || n.attrs.datetime }
+        end
         private_class_method :payload_count
 
         # Each segment carries the size of its repeated-card group: the cards of main content that share

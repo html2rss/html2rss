@@ -41,6 +41,29 @@ module Html2rss
           def remote_src?(src) = src.to_s.match?(/\S/) && !src.start_with?('data:')
 
           ##
+          # The one owner of which nodes carry a card image; {Html::SstArticleExtractor} reads its image from
+          # these and the segmenter reads them to tell a card's own image from a neighbour's.
+          #
+          # @param node [SST::Node]
+          # @return [String, nil] the node's +img+ +src+ when fetchable
+          def src_of(node) = (node.attrs.src if node.image? && remote_src?(node.attrs.src))
+
+          # @param node [SST::Node]
+          # @return [String, nil] the +poster+ of a +video+ when fetchable
+          def poster_of(node)
+            poster = node.attrs.raw['poster'] if node.name == :video
+            poster if remote_src?(poster)
+          end
+
+          # @param node [SST::Node]
+          # @return [String, nil] the node's +style+ when it holds a CSS +url+
+          def style_of(node) = (node.attrs.style if node.attrs.style&.include?('url'))
+
+          # @param node [SST::Node]
+          # @return [Boolean] whether the node carries an image by +src+, +srcset+, +poster+ or +style+
+          def carrier?(node) = [src_of(node), poster_of(node), style_of(node), node.attrs.srcset].any?
+
+          ##
           # @param style_strings [Array<String>] CSS style attribute values
           # @return [String, nil] longest non-data background url
           def best_from_styles(style_strings)
