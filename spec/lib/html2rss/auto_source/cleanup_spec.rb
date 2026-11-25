@@ -227,6 +227,35 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with real articles: a read-more card copy and its titled copy' do
+      let(:titled) do
+        Html2rss::Article.new(id: 'headline', title: 'Real headline of the story', url: 'https://example.com/story',
+                              image: 'https://example.com/headline.jpg')
+      end
+      let(:read_more) do
+        Html2rss::Article.new(id: 'card', title: 'Continue reading', url: 'https://example.com/story/',
+                              description: 'The card summary.', image: 'https://example.com/card.jpg')
+      end
+      let(:expected) do
+        have_attributes(title: 'Real headline of the story', description: 'The card summary.',
+                        image: Html2rss::Url.from_absolute('https://example.com/headline.jpg'))
+      end
+
+      it 'puts the summary on the titled copy and lets its fields win', :aggregate_failures do
+        result = described_class.call([titled, read_more], vocabulary:, url:)
+
+        expect(result.articles).to contain_exactly(expected)
+        expect(result.drop_tallies['duplicate_url']).to eq(1)
+      end
+
+      it 'does the same when the read-more copy comes first', :aggregate_failures do
+        result = described_class.call([read_more, titled], vocabulary:, url:)
+
+        expect(result.articles).to contain_exactly(expected)
+        expect(result.drop_tallies['duplicate_url']).to eq(1)
+      end
+    end
+
     # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- verdict stub + two scraper cohorts
     context 'with a corroboration page check' do
       subject(:result) { described_class.call(articles, vocabulary:, url:, corroboration:) }

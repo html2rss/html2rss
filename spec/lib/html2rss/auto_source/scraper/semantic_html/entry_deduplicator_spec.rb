@@ -131,6 +131,44 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       expect(deduplicator.stronger_entry?(swollen, tight)).to be(false)
     end
 
+    {
+      'a date' => { published_at: Time.utc(2026, 3, 28) },
+      'an image' => { image: 'https://example.com/a.jpg' },
+      'a category' => { categories: %w[city] },
+      'an enclosure' => { enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/a.mp3') }] }
+    }.each do |label, fields|
+      it "keeps a container that carries #{label} the nested card lacks", :aggregate_failures do
+        inner = Html2rss::SST::Node.build(name: :div)
+        outer = Html2rss::SST::Node.build(name: :section, children: [inner])
+        real = entry.call(article: build_article.call(**fields), root: outer, position: 1)
+        bare = entry.call(article: build_article.call, root: inner, position: 0)
+
+        expect(deduplicator.stronger_entry?(real, bare)).to be(true)
+        expect(deduplicator.stronger_entry?(bare, real)).to be(false)
+      end
+    end
+
+    it 'lets the payload decide between a container with structured fields and a wordier nested card',
+       :aggregate_failures do
+      inner = Html2rss::SST::Node.build(name: :div)
+      outer = Html2rss::SST::Node.build(name: :section, children: [inner])
+      real = entry.call(article: build_article.call(categories: %w[city]), root: outer, position: 1)
+      wordy = entry.call(article: build_article.call(description: 'one two three'), root: inner, position: 0)
+
+      expect(deduplicator.stronger_entry?(wordy, real)).to be(true)
+      expect(deduplicator.stronger_entry?(real, wordy)).to be(false)
+    end
+
+    it 'prefers a container with an article over a nested card without one', :aggregate_failures do
+      inner = Html2rss::SST::Node.build(name: :div)
+      outer = Html2rss::SST::Node.build(name: :section, children: [inner])
+      real = entry.call(article: build_article.call, root: outer, position: 1)
+      none = entry.call(article: nil, root: inner, position: 0)
+
+      expect(deduplicator.stronger_entry?(real, none)).to be(true)
+      expect(deduplicator.stronger_entry?(none, real)).to be(false)
+    end
+
     it 'compares the payload of cards that do not nest', :aggregate_failures do
       div = -> { Html2rss::SST::Node.build(name: :div) }
       left = entry.call(article: build_article.call(description: 'one two'), root: div.call, position: 1)

@@ -46,11 +46,9 @@ module Html2rss
           # @param left [Scoring::RankedSegment]
           # @param right [Scoring::RankedSegment]
           # @return [Boolean]
-          def stronger_entry?(left, right) # rubocop:disable Metrics/AbcSize
-            deltas = [left.final_score <=> right.final_score, left.quality_score <=> right.quality_score,
-                      nesting_delta(left, right)]
-            decisive = deltas.find { !_1.zero? }
-            return decisive.positive? if decisive
+          def stronger_entry?(left, right)
+            decided = tie_break(left, right)
+            return decided unless decided.nil?
 
             left_article = article_for(left)
             right_article = article_for(right)
@@ -62,17 +60,35 @@ module Html2rss
 
           private
 
-          # On a score tie the card inside the other is the tighter one: the container around it also holds
-          # its neighbours, whose text is no part of the story.
-          #
-          # @return [Integer] 1 when +left+ nests in +right+, -1 for the reverse, else 0
-          def nesting_delta(left, right)
-            inner = left.root_node
-            outer = right.root_node
-            return 0 if inner.equal?(outer)
-            return 1 if SST::Index.descendant_or_self?(inner, outer)
+          # @return [Boolean, nil] the verdict of the scores, then of the nesting; nil when both tie
+          def tie_break(left, right)
+            delta = [left.final_score <=> right.final_score, left.quality_score <=> right.quality_score]
+                    .find { !_1.zero? }
+            delta ||= nesting_delta(left, right)
+            delta.positive? unless delta.zero?
+          end
 
-            SST::Index.descendant_or_self?(outer, inner) ? -1 : 0
+          # On a score tie the card inside the other is the tighter one: the container around it also holds
+          # its neighbours, whose text is no part of the story. A container that is strictly richer in date,
+          # image, categories or enclosures is the real card and stays in the race.
+          #
+          # @return [Integer] 1 when +left+ is the tighter card, -1 for the reverse, else 0
+          def nesting_delta(left, right)
+            return 0 if left.root_node.equal?(right.root_node)
+            return tighter(left, right) if SST::Index.descendant_or_self?(left.root_node, right.root_node)
+            return -tighter(right, left) if SST::Index.descendant_or_self?(right.root_node, left.root_node)
+
+            0
+          end
+
+          # @return [Integer] 1 unless +outer+ carries more structured fields than +inner+
+          def tighter(inner, outer)
+            (structure_signature(outer) <=> structure_signature(inner)).positive? ? 0 : 1
+          end
+
+          def structure_signature(entry)
+            article = article_for(entry)
+            article ? payload_richness_signature(article).values_at(0, 2, 3, 4) : [-1]
           end
 
           def destination_groups(entries) = entries.group_by { entry_destination(_1) }.values
