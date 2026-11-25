@@ -393,6 +393,22 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(article.published_at.to_s).to start_with('2026-11-12T00:00:00')
     end
 
+    it 'keeps the exact instant of a time element wrapping the chip' do
+      time = '<time datetime="2026-11-12T14:30:00Z">12 November 2026</time>'
+      html = %(<article><h3><a href="/news/story"><span>Tram depot reopens</span>#{time}</a></h3></article>)
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'Europe/Berlin',
+                                                        link_resolver: page_resolver)
+      expect(article.published_at.to_s).to eq('2026-11-12T14:30:00+00:00')
+    end
+
+    it 'reads a text date chip in the channel time zone' do
+      html = %(<article><a href="/news/story"><span>Tram depot reopens</span>) +
+             %(<span class="date">12 November 2026</span></a></article>)
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'Europe/Berlin',
+                                                        link_resolver: page_resolver)
+      expect(article.published_at.to_s).to eq('2026-11-12T00:00:00+01:00')
+    end
+
     it 'invents no date from a bare clock chip' do
       expect(published_for('<span class="stamp">19:47</span><span>Coalition holds special sessions</span>')).to be_nil
     end

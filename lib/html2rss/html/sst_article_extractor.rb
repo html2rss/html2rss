@@ -64,7 +64,7 @@ module Html2rss
       def fields # rubocop:disable Metrics/MethodLength
         title = title_from_in_card_sources
         lines = leftover_lines
-        published_at = extract_published_at(lines)
+        published_at = extract_published_at(lines) || title_chip_date
         root, lines, published_at = parent_card_fields(title, lines, published_at)
         {
           title: Article::Title.compose(title, kicker: title_pieces.kicker_text, vocabulary: @vocabulary),
@@ -250,12 +250,13 @@ module Html2rss
 
       def extract_published_at(lines, root: @root)
         datetimes = root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
-        ArticleRules::Date.earliest(datetimes, leftover_lines: lines + dropped_title_texts, time_zone: @time_zone)
+        ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
       end
 
-      # Headline pieces the title left out: a date chip there is still the card's date.
-      def dropped_title_texts
-        [heading, @selected_anchor].flat_map { |node| title_pieces.dropped_texts(node) }
+      # The date of a chip the headline title left out, when nothing else in the card dates it.
+      def title_chip_date
+        texts = [heading, @selected_anchor].flat_map { |n| title_pieces.dropped_texts(n) }
+        ArticleRules::Date.earliest([], leftover_lines: texts, time_zone: @time_zone)
       end
 
       def extract_enclosures = ArticleRules::Enclosure.unique(collect_enclosures(@root, nil, []))
