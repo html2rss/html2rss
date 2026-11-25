@@ -37,8 +37,6 @@ module Html2rss
 
       class << self
         ##
-        # :reek:TooManyStatements
-        #
         # @return [Hash{String => String}] the default header set merged with global defaults
         def browser_defaults
           defaults = DEFAULT_HEADERS.dup

@@ -76,7 +76,6 @@ module Html2rss
           #
           # @param object [Hash, Array, Nokogiri::XML::Element]
           # @return [Array<Hash>] the schema_objects, or an empty array
-          # :reek:DuplicateMethodCall
           def from(object)
             case object
             when Nokogiri::XML::Element then from(parse_script_tag(object))
