@@ -47,11 +47,10 @@ module Html2rss
           # @param right [Scoring::RankedSegment]
           # @return [Boolean]
           def stronger_entry?(left, right) # rubocop:disable Metrics/AbcSize
-            final_delta = left.final_score <=> right.final_score
-            return final_delta.positive? unless final_delta.zero?
-
-            quality_delta = left.quality_score <=> right.quality_score
-            return quality_delta.positive? unless quality_delta.zero?
+            deltas = [left.final_score <=> right.final_score, left.quality_score <=> right.quality_score,
+                      nesting_delta(left, right)]
+            decisive = deltas.find { !_1.zero? }
+            return decisive.positive? if decisive
 
             left_article = article_for(left)
             right_article = article_for(right)
@@ -62,6 +61,19 @@ module Html2rss
           end
 
           private
+
+          # On a score tie the card inside the other is the tighter one: the container around it also holds
+          # its neighbours, whose text is no part of the story.
+          #
+          # @return [Integer] 1 when +left+ nests in +right+, -1 for the reverse, else 0
+          def nesting_delta(left, right)
+            inner = left.root_node
+            outer = right.root_node
+            return 0 if inner.equal?(outer)
+            return 1 if SST::Index.descendant_or_self?(inner, outer)
+
+            SST::Index.descendant_or_self?(outer, inner) ? -1 : 0
+          end
 
           def destination_groups(entries) = entries.group_by { entry_destination(_1) }.values
 

@@ -231,16 +231,30 @@ module Html2rss
       # One item per article identity: the first copy wins and later copies fill only the fields it
       # lacks ({Article#merge}), so a native feed item keeps its date, guid and title and takes the
       # page card's image. A read-more titled copy always loses to a copy with a real title: the
-      # link text is chrome, the other copy carries the headline.
+      # link text is chrome, the other copy carries the headline. A lone read-more copy still fills
+      # what the headline copy lacks, such as the card's summary; several are ambiguous and fold away.
       def deduplicate_by_url!
-        reject_read_more_copies!
         kept = merged_copies
         folded = articles.size - kept.size
         tallies['duplicate_url'] += folded if folded.positive?
         articles.replace(kept)
       end
 
-      def merged_copies = articles.group_by { identity.call(_1.url) }.values.map { |copies| copies.reduce(:merge) }
+      def merged_copies
+        titled = by_identity(articles.reject { read_more_title?(_1) })
+        folded, rest = articles.partition { read_more_title?(_1) && titled.key?(identity.call(_1.url)) }
+        fold_lone(by_identity(rest), by_identity(folded))
+      end
+
+      def by_identity(list) = list.group_by { identity.call(_1.url) }
+
+      def fold_lone(groups, read_more)
+        groups.map do |key, copies|
+          merged = copies.reduce(:merge)
+          lone = read_more[key]
+          lone&.one? ? merged.merge(lone.first) : merged
+        end
+      end
 
       # Items the page marks as sponsored ({PageLinks#sponsored?}), whatever their source: a paid
       # post in the site's own feed is as sponsored as its card. Item text and URL paths are never read.
@@ -309,14 +323,6 @@ module Html2rss
           'blank_title' if Scraper::PAGE_SCRAPERS.include?(article.scraper)
         else
           junk_reason(title)&.to_s || ('low_word_count' unless WordCount.at_least?(title, MIN_WORDS))
-        end
-      end
-
-      def reject_read_more_copies!
-        real = articles.reject { |article| read_more_title?(article) }
-        titled = real.to_set { |a| identity.call(a.url) }
-        tally_reject!('duplicate_url') do |article|
-          read_more_title?(article) && titled.include?(identity.call(article.url))
         end
       end
 

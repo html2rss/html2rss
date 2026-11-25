@@ -185,7 +185,10 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
                                            title: 'More about «Valid Article One»')
       end
 
-      before { articles.unshift(read_more_first) }
+      before do
+        articles.unshift(read_more_first)
+        allow(articles[1]).to receive(:merge).and_return(articles[1])
+      end
 
       it 'keeps the real title whichever copy comes first', :aggregate_failures do
         expect(cleaned.map(&:title)).to include('Valid Article One')
@@ -199,15 +202,28 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         instance_double(Html2rss::Article, valid?: true, url: articles.first.url, title: '阅读全文')
       end
 
-      before { articles.unshift(read_more_first) }
+      before do
+        articles.unshift(read_more_first)
+        allow(articles[1]).to receive(:merge).and_return(articles[1])
+      end
 
-      it 'drops the copy, and reads the label as junk, on a Chinese page only', :aggregate_failures do
+      it 'folds the copy into the titled one, and reads the label as junk, on a Chinese page only',
+         :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         zh = Html2rss::Vocabulary[:zh]
         result = described_class.call(articles.dup, vocabulary: zh, url:)
 
         expect(result.articles).not_to include(read_more_first)
+        expect(articles[1]).to have_received(:merge).with(read_more_first)
         expect(result.drop_tallies['duplicate_url']).to eq(1)
         expect([zh, vocabulary].map { described_class.junk_reason('阅读全文', vocabulary: _1) }).to eq([:cta, nil])
+      end
+
+      it 'leaves several read-more copies of one article out of the merge', :aggregate_failures do
+        other = instance_double(Html2rss::Article, valid?: true, url: articles.first.url, title: '阅读全文')
+        tallies = described_class.call([other, *articles], vocabulary: Html2rss::Vocabulary[:zh], url:).drop_tallies
+
+        expect(articles[1]).not_to have_received(:merge)
+        expect(tallies['duplicate_url']).to eq(2)
       end
     end
 

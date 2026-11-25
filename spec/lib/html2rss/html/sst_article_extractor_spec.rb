@@ -411,7 +411,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
 
     it 'reads the lead paragraph inside a card anchor as the description', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       html = '<article><a href="/news/story"><span class="teaser__title">Tram depot reopens</span>' \
-             '<p>Crews finished early.</p></a></article>'
+             '<p>Crews finished early.<time datetime="2026-11-12T07:25">07:25</time></p></a></article>'
       article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
                                                         link_resolver: page_resolver)
       expect(article.title).to eq('Tram depot reopens')
