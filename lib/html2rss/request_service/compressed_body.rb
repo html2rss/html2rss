@@ -9,7 +9,7 @@ module Html2rss
     # Decodes gzip/brotli bodies when Content-Encoding is missing or the type is octet-stream.
     class CompressedBody
       # Gzip stream magic (RFC 1952).
-      GZIP_MAGIC = "\x1F\x8B".b.freeze
+      GZIP_MAGIC = [0x1F, 0x8B].pack('C*').freeze
       # HTML prefix for unlabeled brotli trial decode. Same object as {Response::HTML_BODY_SNIFF}.
       HTML_BODY_SNIFF = Response::HTML_BODY_SNIFF
 
