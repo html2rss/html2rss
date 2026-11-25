@@ -18,7 +18,8 @@ module Html2rss
           # it, and none when a container already selected that link from inside.
           claimed = picks.filter_map { |_, link, inside| link if inside }.to_set.compare_by_identity
 
-          roots = picks.each_with_index.filter_map do |(container, link, inside), position|
+          # Claiming runs deepest first; segments and their position follow document order.
+          roots = picks.filter_map do |container, link, inside, position|
             root = inside ? container : (link if claimed.add?(link))
             [root, link, position] if root
           end
@@ -51,6 +52,7 @@ module Html2rss
         # audio or video destination (video, podcast) joins no group, and counts for none.
         def self.build_segments(roots, segmenter)
           index = segmenter.index
+          roots = roots.sort_by(&:last)
           paths = roots.map { |root, link, _| groupable?(root, link, segmenter) && card_path(root, index) }
           sizes = paths.tally
           roots.zip(paths).map do |(root, link, position), path|
@@ -80,14 +82,15 @@ module Html2rss
         end
         private_class_method :card_path
 
-        # @return [Array<Array(SST::Node, SST::Node, Boolean)>] container, its primary link, container roots the card
-        #   (the link sits inside it and it is not a run of cards)
+        # @return [Array<Array(SST::Node, SST::Node, Boolean, Integer)>] container, its primary link, container roots
+        #   the card (the link sits inside it and it is not a run of cards), container's document position;
+        #   deepest container first
         def self.linked_containers(segmenter)
           index = segmenter.index
           primary = PrimaryLink.new(segmenter)
-          collect_containers(index).filter_map do |container|
+          collect_containers(index).filter_map do |container, position|
             link = primary.select(container)
-            [container, link, index.descendant_of?(link, container) && !card_run?(container)] if link
+            [container, link, index.descendant_of?(link, container) && !card_run?(container), position] if link
           end
         end
         private_class_method :linked_containers
@@ -133,9 +136,7 @@ module Html2rss
         private_class_method :reject_ancestors
 
         def self.sort_by_depth(candidates, index)
-          candidates.each_with_index
-                    .sort_by { |node, i| [-index.depth_of(node), i] }
-                    .map(&:first)
+          candidates.each_with_index.sort_by { |node, i| [-index.depth_of(node), i] }
         end
         private_class_method :sort_by_depth
       end
