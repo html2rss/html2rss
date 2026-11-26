@@ -83,8 +83,8 @@ module Html2rss
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
       def batch_inspect(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY)
-        reports = PageRecon::Diagnostics.batch(urls: Option.list(:urls, urls), strategy: FeedPipeline::StrategyPlan.coerce(strategy),
-                                               concurrency:)
+        plan = FeedPipeline::StrategyPlan.coerce(strategy)
+        reports = PageRecon::Diagnostics.batch(urls: Option.list(:urls, urls), strategy: plan, concurrency:)
         results = reports.map(&:to_wire_h)
         successful = reports.count { |report| diagnostic_success?(report) }
 

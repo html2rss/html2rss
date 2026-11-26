@@ -1106,6 +1106,7 @@ RSpec.describe Html2rss::FeedPipeline do
       expect(error.message).to include('No feed items extracted after auto fallback')
       expect(error.message).not_to include('app-shell surface detected')
       expect(error.message).not_to include(botasaurus_hint)
+      expect(error.message).not_to end_with(' ')
     end
 
     it 'appends shared Scraper guidance for app_shell', :aggregate_failures do
@@ -1153,6 +1154,7 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(error.message).to include(guidance)
         expect(error.message).to include(botasaurus_hint)
         expect(guidance).not_to include('BOTASAURUS_SCRAPER_URL')
+        expect(error.message).to end_with("#{guidance} #{botasaurus_hint}")
         expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
       end
 

@@ -64,6 +64,7 @@ module Html2rss
     end
     private_class_method :botasaurus_hint
 
+    ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
       @raw_config = raw_config
