@@ -143,14 +143,12 @@ RSpec.describe Html2rss::Html::SST::Text do
     expect(extract.call(div, exclude: [root.find { _1.attrs.id == 'x' }])).to eq("One\nTwo")
   end
 
-  it 'prefixes list items with a dash' do # rubocop:disable RSpec/ExampleLength
-    item = Html2rss::Html::SST::Node.build(name: :li,
-                                           children: [Html2rss::Html::SST::Node.build(
-                                             name: :span, own_text: 'A'
-                                           )])
-    other = Html2rss::Html::SST::Node.build(name: :li, own_text: 'B')
+  it 'prefixes list items with a dash' do
+    node = Html2rss::Html::SST::Node
+    item = node.build(name: :li, children: [node.build(name: :span, own_text: 'A')])
+    list = node.build(name: :ul, children: [item, node.build(name: :li, own_text: 'B')])
 
-    expect(extract.call(Html2rss::Html::SST::Node.build(name: :ul, children: [item, other]))).to eq("- A\n- B")
+    expect(extract.call(list)).to eq("- A\n- B")
   end
 
   it 'hides fragment links and svg graphics from the visible text', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

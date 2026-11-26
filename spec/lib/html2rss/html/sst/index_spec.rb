@@ -68,15 +68,14 @@ RSpec.describe Html2rss::Html::SST::Index do
       expect(described_class.descendant_or_self?(first, second)).to be(false)
     end
 
-    it 'scans the subtree for unindexed nodes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      leaf = Html2rss::Html::SST::Node.build(name: :span)
-      tree = Html2rss::Html::SST::Node.build(name: :div,
-                                             children: [Html2rss::Html::SST::Node.build(
-                                               name: :p, children: [leaf]
-                                             )])
+    let(:node) { Html2rss::Html::SST::Node }
+
+    it 'scans the subtree for unindexed nodes', :aggregate_failures do
+      leaf = node.build(name: :span)
+      tree = node.build(name: :div, children: [node.build(name: :p, children: [leaf])])
       expect(described_class.descendant_or_self?(leaf, tree)).to be(true)
       expect(described_class.descendant_or_self?(tree, leaf)).to be(false)
-      expect(described_class.descendant_or_self?(Html2rss::Html::SST::Node.build(name: :span), tree)).to be(false)
+      expect(described_class.descendant_or_self?(node.build(name: :span), tree)).to be(false)
     end
   end
 
