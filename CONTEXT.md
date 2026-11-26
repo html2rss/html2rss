@@ -87,7 +87,7 @@ Composable curation seams for inspect → recon → capture → validate/test �
 
 ## Scrape target
 
-Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated by `FeedPipeline::AutoFallback` only when the retry extract of the winning probe response yielded items. Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override. `Config` stays unchanged.
+Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::FeedPipeline::ScrapeTarget` — constructed from `Config#url`, sticky-updated by `FeedPipeline::AutoFallback` only when the retry extract of the winning probe response yielded items. Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override. `Config` stays unchanged.
 
 ## Page assessment
 
@@ -137,7 +137,7 @@ Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Option
 
 ## Pipeline outcome URLs
 
-`FeedPipeline::PipelineOutcome` carries `ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash. `Diag.applied: true` means the tournament picked a winner; it does not mean wire `scrape_url` changed. Only `Status` `scrape_url` / `ScrapeTarget.effective_url` reflect a sticky rewrite after a successful retry.
+`FeedPipeline::PipelineOutcome` carries `FeedPipeline::ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash. `Diag.applied: true` means the tournament picked a winner; it does not mean wire `scrape_url` changed. Only `Status` `scrape_url` / `ScrapeTarget.effective_url` reflect a sticky rewrite after a successful retry.
 
 ## Advertised feed follow-ups
 

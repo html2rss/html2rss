@@ -558,7 +558,7 @@ RSpec.describe Html2rss::Capture do
 
     describe 'suggested channel url' do
       let(:response_url) { url }
-      let(:target) { Html2rss::ScrapeTarget.new(entry_url: entry, effective_url: effective) }
+      let(:target) { Html2rss::FeedPipeline::ScrapeTarget.new(entry_url: entry, effective_url: effective) }
       let(:entry) { url }
       let(:effective) { url }
 
@@ -1172,7 +1172,7 @@ RSpec.describe Html2rss::Capture do
         page_url: 'https://example.com/blog/list'
       )
       articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
-      target = Html2rss::ScrapeTarget.new(
+      target = Html2rss::FeedPipeline::ScrapeTarget.new(
         entry_url: url,
         effective_url: 'https://example.com/blog/list'
       )

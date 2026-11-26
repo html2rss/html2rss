@@ -21,7 +21,7 @@ module Html2rss
     # attempt_count: auto attempts attempted; 0 outside :auto.
     # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
     # feed_channel: channel facts of the native feed followed ({Syndication::ChannelFacts}); nil without one.
-    # enrichment: {Article::Enrichment} tally (empty when enrichment is off).
+    # enrichment: {Enrichment} tally (empty when enrichment is off).
     class PipelineOutcome
       # @param enrichment [Hash{Symbol => Integer}] defaults to an empty tally (enrichment off)
       # @param fields [Hash{Symbol => Object}] the remaining members
@@ -33,7 +33,7 @@ module Html2rss
     # {PipelineOutcome} fields of the same names.
     # articles: unique articles. dedup_dropped: articles removed by deduplication.
     # admission_drops: Cleanup drop tallies. feed_channel: the followed native feed's channel facts
-    # ({Syndication::ChannelFacts}); nil without one. enrichment: {Article::Enrichment} tally (empty when off).
+    # ({Syndication::ChannelFacts}); nil without one. enrichment: {Enrichment} tally (empty when off).
     class Extraction
       # @param enrichment [Hash{Symbol => Integer}] defaults to an empty tally (enrichment off)
       # @param fields [Hash{Symbol => Object}] the remaining members
@@ -138,8 +138,8 @@ module Html2rss
     def enrich(articles, config:, request_session:)
       return [articles, {}] unless (options = config.enrich)&.fetch(:article_metadata, false)
 
-      result = Article::Enrichment.call(
-        articles, request_session:, max_fetches: options.fetch(:max_fetches, Article::Enrichment::MAX_FETCHES)
+      result = Enrichment.call(
+        articles, request_session:, max_fetches: options.fetch(:max_fetches, Enrichment::MAX_FETCHES)
       )
       [result.articles, result.tally]
     end

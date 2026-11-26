@@ -112,7 +112,7 @@ module Html2rss
         # @param extraction [Html2rss::FeedPipeline::Extraction] its articles, drops and feed channel facts
         # @param selected_strategy [Symbol] concrete strategy that produced items
         # @param attempt_count [Integer] number of attempts recorded for this chain
-        # @param scrape_target [Html2rss::ScrapeTarget]
+        # @param scrape_target [Html2rss::FeedPipeline::ScrapeTarget]
         # @return [void]
         def succeed!(response:, extraction:, selected_strategy:, attempt_count:, scrape_target:)
           @result = PipelineOutcome.new(

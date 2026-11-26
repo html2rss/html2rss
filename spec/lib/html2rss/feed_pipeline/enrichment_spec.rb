@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 # rubocop:disable-next RSpec/ExampleLength -- stubbed HTTP setup
-RSpec.describe Html2rss::Article::Enrichment do
+RSpec.describe Html2rss::FeedPipeline::Enrichment do
   let(:full_html) { File.read('spec/fixtures/enrichment/article_full.html') }
   let(:meta_html) { File.read('spec/fixtures/enrichment/article_meta.html') }
   let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 1) }

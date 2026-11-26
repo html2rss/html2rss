@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::ScrapeTarget do
+RSpec.describe Html2rss::FeedPipeline::ScrapeTarget do
   describe '.from_config' do
     it 'copies the config URL onto entry and effective' do
       entry = 'https://entry.example/a'

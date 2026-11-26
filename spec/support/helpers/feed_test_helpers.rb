@@ -22,7 +22,7 @@ module FeedTestHelpers
   # rubocop:disable-next Metrics/ParameterLists -- mock helper with default options
   def stub_outcome(response, articles:, admission_drops: {}, selected_strategy: nil, scrape_target: nil,
                    url: 'https://example.com/blog')
-    target = scrape_target || Html2rss::ScrapeTarget.new(entry_url: url, effective_url: url)
+    target = scrape_target || Html2rss::FeedPipeline::ScrapeTarget.new(entry_url: url, effective_url: url)
     outcome = instance_double(
       Html2rss::FeedPipeline::PipelineOutcome,
       response:, articles:, admission_drops:, selected_strategy:, scrape_target: target

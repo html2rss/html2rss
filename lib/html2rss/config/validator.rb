@@ -97,7 +97,7 @@ module Html2rss
       # Contract for the opt-in `enrich` section (article-page metadata for items missing date, author or image).
       EnrichConfig = Dry::Schema.Params do
         optional(:article_metadata).filled(:bool)
-        optional(:max_fetches).filled(:integer, gt?: 0, lteq?: Html2rss::Article::Enrichment::MAX_FETCHES)
+        optional(:max_fetches).filled(:integer, gt?: 0, lteq?: Html2rss::FeedPipeline::Enrichment::MAX_FETCHES)
       end
 
       params do

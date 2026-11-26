@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  class Article
+  class FeedPipeline
     ##
     # Opt-in feed-build step and the single owner of "metadata from an article page": for items missing
     # +published_at+, +author+ or +image+ it fetches the item's own page and fills only those fields from the

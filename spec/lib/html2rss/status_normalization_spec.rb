@@ -93,7 +93,7 @@ RSpec.describe Html2rss::Status do
   end
 
   describe '.build' do
-    let(:target) { Html2rss::ScrapeTarget.new(entry_url: 'https://example.com/e', effective_url: 'https://example.com/s') }
+    let(:target) { Html2rss::FeedPipeline::ScrapeTarget.new(entry_url: 'https://example.com/e', effective_url: 'https://example.com/s') }
 
     it 'defaults every optional member', :aggregate_failures do
       status = described_class.build(articles: [])
