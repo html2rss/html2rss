@@ -541,13 +541,19 @@ RSpec.describe Html2rss::AutoSource do
           %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{main}</main></body></html>)
         end
       end
-      let(:news_paths) { ->(count) { Array.new(count) { "/news/2026/11/story-#{_1}" } } }
       let(:media_paths) { ->(count) { Array.new(count) { "/media/item-#{_1}" } } }
 
-      it 'puts the media of a media page first, then the news, each in document order' do
+      it 'keeps only the media of a media page, in document order' do
         allow(response).to receive(:body).and_return(media_body.call(news: 8, media: 12, type: 'VideoObject',
                                                                      news_first: true))
-        expect(articles.map { _1.url.path }).to eq(media_paths[12] + news_paths[8])
+        expect(articles.map { _1.url.path }).to eq(media_paths[12])
+      end
+
+      it 'orders the media of a media page by the page, not by the structured data' do
+        body = media_body.call(news: 0, media: 4, type: 'VideoObject', news_first: true)
+        reversed = body.sub(%r{<ul>.*</ul>}) { |list| "<ul>#{list[4..-6].scan(%r{<li>.*?</li>}).reverse.join}</ul>" }
+        allow(response).to receive(:body).and_return(reversed)
+        expect(articles.map { _1.url.path }).to eq(media_paths[4].reverse)
       end
 
       it 'is a media page when the media are more than half of the shown cards, so media fill the limit' do
@@ -563,6 +569,16 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'counts the episodes and keeps the first ones in page order' do
         expect(articles.map { _1.url.path }).to eq((1..25).map { "/podcasts/harbor-hour/episode-#{_1}" })
+      end
+    end
+
+    context 'with a podcast page whose episodes are fewer than the limit' do
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 50) }
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_podcast_episode_page.html') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/podcasts/harbor-hour/') }
+
+      it 'keeps the episodes only: the other shows\' promo cards do not pad the feed' do
+        expect(articles.map { _1.url.path }).to eq((1..30).map { "/podcasts/harbor-hour/episode-#{_1}" })
       end
     end
 

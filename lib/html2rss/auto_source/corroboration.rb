@@ -77,17 +77,14 @@ module Html2rss
       end
 
       ##
-      # A media page's order: its media items first, then the other items, each group in document
-      # order (the position of its content anchor), with items the page does not show in its
-      # content last in their given order.
+      # A media page's order: its items in document order (the position of its content anchor),
+      # with items the page does not show in its content last in their given order.
       #
       # @param articles [Array<Html2rss::Article>]
       # @return [Array<Html2rss::Article>]
       def page_order(articles)
-        articles.partition(&:media?).flat_map do |group|
-          placed, unplaced = group.partition { page_links.content_position(_1.url) }
-          placed.sort_by { page_links.content_position(_1.url) } + unplaced
-        end
+        placed, unplaced = articles.partition { page_links.content_position(_1.url) }
+        placed.sort_by { page_links.content_position(_1.url) } + unplaced
       end
 
       ##
