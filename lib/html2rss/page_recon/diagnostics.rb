@@ -120,7 +120,7 @@ module Html2rss
 
         def resolve_inspect_strategy(strategy, deep:)
           name = (strategy || :auto).to_sym
-          return :botasaurus if deep && name == :auto && MCP::Runtime.botasaurus_configured?
+          return :botasaurus if deep && name == :auto && RequestService.botasaurus_configured?
 
           name
         end

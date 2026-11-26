@@ -212,7 +212,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       expect(HTTPX).to have_received(:with).with(
         hash_including(
           headers: {
-            'User-Agent' => Html2rss::Config::RequestHeaders::DEFAULT_USER_AGENT,
+            'User-Agent' => Html2rss::RequestService::DEFAULT_USER_AGENT,
             'Accept' => described_class::TRANSPORT_ACCEPT,
             'Accept-Encoding' => described_class::TRANSPORT_ENCODING
           }

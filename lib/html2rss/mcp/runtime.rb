@@ -23,12 +23,6 @@ module Html2rss
 
       class << self
         ##
-        # @return [Boolean] whether Botasaurus transport is configured in this process
-        def botasaurus_configured?
-          !ENV['BOTASAURUS_SCRAPER_URL'].to_s.strip.empty?
-        end
-
-        ##
         # Installs the initial-fetch cache for the long-lived MCP process, so an agent iterating
         # +inspect -> capture -> validate -> test+ on one URL fetches it once per TTL window.
         # +HTML2RSS_RESPONSE_CACHE_TTL+ sets the seconds ({DEFAULT_RESPONSE_CACHE_TTL} when unset);
@@ -48,7 +42,7 @@ module Html2rss
             mcp_contract_version: Contract::MCP_CONTRACT_VERSION,
             catalog_fingerprint: Contract.catalog_fingerprint,
             tools: Contract.catalog_tools,
-            botasaurus_configured: botasaurus_configured?,
+            botasaurus_configured: RequestService.botasaurus_configured?,
             response_cache_ttl: RequestService.response_cache&.ttl
           )
         end

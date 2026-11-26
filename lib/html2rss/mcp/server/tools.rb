@@ -169,7 +169,7 @@ module Html2rss
               requested_strategy: wire[:strategy],
               channel_title: wire[:channel_title],
               admission_drops: wire[:admission_drops],
-              botasaurus_configured: Runtime.botasaurus_configured?
+              botasaurus_configured: RequestService.botasaurus_configured?
             )
           end
 

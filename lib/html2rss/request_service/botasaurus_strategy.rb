@@ -167,7 +167,7 @@ module Html2rss
 
       def client_headers
         {
-          'User-Agent' => Config::RequestHeaders::DEFAULT_USER_AGENT,
+          'User-Agent' => RequestService::DEFAULT_USER_AGENT,
           'Accept' => TRANSPORT_ACCEPT,
           'Accept-Encoding' => TRANSPORT_ENCODING
         }

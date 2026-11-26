@@ -17,9 +17,6 @@ module Html2rss
         */*;q=0.8
       ].join(',')
 
-      # Default `User-Agent` header value.
-      DEFAULT_USER_AGENT = "html2rss/#{Html2rss::VERSION}".freeze
-
       # Baseline browser-like header set used for outbound requests.
       DEFAULT_HEADERS = {
         'Accept' => DEFAULT_ACCEPT,
@@ -29,7 +26,7 @@ module Html2rss
         'Sec-Fetch-Site' => 'none',
         'Sec-Fetch-User' => '?1',
         'Upgrade-Insecure-Requests' => '1',
-        'User-Agent' => DEFAULT_USER_AGENT
+        'User-Agent' => RequestService::DEFAULT_USER_AGENT
       }.freeze
 
       # Hop-by-hop headers forbidden in HTTP/2 requests (RFC 7540 §8.1.2.2 / RFC 9113 §8.2.1).
