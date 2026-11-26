@@ -39,7 +39,7 @@ module Html2rss
     # Default auto-source configuration shipped for scraper and cleanup behavior.
     DEFAULT_CONFIG = {
       limit: DEFAULT_LIMIT,
-      entry_resolution: FeedResolution::DEFAULT_CONFIG,
+      entry_resolution: EntryResolution::DEFAULT_CONFIG,
       scraper: {
         native_feed: {
           enabled: true

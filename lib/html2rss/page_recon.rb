@@ -2,7 +2,7 @@
 
 module Html2rss
   ##
-  # Shared page recon for MCP Inspect, curation Recon, and FeedResolution probes.
+  # Shared page recon for MCP Inspect, curation Recon, and EntryResolution probes.
   #
   # Owns surface class, native feed hints, segment stats, and a cheap AutoSource
   # article count. Diagnostic fetch for Inspect/Recon lives on {.probe} — not twin
@@ -11,7 +11,7 @@ module Html2rss
     Assessment = Data.define(:surface_category, :articles_count, :admission_drops, :html_response)
 
     ##
-    # Cheap surface + admission facts shared by AutoFallback gates and FeedResolution probes.
+    # Cheap surface + admission facts shared by AutoFallback gates and EntryResolution probes.
     class Assessment
       ##
       # @return [Html2rss::SurfaceCategory]
@@ -46,7 +46,7 @@ module Html2rss
     )
 
     ##
-    # Recon facts used by Inspect and FeedResolution.
+    # Recon facts used by Inspect and EntryResolution.
     class Result
       ##
       # @return [Hash{Symbol => Object}]

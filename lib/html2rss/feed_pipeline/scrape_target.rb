@@ -7,7 +7,7 @@ module Html2rss
     ##
     # Immutable entry vs effective scrape URLs for one pipeline run.
     #
-    # Replaces mutating +Config#scrape_url=+ after {FeedResolution} rewrites the fetch URL.
+    # Replaces mutating +Config#scrape_url=+ after {EntryResolution} rewrites the fetch URL.
     class ScrapeTarget
       ##
       # @param config [Html2rss::Config]

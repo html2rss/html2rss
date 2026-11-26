@@ -4,7 +4,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
+RSpec.describe Html2rss::AutoSource::EntryResolution::CandidateGenerator do
   let(:entry_url) { 'https://example.com/' }
   let(:vocabulary) { Html2rss::Vocabulary[nil] }
   let(:html) do

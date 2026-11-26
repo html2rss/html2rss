@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::FeedResolution::Options do
+RSpec.describe Html2rss::AutoSource::EntryResolution::Options do
   describe '.from_auto_source' do
     it 'uses defaults when auto_source is nil or omits entry_resolution', :aggregate_failures do
       expect(described_class.from_auto_source(nil)).to have_attributes(enabled: true, max_probes: 5)

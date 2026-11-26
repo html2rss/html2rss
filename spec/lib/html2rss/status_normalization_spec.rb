@@ -69,7 +69,7 @@ RSpec.describe Html2rss::Status do
     it 'names the rejected entry_resolution class' do
       expect { described_class.new(**base, entry_resolution: Object.new) }
         .to raise_error(Html2rss::Status::InvalidError,
-                        'entry_resolution must be a Hash or FeedResolution::Diag, got Object')
+                        'entry_resolution must be a Hash or EntryResolution::Diag, got Object')
     end
 
     it 'freezes copies of optional url strings', :aggregate_failures do

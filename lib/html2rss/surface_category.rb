@@ -9,7 +9,7 @@ module Html2rss
   # Construction: {.classify} and {PageRecon.assess}.
   # Predicates own weak/blocked/listing-bonus decisions — do not re-list WEAK sets in Policy/Scorer.
   class SurfaceCategory
-    # Surfaces that warrant listing/feed resolution (hubs / shells — not blocked).
+    # Surfaces that warrant listing/entry resolution (hubs / shells — not blocked).
     WEAK = Set[:high_entropy_surface, :app_shell, :unsupported_surface].freeze
 
     # Root markers indicating likely app-shell/client-rendered surfaces.

@@ -1,9 +1,9 @@
-# FeedResolution
+# EntryResolution
 
 Backend-only entry URL tournament: when the pasted URL is a weak homepage/hub
 (or NativeFeed-majority extract), probe same-origin listing/feed candidates and
 sticky-rewrite the scrape URL only when the retry extract yields items
-before AutoFallback escalates strategies. `FeedResolution.call` only decides and returns a `Result`;
+before AutoFallback escalates strategies. `EntryResolution.call` only decides and returns a `Result`;
 `AutoFallback` owns the attempt: it records the diagnostic, extracts the winner's already fetched probe
 response (no second fetch), and keeps the new URL sticky only when that extract yields items.
 
@@ -14,13 +14,13 @@ tournament on item count (feed-as-means) — intentional.
 
 | Concern                                                                                    | Owner                                                      |
 | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| When to resolve (`articles:` required; floor / weak / NativeFeed ≥50%)                     | `FeedResolution::Policy`                                   |
-| Candidate mix (1 feed + up to 4 listing; taxonomy nav; segment first-wins)                 | `FeedResolution::CandidateGenerator`                       |
+| When to resolve (`articles:` required; floor / weak / NativeFeed ≥50%)                     | `EntryResolution::Policy`                                   |
+| Candidate mix (1 feed + up to 4 listing; taxonomy nav; segment first-wins)                 | `EntryResolution::CandidateGenerator`                       |
 | Listing path lexicon (`LISTING_PATHS`)                                                     | `Syndication::CandidateCatalog` (consumed, not owned here) |
-| Cheap probe + score + winner pick                                                          | `FeedResolution::Probe` + `FeedResolution::Scorer`         |
-| Typed entry_resolution options                                                             | `FeedResolution::Options`                                  |
-| Wire-safe resolution diag (`applied` = tournament win, not sticky URL)                     | `FeedResolution::Diag`                                     |
-| Public `call` → `Result` or `nil` (no tournament); probe cap from the slots it is handed   | `FeedResolution`                                           |
+| Cheap probe + score + winner pick                                                          | `EntryResolution::Probe` + `EntryResolution::Scorer`         |
+| Typed entry_resolution options                                                             | `EntryResolution::Options`                                  |
+| Wire-safe resolution diag (`applied` = tournament win, not sticky URL)                     | `EntryResolution::Diag`                                     |
+| Public `call` → `Result` or `nil` (no tournament); probe cap from the slots it is handed   | `EntryResolution`                                           |
 | Attempt lifecycle: slots left for a later strategy, Diag, retry extract, sticky target     | `FeedPipeline::AutoFallback`                               |
 | Page surface for policy/scoring                                                            | `PageRecon::Assessment` + `Html2rss::SurfaceCategory`      |
 | Native feed discover/parse                                                                 | `Syndication` (not this module)                            |
@@ -39,7 +39,7 @@ Resolve when eligible config **and** not blocked **and** any of:
 - surface `weak?`, or
 - ≥50% of articles have `scraper == AutoSource::Scraper::NativeFeed` (`native * 2 >= size`; empty → false).
 
-`FeedResolution.call` takes **`articles:`** (Array) — not `articles_count:` — and **`slots:`**, the request slots it may spend
+`EntryResolution.call` takes **`articles:`** (Array) — not `articles_count:` — and **`slots:`**, the request slots it may spend
 (`AutoFallback` passes the budget left minus one when a later strategy exists). Probes = `min(max_probes, slots)`; no slot, no tournament.
 
 ## Non-goals

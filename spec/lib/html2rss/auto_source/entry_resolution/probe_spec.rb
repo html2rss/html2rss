@@ -4,7 +4,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::FeedResolution::Probe do
+RSpec.describe Html2rss::AutoSource::EntryResolution::Probe do
   subject(:probe) { described_class.new(request_session: session, origin_url:) }
 
   let(:origin_url) { 'https://example.com/' }
@@ -30,7 +30,7 @@ RSpec.describe Html2rss::FeedResolution::Probe do
     scored = probe.call(candidate_url)
 
     expect(scored.articles_count).to eq(2)
-    expect(scored.score).to eq(Html2rss::FeedResolution::Scorer.score_feed(articles_count: 2))
+    expect(scored.score).to eq(Html2rss::AutoSource::EntryResolution::Scorer.score_feed(articles_count: 2))
     expect(scored.url.to_s).to eq('https://example.com/feed.xml')
     expect(scored.response).to be(feed_response)
   end
@@ -56,7 +56,7 @@ RSpec.describe Html2rss::FeedResolution::Probe do
 
     expect(scored).to have_attributes(
       url: candidate_url, articles_count: expected.articles_count,
-      score: Html2rss::FeedResolution::Scorer.score_assessment(expected), response: html_response
+      score: Html2rss::AutoSource::EntryResolution::Scorer.score_assessment(expected), response: html_response
     )
   end
 

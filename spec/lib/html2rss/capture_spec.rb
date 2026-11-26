@@ -1165,7 +1165,7 @@ RSpec.describe Html2rss::Capture do
     end
   end
 
-  context 'when FeedResolution rewrites the scrape URL' do
+  context 'when EntryResolution rewrites the scrape URL' do
     it 'surfaces suggested_channel_url without mutating channel.url', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response(
         File.read('spec/fixtures/local_feed_test.html'),

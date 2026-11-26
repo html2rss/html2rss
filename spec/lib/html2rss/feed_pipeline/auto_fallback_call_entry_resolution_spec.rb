@@ -252,10 +252,10 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
     let(:pages) { { default: default_pages, botasaurus: { "#{origin}/" => default_pages.fetch("#{origin}/") } } }
 
     it 'runs the tournament on the first hop only', :aggregate_failures do
-      allow(Html2rss::FeedResolution).to receive(:call).and_call_original
+      allow(Html2rss::AutoSource::EntryResolution).to receive(:call).and_call_original
 
       expect { result }.to raise_error(Html2rss::NoFeedItemsExtracted)
-      expect(Html2rss::FeedResolution).to have_received(:call).once
+      expect(Html2rss::AutoSource::EntryResolution).to have_received(:call).once
       expect(requests.count { _1[:strategy] == :botasaurus }).to eq(1)
     end
   end

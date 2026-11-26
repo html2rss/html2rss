@@ -4,7 +4,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::FeedResolution do
+RSpec.describe Html2rss::AutoSource::EntryResolution do
   let(:entry_url) { 'https://example.com/' }
   let(:html) do
     <<~HTML
@@ -96,11 +96,11 @@ RSpec.describe Html2rss::FeedResolution do
 
   it 'runs no tournament on a blocked surface, deciding the policy once', :aggregate_failures do
     allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:blocked_surface)
-    allow(Html2rss::FeedResolution::Policy).to receive(:resolve?).and_call_original
+    allow(Html2rss::AutoSource::EntryResolution::Policy).to receive(:resolve?).and_call_original
 
     expect(resolution).to be_nil
     expect(Html2rss::PageRecon).to have_received(:surface_category_for).with(response:, url: entry_url)
-    expect(Html2rss::FeedResolution::Policy).to have_received(:resolve?).once
+    expect(Html2rss::AutoSource::EntryResolution::Policy).to have_received(:resolve?).once
   end
 
   it 'runs no tournament when the entry page is strong enough' do
@@ -113,7 +113,7 @@ RSpec.describe Html2rss::FeedResolution do
   it 'raises when articles is not an Array' do
     expect do
       described_class.call(response:, session:, config:, articles: nil, slots: 5)
-    end.to raise_error(Html2rss::FeedResolution::InvalidError, 'articles must be an Array')
+    end.to raise_error(Html2rss::AutoSource::EntryResolution::InvalidError, 'articles must be an Array')
   end
 
   it 'rejects an entry URL that is not absolute' do
@@ -147,7 +147,7 @@ RSpec.describe Html2rss::FeedResolution do
   end
 
   it 'skips when the entry page leaves no candidate to probe', :aggregate_failures do
-    allow(Html2rss::FeedResolution::CandidateGenerator).to receive(:call).and_return([])
+    allow(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to receive(:call).and_return([])
     allow(session).to receive(:follow_up)
 
     expect(resolution).to have_attributes(applied: false, reason: :no_candidates, probe_count: 0, scrape_url: entry_url)
@@ -157,15 +157,15 @@ RSpec.describe Html2rss::FeedResolution do
   it 'reads the vocabulary and the probes from the channel language', :aggregate_failures do
     finnish = instance_double(Html2rss::Config, url: entry_url, auto_source: { entry_resolution: { max_probes: 1 } },
                                                 selectors: nil, channel: { language: 'fi' })
-    allow(Html2rss::FeedResolution::CandidateGenerator).to receive(:call).and_call_original
-    allow(Html2rss::FeedResolution::Probe).to receive(:new).and_call_original
+    allow(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to receive(:call).and_call_original
+    allow(Html2rss::AutoSource::EntryResolution::Probe).to receive(:new).and_call_original
     allow(session).to receive(:follow_up).and_return(listing)
 
     described_class.call(response:, session:, config: finnish, articles: [], slots: 5)
 
-    expect(Html2rss::FeedResolution::CandidateGenerator).to have_received(:call)
+    expect(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to have_received(:call)
       .with(hash_including(vocabulary: Html2rss::Vocabulary['fi'], max: 1))
-    expect(Html2rss::FeedResolution::Probe).to have_received(:new)
+    expect(Html2rss::AutoSource::EntryResolution::Probe).to have_received(:new)
       .with(request_session: session, origin_url: Html2rss::Url.from_absolute(entry_url), channel: { language: 'fi' })
   end
 

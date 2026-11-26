@@ -48,7 +48,7 @@ module Html2rss
         1 +
           RequestSession::Pager.request_slots_for(config.selectors&.dig(:items, :pagination)) +
           AutoSource.request_slots_for(config.auto_source) +
-          FeedResolution.request_slots_for(config.auto_source) +
+          EntryResolution.request_slots_for(config.auto_source) +
           StrategyPlan.resolve(config.strategy).request_slots
       end
 

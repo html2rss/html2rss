@@ -4,7 +4,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::FeedResolution::Scorer do
+RSpec.describe Html2rss::AutoSource::EntryResolution::Scorer do
   it 'scores feed item counts linearly' do
     expect(described_class.score_feed(articles_count: 4)).to eq(40)
   end

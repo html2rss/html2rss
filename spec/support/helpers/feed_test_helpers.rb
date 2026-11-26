@@ -42,7 +42,7 @@ module FeedTestHelpers
   end
 
   def scored_probe(url:, score:, articles_count:)
-    Html2rss::FeedResolution::Probe::Scored.new(
+    Html2rss::AutoSource::EntryResolution::Probe::Scored.new(
       url: Html2rss::Url.from_absolute(url),
       score:,
       articles_count:,

@@ -43,8 +43,8 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       it 'composes NativeFeed and entry_resolution slots then clamps to the ceiling', :aggregate_failures do
         baseline = described_class.baseline_request_budget_for(config)
         native_slots = Html2rss::AutoSource::Scraper::NativeFeed.request_slots
-        fr_opts = Html2rss::FeedResolution::Options.from_auto_source(config.auto_source)
-        fr_slots = Html2rss::FeedResolution.request_slots_for(config.auto_source)
+        fr_opts = Html2rss::AutoSource::EntryResolution::Options.from_auto_source(config.auto_source)
+        fr_slots = Html2rss::AutoSource::EntryResolution.request_slots_for(config.auto_source)
 
         expect(native_slots).to eq(1)
         expect(fr_opts.max_probes).to eq(5)

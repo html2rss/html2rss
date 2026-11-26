@@ -72,11 +72,11 @@ module Html2rss
 
         # Records the diagnostic and marks the tournament as run for this chain.
         #
-        # @param result [Html2rss::FeedResolution::Result]
+        # @param result [Html2rss::AutoSource::EntryResolution::Result]
         # @return [void]
         def remember_entry_resolution(result)
           @resolution_tried = true
-          @entry_resolution = FeedResolution::Diag.from_result(result)
+          @entry_resolution = EntryResolution::Diag.from_result(result)
         end
 
         # @param strategy [Symbol] strategy that raised
@@ -262,8 +262,8 @@ module Html2rss
       end
 
       def run_tournament(hop, response, extraction)
-        FeedResolution.call(response:, session: hop.request_session, config:, articles: extraction.articles,
-                            slots: budget.remaining_requests)
+        EntryResolution.call(response:, session: hop.request_session, config:, articles: extraction.articles,
+                             slots: budget.remaining_requests)
       end
 
       # Extracts the winner's already fetched response; the target turns sticky only when it yields items.

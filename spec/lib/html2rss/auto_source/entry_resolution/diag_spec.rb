@@ -2,9 +2,9 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::FeedResolution::Diag do
+RSpec.describe Html2rss::AutoSource::EntryResolution::Diag do
   let(:result) do
-    Html2rss::FeedResolution::Result.new(
+    Html2rss::AutoSource::EntryResolution::Result.new(
       entry_url: 'https://example.com/',
       scrape_url: 'https://example.com/feed.xml',
       applied: true,
