@@ -256,7 +256,7 @@ module Html2rss
     def doctor(type = 'botasaurus')
       case type.to_s
       when 'botasaurus'
-        result = Html2rss::Doctor::Botasaurus.call(sample_url: options[:sample])
+        result = Html2rss::CLI::Doctor::Botasaurus.call(sample_url: options[:sample])
         explain_json!(result.to_h)
         raise Thor::Error, result.message unless result.ok
       else

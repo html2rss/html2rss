@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'climate_control'
 
-RSpec.describe Html2rss::Doctor::Botasaurus do
+RSpec.describe Html2rss::CLI::Doctor::Botasaurus do
   describe '.call' do
     it 'reports missing env without leaking secrets', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- preflight check assertions
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: nil) do
