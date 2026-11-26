@@ -2,18 +2,18 @@
 
 module McpTestHelpers
   def report(**data)
-    Html2rss::PageRecon::Diagnostics::Report.new(
+    Html2rss::Curation::Inspect::Report.new(
       data: { articles_count: 0, alternate_feeds: [], **data }
     )
   end
 
   # rubocop:disable-next Metrics/MethodLength -- fixture builder for recon Result
   def recon_result(verdict:, **attrs)
-    Html2rss::Recon::Result.new(
+    Html2rss::Curation::Recon::Result.new(
       requested_url: 'https://example.com',
       final_url: 'https://example.com',
       status: 200,
-      verdict: Html2rss::Recon::Verdict[verdict],
+      verdict: Html2rss::Curation::Recon::Verdict[verdict],
       native_feed: nil,
       surface_category: :article_listing,
       articles_count: 3,
@@ -52,7 +52,7 @@ module McpTestHelpers
         error_message || 'Configuration schema validation failed'
       end
 
-    Html2rss::Test::Result.new(
+    Html2rss::Curation::Test::Result.new(
       success:,
       failure_kind:,
       item_count: success ? 2 : 0,

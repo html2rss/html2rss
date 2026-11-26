@@ -41,7 +41,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     describe '.inspect_guidance' do
       it 'returns default inspect guidance when articles are present' do
-        populated = Html2rss::PageRecon::Diagnostics::Report.new(
+        populated = Html2rss::Curation::Inspect::Report.new(
           data: { articles_count: 3, alternate_feeds: [] }
         )
 
@@ -71,7 +71,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     describe '.recon_guidance' do
       it 'appends scheme downgrade hint' do
-        result = instance_double(Html2rss::Recon::Result, scheme_downgrade: true)
+        result = instance_double(Html2rss::Curation::Recon::Result, scheme_downgrade: true)
         next_step = Html2rss::MCP::Outcome::NextStep[:capture]
 
         expect(described_class.recon_guidance(result, next_step))
@@ -79,7 +79,7 @@ RSpec.describe Html2rss::MCP::Outcome do
       end
 
       it 'returns next_step guidance when scheme is not downgraded' do
-        result = instance_double(Html2rss::Recon::Result, scheme_downgrade: false)
+        result = instance_double(Html2rss::Curation::Recon::Result, scheme_downgrade: false)
         next_step = Html2rss::MCP::Outcome::NextStep[:capture]
 
         expect(described_class.recon_guidance(result, next_step)).to eq(next_step.guidance)
@@ -183,7 +183,8 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
     let(:capture) do
       lambda do |requested_strategy: 'auto', **fields|
-        described_class.capture(result: Html2rss::Capture::CaptureResult.new(**base, **fields), requested_strategy:)
+        described_class.capture(result: Html2rss::Curation::Capture::CaptureResult.new(**base, **fields),
+                                requested_strategy:)
       end
     end
 
@@ -257,7 +258,7 @@ RSpec.describe Html2rss::MCP::Outcome do
         let(:results) { [{ ok: true }, { ok: false }] }
 
         it 'points at done and echoes the batch wire payload when any item succeeded', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- wire payload
-          batch = Html2rss::Batch::BatchResult.new(total: 2, successful: 1, results:)
+          batch = Html2rss::Curation::Batch::BatchResult.new(total: 2, successful: 1, results:)
           outcome = described_class.public_send(verb, batch)
 
           expect(outcome.ok).to be(true)
@@ -267,7 +268,7 @@ RSpec.describe Html2rss::MCP::Outcome do
         end
 
         it "points at #{failure_step} when no item succeeded", :aggregate_failures do
-          batch = Html2rss::Batch::BatchResult.new(total: 2, successful: 0, results:)
+          batch = Html2rss::Curation::Batch::BatchResult.new(total: 2, successful: 0, results:)
           outcome = described_class.public_send(verb, batch)
 
           expect(outcome.ok).to be(true)
@@ -280,8 +281,8 @@ RSpec.describe Html2rss::MCP::Outcome do
 
   describe 'test guidance' do
     let(:warned) do
-      Html2rss::Test::QualityReport.new(warnings: %w[thin_titles dup_urls], metrics: {}, native_feed: nil,
-                                        defer_reason: nil)
+      Html2rss::Curation::Test::QualityReport.new(warnings: %w[thin_titles dup_urls], metrics: {}, native_feed: nil,
+                                                  defer_reason: nil)
     end
 
     it 'uses the apply guidance on success without warnings' do
@@ -300,8 +301,9 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'points a min_items failure at the url selector when items lack a URL' do # rubocop:disable RSpec/ExampleLength
-      report = Html2rss::Test::QualityReport.new(warnings: [:items_without_url], metrics: { items_without_url: 2 },
-                                                 native_feed: nil, defer_reason: nil)
+      report = Html2rss::Curation::Test::QualityReport.new(
+        warnings: [:items_without_url], metrics: { items_without_url: 2 }, native_feed: nil, defer_reason: nil
+      )
       outcome = described_class.test(test_result(error_message: 'Extracted 0 items (minimum required: 1)',
                                                  quality_report: report))
 
@@ -354,7 +356,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'points at validate on schema failure' do # rubocop:disable RSpec/ExampleLength
       result = test_result(
-        failure_kind: Html2rss::Test::FailureKind[:schema],
+        failure_kind: Html2rss::Curation::Test::FailureKind[:schema],
         validation_issues: [
           Html2rss::Config::ValidationIssue.new(path: %i[channel], code: :missing_key, message: 'missing')
         ],
@@ -364,17 +366,17 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'points at capture on execution failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind[:execution])
+      result = test_result(failure_kind: Html2rss::Curation::Test::FailureKind[:execution])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
 
     it 'points at capture on min_items failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind[:min_items])
+      result = test_result(failure_kind: Html2rss::Curation::Test::FailureKind[:min_items])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
 
     it 'points at capture on quality failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind[:quality])
+      result = test_result(failure_kind: Html2rss::Curation::Test::FailureKind[:quality])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
   end

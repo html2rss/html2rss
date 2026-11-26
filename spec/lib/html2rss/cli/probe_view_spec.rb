@@ -36,9 +36,11 @@ RSpec.describe Html2rss::CLI::ProbeView do
   end
 
   describe '.from_recon' do
+    let(:drop) { Html2rss::Curation::Recon::Verdict[:drop] }
+
     it 'maps a recon result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      verdict = Html2rss::Recon::Verdict[:defer]
-      result = Html2rss::Recon::Result.new(
+      verdict = Html2rss::Curation::Recon::Verdict[:defer]
+      result = Html2rss::Curation::Recon::Result.new(
         requested_url: Html2rss::Url.from_absolute('https://a.test/x'),
         final_url: Html2rss::Url.from_absolute('https://a.test/y'), status: 403, verdict:,
         native_feed: Html2rss::Url.from_absolute('https://a.test/feed'), surface_category: 'blocked',
@@ -53,8 +55,8 @@ RSpec.describe Html2rss::CLI::ProbeView do
     end
 
     it 'keeps a missing native feed nil' do
-      result = Html2rss::Recon::Result.new(
-        requested_url: 'a', final_url: 'b', status: nil, verdict: Html2rss::Recon::Verdict[:drop], native_feed: nil,
+      result = Html2rss::Curation::Recon::Result.new(
+        requested_url: 'a', final_url: 'b', status: nil, verdict: drop, native_feed: nil,
         surface_category: nil, articles_count: nil, scheme_downgrade: false, notes: [], html_bytesize: nil
       )
 

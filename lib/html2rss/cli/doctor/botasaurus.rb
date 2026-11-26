@@ -91,7 +91,7 @@ module Html2rss
         # @param url [String]
         # @return [Hash{Symbol => Object}]
         def self.sample_scrape(url)
-          wire = PageRecon::Diagnostics.call(url:, strategy: :botasaurus).to_wire_h
+          wire = Curation::Inspect.call(url:, strategy: :botasaurus).to_wire_h
           {
             ok: wire[:status].to_i.between?(200, 399),
             status: wire[:status],

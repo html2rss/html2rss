@@ -38,7 +38,7 @@ module Html2rss
         end
 
         ##
-        # @param result [Html2rss::Recon::Result]
+        # @param result [Html2rss::Curation::Recon::Result]
         # @return [ProbeView]
         def from_recon(result) # rubocop:disable Metrics/MethodLength
           new(

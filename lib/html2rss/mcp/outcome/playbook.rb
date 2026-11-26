@@ -80,7 +80,7 @@ module Html2rss
           end
 
           ##
-          # @param report [PageRecon::Diagnostics::Report]
+          # @param report [Curation::Inspect::Report]
           # @return [String]
           def inspect_guidance(report)
             return GUIDANCE.fetch(:inspect) unless report.articles_count.zero?
@@ -107,7 +107,7 @@ module Html2rss
           end
 
           ##
-          # @param result [Html2rss::Recon::Result]
+          # @param result [Html2rss::Curation::Recon::Result]
           # @param next_step [Outcome::NextStep]
           # @return [String]
           def recon_guidance(result, next_step)

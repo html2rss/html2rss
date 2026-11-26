@@ -65,10 +65,10 @@ RSpec.describe Html2rss::CLI::Doctor::Botasaurus do
       stub_request(:get, 'http://127.0.0.1:4010/health')
         .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
       report = instance_double(
-        Html2rss::PageRecon::Diagnostics::Report,
+        Html2rss::Curation::Inspect::Report,
         to_wire_h: { status: 200, articles_count: 2 }
       )
-      allow(Html2rss::PageRecon::Diagnostics).to receive(:call)
+      allow(Html2rss::Curation::Inspect).to receive(:call)
         .with(url: 'https://example.com', strategy: :botasaurus)
         .and_return(report)
 
@@ -85,10 +85,10 @@ RSpec.describe Html2rss::CLI::Doctor::Botasaurus do
       stub_request(:get, 'http://127.0.0.1:4010/health')
         .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
       report = instance_double(
-        Html2rss::PageRecon::Diagnostics::Report,
+        Html2rss::Curation::Inspect::Report,
         to_wire_h: { status: 403, articles_count: 0 }
       )
-      allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_return(report)
+      allow(Html2rss::Curation::Inspect).to receive(:call).and_return(report)
 
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
         result = described_class.call(sample_url: 'https://example.com')
@@ -101,7 +101,7 @@ RSpec.describe Html2rss::CLI::Doctor::Botasaurus do
     it 'fails when sample scrape raises', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- exception handling assertions
       stub_request(:get, 'http://127.0.0.1:4010/health')
         .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
-      allow(Html2rss::PageRecon::Diagnostics).to receive(:call)
+      allow(Html2rss::Curation::Inspect).to receive(:call)
         .and_raise(Html2rss::Error, 'scrape timeout')
 
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
@@ -115,7 +115,7 @@ RSpec.describe Html2rss::CLI::Doctor::Botasaurus do
     it 'propagates contract errors from the sample scrape' do # rubocop:disable RSpec/ExampleLength -- stubs for health and scrape
       stub_request(:get, 'http://127.0.0.1:4010/health')
         .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
-      allow(Html2rss::PageRecon::Diagnostics).to receive(:call)
+      allow(Html2rss::Curation::Inspect).to receive(:call)
         .and_raise(Html2rss::RequestService::Context::InvalidError)
 
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do

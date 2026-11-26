@@ -578,12 +578,12 @@ RSpec.describe Html2rss do
   end
 
   describe '.inspect' do
-    it 'delegates to PageRecon::Diagnostics.call' do # rubocop:disable RSpec/ExampleLength
-      allow(Html2rss::PageRecon::Diagnostics).to receive(:call).with(
+    it 'delegates to Inspect.call' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Curation::Inspect).to receive(:call).with(
         url: 'https://example.com', strategy: :auto, deep: false
       )
       described_class.inspect('https://example.com')
-      expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(
+      expect(Html2rss::Curation::Inspect).to have_received(:call).with(
         url: 'https://example.com', strategy: :auto, deep: false
       )
     end
@@ -595,35 +595,36 @@ RSpec.describe Html2rss do
 
   describe '.recon' do
     it 'delegates to Recon.call' do
-      allow(Html2rss::Recon).to receive(:call).with('https://example.com', strategy: :auto)
+      allow(Html2rss::Curation::Recon).to receive(:call).with('https://example.com', strategy: :auto)
       described_class.recon('https://example.com')
-      expect(Html2rss::Recon).to have_received(:call).with('https://example.com', strategy: :auto)
+      expect(Html2rss::Curation::Recon).to have_received(:call).with('https://example.com', strategy: :auto)
     end
 
     it 'forwards extra recon options' do
-      allow(Html2rss::Recon).to receive(:call)
+      allow(Html2rss::Curation::Recon).to receive(:call)
       described_class.recon('https://example.com', cache_dir: '/tmp/c')
-      expect(Html2rss::Recon).to have_received(:call).with('https://example.com', strategy: :auto, cache_dir: '/tmp/c')
+      expect(Html2rss::Curation::Recon).to have_received(:call).with('https://example.com', strategy: :auto,
+                                                                                            cache_dir: '/tmp/c')
     end
   end
 
   describe '.test' do
     it 'delegates to Test.call' do # rubocop:disable RSpec/ExampleLength
-      allow(Html2rss::Test).to receive(:call).with(
+      allow(Html2rss::Curation::Test).to receive(:call).with(
         'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
                            sample_limit: 3
       )
       described_class.test('config.yml')
-      expect(Html2rss::Test).to have_received(:call).with(
+      expect(Html2rss::Curation::Test).to have_received(:call).with(
         'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
                            sample_limit: 3
       )
     end
 
     it 'forwards the feed name and strategy' do # rubocop:disable RSpec/ExampleLength
-      allow(Html2rss::Test).to receive(:call)
+      allow(Html2rss::Curation::Test).to receive(:call)
       described_class.test('config.yml', 'named', strategy: :default)
-      expect(Html2rss::Test).to have_received(:call).with(
+      expect(Html2rss::Curation::Test).to have_received(:call).with(
         'config.yml', 'named',
         min_items: 1, params: {}, strategy: :default, strict_quality: false, compare_enhance: false, sample_limit: 3
       )
@@ -633,62 +634,62 @@ RSpec.describe Html2rss do
   describe '.apply' do
     it 'delegates to Apply.call', :aggregate_failures do
       config = { channel: { url: 'https://example.com' } }
-      result = instance_double(Html2rss::Apply::Result)
-      allow(Html2rss::Apply).to receive(:call).with(config).and_return(result)
+      result = instance_double(Html2rss::Curation::Apply::Result)
+      allow(Html2rss::Curation::Apply).to receive(:call).with(config).and_return(result)
 
       expect(described_class.apply(config)).to eq(result)
-      expect(Html2rss::Apply).to have_received(:call).with(config)
+      expect(Html2rss::Curation::Apply).to have_received(:call).with(config)
     end
   end
 
   describe '.batch_scrape' do
     it 'delegates to Batch.batch_scrape', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      batch_result = instance_double(Html2rss::Batch::BatchResult)
-      allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
+      batch_result = instance_double(Html2rss::Curation::Batch::BatchResult)
+      allow(Html2rss::Curation::Batch).to receive(:batch_scrape).and_return(batch_result)
 
       expect(described_class.batch_scrape(%w[https://a.test https://b.test], limit: 5)).to eq(batch_result)
-      expect(Html2rss::Batch).to have_received(:batch_scrape).with(
+      expect(Html2rss::Curation::Batch).to have_received(:batch_scrape).with(
         urls: %w[https://a.test https://b.test],
         strategy: :auto,
         limit: 5,
-        concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
+        concurrency: Html2rss::Curation::Batch::DEFAULT_CONCURRENCY
       )
     end
 
     it 'defaults limit to 10' do # rubocop:disable RSpec/ExampleLength
-      batch_result = instance_double(Html2rss::Batch::BatchResult)
-      allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
+      batch_result = instance_double(Html2rss::Curation::Batch::BatchResult)
+      allow(Html2rss::Curation::Batch).to receive(:batch_scrape).and_return(batch_result)
       described_class.batch_scrape(%w[https://a.test])
-      expect(Html2rss::Batch).to have_received(:batch_scrape).with(
-        urls: %w[https://a.test], strategy: :auto, limit: 10, concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
+      expect(Html2rss::Curation::Batch).to have_received(:batch_scrape).with(
+        urls: %w[https://a.test], strategy: :auto, limit: 10, concurrency: Html2rss::Curation::Batch::DEFAULT_CONCURRENCY
       )
     end
   end
 
   describe '.batch_inspect' do
     it 'delegates to Batch.batch_inspect', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      batch_result = instance_double(Html2rss::Batch::BatchResult)
-      allow(Html2rss::Batch).to receive(:batch_inspect).and_return(batch_result)
+      batch_result = instance_double(Html2rss::Curation::Batch::BatchResult)
+      allow(Html2rss::Curation::Batch).to receive(:batch_inspect).and_return(batch_result)
 
       expect(described_class.batch_inspect(%w[https://a.test])).to eq(batch_result)
-      expect(Html2rss::Batch).to have_received(:batch_inspect).with(
+      expect(Html2rss::Curation::Batch).to have_received(:batch_inspect).with(
         urls: %w[https://a.test],
         strategy: :auto,
-        concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
+        concurrency: Html2rss::Curation::Batch::DEFAULT_CONCURRENCY
       )
     end
   end
 
   describe '.batch_recon' do
     it 'delegates to Batch.batch_recon', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      batch_result = instance_double(Html2rss::Batch::BatchResult)
-      allow(Html2rss::Batch).to receive(:batch_recon).and_return(batch_result)
+      batch_result = instance_double(Html2rss::Curation::Batch::BatchResult)
+      allow(Html2rss::Curation::Batch).to receive(:batch_recon).and_return(batch_result)
 
       expect(described_class.batch_recon(%w[https://a.test], cache_dir: '/tmp/cache')).to eq(batch_result)
-      expect(Html2rss::Batch).to have_received(:batch_recon).with(
+      expect(Html2rss::Curation::Batch).to have_received(:batch_recon).with(
         urls: %w[https://a.test],
         strategy: :auto,
-        concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY,
+        concurrency: Html2rss::Curation::Batch::DEFAULT_CONCURRENCY,
         cache_dir: '/tmp/cache'
       )
     end
@@ -696,11 +697,11 @@ RSpec.describe Html2rss do
 
   describe '.capture' do
     it 'returns Capture::CaptureResult from Capture.build', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      capture_result = instance_double(Html2rss::Capture::CaptureResult)
-      allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
+      capture_result = instance_double(Html2rss::Curation::Capture::CaptureResult)
+      allow(Html2rss::Curation::Capture).to receive(:build).and_return(capture_result)
 
       expect(described_class.capture('https://example.com', topics: ['tech'], title: 'Example')).to eq(capture_result)
-      expect(Html2rss::Capture).to have_received(:build).with(
+      expect(Html2rss::Curation::Capture).to have_received(:build).with(
         'https://example.com',
         hash_including(strategy: :auto, topics: ['tech'], title: 'Example')
       )

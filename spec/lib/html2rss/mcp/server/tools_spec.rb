@@ -4,11 +4,11 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::MCP::Server::Tools do
   describe 'batch tool keyword defaults' do
-    let(:batch_result) { Html2rss::Batch::BatchResult.new(total: 1, successful: 1, results: []) }
+    let(:batch_result) { Html2rss::Curation::Batch::BatchResult.new(total: 1, successful: 1, results: []) }
     let(:tools_by_name) { described_class::TOOLS.to_h { |tool| [tool.name, tool] } }
 
     before do
-      allow(Html2rss::Batch).to receive_messages(
+      allow(Html2rss::Curation::Batch).to receive_messages(
         batch_scrape: batch_result, batch_inspect: batch_result, batch_recon: batch_result
       )
     end
@@ -16,7 +16,7 @@ RSpec.describe Html2rss::MCP::Server::Tools do
     it 'forwards batch_scrape default limit and concurrency' do
       tools_by_name.fetch('batch_scrape').call.call(urls: ['https://example.com/a'])
 
-      expect(Html2rss::Batch).to have_received(:batch_scrape).with(
+      expect(Html2rss::Curation::Batch).to have_received(:batch_scrape).with(
         urls: ['https://example.com/a'], strategy: :auto, limit: 10, concurrency: 5
       )
     end
@@ -24,7 +24,7 @@ RSpec.describe Html2rss::MCP::Server::Tools do
     it 'forwards batch_inspect default concurrency' do
       tools_by_name.fetch('batch_inspect').call.call(urls: ['https://example.com/a'])
 
-      expect(Html2rss::Batch).to have_received(:batch_inspect).with(
+      expect(Html2rss::Curation::Batch).to have_received(:batch_inspect).with(
         urls: ['https://example.com/a'], strategy: :auto, concurrency: 5
       )
     end
@@ -32,7 +32,7 @@ RSpec.describe Html2rss::MCP::Server::Tools do
     it 'forwards batch_recon default concurrency' do
       tools_by_name.fetch('batch_recon').call.call(urls: ['https://example.com/a'])
 
-      expect(Html2rss::Batch).to have_received(:batch_recon).with(
+      expect(Html2rss::Curation::Batch).to have_received(:batch_recon).with(
         urls: ['https://example.com/a'], strategy: :auto, concurrency: 5
       )
     end
@@ -167,8 +167,9 @@ RSpec.describe Html2rss::MCP::Server::Tools do
 
     let(:result_with) do
       lambda do |empty:, item_count:|
-        report = instance_double(Html2rss::Test::QualityReport, to_h: {})
-        instance_double(Html2rss::Apply::Result, empty?: empty, item_count:, to_rss: rss, quality_report: report)
+        report = instance_double(Html2rss::Curation::Test::QualityReport, to_h: {})
+        instance_double(Html2rss::Curation::Apply::Result, empty?: empty, item_count:, to_rss: rss,
+                                                           quality_report: report)
       end
     end
 

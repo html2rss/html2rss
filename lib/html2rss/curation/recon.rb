@@ -1,0 +1,239 @@
+# frozen_string_literal: true
+
+require 'digest'
+require 'uri'
+require 'fileutils'
+
+module Html2rss
+  module Curation
+    ##
+    # Service that runs reconnaissance on a URL to discover redirect chains,
+    # native RSS/Atom/RDF feeds, surface categorization, and emit an actionable verdict.
+    module Recon # rubocop:disable Metrics/ModuleLength
+      Verdict = Data.define(:name)
+
+      ##
+      # Closed curation verdict (:build / :defer / :drop).
+      class Verdict
+        # Frozen name → instance table.
+        ALL = %i[build defer drop].to_h { |name| [name, new(name:)] }.freeze
+        private_class_method :new
+
+        ##
+        # @param name [Symbol, String]
+        # @return [Verdict]
+        def self.[](name) = ALL.fetch(name.to_sym) { raise InvalidOption, "unknown verdict: #{name.inspect}" }
+
+        ##
+        # @return [Boolean]
+        def build? = name == :build
+
+        ##
+        # @return [Boolean]
+        def defer? = name == :defer
+
+        ##
+        # @return [Boolean]
+        def drop? = name == :drop
+
+        ##
+        # @return [Symbol]
+        def to_sym = name
+
+        ##
+        # @return [String]
+        def to_s = name.to_s
+      end
+
+      Result = Data.define(
+        :requested_url,
+        :final_url,
+        :status,
+        :verdict,
+        :native_feed,
+        :surface_category,
+        :articles_count,
+        :scheme_downgrade,
+        :notes,
+        :html_bytesize
+      )
+
+      ##
+      # Immutable outcome of a reconnaissance operation.
+      class Result
+        ##
+        # @return [Boolean]
+        def build? = verdict.build?
+
+        ##
+        # @return [Boolean]
+        def defer? = verdict.defer?
+
+        ##
+        # @return [Boolean]
+        def drop? = verdict.drop?
+
+        ##
+        # @return [Boolean]
+        def native_feed? = !native_feed.nil?
+
+        ##
+        # @return [Hash{Symbol => Object}]
+        def to_h # rubocop:disable Metrics/MethodLength
+          {
+            requested_url: requested_url.to_s,
+            final_url: final_url.to_s,
+            status:,
+            verdict: verdict.to_sym,
+            native_feed: native_feed&.to_s,
+            surface_category: surface_category&.to_s,
+            articles_count:,
+            scheme_downgrade:,
+            notes:,
+            html_bytesize:
+          }.compact
+        end
+      end
+
+      ##
+      # Runs reconnaissance on a single URL.
+      #
+      # @param url [String, Html2rss::Url] source page URL
+      # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
+      # @param cache_dir [String, nil] optional directory to cache raw HTML bodies
+      # @param cache_mutex [Mutex, nil] optional mutex serializing cache writes
+      # @option options [Integer, nil] :max_redirects optional maximum redirects
+      # @option options [Integer, nil] :max_requests optional request budget
+      # @return [Html2rss::Curation::Recon::Result]
+      def self.call(url, strategy: :auto, cache_dir: nil, cache_mutex: nil, **) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+        url_obj = Url.from_absolute(url)
+
+        begin
+          probe = PageProbe.probe(url_obj, strategy:, **)
+        rescue Html2rss::ContractError
+          raise
+        rescue Html2rss::Error => error
+          return error_result(url_obj, error)
+        end
+
+        cache_html_body(probe.response.body, url_obj, cache_dir, cache_mutex) if cache_dir && probe.response.body
+
+        recon = probe.result
+        native_feed, discovery_note = find_native_feed(probe.session, probe.response)
+        notes = build_notes(recon, native_feed, probe.response)
+        notes << discovery_note if discovery_note
+        verdict = determine_verdict(recon, native_feed)
+
+        Result.new(
+          requested_url: url_obj,
+          final_url: probe.response.url,
+          status: probe.response.status,
+          verdict:,
+          native_feed:,
+          surface_category: AutoSource::SurfaceCategory[recon.surface_category],
+          articles_count: recon.articles_count,
+          scheme_downgrade: recon.scheme_downgrade,
+          notes:,
+          html_bytesize: probe.response.body&.bytesize
+        )
+      end
+
+      ##
+      # Runs batch reconnaissance across an Enumerable of URLs.
+      # Results are returned in input order. Concurrency uses a Thread pool
+      # (not Ractors) for I/O overlap with one loaded gem image.
+      #
+      # @param urls [Enumerable<String>] list of URLs
+      # @param strategy [Symbol] request strategy
+      # @param cache_dir [String, nil] optional directory to cache raw HTML bodies
+      # @param max_threads [Integer] concurrent worker count
+      # @option options [Integer, nil] :max_redirects optional maximum redirects
+      # @option options [Integer, nil] :max_requests optional request budget
+      # @return [Array<Html2rss::Curation::Recon::Result>]
+      def self.batch(urls, strategy: :auto, cache_dir: nil, max_threads: 5, **options)
+        url_list = urls.map { |u| u.to_s.strip }.reject(&:empty?)
+        return [] if url_list.empty?
+
+        FileUtils.mkdir_p(cache_dir) if cache_dir
+        cache_mutex = Mutex.new if cache_dir
+
+        Batch.map(url_list, concurrency: max_threads) do |target_url|
+          call(target_url, strategy:, cache_dir:, cache_mutex:, **options)
+        end
+      end
+
+      ##
+      # @param session [Html2rss::RequestSession]
+      # @param response [Html2rss::RequestService::Response] the fetched page, where any redirect landed
+      # @return [Array(Html2rss::Url, nil), String, nil)] feed URL and optional discovery error note
+      def self.find_native_feed(session, response)
+        feed = Syndication::Discovery.native_feed_url(response:, request_session: session)
+        [feed, nil]
+      rescue Html2rss::ContractError
+        raise
+      rescue Html2rss::Error => error
+        [nil, "discovery_error=#{error.class}: #{error.message}"]
+      end
+      private_class_method :find_native_feed
+
+      def self.build_notes(recon, native_feed, response)
+        notes = []
+        notes << "native_rss=#{native_feed}" if native_feed
+        if recon.scheme_downgrade
+          notes << 'scheme_downgrade'
+          notes << 'botasaurus_retry=Try strategy botasaurus once before DROP (HTTPS→HTTP may need JS fetch)'
+        end
+        notes << "blocked=#{recon.blocked_surface}" if recon.blocked_surface
+        notes << "html_bytes=#{response.body&.bytesize}" if response.body
+        notes
+      end
+      private_class_method :build_notes
+
+      def self.determine_verdict(recon, native_feed)
+        return Verdict[:drop] if recon.status.nil? || recon.status >= 400 || recon.scheme_downgrade
+        return Verdict[:defer] if native_feed
+
+        category = AutoSource::SurfaceCategory[recon.surface_category]
+        return Verdict[:drop] if category.blocked?
+
+        Verdict[:build]
+      end
+      private_class_method :determine_verdict
+
+      def self.error_result(url_obj, error) # rubocop:disable Metrics/MethodLength
+        Result.new(
+          requested_url: url_obj,
+          final_url: url_obj,
+          status: nil,
+          verdict: Verdict[:drop],
+          native_feed: nil,
+          surface_category: AutoSource::SurfaceCategory[:unsupported_surface],
+          articles_count: 0,
+          scheme_downgrade: false,
+          notes: ["error: #{error.class} - #{error.message}"],
+          html_bytesize: nil
+        )
+      end
+      private_class_method :error_result
+
+      # Writes the raw response body once under a host+url-digest filename.
+      #
+      # @param body [String]
+      # @param url_obj [Html2rss::Url]
+      # @param cache_dir [String]
+      # @param cache_mutex [Mutex, nil]
+      # @return [void]
+      def self.cache_html_body(body, url_obj, cache_dir, cache_mutex)
+        host = url_obj.host.to_s.delete_prefix('www.')
+        host = 'snapshot' if host.empty?
+        digest = Digest::SHA256.hexdigest(url_obj.to_s)[0, 12]
+        file_path = File.join(cache_dir, "#{host}-#{digest}.html")
+        writer = -> { File.write(file_path, body) }
+        cache_mutex ? cache_mutex.synchronize(&writer) : writer.call
+      rescue SystemCallError, IOError => error
+        Log.debug("Recon cache failed: #{error.message}")
+      end
+      private_class_method :cache_html_body
+    end
+  end
+end

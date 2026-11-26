@@ -10,9 +10,9 @@ RSpec.describe Html2rss::CLI::Render do
   end
   let(:view) { Html2rss::CLI::ProbeView.new(**view_attributes) }
   let(:recon_result) do
-    Html2rss::Recon::Result.new(
+    Html2rss::Curation::Recon::Result.new(
       requested_url: 'https://a.test/x', final_url: 'https://a.test/y', status: 200,
-      verdict: Html2rss::Recon::Verdict[:build], native_feed: Html2rss::Url.from_absolute('https://a.test/feed'),
+      verdict: Html2rss::Curation::Recon::Verdict[:build], native_feed: Html2rss::Url.from_absolute('https://a.test/feed'),
       surface_category: 'listing', articles_count: 3, scheme_downgrade: false, notes: %w[n1 n2], html_bytesize: 10
     )
   end
@@ -64,7 +64,7 @@ RSpec.describe Html2rss::CLI::Render do
       build: "\e[32m", defer: "\e[33m", drop: "\e[31m"
     }.each do |name, color|
       it "colors the #{name} verdict label" do
-        labelled = view.with(verdict: Html2rss::Recon::Verdict[name])
+        labelled = view.with(verdict: Html2rss::Curation::Recon::Verdict[name])
 
         expect { described_class.probe_card(labelled) }.to output(
           a_string_starting_with("#{color}[#{name.to_s.upcase}]\e[0m https://a.test/x\n")
@@ -117,7 +117,7 @@ RSpec.describe Html2rss::CLI::Render do
 
   describe '.test_card' do
     let(:result) do
-      Html2rss::Test::Result.new(
+      Html2rss::Curation::Test::Result.new(
         success: true, item_count: 2, channel_title: 'Chan', channel_url: 'https://a.test', strategy_used: :default,
         duration_seconds: 1.5, validation_issues: nil, error_message: nil, failure_kind: nil, rss: '<rss/>',
         sample_items: [

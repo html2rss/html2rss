@@ -42,8 +42,8 @@ RSpec.describe 'curation golden path (MCP policy)' do
 
   describe 'defer verdict stops before capture (native feed wins)' do
     before do
-      allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_return(
-        Html2rss::PageRecon::Diagnostics::Report.new(
+      allow(Html2rss::Curation::Inspect).to receive(:call).and_return(
+        Html2rss::Curation::Inspect::Report.new(
           data: {
             requested_url: url,
             alternate_feeds: [{ href: 'https://example.com/feed.xml', type: 'application/rss+xml' }]
@@ -51,11 +51,11 @@ RSpec.describe 'curation golden path (MCP policy)' do
         )
       )
       allow(Html2rss).to receive(:recon).and_return(
-        Html2rss::Recon::Result.new(
+        Html2rss::Curation::Recon::Result.new(
           requested_url: url,
           final_url: url,
           status: 200,
-          verdict: Html2rss::Recon::Verdict[:defer],
+          verdict: Html2rss::Curation::Recon::Verdict[:defer],
           native_feed: 'https://example.com/feed.xml',
           surface_category: :article_listing,
           articles_count: 0,
@@ -64,7 +64,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
           html_bytesize: 500
         )
       )
-      allow(Html2rss::Capture).to receive(:build)
+      allow(Html2rss::Curation::Capture).to receive(:build)
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- policy chain is one story
@@ -81,13 +81,13 @@ RSpec.describe 'curation golden path (MCP policy)' do
           native_feed: 'https://example.com/feed.xml'
         )
       )
-      expect(Html2rss::Capture).not_to have_received(:build)
+      expect(Html2rss::Curation::Capture).not_to have_received(:build)
     end
   end
 
   describe 'build verdict walks inspect → recon → capture → test → apply' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- golden path stubs one chain
     let(:capture_result) do
-      Html2rss::Capture::CaptureResult.new(
+      Html2rss::Curation::Capture::CaptureResult.new(
         config: valid_config,
         articles_count: 3,
         channel_title: 'Example News',
@@ -131,8 +131,8 @@ RSpec.describe 'curation golden path (MCP policy)' do
     end
 
     before do
-      allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_return(
-        Html2rss::PageRecon::Diagnostics::Report.new(
+      allow(Html2rss::Curation::Inspect).to receive(:call).and_return(
+        Html2rss::Curation::Inspect::Report.new(
           data: {
             requested_url: url,
             alternate_feeds: [{ href: 'https://example.com/feed.xml', type: 'application/rss+xml' }]
@@ -158,11 +158,11 @@ RSpec.describe 'curation golden path (MCP policy)' do
       pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, feed_result])
       allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
       allow(Html2rss).to receive_messages(
-        recon: Html2rss::Recon::Result.new(
+        recon: Html2rss::Curation::Recon::Result.new(
           requested_url: url,
           final_url: url,
           status: 200,
-          verdict: Html2rss::Recon::Verdict[:build],
+          verdict: Html2rss::Curation::Recon::Verdict[:build],
           native_feed: nil,
           surface_category: :article_listing,
           articles_count: 3,
@@ -170,7 +170,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
           notes: [],
           html_bytesize: 12_000
         ),
-        test: Html2rss::Test::Result.new(
+        test: Html2rss::Curation::Test::Result.new(
           success: true,
           item_count: 2,
           sample_items: [{ title: 'A', url: 'https://example.com/a' }],
@@ -184,7 +184,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
           rss: '<rss/>'
         )
       )
-      allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
+      allow(Html2rss::Curation::Capture).to receive(:build).and_return(capture_result)
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- golden path encodes policy, not just happy-path wiring
