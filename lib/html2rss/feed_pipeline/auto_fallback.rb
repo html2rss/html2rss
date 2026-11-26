@@ -262,8 +262,10 @@ module Html2rss
       end
 
       def run_tournament(hop, response, extraction)
-        AutoSource::EntryResolution.call(response:, session: hop.request_session, config:, articles: extraction.articles,
-                                         slots: budget.remaining_requests)
+        AutoSource::EntryResolution.call(
+          response:, session: hop.request_session, config:, articles: extraction.articles,
+          slots: budget.remaining_requests
+        )
       end
 
       # Extracts the winner's already fetched response; the target turns sticky only when it yields items.
