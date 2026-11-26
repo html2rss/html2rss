@@ -31,14 +31,13 @@ module Html2rss
           return true unless destination_facts
 
           destination_facts.taxonomy_path ||
-            short_utility_label?(text,
-                                 destination_facts) || list_hub_label?(text, destination_facts, heading_anchor:) ||
+            short_utility_label?(text, destination_facts) ||
+            list_hub_label?(text, destination_facts, heading_anchor:) ||
             recommended_chrome?(text, destination_facts, heading_anchor:) ||
             (@link_resolver.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
             (@link_resolver.utility_text?(text) && destination_facts.vanity_path) ||
             utility_text_chrome?(text, destination_facts, heading_anchor:, anchor:, container:) ||
-            icon_only_anchor?(anchor, text) ||
-            concealed_anchor?(anchor) ||
+            icon_only_anchor?(anchor, text) || concealed_anchor?(anchor) ||
             utility_landmark_ancestor
         end
 
