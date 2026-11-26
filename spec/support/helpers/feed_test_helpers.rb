@@ -57,7 +57,7 @@ module FeedTestHelpers
   alias rss_item rss_channel_item
 
   def classifier_for(*segments)
-    Html2rss::LinkDestination::PathClassifier.new(segments)
+    Html2rss::AutoSource::LinkDestination::PathClassifier.new(segments)
   end
 
   def mock_session(*xml_bodies)

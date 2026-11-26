@@ -7,7 +7,8 @@ module Html2rss
     # is heavily inflected (case endings, no articles), so it lists each label form a site really writes whole
     # (+tietosuojaseloste+, +tietosuojalauseke+; +avautuu uuteen ikkunaan+, +aukeaa uuteen ikkunaan+) and never a
     # stem, a prefix or a substring: each label is read as a whole text only (no trailing word, no headline opener,
-    # see {LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed (label words, the
+    # see {AutoSource::LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed (label
+    # words, the
     # call to action, read-more, recommended and the new-window notice); the others stay +NONE+ until their readers
     # take the page scope. It lists no type marker (stripping a short kicker could leave a headline below the title
     # floor), no section name (+kotimaa+, +ulkomaat+, +urheilu+, +talous+ and +kulttuuri+ are topics a feed may

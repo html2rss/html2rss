@@ -162,7 +162,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
     let(:hrefs) do
       lambda do |code, card, table = labels|
         html = (1..6).map { |i| "<article>#{card.call(i, table.fetch(code))}</article>" }.join
-        resolver = Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[code])
+        resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[code])
         segments = described_class.call(document_for("<html><body>#{html}</body></html>"),
                                         base_url: 'https://example.com', strategy: :semantic, link_resolver: resolver)
         segments.map { _1.primary_link.attrs.href }
@@ -395,7 +395,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
   end
 
   describe Html2rss::AutoSource::Segmenter::PrimaryLink, 'scoring a list-level label' do
-    let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[:vi]) }
+    let(:resolver) { Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary[:vi]) }
     let(:picked) do
       lambda do |body|
         document = document_for("<html><body><article>#{body}</article></body></html>")

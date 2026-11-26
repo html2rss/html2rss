@@ -14,7 +14,7 @@ module Html2rss
     # ({SEPARATOR_MARK}). Only the kicker is noise-stripped by text: a leading clock time set off by a
     # separator (+10:00 | Topic+), screen-reader field labels (+Section:+) and type labels with their
     # marker (+Article type: Video+). The label and marker sets are small, closed and multilingual
-    # ({Vocabulary::LANGUAGES}), matching {LinkDestination::TextClassifier}.
+    # ({Vocabulary::LANGUAGES}), matching {AutoSource::LinkDestination::TextClassifier}.
     #
     # A Japanese headline may open with a bracket label (+【速報】+, +＜動画＞+): one naming a content type
     # ({TYPE_MARKERS}) is removed, any other leading bracket text becomes the kicker ({LEADING_BRACKET}).

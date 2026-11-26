@@ -128,12 +128,12 @@ RSpec.describe Html2rss::PageRecon do
       body: list_response.body.sub('<html', '<html lang="sv"'), url: list_response.url,
       headers: { 'content-type' => 'text/html' }, status: 200
     )
-    allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_call_original
+    allow(Html2rss::AutoSource::Scoring::LinkResolver).to receive(:new).and_call_original
     allow(Html2rss::Channel).to receive(:language_for).and_call_original
     described_class.call(response: swedish, url: 'https://example.com/blog')
 
     expect(Html2rss::Channel).to have_received(:language_for).once
-    expect(Html2rss::Scoring::LinkResolver).to have_received(:new)
+    expect(Html2rss::AutoSource::Scoring::LinkResolver).to have_received(:new)
       .with(anything, vocabulary: be(Html2rss::Vocabulary[:sv])).at_least(:once)
   end
 

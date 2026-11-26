@@ -10,7 +10,8 @@ module Html2rss
     # else. Persian writes compounds with a zero-width non-joiner (+ثبت‌نام+, +دیدگاه‌ها+) or a space, and attaches
     # suffixes and particles to nouns, so no term is read as a prefix or a substring: each label is listed whole, in
     # its ZWNJ and spaced spellings, read as a whole text only (no trailing word, no headline opener, see
-    # {LinkDestination::TextClassifier}). Pages typed on an Arabic keyboard write +ي+ and +ك+ for +ی+ and +ک+, so a
+    # {AutoSource::LinkDestination::TextClassifier}). Pages typed on an Arabic keyboard write +ي+ and +ك+ for +ی+ and
+    # +ک+, so a
     # label with either letter is listed in both spellings (+ARABIC_KEYBOARD_SPELLINGS+); the page text is never
     # normalized. Only the concepts read through a {Scope} are listed (label words, the call to action, read-more
     # and the new-window notice); the others stay +NONE+ until their readers take the page scope. It lists no type

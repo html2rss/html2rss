@@ -5,7 +5,8 @@ module Html2rss
     # Turkish. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +tr+, and nowhere else. Turkish
     # attaches suffixes to nouns ("girişimcilerin", "iletişimde"), so no term is read as a prefix or a substring: each
     # label is listed whole, read as a whole text only (no trailing word, no headline opener, see
-    # {LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed (label words, the call
+    # {AutoSource::LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed (label words,
+    # the call
     # to action, read-more, recommended and the new-window notice); the others stay +NONE+ until their readers take
     # the page scope. It lists no type marker (stripping a short kicker could leave a headline below the title floor),
     # no section name (+gündem+, +spor+ and +ekonomi+ are topics a feed may carry), no pager label, no path word, and

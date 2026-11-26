@@ -5,7 +5,8 @@ module Html2rss
     # Hebrew. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +he+ (the legacy tag +iw+ is not
     # mapped, so such a page reads the +all+ scope), and nowhere else. Hebrew attaches prefixes to nouns ("הרשמה
     # לבתי הספר", "כניסה לתוקף"), so no term is read as a prefix: each label form is listed whole and read as a whole
-    # text only (no trailing word, no headline opener, see {LinkDestination::TextClassifier}). Only the concepts read
+    # text only (no trailing word, no headline opener, see {AutoSource::LinkDestination::TextClassifier}). Only the
+    # concepts read
     # through a {Scope} are listed (label words, the call to action, read-more and the new-window notice); the others
     # stay +NONE+ until their readers take the page scope. It lists no type marker (stripping a short kicker could
     # leave a headline below the title floor) and no section name (+חדשות+, +ספורט+ and +תרבות+ are topics a feed may

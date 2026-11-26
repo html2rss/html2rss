@@ -73,7 +73,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     let(:cleaned) { result.articles }
     let(:keep_different_domain) { false }
-    let!(:fixed_facts) { Html2rss::LinkDestination::DestinationFacts.build(url, vocabulary:) }
+    let!(:fixed_facts) { Html2rss::AutoSource::LinkDestination::DestinationFacts.build(url, vocabulary:) }
 
     # rubocop:disable-next RSpec/ExampleLength -- articles + multi-reason tallies
     it 'removes invalid articles and tallies the drop', :aggregate_failures do
@@ -89,15 +89,15 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     it 'reads route facts through the injected lookup, never building them itself', :aggregate_failures do
       seen = []
-      allow(Html2rss::LinkDestination::DestinationFacts).to receive(:build)
+      allow(Html2rss::AutoSource::LinkDestination::DestinationFacts).to receive(:build)
       described_class.call(articles, vocabulary:, url:, facts: ->(arg) { fixed_facts.tap { seen << arg } })
 
       expect(seen).not_to be_empty
-      expect(Html2rss::LinkDestination::DestinationFacts).not_to have_received(:build)
+      expect(Html2rss::AutoSource::LinkDestination::DestinationFacts).not_to have_received(:build)
     end
 
     it 'judges titles with the injected classifier', :aggregate_failures do
-      classifier = instance_spy(Html2rss::LinkDestination::TextClassifier, read_more?: false)
+      classifier = instance_spy(Html2rss::AutoSource::LinkDestination::TextClassifier, read_more?: false)
 
       described_class.call(articles, vocabulary:, url:, classifier:)
 
@@ -385,7 +385,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       subject(:result) { described_class.call(articles, vocabulary:, url:, page_links: -> { page_links }) }
 
       let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
-      let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com/news/') }
+      let(:resolver) { Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com/news/') }
       let(:hrefs) do
         stories = %w[a b c]
         stories.map { "/news/#{_1}?pos=top" } + stories.map { "/news/#{_1}?pos=latest" } +

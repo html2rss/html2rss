@@ -42,7 +42,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     end
 
     it 'reads a Han type marker kicker as text only on a Chinese page', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      resolver = ->(vocabulary) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary:) }
+      resolver = ->(vocabulary) { Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com', vocabulary:) }
 
       expect(article_for.call.title).to eq('政府が新しい港湾計画を発表した')
       expect(article_for.call(link_resolver: resolver.call(Html2rss::Vocabulary[:ja])).title)
@@ -57,13 +57,13 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     describe 'with a page resolver' do
       let(:han) { Html2rss::Vocabulary['zh-Hans-CN'] }
-      let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: han) }
+      let(:resolver) { Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com', vocabulary: han) }
 
-      before { allow(Html2rss::LinkDestination::TextClassifier).to receive(:for).and_call_original }
+      before { allow(Html2rss::AutoSource::LinkDestination::TextClassifier).to receive(:for).and_call_original }
 
       it "takes the resolver's vocabulary and classifier", :aggregate_failures do
         expect(article_for.call(link_resolver: resolver).title).to eq('独自: 政府が新しい港湾計画を発表した')
-        expect(Html2rss::LinkDestination::TextClassifier).not_to have_received(:for)
+        expect(Html2rss::AutoSource::LinkDestination::TextClassifier).not_to have_received(:for)
       end
     end
   end
@@ -289,7 +289,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     end
 
     describe 'with the page resolver' do
-      let(:resolver) { Html2rss::Scoring::LinkResolver.new('https://example.com') }
+      let(:resolver) { Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com') }
       let(:segment) do
         html = '<article><h2><a href="/a?p=1#top">Story Title</a></h2><p>Useful context paragraph here.</p></article>'
         segment_for(html, href: '/a?p=1#top')
@@ -451,13 +451,13 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     root = doc.root.find { |n| n.name == :div }
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :cluster,
                                                   position: 0)
-    ranked = Html2rss::Scoring::RankedSegment.new(
+    ranked = Html2rss::AutoSource::Scoring::RankedSegment.new(
       segment:,
-      score: Html2rss::Scoring::Score.new(
+      score: Html2rss::AutoSource::Scoring::Score.new(
         composite: 1.0,
         quality: 1.0,
         junk: 0.0,
-        breakdown: Html2rss::Scoring::Score::EMPTY_BREAKDOWN
+        breakdown: Html2rss::AutoSource::Scoring::Score::EMPTY_BREAKDOWN
       )
     )
 

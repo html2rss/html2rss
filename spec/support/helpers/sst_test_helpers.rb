@@ -35,7 +35,7 @@ module SstTestHelpers
 
   # The page's link resolver, as AutoSource builds it once per page.
   def page_resolver(base_url = 'https://example.com', vocabulary: Html2rss::Vocabulary[nil])
-    Html2rss::Scoring::LinkResolver.new(base_url, vocabulary:)
+    Html2rss::AutoSource::Scoring::LinkResolver.new(base_url, vocabulary:)
   end
 
   # The fields of the +item+ (CSS selector) in +html+, read the way +selectors.items.enhance+ reads a selected item:

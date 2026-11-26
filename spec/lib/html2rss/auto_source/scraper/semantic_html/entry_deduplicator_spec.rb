@@ -18,10 +18,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
         strategy: :semantic,
         position:
       )
-      Html2rss::Scoring::RankedSegment.new(
+      Html2rss::AutoSource::Scoring::RankedSegment.new(
         segment:,
-        score: Html2rss::Scoring::Score.new(
-          composite: final, quality:, junk: 10.0, breakdown: Html2rss::Scoring::Score::EMPTY_BREAKDOWN
+        score: Html2rss::AutoSource::Scoring::Score.new(
+          composite: final, quality:, junk: 10.0, breakdown: Html2rss::AutoSource::Scoring::Score::EMPTY_BREAKDOWN
         )
       )
     end
@@ -230,10 +230,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
     it 'groups anchorless entries by their resolved article url', :aggregate_failures do
       anchorless = lambda do |position|
         segment = Html2rss::AutoSource::Segment.build(root_node:, primary_link: nil, strategy: :semantic, position:)
-        Html2rss::Scoring::RankedSegment.new(
+        Html2rss::AutoSource::Scoring::RankedSegment.new(
           segment:,
-          score: Html2rss::Scoring::Score.new(
-            composite: 65.0, quality: 75.0, junk: 10.0, breakdown: Html2rss::Scoring::Score::EMPTY_BREAKDOWN
+          score: Html2rss::AutoSource::Scoring::Score.new(
+            composite: 65.0, quality: 75.0, junk: 10.0, breakdown: Html2rss::AutoSource::Scoring::Score::EMPTY_BREAKDOWN
           )
         )
       end
@@ -258,7 +258,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       expect(deduplicator.article_for(ranked)).to be(article)
       expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call).with(
         ranked, base_url: 'https://example.com', time_zone: nil, scraper: scraper_class,
-                link_resolver: be_a(Html2rss::Scoring::LinkResolver)
+                link_resolver: be_a(Html2rss::AutoSource::Scoring::LinkResolver)
       )
     end
 
@@ -274,7 +274,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
     end
 
     it 'extracts with the page resolver, which carries the page language', :aggregate_failures do
-      resolver = Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary['zh-Hant'])
+      resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary['zh-Hant'])
       ranked = build_ranked.call
       allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 

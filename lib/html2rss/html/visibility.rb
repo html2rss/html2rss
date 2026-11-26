@@ -11,7 +11,7 @@ module Html2rss
     #   +visually-hidden+, +h-offscreen+, +_screen-reader-only+, +screen-reader-text+, ...). Spoken, not seen.
     #
     # +aria-hidden="true"+ is neither: the element is seen, only not spoken. Callers pick the kind they
-    # need: a sponsorship label still counts when spoken ({LinkDestination::Sponsorship}), while titles
+    # need: a sponsorship label still counts when spoken ({AutoSource::LinkDestination::Sponsorship}), while titles
     # and item anchors keep only what is seen ({.concealed?}). Inputs are plain attribute values, so
     # SST and Nokogiri callers share it.
     module Visibility

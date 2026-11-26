@@ -5,7 +5,8 @@ module Html2rss
     # Chinese, Simplified and Traditional in one list (+zh-Hans+, +zh-Hant+, +zh-CN+, +zh-TW+ are +zh+). It is
     # {PAGE_ONLY}: its terms apply on a page whose language resolves to +zh+, and nowhere else. Han text has no
     # word boundary and a headline may open with any label word, so a label term is read as a whole text only (no
-    # trailing word, no headline opener, see {LinkDestination::TextClassifier}). Only the concepts read through a
+    # trailing word, no headline opener, see {AutoSource::LinkDestination::TextClassifier}). Only the concepts read
+    # through a
     # {Scope} are listed (path words, label words, the call to action and read-more); the others stay +NONE+ until
     # a term of clear precision is added. A term whose precision is unclear is left out.
     Zh = Language.new(

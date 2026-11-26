@@ -6,7 +6,8 @@ module Html2rss
     # +:all+ and every other language read exactly what they read without it. Indonesian is written in Latin script and
     # its label words are ordinary words (+masuk+ is "enter", +daftar+ a list, +cari+ to look for), so no term is read
     # as a prefix or a substring: each label is listed whole and read as a whole text only (no trailing word, no
-    # headline opener, see {LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed
+    # headline opener, see {AutoSource::LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are
+    # listed
     # (label words, the call to action, read-more, recommended and the new-window notice); the others stay +NONE+ until
     # their readers take the page scope. It lists no type marker (stripping a short kicker could leave a headline below
     # the title floor), no section name (+nasional+, +bola+, +ekonomi+ and +otomotif+ are topics a feed may carry), no

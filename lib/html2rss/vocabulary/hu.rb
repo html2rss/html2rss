@@ -6,8 +6,8 @@ module Html2rss
     # Hungarian is agglutinative, so each label form a site really writes is listed whole (+hozzászólás+ and
     # +hozzászólások+, +iratkozzon fel+ and +iratkozz fel+), never stemmed. No term is read as a prefix or a substring:
     # each label is read as a whole text only (no trailing word, no headline opener, see
-    # {LinkDestination::TextClassifier}). Terms are written in NFC, the form the classifier normalizes to, so
-    # decomposed input matches and upper case ("BEJELENTKEZÉS", "HÍRLEVÉL") folds, +ő+ and +ű+ included. Only
+    # {AutoSource::LinkDestination::TextClassifier}). Terms are written in NFC, the form the classifier normalizes to,
+    # so decomposed input matches and upper case ("BEJELENTKEZÉS", "HÍRLEVÉL") folds, +ő+ and +ű+ included. Only
     # the concepts read through a {Scope} are listed (label words, the call to action, read-more, recommended and
     # the new-window notice); the others stay +NONE+ until their readers take the page scope. It lists no type
     # marker (stripping a short kicker could leave a headline below the title floor), no section name (+belföld+,

@@ -5,7 +5,8 @@ module Html2rss
     # Greek. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +el+, and nowhere else. Greek
     # inflects nouns and verbs ("Σύνδεση του δικτύου με την Κρήτη", "Εγγραφή μαθητών στα σχολεία"), so no term is read
     # as a prefix: each label is listed whole and read as a whole text only (no trailing word, no headline opener, see
-    # {LinkDestination::TextClassifier}). Case folding handles final sigma (+ς+, +σ+, +Σ+) and an uppercase letter
+    # {AutoSource::LinkDestination::TextClassifier}). Case folding handles final sigma (+ς+, +σ+, +Σ+) and an uppercase
+    # letter
     # with a tonos, but not an uppercase word written without tonos (+ΣΥΝΔΕΣΗ+ against +σύνδεση+), so each label with
     # a tonos is listed again without it; that second form reads a label in capitals and one typed without accents.
     # Only the concepts read through a {Scope} are listed (label words, the call to action, read-more and the

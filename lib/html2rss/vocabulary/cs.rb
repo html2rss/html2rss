@@ -5,8 +5,8 @@ module Html2rss
     # Czech. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +cs+, and nowhere else. Czech
     # inflects nouns and verbs ("přihlásit se", "přihlaste se", "ochrana osobních údajů"), so no term is read as a
     # prefix or a substring: each label form is listed whole, read as a whole text only (no trailing word, no
-    # headline opener, see {LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed
-    # (label words, the call to action, read-more, recommended and the new-window notice); the others stay +NONE+
+    # headline opener, see {AutoSource::LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are
+    # listed (label words, the call to action, read-more, recommended and the new-window notice); the others stay +NONE+
     # until their readers take the page scope. It lists no type marker (stripping a short kicker could leave a
     # headline below the title floor), no section name (+sport+, +ekonomika+ and +kultura+ are topics a feed may
     # carry), no pager label, no path word, and no label that is also a plausible short headline (+komentář+ and

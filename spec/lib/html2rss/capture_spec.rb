@@ -128,11 +128,11 @@ RSpec.describe Html2rss::Capture do
     let(:default_selector) { Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR }
 
     it 'classifies links in the page language, as the scrape does', :aggregate_failures do
-      allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_call_original
+      allow(Html2rss::AutoSource::Scoring::LinkResolver).to receive(:new).and_call_original
       html = %(<html lang="es-MX"><body>#{(1..3).map { card.call(_1) }.join}</body></html>)
       derive.call(html, articles_for.call(3))
 
-      expect(Html2rss::Scoring::LinkResolver).to have_received(:new)
+      expect(Html2rss::AutoSource::Scoring::LinkResolver).to have_received(:new)
         .with(anything, vocabulary: be(Html2rss::Vocabulary[:es])).at_least(:once)
     end
 

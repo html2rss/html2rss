@@ -60,8 +60,9 @@ module Html2rss
 
     # Pattern concepts a {PAGE_ONLY} language may declare besides {SCOPED_PATTERNS}: the call-to-action, read-more,
     # list-level "more" (+list_more+, a "see all" label that names a list, not a story) and new-window
-    # readers of {LinkDestination::TextClassifier}, the sponsorship labels of
-    # {LinkDestination::Sponsorship::LabelText}, the title concepts of {Article::Title} and the pager concepts of
+    # readers of {AutoSource::LinkDestination::TextClassifier}, the sponsorship labels of
+    # {AutoSource::LinkDestination::Sponsorship::LabelText}, the title concepts of {Article::Title} and the pager
+    # concepts of
     # {Html::SST::Tags}, which read a scope's own terms as whole labels. The podcast concepts stay out: their reader
     # matches inside URLs and titles, where a short Han term is not precise. A concept joins this list only when
     # every production path that reads it takes the page scope; a page-only language declaring any other pattern
@@ -79,7 +80,7 @@ module Html2rss
     # Languages whose terms apply only on a page in that language: they are in no shared table, so +:all+, +ja+ and
     # every other language read exactly what they read without them. A page scope of such a language is +:all+ plus
     # its terms (a Han term has no word boundary, so it is read as a whole label only,
-    # see {LinkDestination::TextClassifier}).
+    # see {AutoSource::LinkDestination::TextClassifier}).
     PAGE_ONLY = [Zh, Ko, He, El, Uk, Ar, Fa, Hi, Th, Tr, Id, Vi, Cs, Hu, Ro, Da, No, Fi].freeze
 
     # Every language that has a file, in a fixed order.

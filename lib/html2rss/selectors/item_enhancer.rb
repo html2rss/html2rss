@@ -51,7 +51,7 @@ module Html2rss
 
       # The region's one resolver: it owns the language's label reader, so a label is normalized once.
       def link_resolver
-        @link_resolver ||= Scoring::LinkResolver.new(@base_url, vocabulary: @vocabulary)
+        @link_resolver ||= AutoSource::Scoring::LinkResolver.new(@base_url, vocabulary: @vocabulary)
       end
 
       # The SST document of the region, normalized for items.

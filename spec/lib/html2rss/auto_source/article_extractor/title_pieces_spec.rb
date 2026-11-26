@@ -148,7 +148,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor::TitlePieces do
       rules = Html2rss::Article::Title::Rules.build(xx.type_markers, own)
       table = Html2rss::Article::Title.const_get(:RULES_BY_SCOPE).merge(zh: rules)
       stub_const('Html2rss::Article::Title::RULES_BY_SCOPE', table)
-      label_text = Html2rss::LinkDestination::Sponsorship::LabelText
+      label_text = Html2rss::AutoSource::LinkDestination::Sponsorship::LabelText
       paid = label_text.build(%i[paid_label ad_word element_label].to_h { [_1, xx.own_alternation(_1)] })
       stub_const("#{label_text}::BY_SCOPE", label_text.const_get(:BY_SCOPE).merge(zh: paid))
     end

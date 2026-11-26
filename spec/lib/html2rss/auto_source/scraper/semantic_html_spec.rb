@@ -96,7 +96,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
 
       it 'uses a provided link resolver' do
-        resolver = Html2rss::Scoring::LinkResolver.new('https://example.com')
+        resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com')
         allow(resolver).to receive(:destination_facts).and_call_original
 
         described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.com', link_resolver: resolver).to_a

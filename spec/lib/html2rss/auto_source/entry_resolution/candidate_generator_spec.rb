@@ -42,13 +42,13 @@ RSpec.describe Html2rss::AutoSource::EntryResolution::CandidateGenerator do
   end
 
   it 'ranks links by the scope it was given', :aggregate_failures do
-    allow(Html2rss::LinkDestination::DestinationFacts).to receive(:build).and_call_original
+    allow(Html2rss::AutoSource::LinkDestination::DestinationFacts).to receive(:build).and_call_original
     scope = Html2rss::Vocabulary[:sv]
     described_class.call(entry_url:, response:, vocabulary: scope, max: 5)
 
-    expect(Html2rss::LinkDestination::DestinationFacts).to have_received(:build)
+    expect(Html2rss::AutoSource::LinkDestination::DestinationFacts).to have_received(:build)
       .with(anything, vocabulary: be(scope)).at_least(:once)
-    expect(Html2rss::LinkDestination::DestinationFacts).not_to have_received(:build)
+    expect(Html2rss::AutoSource::LinkDestination::DestinationFacts).not_to have_received(:build)
       .with(anything, vocabulary: be(vocabulary))
   end
 

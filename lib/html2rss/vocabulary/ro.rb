@@ -5,8 +5,8 @@ module Html2rss
     # Romanian. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +ro+, and nowhere else. Its
     # label words are ordinary words (+contact+, +meniu+, +conectare+, +caută+), so no term is read as a prefix or a
     # substring: each label is listed whole and read as a whole text only (no trailing word, no headline opener, see
-    # {LinkDestination::TextClassifier}). Terms are written in NFC, the form the classifier normalizes to, so
-    # decomposed input and upper case ("AUTENTIFICARE", "ABONEAZĂ-TE") match. Only the concepts read through a
+    # {AutoSource::LinkDestination::TextClassifier}). Terms are written in NFC, the form the classifier normalizes to,
+    # so decomposed input and upper case ("AUTENTIFICARE", "ABONEAZĂ-TE") match. Only the concepts read through a
     # {Scope} are listed (label words, the call to action, read-more, recommended and the new-window notice); the
     # others stay +NONE+ until their readers take the page scope. It lists no type marker (stripping a short kicker
     # could leave a headline below the title floor), no section name (+politică+, +sport+, +externe+ and +actualitate+

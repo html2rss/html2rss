@@ -153,7 +153,7 @@ module Html2rss
     # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope
     # @return [Array]
     def self.discover_segments(sst, url, vocabulary:)
-      link_resolver = Scoring::LinkResolver.new(url, vocabulary:)
+      link_resolver = AutoSource::Scoring::LinkResolver.new(url, vocabulary:)
       AutoSource::Segmenter.call(sst, base_url: url, strategy: :list, link_resolver:)
     end
 

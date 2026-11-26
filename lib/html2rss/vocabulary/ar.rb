@@ -5,7 +5,8 @@ module Html2rss
     # Arabic. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +ar+, and nowhere else. Arabic
     # attaches prefixes to words (+ال+, +و+, +ف+, +ب+, +ل+, +ك+), so no term is read as a prefix or a substring: each
     # label is listed whole, and an attached form only when it is a label of its own (+للمزيد+), read as a whole text
-    # only (no trailing word, no headline opener, see {LinkDestination::TextClassifier}). Only the concepts read
+    # only (no trailing word, no headline opener, see {AutoSource::LinkDestination::TextClassifier}). Only the concepts
+    # read
     # through a {Scope} are listed (label words, the call to action, read-more and the new-window notice); the others
     # stay +NONE+ until their readers take the page scope. It lists no type marker (stripping a short kicker could
     # leave a headline below the title floor) and no section name. Arabic spelling only: Persian forms (+ی+, +ک+)

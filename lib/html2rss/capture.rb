@@ -286,7 +286,7 @@ module Html2rss
     end
 
     def collect_items_evidence(sst, articles, vocabulary)
-      link_resolver = Scoring::LinkResolver.new(@url, vocabulary:)
+      link_resolver = AutoSource::Scoring::LinkResolver.new(@url, vocabulary:)
       enhance = resolve_enhance
 
       SEGMENT_STRATEGIES.flat_map do |strategy|

@@ -385,7 +385,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
   describe '#link_resolver' do
     it 'uses a provided link resolver' do
-      resolver = Html2rss::Scoring::LinkResolver.new('http://example.com')
+      resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('http://example.com')
       allow(resolver).to receive(:destination_facts).and_call_original
 
       described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com', link_resolver: resolver).to_a
