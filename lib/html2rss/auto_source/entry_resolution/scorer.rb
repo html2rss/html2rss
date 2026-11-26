@@ -4,7 +4,7 @@ module Html2rss
   class AutoSource
     module EntryResolution
       ##
-      # Scores probe targets and picks winners from cheap {PageRecon::Assessment} facts
+      # Scores probe targets and picks winners from cheap {AutoSource::Assessment} facts
       # or syndication item counts.
       module Scorer
         # Weight for admitted article counts on HTML probes.
@@ -21,7 +21,7 @@ module Html2rss
           end
 
           ##
-          # @param assessment [Html2rss::PageRecon::Assessment]
+          # @param assessment [Html2rss::AutoSource::Assessment]
           # @return [Integer]
           def score_assessment(assessment)
             score = assessment.articles_count * ARTICLE_WEIGHT

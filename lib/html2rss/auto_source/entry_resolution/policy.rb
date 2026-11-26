@@ -13,7 +13,7 @@ module Html2rss
           ##
           # @param config [Html2rss::Config]
           # @param articles [Array<Html2rss::Article>] typed extract results (count derived)
-          # @param surface_category [Html2rss::SurfaceCategory, Symbol]
+          # @param surface_category [Html2rss::AutoSource::SurfaceCategory, Symbol]
           # @return [Boolean]
           def resolve?(config:, articles:, surface_category:)
             raise InvalidError, 'articles must be an Array' unless articles.is_a?(Array)

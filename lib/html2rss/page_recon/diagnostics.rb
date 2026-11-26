@@ -137,7 +137,7 @@ module Html2rss
           return true if recon.surface_category == :app_shell
 
           response.body.bytesize >= JS_SHELL_MIN_BODY_BYTES &&
-            SurfaceCategory[recon.surface_category].weak?
+            AutoSource::SurfaceCategory[recon.surface_category].weak?
         end
 
         def redirect_summary(recon)

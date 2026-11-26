@@ -4,7 +4,7 @@ module Html2rss
   class AutoSource
     module EntryResolution
       ##
-      # Cheap follow-up probe that scores a candidate via {PageRecon.assess} or syndication parse.
+      # Cheap follow-up probe that scores a candidate via {Assessment.call} or syndication parse.
       class Probe
         ##
         # @param url [Html2rss::Url]
@@ -54,7 +54,7 @@ module Html2rss
             )
           end
 
-          assessment = PageRecon.assess(response:, url: response.url, channel:)
+          assessment = Assessment.call(response:, channel:)
           Scored.new(
             url: response.url,
             score: Scorer.score_assessment(assessment),

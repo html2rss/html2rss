@@ -90,7 +90,7 @@ module Html2rss
         def eligible?
           return false if response.feed_response? || max_probes < 1
 
-          surface_category = PageRecon.surface_category_for(response:, url: config.url)
+          surface_category = AutoSource::Assessment.surface_category_for(response:)
           Policy.resolve?(config:, articles:, surface_category:)
         end
 

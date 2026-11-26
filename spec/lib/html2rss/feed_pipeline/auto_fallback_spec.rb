@@ -82,10 +82,10 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
     it 'classifies the last response on an empty failure', :aggregate_failures do
       response = instance_double(Html2rss::RequestService::Response, url: :listing)
       state.remember_response(response)
-      allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:app_shell)
+      allow(Html2rss::AutoSource::Assessment).to receive(:surface_category_for).and_return(:app_shell)
 
       expect { state.raise_failure! }.to raise_error(have_attributes(surface_category: :app_shell))
-      expect(Html2rss::PageRecon).to have_received(:surface_category_for).with(response:, url: :listing)
+      expect(Html2rss::AutoSource::Assessment).to have_received(:surface_category_for).with(response:)
     end
 
     it 'starts with no attempts, result, or resolution state', :aggregate_failures do

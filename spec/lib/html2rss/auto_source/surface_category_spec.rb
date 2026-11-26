@@ -4,7 +4,7 @@ require 'spec_helper'
 
 # rubocop:disable RSpec/ExampleLength
 
-RSpec.describe Html2rss::SurfaceCategory do
+RSpec.describe Html2rss::AutoSource::SurfaceCategory do
   it 'rejects unknown names' do
     expect { described_class[:maybe] }.to raise_error(Html2rss::InvalidOption, 'unknown surface category: :maybe')
   end

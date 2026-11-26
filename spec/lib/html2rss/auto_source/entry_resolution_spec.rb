@@ -95,17 +95,17 @@ RSpec.describe Html2rss::AutoSource::EntryResolution do
   end
 
   it 'runs no tournament on a blocked surface, deciding the policy once', :aggregate_failures do
-    allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:blocked_surface)
+    allow(Html2rss::AutoSource::Assessment).to receive(:surface_category_for).and_return(:blocked_surface)
     allow(Html2rss::AutoSource::EntryResolution::Policy).to receive(:resolve?).and_call_original
 
     expect(resolution).to be_nil
-    expect(Html2rss::PageRecon).to have_received(:surface_category_for).with(response:, url: entry_url)
+    expect(Html2rss::AutoSource::Assessment).to have_received(:surface_category_for).with(response:)
     expect(Html2rss::AutoSource::EntryResolution::Policy).to have_received(:resolve?).once
   end
 
   it 'runs no tournament when the entry page is strong enough' do
     articles = Array.new(3) { instance_double(Html2rss::Article, scraper: Html2rss::AutoSource::Scraper::Schema) }
-    allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:listing)
+    allow(Html2rss::AutoSource::Assessment).to receive(:surface_category_for).and_return(:listing)
 
     expect(described_class.call(response:, session:, config:, articles:, slots: 5)).to be_nil
   end
@@ -139,7 +139,7 @@ RSpec.describe Html2rss::AutoSource::EntryResolution do
 
   it 'skips a winner that does not beat the articles the entry page already has' do
     articles = Array.new(3) { instance_double(Html2rss::Article, scraper: Html2rss::AutoSource::Scraper::Schema) }
-    allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:app_shell)
+    allow(Html2rss::AutoSource::Assessment).to receive(:surface_category_for).and_return(:app_shell)
     allow(session).to receive(:follow_up).and_return(listing)
 
     expect(described_class.call(response:, session:, config:, articles:, slots: 5))

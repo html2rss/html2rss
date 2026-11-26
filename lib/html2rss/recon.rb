@@ -129,7 +129,7 @@ module Html2rss
         status: probe.response.status,
         verdict:,
         native_feed:,
-        surface_category: SurfaceCategory[recon.surface_category],
+        surface_category: AutoSource::SurfaceCategory[recon.surface_category],
         articles_count: recon.articles_count,
         scheme_downgrade: recon.scheme_downgrade,
         notes:,
@@ -192,7 +192,7 @@ module Html2rss
       return Verdict[:drop] if recon.status.nil? || recon.status >= 400 || recon.scheme_downgrade
       return Verdict[:defer] if native_feed
 
-      category = SurfaceCategory[recon.surface_category]
+      category = AutoSource::SurfaceCategory[recon.surface_category]
       return Verdict[:drop] if category.blocked?
 
       Verdict[:build]
@@ -206,7 +206,7 @@ module Html2rss
         status: nil,
         verdict: Verdict[:drop],
         native_feed: nil,
-        surface_category: SurfaceCategory[:unsupported_surface],
+        surface_category: AutoSource::SurfaceCategory[:unsupported_surface],
         articles_count: 0,
         scheme_downgrade: false,
         notes: ["error: #{error.class} - #{error.message}"],

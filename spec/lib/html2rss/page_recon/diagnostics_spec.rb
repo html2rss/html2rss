@@ -118,7 +118,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
     end
 
     before do
-      allow(Html2rss::SurfaceCategory).to receive(:classify).and_return(:app_shell)
+      allow(Html2rss::AutoSource::SurfaceCategory).to receive(:classify).and_return(:app_shell)
     end
 
     it 'flags likely_js_shell', :aggregate_failures do

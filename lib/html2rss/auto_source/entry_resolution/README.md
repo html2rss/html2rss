@@ -22,7 +22,7 @@ tournament on item count (feed-as-means) — intentional.
 | Wire-safe resolution diag (`applied` = tournament win, not sticky URL)                     | `EntryResolution::Diag`                                     |
 | Public `call` → `Result` or `nil` (no tournament); probe cap from the slots it is handed   | `EntryResolution`                                           |
 | Attempt lifecycle: slots left for a later strategy, Diag, retry extract, sticky target     | `FeedPipeline::AutoFallback`                               |
-| Page surface for policy/scoring                                                            | `PageRecon::Assessment` + `Html2rss::SurfaceCategory`      |
+| Page surface for policy/scoring                                                            | `AutoSource::Assessment` + `AutoSource::SurfaceCategory`            |
 | Native feed discover/parse                                                                 | `Syndication` (not this module)                            |
 
 ### CandidateGenerator mix
@@ -48,7 +48,7 @@ Resolve when eligible config **and** not blocked **and** any of:
 - Cross-origin probes
 - JSON Feed ingest; Sitemap/WP claim-gates
 - Create UI / Site Explorer
-- Changing `PageRecon` `:list`-only `discover_segments` (CandidateGenerator owns its own first-wins)
+- Changing the recon `:list`-only segment discovery (CandidateGenerator owns its own first-wins)
 - Syndication parse inside `FeedBuilder`
 
 ## Config

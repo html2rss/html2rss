@@ -79,7 +79,7 @@ RSpec.describe Html2rss::Recon do
       expect(result.final_url.to_s).to eq(url)
       expect(result.status).to eq(200)
       expect(result.native_feed.to_s).to eq('https://example.com/feed.xml')
-      expect(result.surface_category).to eq(Html2rss::SurfaceCategory[page_recon_result.surface_category])
+      expect(result.surface_category).to eq(Html2rss::AutoSource::SurfaceCategory[page_recon_result.surface_category])
       expect(result.articles_count).to eq(page_recon_result.articles_count)
       expect(result.scheme_downgrade).to be(false)
       expect(result.html_bytesize).to eq(html_body.bytesize)
@@ -325,7 +325,7 @@ RSpec.describe Html2rss::Recon do
           status: 200,
           verdict: Html2rss::Recon::Verdict[:build],
           native_feed: nil,
-          surface_category: Html2rss::SurfaceCategory[:listing],
+          surface_category: Html2rss::AutoSource::SurfaceCategory[:listing],
           articles_count: 1,
           scheme_downgrade: false,
           notes: [],

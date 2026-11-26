@@ -91,7 +91,7 @@ Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss:
 
 ## Page assessment
 
-Cheap surface class and admitted article count for probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#extract`; tournament policy uses that typed `articles:` array.
+Cheap surface class and admitted article count for probe scoring. Owned by `AutoSource::Assessment` via `AutoSource::Assessment.call` (fixed AutoSource limit). Empty-extract error labels use `AutoSource::Assessment.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#extract`; tournament policy uses that typed `articles:` array.
 
 Diagnostic URL fetch for curation inspect and recon is owned by `PageRecon::Diagnostics` (via `PageRecon.probe` → `PageRecon::Probe`: `session`, `response`, `result`, `strategy`).
 
@@ -125,11 +125,11 @@ Same-origin probe URL mix for the tournament. Owned by `EntryResolution::Candida
 
 ## Entry resolution scoring
 
-Probe score weights, drop penalties, and winner pick for the entry URL tournament. Owned by `EntryResolution::Scorer`. `EntryResolution::Probe` fetches via `PageRecon.assess` (not fat `PageRecon.call`).
+Probe score weights, drop penalties, and winner pick for the entry URL tournament. Owned by `EntryResolution::Scorer`. `EntryResolution::Probe` assesses via `AutoSource::Assessment.call` (not fat `PageRecon.call`).
 
 ## Surface category
 
-Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::SurfaceCategory` (`weak?` / `blocked?` / `listing_bonus?`), including `SurfaceCategory.classify` (the page probe) and `MESSAGES` (guidance text); `AutoSource::Scraper` keeps only the registry. `PageRecon::Assessment` exposes those predicates; `EntryResolution::Policy` and `Scorer` call them.
+Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::AutoSource::SurfaceCategory` (`weak?` / `blocked?` / `listing_bonus?`), including `AutoSource::SurfaceCategory.classify` (the page probe) and `MESSAGES` (guidance text); `AutoSource::Scraper` keeps only the registry. `AutoSource::Assessment` exposes those predicates; `EntryResolution::Policy` and `Scorer` call them.
 
 ## Entry-resolution options
 

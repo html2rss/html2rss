@@ -35,7 +35,7 @@ RSpec.describe Html2rss::AutoSource::EntryResolution::Probe do
     expect(scored.response).to be(feed_response)
   end
 
-  it 'scores HTML follow-ups via PageRecon assessment' do
+  it 'scores HTML follow-ups via AutoSource::Assessment' do
     html_response = Html2rss::RequestService::Response.new(
       body: <<~HTML,
         <!DOCTYPE html><html><body>
@@ -52,7 +52,7 @@ RSpec.describe Html2rss::AutoSource::EntryResolution::Probe do
 
     scored = probe.call(candidate_url)
 
-    expected = Html2rss::PageRecon.assess(response: html_response, url: candidate_url)
+    expected = Html2rss::AutoSource::Assessment.call(response: html_response)
 
     expect(scored).to have_attributes(
       url: candidate_url, articles_count: expected.articles_count,

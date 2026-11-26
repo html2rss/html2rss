@@ -33,7 +33,7 @@ module FeedTestHelpers
   end
 
   def assessment(surface_category:, articles_count:, admission_drops: {})
-    Html2rss::PageRecon::Assessment.new(
+    Html2rss::AutoSource::Assessment.new(
       surface_category:,
       articles_count:,
       admission_drops:,

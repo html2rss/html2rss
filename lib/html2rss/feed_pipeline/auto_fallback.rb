@@ -132,7 +132,7 @@ module Html2rss
           end
 
           response = @last_response
-          surface_category = PageRecon.surface_category_for(response:, url: response.url) if response
+          surface_category = AutoSource::Assessment.surface_category_for(response:) if response
           raise FeedPipeline.empty_feed_error(attempts:, surface_category:)
         end
 
