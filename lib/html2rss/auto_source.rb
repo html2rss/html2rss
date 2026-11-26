@@ -20,7 +20,7 @@ module Html2rss
   # {include:file:lib/html2rss/auto_source/README.md}
   class AutoSource # rubocop:disable Metrics/ClassLength -- defaults + tiered extract stay on the contributor entry type
     # Default max articles to keep (also the short-circuit floor across scraper tiers).
-    DEFAULT_LIMIT = 25
+    DEFAULT_LIMIT = 50
 
     # Raised when a scraper yields an item that is neither an Article nor a Hash (a scraper bug).
     class ScraperContractError < Html2rss::ContractError; end

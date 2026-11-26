@@ -1,5 +1,5 @@
 ---
-case: A Schema ItemList of 25 audio objects (the item limit) shown in an aside rail beside ten news cards (no media page); the audio items must not stop the tiers before the news is read. Admitted audio items are allowed media.
+case: A Schema ItemList of 50 audio objects (the item limit) shown in an aside rail beside ten news cards (no media page); the audio items must not stop the tiers before the news is read. Admitted audio items are allowed media.
 expected:
 - https://example.com/news/2026/11/harbor-council-update-1
 - https://example.com/news/2026/11/library-council-update-2
@@ -37,3 +37,28 @@ media:
 - https://example.com/news/audio/morning-briefing-episode-23
 - https://example.com/news/audio/morning-briefing-episode-24
 - https://example.com/news/audio/morning-briefing-episode-25
+- https://example.com/news/audio/morning-briefing-episode-26
+- https://example.com/news/audio/morning-briefing-episode-27
+- https://example.com/news/audio/morning-briefing-episode-28
+- https://example.com/news/audio/morning-briefing-episode-29
+- https://example.com/news/audio/morning-briefing-episode-30
+- https://example.com/news/audio/morning-briefing-episode-31
+- https://example.com/news/audio/morning-briefing-episode-32
+- https://example.com/news/audio/morning-briefing-episode-33
+- https://example.com/news/audio/morning-briefing-episode-34
+- https://example.com/news/audio/morning-briefing-episode-35
+- https://example.com/news/audio/morning-briefing-episode-36
+- https://example.com/news/audio/morning-briefing-episode-37
+- https://example.com/news/audio/morning-briefing-episode-38
+- https://example.com/news/audio/morning-briefing-episode-39
+- https://example.com/news/audio/morning-briefing-episode-40
+- https://example.com/news/audio/morning-briefing-episode-41
+- https://example.com/news/audio/morning-briefing-episode-42
+- https://example.com/news/audio/morning-briefing-episode-43
+- https://example.com/news/audio/morning-briefing-episode-44
+- https://example.com/news/audio/morning-briefing-episode-45
+- https://example.com/news/audio/morning-briefing-episode-46
+- https://example.com/news/audio/morning-briefing-episode-47
+- https://example.com/news/audio/morning-briefing-episode-48
+- https://example.com/news/audio/morning-briefing-episode-49
+- https://example.com/news/audio/morning-briefing-episode-50

@@ -103,7 +103,8 @@ module Html2rss
         properties: {
           url: URL_PROPERTY,
           strategy: STRATEGY_PROPERTY,
-          limit: { type: 'integer', minimum: 1, description: 'Max articles to keep (default 25)', default: 25 },
+          limit: { type: 'integer', minimum: 1, default: AutoSource::DEFAULT_LIMIT,
+                   description: "Max articles to keep (default #{AutoSource::DEFAULT_LIMIT})" },
           items_selector: { type: 'string', description: 'Optional CSS selector hint for items' }
         }.freeze,
         required: %w[url]

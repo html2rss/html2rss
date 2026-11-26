@@ -24,7 +24,7 @@ module Html2rss
                          'strategy "auto" triggers fallback chain (default → botasaurus) for JS-rendered sites.',
             input_schema: Contract::SCRAPE_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
-            call: lambda { |url:, strategy: 'auto', limit: 25, items_selector: nil, **|
+            call: lambda { |url:, strategy: 'auto', limit: AutoSource::DEFAULT_LIMIT, items_selector: nil, **|
               scrape_outcome(url:, strategy:, limit:, items_selector:)
             }
           ),
@@ -161,7 +161,7 @@ module Html2rss
           # @param limit [Integer]
           # @param items_selector [String, nil]
           # @return [Outcome]
-          def scrape_outcome(url:, strategy: 'auto', limit: 25, items_selector: nil)
+          def scrape_outcome(url:, strategy: 'auto', limit: AutoSource::DEFAULT_LIMIT, items_selector: nil)
             wire = Batch.scrape_wire(url:, strategy: Option.strategy(strategy), limit:, items_selector:)
             Outcome.scrape(
               items: wire[:items],
