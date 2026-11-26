@@ -112,7 +112,7 @@ RSpec.describe Html2rss::PageRecon do
       end
       "<!DOCTYPE html><html><body><main><ul>#{items.join}</ul></main></body></html>"
     end
-    let(:sst) { Html2rss::SST::Normalizer.call(topics, vocabulary: all_scope) }
+    let(:sst) { Html2rss::Html::SST::Normalizer.call(topics, vocabulary: all_scope) }
 
     it 'discovers segments in the scope it is given', :aggregate_failures do
       found = ->(lang) { described_class.discover_segments(sst, 'https://example.com/', vocabulary: Html2rss::Vocabulary[lang]) }

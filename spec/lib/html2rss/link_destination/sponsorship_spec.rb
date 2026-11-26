@@ -3,8 +3,8 @@
 RSpec.describe Html2rss::LinkDestination::Sponsorship do
   let(:node) do
     lambda do |name: :span, text: 'x', class_names: nil, raw: nil, style: nil, children: nil|
-      attrs = Html2rss::SST::Attrs.build(class_names:, raw:, style:)
-      Html2rss::SST::Node.build(name:, own_text: text, attrs:, children:)
+      attrs = Html2rss::Html::SST::Attrs.build(class_names:, raw:, style:)
+      Html2rss::Html::SST::Node.build(name:, own_text: text, attrs:, children:)
     end
   end
   let(:marker) { ->(element, ancestors = []) { described_class.marker(element, ancestors, vocabulary: all_scope) } }

@@ -3,7 +3,7 @@
 RSpec.describe Html2rss::ContractError do
   let(:contract_errors) do
     [
-      Html2rss::Status::InvalidError, Html2rss::FeedResult::InvalidError, Html2rss::SST::InvalidError,
+      Html2rss::Status::InvalidError, Html2rss::FeedResult::InvalidError, Html2rss::Html::SST::InvalidError,
       Html2rss::MCP::Outcome::InvalidError, Html2rss::Article::Enclosure::InvalidError,
       Html2rss::Article::Deduplicator::InvalidError, Html2rss::AutoSource::Segment::InvalidError,
       Html2rss::AutoSource::ScraperContractError, Html2rss::Html::InvalidError,

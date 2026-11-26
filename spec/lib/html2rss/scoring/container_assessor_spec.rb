@@ -13,10 +13,10 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
   let(:heading) { build_node(name: :h2, text: 'Platform launch notes for teams') }
   let(:anchor) { build_node(name: :a, href: news_href, text: 'Read the story') }
   let(:article) do
-    Html2rss::SST::Node.build(
+    Html2rss::Html::SST::Node.build(
       name: :article,
-      attrs: Html2rss::SST::Attrs.build(class_names: %w[article-card]),
-      children: [heading, Html2rss::SST::Node.build(name: :time, own_text: 'May 1, 2024'),
+      attrs: Html2rss::Html::SST::Attrs.build(class_names: %w[article-card]),
+      children: [heading, Html2rss::Html::SST::Node.build(name: :time, own_text: 'May 1, 2024'),
                  build_node(name: :p, text: body_text)]
     )
   end
@@ -68,8 +68,8 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
     end
 
     it 'classifies tokens from the container id as well as its class names', :aggregate_failures do
-      sidebar = Html2rss::SST::Node.build(name: :div, attrs: Html2rss::SST::Attrs.build(id: 'sidebar'))
-      article_id = Html2rss::SST::Node.build(name: :div, attrs: Html2rss::SST::Attrs.build(id: 'article'))
+      sidebar = Html2rss::Html::SST::Node.build(name: :div, attrs: Html2rss::Html::SST::Attrs.build(id: 'sidebar'))
+      article_id = Html2rss::Html::SST::Node.build(name: :div, attrs: Html2rss::Html::SST::Attrs.build(id: 'article'))
 
       expect(assessor.call(sidebar, nil, destination_facts: nil).junk_tokens).to be(true)
       expect(assessor.call(article_id, nil, destination_facts: nil).content_tokens).to be(true)
@@ -146,21 +146,22 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
     end
 
     it 'treats a datetime attribute as a publish marker' do
-      root = Html2rss::SST::Node.build(name: :div, attrs: Html2rss::SST::Attrs.build(datetime: '2024-05-01'))
+      root = Html2rss::Html::SST::Node.build(name: :div,
+                                             attrs: Html2rss::Html::SST::Attrs.build(datetime: '2024-05-01'))
 
       expect(assessor.call(root, nil, destination_facts: nil).publish_marker).to be(true)
     end
 
     it 'treats datePublished and dateModified itemprops as publish markers', :aggregate_failures do
       %w[datePublished dateModified].each do |itemprop|
-        root = Html2rss::SST::Node.build(name: :div, attrs: Html2rss::SST::Attrs.build(itemprop:))
+        root = Html2rss::Html::SST::Node.build(name: :div, attrs: Html2rss::Html::SST::Attrs.build(itemprop:))
 
         expect(assessor.call(root, nil, destination_facts: nil).publish_marker).to be(true)
       end
     end
 
     it 'ignores other itemprops' do
-      root = Html2rss::SST::Node.build(name: :div, attrs: Html2rss::SST::Attrs.build(itemprop: 'author'))
+      root = Html2rss::Html::SST::Node.build(name: :div, attrs: Html2rss::Html::SST::Attrs.build(itemprop: 'author'))
 
       expect(assessor.call(root, nil, destination_facts: nil).publish_marker).to be(false)
     end

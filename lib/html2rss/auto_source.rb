@@ -305,7 +305,7 @@ module Html2rss
     def page_document
       return @page_document if defined?(@page_document)
 
-      @page_document = (SST::Normalizer.call(parsed_body, vocabulary:) unless json_response?)
+      @page_document = (Html::SST::Normalizer.call(parsed_body, vocabulary:) unless json_response?)
     end
 
     # The page's route-facts memo as a lookup, for the stages that read a URL's destination facts.

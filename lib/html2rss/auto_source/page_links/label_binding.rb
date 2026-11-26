@@ -23,8 +23,8 @@ module Html2rss
         private_constant :HEADER_WORDS, :WORD
 
         ##
-        # @param node [SST::Node] the frame where the label binds
-        # @param label [SST::Node] the label element
+        # @param node [Html::SST::Node] the frame where the label binds
+        # @param label [Html::SST::Node] the label element
         # @param claims [AnchorClaims] resolves the frame's destinations
         def initialize(node, label, claims)
           @node = node
@@ -66,7 +66,7 @@ module Html2rss
         # The label and its wrappers up to the frame's child holding it, innermost first.
         def path
           @path ||= begin
-            index = SST::Index.for_node!(@label)
+            index = Html::SST::Index.for_node!(@label)
             nodes = [@label]
             nodes << index.parent_of(nodes.last) until index.parent_of(nodes.last).equal?(@node)
             nodes

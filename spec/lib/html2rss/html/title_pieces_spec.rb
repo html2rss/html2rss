@@ -4,7 +4,7 @@ RSpec.describe Html2rss::Html::TitlePieces do
   context 'with SST nodes' do
     let(:pieces_for) do
       lambda do |html|
-        doc = Html2rss::SST::Normalizer.call("<html><body>#{html}</body></html>", vocabulary: all_scope)
+        doc = Html2rss::Html::SST::Normalizer.call("<html><body>#{html}</body></html>", vocabulary: all_scope)
         root = doc.root.find { _1.name == :article }
         anchor = root.find(&:link?)
         source = root.find(&:heading?) || anchor
@@ -94,14 +94,15 @@ RSpec.describe Html2rss::Html::TitlePieces do
 
     context 'with unindexed nodes' do
       let(:kicker) do
-        Html2rss::SST::Node.build(name: :span, attrs: Html2rss::SST::Attrs.build(class_names: ['kicker']),
-                                  own_text: 'Transit')
+        Html2rss::Html::SST::Node.build(name: :span, attrs: Html2rss::Html::SST::Attrs.build(class_names: ['kicker']),
+                                        own_text: 'Transit')
       end
       let(:heading) do
-        anchor = Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '/s'), own_text: 'Tram')
-        Html2rss::SST::Node.build(name: :h2, children: [kicker, anchor])
+        anchor = Html2rss::Html::SST::Node.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: '/s'),
+                                                 own_text: 'Tram')
+        Html2rss::Html::SST::Node.build(name: :h2, children: [kicker, anchor])
       end
-      let(:pieces) { described_class.new(Html2rss::SST::Node.build(name: :article, children: [heading]), heading, vocabulary: all_scope) }
+      let(:pieces) { described_class.new(Html2rss::Html::SST::Node.build(name: :article, children: [heading]), heading, vocabulary: all_scope) }
 
       it 'judges them by walking the tree', :aggregate_failures do
         expect(pieces.kicker).to equal(kicker)
@@ -110,16 +111,16 @@ RSpec.describe Html2rss::Html::TitlePieces do
 
       it 'raises on a title piece without an index to walk' do
         title = kicker.with(attrs: kicker.attrs.with(class_names: ['title']), own_text: 'Tram')
-        box = heading.with(children: [kicker.with(attrs: Html2rss::SST::Attrs.build), title])
-        article = Html2rss::SST::Node.build(name: :article, children: [box])
+        box = heading.with(children: [kicker.with(attrs: Html2rss::Html::SST::Attrs.build), title])
+        article = Html2rss::Html::SST::Node.build(name: :article, children: [box])
 
-        expect { described_class.new(article, box, vocabulary: all_scope).kicker }.to raise_error(Html2rss::SST::Index::InvalidError)
+        expect { described_class.new(article, box, vocabulary: all_scope).kicker }.to raise_error(Html2rss::Html::SST::Index::InvalidError)
       end
 
       it 'raises on a time element without an index to read running text from' do
-        time = Html2rss::SST::Node.build(name: :time, own_text: 'Friday')
+        time = Html2rss::Html::SST::Node.build(name: :time, own_text: 'Friday')
         expect { pieces.headline_text(heading.with(children: [time, *heading.children])) }
-          .to raise_error(Html2rss::SST::Index::InvalidError)
+          .to raise_error(Html2rss::Html::SST::Index::InvalidError)
       end
     end
   end
@@ -135,7 +136,7 @@ RSpec.describe Html2rss::Html::TitlePieces do
     end
     let(:headline) do
       lambda do |html, vocabulary|
-        doc = Html2rss::SST::Normalizer.call("<html><body>#{html}</body></html>", vocabulary:)
+        doc = Html2rss::Html::SST::Normalizer.call("<html><body>#{html}</body></html>", vocabulary:)
         root = doc.root.find { _1.name == :article }
         heading = root.find { _1.name == :h2 }
         [described_class.new(root, heading, anchor: root.find(&:link?), vocabulary:).headline_text(heading), doc].first

@@ -62,7 +62,7 @@ module Html2rss
     # list-level "more" (+list_more+, a "see all" label that names a list, not a story) and new-window
     # readers of {LinkDestination::TextClassifier}, the sponsorship labels of
     # {LinkDestination::Sponsorship::LabelText}, the title concepts of {Article::Title} and the pager concepts of
-    # {SST::Tags}, which read a scope's own terms as whole labels. The podcast concepts stay out: their reader
+    # {Html::SST::Tags}, which read a scope's own terms as whole labels. The podcast concepts stay out: their reader
     # matches inside URLs and titles, where a short Han term is not precise. A concept joins this list only when
     # every production path that reads it takes the page scope; a page-only language declaring any other pattern
     # concept would have a dead term, so the conformance spec rejects it.

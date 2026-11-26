@@ -808,7 +808,7 @@ RSpec.describe Html2rss::Capture do
         end
         allow(Html2rss::AutoSource::Segmenter).to receive(:call).and_return(segments)
 
-        expect { selector }.to raise_error(Html2rss::SST::Index::InvalidError)
+        expect { selector }.to raise_error(Html2rss::Html::SST::Index::InvalidError)
       end
 
       it 'stops at a wrapper holding several roots' do
@@ -886,7 +886,7 @@ RSpec.describe Html2rss::Capture do
       before do
         response = html_response('<html><body></body></html>')
         stub_outcome(response, articles:)
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_return(nil)
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_return(nil)
       end
 
       # rubocop:disable-next RSpec/ExampleLength -- default selector plus test next_step
@@ -1113,8 +1113,10 @@ RSpec.describe Html2rss::Capture do
       ]
       stub_outcome(response, articles:)
 
-      link_a = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/a'))
-      link_b = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/b'))
+      link_a = instance_double(Html2rss::Html::SST::Node,
+                               attrs: instance_double(Html2rss::Html::SST::Attrs, href: '/a'))
+      link_b = instance_double(Html2rss::Html::SST::Node,
+                               attrs: instance_double(Html2rss::Html::SST::Attrs, href: '/b'))
 
       allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |sst, strategy:, **|
         cluster_root = sst.index.each_node.find { _1.name.to_s == 'div' }

@@ -548,9 +548,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'dedupe comparator precedence' do
     let(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com') }
 
-    let(:root_node) { Html2rss::SST::Node.build(name: :article) }
+    let(:root_node) { Html2rss::Html::SST::Node.build(name: :article) }
     let(:primary_link) do
-      Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '/news/story'))
+      Html2rss::Html::SST::Node.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: '/news/story'))
     end
     let(:base_article) do
       Html2rss::Article.new(
@@ -726,10 +726,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     let(:entries) do
       Array.new(4) do |index|
-        root = Html2rss::SST::Node.build(name: :article, attrs: Html2rss::SST::Attrs.build(id: "s#{index}"))
-        link = Html2rss::SST::Node.build(
+        root = Html2rss::Html::SST::Node.build(name: :article, attrs: Html2rss::Html::SST::Attrs.build(id: "s#{index}"))
+        link = Html2rss::Html::SST::Node.build(
           name: :a,
-          attrs: Html2rss::SST::Attrs.build(href: "/news/story-#{index}"),
+          attrs: Html2rss::Html::SST::Attrs.build(href: "/news/story-#{index}"),
           own_text: "Story #{index}"
         )
         segment = Html2rss::AutoSource::Segment.build(

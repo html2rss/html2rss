@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
   context 'with invalid construction input' do
     let(:document) { document_for('<html><body><article><a href="/a">A</a></article></body></html>') }
 
-    it 'rejects a document that is not an SST::Document' do
+    it 'rejects a document that is not an Html::SST::Document' do
       expect { described_class.new(Object.new, base_url: 'https://example.com', strategy: :semantic) }
         .to raise_error(Html2rss::AutoSource::Segment::InvalidError, 'document must be SST::Document')
     end

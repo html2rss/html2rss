@@ -5,7 +5,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
 
   let(:base_url) { 'https://example.com/articles/' }
   let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url) }
-  let(:anchor_for) { ->(html) { Html2rss::SST::Normalizer.call(html, vocabulary: all_scope).root.find(&:link?) } }
+  let(:anchor_for) { ->(html) { Html2rss::Html::SST::Normalizer.call(html, vocabulary: all_scope).root.find(&:link?) } }
 
   describe '#noise_anchor? with a list-level label' do
     let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url, vocabulary: Html2rss::Vocabulary[:vi]) }
@@ -58,7 +58,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
     end
 
     it 'rejects icon-only anchors' do # rubocop:disable RSpec/ExampleLength
-      doc = Html2rss::SST::Normalizer.call(<<~HTML, vocabulary: all_scope)
+      doc = Html2rss::Html::SST::Normalizer.call(<<~HTML, vocabulary: all_scope)
         <html><body><article><a href="/news/2024/platform-launch-notes"><img src="/i.png"></a></article></body></html>
       HTML
       anchor = doc.root.find(&:link?)
@@ -212,8 +212,8 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
     let(:verdict) do
       lambda do |lang, label, html|
         resolver = Html2rss::Scoring::LinkResolver.new(base_url, vocabulary: Html2rss::Vocabulary[lang])
-        root = Html2rss::SST::Normalizer.call("<html><body><div>#{html}</div></body></html>",
-                                              vocabulary: Html2rss::Vocabulary[lang]).root
+        root = Html2rss::Html::SST::Normalizer.call("<html><body><div>#{html}</div></body></html>",
+                                                    vocabulary: Html2rss::Vocabulary[lang]).root
         anchor = root.find { |node| node.link? && node.visible_text.to_s.strip == label }
         described_class.new(link_resolver: resolver)
                        .noise_anchor?(text: label, destination_facts: resolver.destination_facts(anchor), anchor:,
@@ -236,7 +236,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
     it 'drops the label when the caller gives no card', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       resolver = Html2rss::Scoring::LinkResolver.new(base_url, vocabulary: Html2rss::Vocabulary[:zh])
       html = '<html><body><div><h3>Harbor ferry timetable</h3><a href="/story-1">评论</a></div></body></html>'
-      root = Html2rss::SST::Normalizer.call(html, vocabulary: Html2rss::Vocabulary[:zh]).root
+      root = Html2rss::Html::SST::Normalizer.call(html, vocabulary: Html2rss::Vocabulary[:zh]).root
       anchor = root.find(&:link?)
       facts = resolver.destination_facts(anchor)
       policy = described_class.new(link_resolver: resolver)

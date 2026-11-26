@@ -653,7 +653,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
         described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC',
                                       link_resolver: page_resolver)
       end
-        .to raise_error(Html2rss::SST::Index::InvalidError, /no live index/)
+        .to raise_error(Html2rss::Html::SST::Index::InvalidError, /no live index/)
     end
   end
 

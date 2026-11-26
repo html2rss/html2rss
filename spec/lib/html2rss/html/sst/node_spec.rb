@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::SST::Node do
+RSpec.describe Html2rss::Html::SST::Node do
   describe '.build' do
     it 'requires a name' do
-      expect { described_class.build(name: nil) }.to raise_error(Html2rss::SST::InvalidError)
+      expect { described_class.build(name: nil) }.to raise_error(Html2rss::Html::SST::InvalidError)
     end
 
     it 'requires typed attrs' do
-      expect { described_class.build(name: :div, attrs: { href: 'x' }) }.to raise_error(Html2rss::SST::InvalidError)
+      expect { described_class.build(name: :div, attrs: { href: 'x' }) }.to raise_error(Html2rss::Html::SST::InvalidError)
     end
 
     it 'exposes predicates, traversal, and leaf checks', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      link = described_class.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '/post'), own_text: 'Post')
-      junk = described_class.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '#frag'))
+      link = described_class.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: '/post'), own_text: 'Post')
+      junk = described_class.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: '#frag'))
       heading = described_class.build(name: :h2, own_text: 'Title')
-      img = described_class.build(name: :img, attrs: Html2rss::SST::Attrs.build(src: '/a.png'))
+      img = described_class.build(name: :img, attrs: Html2rss::Html::SST::Attrs.build(src: '/a.png'))
       nav = described_class.build(name: :nav)
       child_div = described_class.build(name: :div, own_text: 'inner')
       parent_div = described_class.build(name: :div, children: [child_div, link])
@@ -38,12 +38,12 @@ RSpec.describe Html2rss::SST::Node do
 
     it 'coerces names to symbols and rejects blank names', :aggregate_failures do
       expect(described_class.build(name: 'div').name).to eq(:div)
-      expect { described_class.build(name: '  ') }.to raise_error(Html2rss::SST::InvalidError, 'name is required')
+      expect { described_class.build(name: '  ') }.to raise_error(Html2rss::Html::SST::InvalidError, 'name is required')
     end
 
     it 'rejects every blank name that String#strip would empty', :aggregate_failures do
       ['', nil, " \t\r\n\f\v", "\0", " \0 "].each do |name|
-        expect { described_class.build(name:) }.to raise_error(Html2rss::SST::InvalidError, 'name is required')
+        expect { described_class.build(name:) }.to raise_error(Html2rss::Html::SST::InvalidError, 'name is required')
       end
       expect(described_class.build(name: "\0a").name).to be(:"\x00a")
     end
@@ -51,7 +51,7 @@ RSpec.describe Html2rss::SST::Node do
     it 'defaults missing attrs, children and text to empty values', :aggregate_failures do
       node = described_class.build(name: :span)
 
-      expect(node.attrs).to be(Html2rss::SST::Attrs.empty)
+      expect(node.attrs).to be(Html2rss::Html::SST::Attrs.empty)
       expect(node.children).to eq([])
       expect(node.own_text).to eq('')
       expect(node.tag_path).to eq('')
@@ -80,16 +80,16 @@ RSpec.describe Html2rss::SST::Node do
 
     it 'rejects attrs that are not typed and children that are not nodes', :aggregate_failures do
       expect { described_class.build(name: :div, attrs: Object.new) }
-        .to raise_error(Html2rss::SST::InvalidError, 'attrs must be SST::Attrs')
+        .to raise_error(Html2rss::Html::SST::InvalidError, 'attrs must be SST::Attrs')
       expect { described_class.build(name: :div, children: ['text']) }
-        .to raise_error(Html2rss::SST::InvalidError, 'children must be SST::Node instances')
+        .to raise_error(Html2rss::Html::SST::InvalidError, 'children must be SST::Node instances')
     end
   end
 
   describe 'element predicates' do
     it 'recognises every heading and landmark name', :aggregate_failures do
-      Html2rss::SST::Tags::HEADING_NAMES.each { |name| expect(described_class.build(name:)).to be_heading }
-      Html2rss::SST::Tags::UTILITY_LANDMARK_NAMES.each do |name|
+      Html2rss::Html::SST::Tags::HEADING_NAMES.each { |name| expect(described_class.build(name:)).to be_heading }
+      Html2rss::Html::SST::Tags::UTILITY_LANDMARK_NAMES.each do |name|
         expect(described_class.build(name:)).to be_utility_landmark
       end
     end
@@ -103,7 +103,7 @@ RSpec.describe Html2rss::SST::Node do
     end
 
     it 'recognises utility landmark roles on any element', :aggregate_failures do
-      role_div = ->(role) { described_class.build(name: :div, attrs: Html2rss::SST::Attrs.build(raw: { 'role' => role })) }
+      role_div = ->(role) { described_class.build(name: :div, attrs: Html2rss::Html::SST::Attrs.build(raw: { 'role' => role })) }
 
       expect(role_div.call('complementary')).to be_utility_landmark
       expect(role_div.call('search')).not_to be_utility_landmark
@@ -116,13 +116,14 @@ RSpec.describe Html2rss::SST::Node do
 
   describe 'links' do
     it 'accepts destinations that are not skipped schemes or fragments', :aggregate_failures do
-      expect(described_class.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '/post'))).to be_link
-      expect(described_class.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: 'https://x.test'))).to be_link
+      expect(described_class.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: '/post'))).to be_link
+      expect(described_class.build(name: :a,
+                                   attrs: Html2rss::Html::SST::Attrs.build(href: 'https://x.test'))).to be_link
     end
 
     it 'skips every configured non-content href prefix' do
-      Html2rss::SST::Tags::SKIP_HREF_PREFIXES.each do |prefix|
-        node = described_class.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: "#{prefix}x"))
+      Html2rss::Html::SST::Tags::SKIP_HREF_PREFIXES.each do |prefix|
+        node = described_class.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: "#{prefix}x"))
 
         expect(node).not_to be_eligible_href
       end
@@ -130,7 +131,7 @@ RSpec.describe Html2rss::SST::Node do
 
     it 'is not a link without an href or when the element is not an anchor', :aggregate_failures do
       expect(described_class.build(name: :a)).not_to be_link
-      expect(described_class.build(name: :span, attrs: Html2rss::SST::Attrs.build(href: '/x'))).not_to be_link
+      expect(described_class.build(name: :span, attrs: Html2rss::Html::SST::Attrs.build(href: '/x'))).not_to be_link
     end
   end
 

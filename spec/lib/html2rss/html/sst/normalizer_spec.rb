@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::SST::Normalizer do
+RSpec.describe Html2rss::Html::SST::Normalizer do
   describe '.call' do
     let(:simple_html) do
       <<~HTML
@@ -24,7 +24,7 @@ RSpec.describe Html2rss::SST::Normalizer do
 
       expect(noscript.children.map { [_1.name, _1.attrs.href] }).to eq([[:a, '/a.mp3']])
       expect(doc.index.ignored_chrome?(noscript.children.first)).to be(true)
-      expect(Html2rss::SST::Text.extract(doc.index.parent_of(noscript))).to eq('Episode')
+      expect(Html2rss::Html::SST::Text.extract(doc.index.parent_of(noscript))).to eq('Episode')
     end
 
     it 'strips other hidden containers even when they hold file links' do
@@ -46,7 +46,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       doc = described_class.call(simple_html, vocabulary: all_scope)
       article = doc.root.find { |n| n.name == :article }
 
-      expect(article.attrs).to be_a(Html2rss::SST::Attrs)
+      expect(article.attrs).to be_a(Html2rss::Html::SST::Attrs)
       expect(article.attrs.class_names).to include('card', 'teaser')
     end
 
@@ -110,16 +110,16 @@ RSpec.describe Html2rss::SST::Normalizer do
       html = '<html><body><p>x</p><p onclick="x">y</p></body></html>'
       bare, unkept = described_class.call(html, vocabulary: all_scope).root.find_all { |n| n.name == :p }
 
-      expect(bare.attrs).to be(Html2rss::SST::Attrs.empty)
-      expect(unkept.attrs).to eq(Html2rss::SST::Attrs.empty)
+      expect(bare.attrs).to be(Html2rss::Html::SST::Attrs.empty)
+      expect(unkept.attrs).to eq(Html2rss::Html::SST::Attrs.empty)
     end
 
     it 'passes the tag it already holds to the chrome scope rule' do
-      allow(Html2rss::SST::Tags).to receive(:chrome_scope).and_call_original
+      allow(Html2rss::Html::SST::Tags).to receive(:chrome_scope).and_call_original
 
       described_class.call('<html><body><nav></nav></body></html>', vocabulary: all_scope)
 
-      expect(Html2rss::SST::Tags).to have_received(:chrome_scope)
+      expect(Html2rss::Html::SST::Tags).to have_received(:chrome_scope)
         .with(kind_of(Nokogiri::XML::Element), :page, all_scope, 'nav')
     end
 
@@ -208,7 +208,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'degrades when MAX_NODES is breached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      stub_const('Html2rss::SST::Normalizer::MAX_NODES', 3)
+      stub_const('Html2rss::Html::SST::Normalizer::MAX_NODES', 3)
       allow(Html2rss::Log).to receive(:warn)
 
       html = '<html><body><div><div><div><p>x</p></div></div></div></body></html>'
@@ -225,7 +225,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'drops non-semantic tags once the node ceiling is reached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
+      stub_const('Html2rss::Html::SST::Normalizer::MAX_NODES', 1)
       allow(Html2rss::Log).to receive(:warn)
       doc = described_class.call('<html><body><span>x</span><p>y</p></body></html>', vocabulary: all_scope)
 
@@ -235,7 +235,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'degrades on the node that reaches the ceiling' do
-      stub_const('Html2rss::SST::Normalizer::MAX_NODES', 2)
+      stub_const('Html2rss::Html::SST::Normalizer::MAX_NODES', 2)
       allow(Html2rss::Log).to receive(:warn)
 
       doc = described_class.call('<html><body><article>x</article></body></html>', vocabulary: all_scope)
@@ -267,7 +267,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       end
 
       it 'never degrades at the node ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        stub_const('Html2rss::SST::Normalizer::MAX_NODES', 1)
+        stub_const('Html2rss::Html::SST::Normalizer::MAX_NODES', 1)
         allow(Html2rss::Log).to receive(:warn)
 
         doc = described_class.call('<html><body><span>x</span><p>y</p></body></html>', vocabulary: all_scope,
@@ -605,9 +605,9 @@ RSpec.describe Html2rss::SST::Normalizer do
     it 'rejects nil and unsupported input', :aggregate_failures do
       expect do
         described_class.call(nil, vocabulary: all_scope)
-      end.to raise_error(Html2rss::SST::InvalidError, 'input is required')
+      end.to raise_error(Html2rss::Html::SST::InvalidError, 'input is required')
       expect { described_class.call(42, vocabulary: all_scope) }
-        .to raise_error(Html2rss::SST::InvalidError, 'expected String or Nokogiri::XML::Node, got Integer')
+        .to raise_error(Html2rss::Html::SST::InvalidError, 'expected String or Nokogiri::XML::Node, got Integer')
     end
   end
 end

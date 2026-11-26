@@ -23,9 +23,9 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance(scra
 Every scraper subclasses `Scraper::Base` (`SemanticHtml` and `Html` via `Scraper::PageCards`), which owns the shared constructor and `extractable?` default; `request_slots` stays explicit on each (`CONTEXT.md` § Scraper contract).
 
 4. **Structured / API scrapers** — Schema, Microdata, MF2, JSON state, XHR JSON, oEmbed, WordPress REST, and Sitemap work on Nokogiri CSS/XPath or JSON/XML parsers. They do not extract from SST. `JsonDocument` walks a JSON response body (JSON Feed mapping or `JsonState.discover_articles`).
-5. **Heuristic scrapers** — `SemanticHtml` and `Html` share the page `SST::Document` (built lazily, at most once per page, by the first consumer: a heuristic tier or the page check), then:
+5. **Heuristic scrapers** — `SemanticHtml` and `Html` share the page `Html::SST::Document` (built lazily, at most once per page, by the first consumer: a heuristic tier or the page check), then:
 
-   `SST::Normalizer` → `AutoSource::Segmenter` → `Scoring::Engine` → extractor / article materialization.
+   `Html::SST::Normalizer` → `AutoSource::Segmenter` → `Scoring::Engine` → extractor / article materialization.
 
 6. **Cleanup** — Page-check structured items, merge copies of one article (`PageLinks#identity`: `Url#article_identity` less the page's placement params) into one item (the first copy keeps every field it carries — a native feed item its date, guid, description, publisher title, declared media files and image, even when the page card's image is larger — and later copies fill only the fields it lacks, such as the page card's image when the feed item has none, or categories, via `Article#merge`), drop explicitly sponsored items of every source, drop items linking off the page's domain (unless `keep_different_domain`; a followed native feed's own items may also link to that feed's domain, such as a podcast platform's episode pages; an item whose URL is its own audio/video enclosure, a link-less episode served from a CDN, skips the rule), hard-exclude non-article destinations (via `PathClassifier` facts), drop untitled page-derived items (`blank_title`; publisher feeds may carry untitled posts), titles under three words (`WordCount`: unspaced Japanese or Chinese text counts one word per six characters) and junk titles, and trim to `limit`. Titles from the heuristic scrapers (`Scraper::HEURISTIC_SCRAPERS`) reach Cleanup composed by `Article::Title` (`Kicker: Headline` read from elements by `Html::TitlePieces`: kicker leaves in or beside the heading, the headline piece of an element-only heading or anchor or its `data-title`, and no date, time, duration, concealed, lead or trailing tag elements, nor teaser clock, label or type noise in every `Vocabulary::LANGUAGES` language; a Japanese leading `【…】`/`＜…＞` is dropped when it names a content type and is the kicker otherwise); every other scraper carries a publisher-declared headline (structured data, feeds, APIs) and keeps it verbatim apart from whitespace collapse and invisible characters (soft hyphens, zero-width characters). Cleanup rejects junk titles but never rewrites them. Html is skipped when earlier tiers already admitted clean items.
 
@@ -50,16 +50,16 @@ Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (car
 | Schema / Microdata / MF2 / JsonState / XhrArticles / MetaOembed / app-shell detection         | Nokogiri (items page-checked against SST anchors via `PageLinks`) |
 | Sitemap detection (CSS/XPath)                                                                 | Nokogiri; URL list parsing uses raw `response.body` (XML string) |
 | Selectors path / Sanitize transformers                                                        | Nokogiri (item enhance reads the page's SST: `Selectors::ItemEnhancer`) |
-| `SST::Normalizer`                                                                             | Sole Nokogiri consumer on the heuristic auto-source path         |
-| Segmenter, Scoring, `Html::SstArticleExtractor`, heuristic chrome (`SST::Tags` / `SST::Text`) | SST only                                                         |
+| `Html::SST::Normalizer`                                                                             | Sole Nokogiri consumer on the heuristic auto-source path         |
+| Segmenter, Scoring, `Html::SstArticleExtractor`, heuristic chrome (`Html::SST::Tags` / `Html::SST::Text`) | SST only                                                         |
 
-Production heuristic scrapers and the page check reuse one `SST::Document` and one page `Scoring::LinkResolver` memoized by `AutoSource`, not re-parse HTML strings.
+Production heuristic scrapers and the page check reuse one `Html::SST::Document` and one page `Scoring::LinkResolver` memoized by `AutoSource`, not re-parse HTML strings.
 
 ## Constraints
 
-- **`SST::Normalizer::MAX_NODES` (5_000)** — Beyond this, normalization degrades to a semantic-tag-only keep set and logs a warning. Normalizing for selector items (`items: true`) never degrades.
+- **`Html::SST::Normalizer::MAX_NODES` (5_000)** — Beyond this, normalization degrades to a semantic-tag-only keep set and logs a warning. Normalizing for selector items (`items: true`) never degrades.
 - **Top-K** — `Scoring::Engine::TOP_K` (99) caps ranked segments materialized into articles; list strategy also budgets `use_top_selectors`.
-- **Typed stages** — Pipeline stages take `SST::Document` / `Segment` / `RankedSegment`, not ad-hoc Hash bags. Internal scraper APIs may change; the public gem surface is `lib/html2rss.rb`.
+- **Typed stages** — Pipeline stages take `Html::SST::Document` / `Segment` / `RankedSegment`, not ad-hoc Hash bags. Internal scraper APIs may change; the public gem surface is `lib/html2rss.rb`.
 
 ## Measuring changes
 

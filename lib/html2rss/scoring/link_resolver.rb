@@ -38,7 +38,7 @@ module Html2rss
       attr_reader :vocabulary
 
       ##
-      # @param node_or_href [SST::Node, String, #to_s]
+      # @param node_or_href [Html::SST::Node, String, #to_s]
       # @return [LinkDestination::DestinationFacts, nil]
       def destination_facts(node_or_href)
         href = extract_href(node_or_href)
@@ -93,7 +93,7 @@ module Html2rss
 
       def extract_href(node_or_href)
         raw = case node_or_href
-              when SST::Node then node_or_href.attrs.href
+              when Html::SST::Node then node_or_href.attrs.href
               else node_or_href
               end
         return unless raw

@@ -38,7 +38,7 @@ module AutoSourceCorpus # rubocop:disable Metrics/ModuleLength -- one cohesive c
   end
 
   ##
-  # Counts SST::Normalizer.call while a corpus page runs, so the report shows whether a
+  # Counts Html::SST::Normalizer.call while a corpus page runs, so the report shows whether a
   # heuristic tier was reached without adding hooks to lib/.
   module SstProbe
     def call(...)
@@ -127,7 +127,7 @@ module AutoSourceCorpus # rubocop:disable Metrics/ModuleLength -- one cohesive c
     end
 
     def install_sst_probe
-      normalizer = Html2rss::SST::Normalizer.singleton_class
+      normalizer = Html2rss::Html::SST::Normalizer.singleton_class
       normalizer.prepend(SstProbe) unless normalizer.include?(SstProbe)
     end
 

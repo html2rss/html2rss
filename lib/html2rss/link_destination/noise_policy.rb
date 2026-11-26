@@ -19,8 +19,8 @@ module Html2rss
       ##
       # @param text [String]
       # @param destination_facts [LinkDestination::DestinationFacts, nil]
-      # @param anchor [SST::Node, nil]
-      # @param container [SST::Node, nil]
+      # @param anchor [Html::SST::Node, nil]
+      # @param container [Html::SST::Node, nil]
       # @param heading_anchor [Boolean]
       # @param utility_landmark_ancestor [Boolean] pre-computed by Segmenter tree walk
       # @return [Boolean]

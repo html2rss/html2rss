@@ -72,8 +72,8 @@ module Html2rss
                            :sub, :label, :font].freeze
       class << self
         ##
-        # @param node [SST::Node]
-        # @param ancestors [Array<SST::Node>] +node+'s ancestors, root first
+        # @param node [Html::SST::Node]
+        # @param ancestors [Array<Html::SST::Node>] +node+'s ancestors, root first
         # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the label text
         # @return [Symbol, nil] +:container+, +:label+ or +:paid_label+ when +node+ itself carries an
         #   explicit sponsorship marker, else nil

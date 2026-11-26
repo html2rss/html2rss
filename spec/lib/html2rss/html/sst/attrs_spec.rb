@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::SST::Attrs do
+RSpec.describe Html2rss::Html::SST::Attrs do
   describe '.build' do
     it 'omits blank fields and freezes class names', :aggregate_failures do
       attrs = described_class.build(href: ' /x ', class_names: %w[a b], src: ' ')
@@ -13,7 +13,7 @@ RSpec.describe Html2rss::SST::Attrs do
 
     it 'rejects Hash class_names, naming the class it got' do
       expect { described_class.build(class_names: { a: 1 }) }
-        .to raise_error(Html2rss::SST::InvalidError, 'class_names must be an Array, got Hash')
+        .to raise_error(Html2rss::Html::SST::InvalidError, 'class_names must be an Array, got Hash')
     end
 
     it 'exposes typed readers, class_attr, and raw', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -45,7 +45,7 @@ RSpec.describe Html2rss::SST::Attrs do
 
     it 'rejects non-Hash raw, naming the class it got' do
       expect { described_class.build(raw: []) }
-        .to raise_error(Html2rss::SST::InvalidError, 'raw must be a Hash, got Array')
+        .to raise_error(Html2rss::Html::SST::InvalidError, 'raw must be a Hash, got Array')
     end
 
     it 'maps every blank scalar field to nil', :aggregate_failures do

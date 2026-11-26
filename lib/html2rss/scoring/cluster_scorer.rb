@@ -21,8 +21,8 @@ module Html2rss
       end
 
       ##
-      # @param groups [Hash{String => Array<SST::Node>}]
-      # @return [Array<SST::Node>]
+      # @param groups [Hash{String => Array<Html::SST::Node>}]
+      # @return [Array<Html::SST::Node>]
       def select_best_group(groups)
         best_nodes = []
         best_score = -1
@@ -37,7 +37,7 @@ module Html2rss
       end
 
       ##
-      # @param nodes [Array<SST::Node>]
+      # @param nodes [Array<Html::SST::Node>]
       # @return [Float]
       def avg_words(nodes)
         nodes.sum { |n| text_words(n) } / nodes.size.to_f

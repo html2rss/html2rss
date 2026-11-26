@@ -32,7 +32,7 @@ RSpec.describe Html2rss::AutoSource::Segment do
       end
     end
 
-    it 'accepts SST::Node subclasses for root_node and primary_link', :aggregate_failures do
+    it 'accepts Html::SST::Node subclasses for root_node and primary_link', :aggregate_failures do
       expect { described_class.build(root_node: subclassed_node, strategy: :list, position: 0) }
         .not_to raise_error
       expect { described_class.build(root_node: node, primary_link: subclassed_node, strategy: :list, position: 0) }

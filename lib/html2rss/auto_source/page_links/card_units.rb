@@ -22,8 +22,8 @@ module Html2rss
         private_constant :Unit
 
         ##
-        # @param root [SST::Node] subtree to read
-        # @param skip [SST::Node, nil] a subtree left out (a section's own label)
+        # @param root [Html::SST::Node] subtree to read
+        # @param skip [Html::SST::Node, nil] a subtree left out (a section's own label)
         # @param claims [AnchorClaims] resolves an anchor's destination
         def initialize(root, skip:, claims:)
           @skip = skip

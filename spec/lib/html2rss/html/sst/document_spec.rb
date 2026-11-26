@@ -2,8 +2,8 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::SST::Document do
-  let(:document) { Html2rss::SST::Normalizer.call('<html><body><p>x</p></body></html>', vocabulary: all_scope) }
+RSpec.describe Html2rss::Html::SST::Document do
+  let(:document) { Html2rss::Html::SST::Normalizer.call('<html><body><p>x</p></body></html>', vocabulary: all_scope) }
   let(:root) { document.root }
   let(:index) { document.index }
 
@@ -11,13 +11,13 @@ RSpec.describe Html2rss::SST::Document do
     it 'requires a root node' do
       expect do
         described_class.build(root: nil, index:)
-      end.to raise_error(Html2rss::SST::InvalidError, 'root is required')
+      end.to raise_error(Html2rss::Html::SST::InvalidError, 'root is required')
     end
 
     it 'requires an index' do
       expect do
         described_class.build(root:, index: nil)
-      end.to raise_error(Html2rss::SST::InvalidError, 'index is required')
+      end.to raise_error(Html2rss::Html::SST::InvalidError, 'index is required')
     end
 
     it 'defaults to a non-degraded document with no nodes counted', :aggregate_failures do

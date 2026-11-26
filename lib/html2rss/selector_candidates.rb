@@ -113,7 +113,7 @@ module Html2rss
     end
 
     def field_bucket(roots, field)
-      usable = roots.grep(SST::Node)
+      usable = roots.grep(Html::SST::Node)
       return [] if usable.size < @min_matches
 
       rank_field_tallies(count_field_selectors(usable, field))

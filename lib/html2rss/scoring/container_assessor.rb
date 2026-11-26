@@ -22,8 +22,8 @@ module Html2rss
       end
 
       ##
-      # @param container [SST::Node]
-      # @param selected_anchor [SST::Node, nil]
+      # @param container [Html::SST::Node]
+      # @param selected_anchor [Html::SST::Node, nil]
       # @param destination_facts [LinkDestination::DestinationFacts, nil]
       # @return [Observation]
       def call(container, selected_anchor, destination_facts:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

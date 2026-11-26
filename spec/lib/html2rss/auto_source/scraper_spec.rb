@@ -202,12 +202,12 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         html: { enabled: true }
       )
     end
-    let(:document) { Html2rss::SST::Normalizer.call(parsed_body, vocabulary: all_scope) }
+    let(:document) { Html2rss::Html::SST::Normalizer.call(parsed_body, vocabulary: all_scope) }
     let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(url) }
 
-    it 'reuses the provided SST::Document without re-normalizing' do # rubocop:disable RSpec/ExampleLength
+    it 'reuses the provided Html::SST::Document without re-normalizing' do # rubocop:disable RSpec/ExampleLength
       shared_document = document
-      allow(Html2rss::SST::Normalizer).to receive(:call)
+      allow(Html2rss::Html::SST::Normalizer).to receive(:call)
 
       described_class::HEURISTIC_SCRAPERS.each do |klass|
         instance = described_class.build_instance(klass,
@@ -216,7 +216,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         instance.extractable?
       end
 
-      expect(Html2rss::SST::Normalizer).not_to have_received(:call)
+      expect(Html2rss::Html::SST::Normalizer).not_to have_received(:call)
     end
 
     it 'reuses the provided LinkResolver without constructing another' do # rubocop:disable RSpec/ExampleLength
@@ -274,7 +274,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       Nokogiri::HTML('<html><body><article><a href="/article-1">Article 1</a></article></body></html>')
     end
     let(:url) { Html2rss::Url.from_absolute('https://example.com') }
-    let(:document) { Html2rss::SST::Normalizer.call(parsed_body, vocabulary: all_scope) }
+    let(:document) { Html2rss::Html::SST::Normalizer.call(parsed_body, vocabulary: all_scope) }
     let(:resolver) { Html2rss::Scoring::LinkResolver.new(url) }
 
     it 'returns nil when the scraper is disabled or missing from opts', :aggregate_failures do

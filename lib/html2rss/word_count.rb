@@ -6,7 +6,7 @@ module Html2rss
   # floor, short anchor labels, description richness): a run of letters and digits, where Han, Hiragana
   # and Katakana text, which carries no spaces, counts one word per {CJK_CHUNK} characters
   # (+アクメ 会員の登録情報…+ is several words, not one). {.runs} counts raw letter/digit runs, an
-  # unspaced CJK run as one: structural scoring ({Scoring::ContainerAssessor}, {SST::Node#run_count}) is
+  # unspaced CJK run as one: structural scoring ({Scoring::ContainerAssessor}, {Html::SST::Node#run_count}) is
   # calibrated on it, and counting CJK chunks there moves which container wins.
   module WordCount
     # A run of letters and digits holding at least one Han, Hiragana or Katakana character.

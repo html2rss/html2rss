@@ -17,8 +17,8 @@ module Html2rss
         end
 
         ##
-        # @param container [SST::Node]
-        # @return [SST::Node, nil]
+        # @param container [Html::SST::Node]
+        # @return [Html::SST::Node, nil]
         def select(container) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
           winners = {}
 

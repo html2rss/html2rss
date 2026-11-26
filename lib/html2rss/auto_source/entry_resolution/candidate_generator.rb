@@ -87,7 +87,7 @@ module Html2rss
         def segment_seed_urls
           return [] unless parsed_html
 
-          sst = SST::Normalizer.call(parsed_html, vocabulary:)
+          sst = Html::SST::Normalizer.call(parsed_html, vocabulary:)
           return [] unless sst
 
           link_resolver = Scoring::LinkResolver.new(entry_url, vocabulary:)

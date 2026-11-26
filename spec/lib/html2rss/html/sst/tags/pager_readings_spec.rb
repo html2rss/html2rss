@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::SST::Tags::PagerReadings do
+RSpec.describe Html2rss::Html::SST::Tags::PagerReadings do
   describe '.build' do
     let(:none) { { pager_label: '', page_link: '', page_link_label: '' } }
     let(:own) { { pager_label: 'bladeren-xx', page_link: 'volgende-xx', page_link_label: 'vorige-xx' } }

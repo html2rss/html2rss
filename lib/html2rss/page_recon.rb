@@ -148,7 +148,7 @@ module Html2rss
     end
 
     ##
-    # @param sst [Html2rss::SST::Document]
+    # @param sst [Html2rss::Html::SST::Document]
     # @param url [String, Html2rss::Url]
     # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope
     # @return [Array]
@@ -267,7 +267,7 @@ module Html2rss
     def vocabulary = @vocabulary ||= Vocabulary[Channel.language_for(response, channel)]
 
     def sst_document
-      Html2rss::SST::Normalizer.call(response.body, vocabulary:)
+      Html2rss::Html::SST::Normalizer.call(response.body, vocabulary:)
     end
 
     def segment_stats(sst, page_url)

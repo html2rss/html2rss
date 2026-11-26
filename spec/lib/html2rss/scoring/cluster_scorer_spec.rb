@@ -118,8 +118,8 @@ RSpec.describe Html2rss::Scoring::ClusterScorer do
     end
 
     it 'awards TIME_BONUS to groups with a datetime attribute' do
-      attrs = Html2rss::SST::Attrs.build(datetime: '2024-05-01T10:00')
-      timed = [Html2rss::SST::Node.build(name: :div, attrs:, own_text: 'one two three four five')]
+      attrs = Html2rss::Html::SST::Attrs.build(datetime: '2024-05-01T10:00')
+      timed = [Html2rss::Html::SST::Node.build(name: :div, attrs:, own_text: 'one two three four five')]
       plain = Array.new(20) { words_node.call(5) }
 
       expect(scorer.select_best_group('plain' => plain, 'timed' => timed)).to be(timed)
@@ -204,7 +204,7 @@ RSpec.describe Html2rss::Scoring::ClusterScorer do
     end
 
     it 'memoizes word counts per node', :aggregate_failures do
-      node = instance_double(Html2rss::SST::Node, run_count: 7)
+      node = instance_double(Html2rss::Html::SST::Node, run_count: 7)
 
       expect(scorer.avg_words([node])).to eq(7.0)
       expect(scorer.avg_words([node])).to eq(7.0)

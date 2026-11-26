@@ -8,15 +8,15 @@ RSpec.describe Html2rss::Html::Navigator do
       HEADING_TAGS: [:HEADING_NAMES, %w[h1 h2 h3 h4 h5 h6]],
       IGNORED_CONTAINER_TAGS: [:IGNORED_CONTAINER_NAMES, %w[nav footer header dialog svg script style]]
     }.each do |navigator_const, (tags_const, values)|
-      it "derives #{navigator_const} from SST::Tags::#{tags_const} with no delta" do
-        derived = Html2rss::SST::Tags.const_get(tags_const).to_set(&:to_s)
+      it "derives #{navigator_const} from Html::SST::Tags::#{tags_const} with no delta" do
+        derived = Html2rss::Html::SST::Tags.const_get(tags_const).to_set(&:to_s)
 
         expect(described_class.const_get(navigator_const)).to eq(derived).and eq(Set.new(values))
       end
     end
 
-    it 'builds MAIN_ANCHOR_SELECTOR from SST::Tags::SKIP_HREF_PREFIXES' do
-      nots = Html2rss::SST::Tags::SKIP_HREF_PREFIXES.map { |prefix| %[:not([href^="#{prefix}"])] }.join
+    it 'builds MAIN_ANCHOR_SELECTOR from Html::SST::Tags::SKIP_HREF_PREFIXES' do
+      nots = Html2rss::Html::SST::Tags::SKIP_HREF_PREFIXES.map { |prefix| %[:not([href^="#{prefix}"])] }.join
 
       expect(described_class::MAIN_ANCHOR_SELECTOR).to eq(%(a[href]:not([href=""])#{nots}))
     end
@@ -109,8 +109,8 @@ RSpec.describe Html2rss::Html::Navigator do
     end
 
     it 'raises for a page-level SST node without a live index' do
-      expect { usable_card?(Html2rss::SST::Node.build(name: :header)) }
-        .to raise_error(Html2rss::SST::Index::InvalidError)
+      expect { usable_card?(Html2rss::Html::SST::Node.build(name: :header)) }
+        .to raise_error(Html2rss::Html::SST::Index::InvalidError)
     end
   end
 end

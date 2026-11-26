@@ -8,11 +8,11 @@ module Html2rss
     # A segment paired with its composite score.
     class RankedSegment
       ##
-      # @return [SST::Node]
+      # @return [Html::SST::Node]
       def root_node = segment.root_node
 
       ##
-      # @return [SST::Node, nil]
+      # @return [Html::SST::Node, nil]
       def primary_link = segment.primary_link
 
       ##

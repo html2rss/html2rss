@@ -21,11 +21,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::PageCards do
 
       it 'builds its own link resolver and document from the page url when none are provided', :aggregate_failures do
         allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_call_original
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_call_original
 
         expect(scraper_class.new(parsed_body, url: 'https://example.org/')).to be_extractable
         expect(Html2rss::Scoring::LinkResolver).to have_received(:new).with('https://example.org/')
-        expect(Html2rss::SST::Normalizer).to have_received(:call).with(parsed_body, vocabulary: anything)
+        expect(Html2rss::Html::SST::Normalizer).to have_received(:call).with(parsed_body, vocabulary: anything)
       end
 
       it 'reads a naive leftover date in the given time zone' do # rubocop:disable RSpec/ExampleLength
@@ -44,14 +44,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::PageCards do
 
       it 'reuses a provided document and link resolver', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         resolver = Html2rss::Scoring::LinkResolver.new('https://example.org/')
-        document = Html2rss::SST::Normalizer.call(parsed_body, vocabulary: resolver.vocabulary)
-        allow(Html2rss::SST::Normalizer).to receive(:call)
+        document = Html2rss::Html::SST::Normalizer.call(parsed_body, vocabulary: resolver.vocabulary)
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call)
         allow(Html2rss::Scoring::LinkResolver).to receive(:new)
 
         scraper = scraper_class.new(nil, url: 'https://example.org/', document:, link_resolver: resolver)
 
         expect(scraper).to be_extractable
-        expect(Html2rss::SST::Normalizer).not_to have_received(:call)
+        expect(Html2rss::Html::SST::Normalizer).not_to have_received(:call)
         expect(Html2rss::Scoring::LinkResolver).not_to have_received(:new)
       end
     end

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::SST::Index do
+RSpec.describe Html2rss::Html::SST::Index do
   let(:document) do
     document_for(
       '<html><body><div id="w"><p>Hello <b>big</b> world</p><nav><a href="/n">Nav</a></nav></div></body></html>'
@@ -23,7 +23,7 @@ RSpec.describe Html2rss::SST::Index do
     it 'returns the depth from the root and zero for unknown nodes', :aggregate_failures do
       expect(index.depth_of(document.root)).to eq(0)
       expect(index.depth_of(wrapper)).to eq(2)
-      expect(index.depth_of(Html2rss::SST::Node.build(name: :span))).to eq(0)
+      expect(index.depth_of(Html2rss::Html::SST::Node.build(name: :span))).to eq(0)
     end
   end
 
@@ -31,7 +31,7 @@ RSpec.describe Html2rss::SST::Index do
     it 'flags nodes below an ignored container and not the content beside it', :aggregate_failures do
       expect(index.ignored_chrome?(nav_link)).to be(true)
       expect(index.ignored_chrome?(wrapper)).to be(false)
-      expect(index.ignored_chrome?(Html2rss::SST::Node.build(name: :span))).to be(false)
+      expect(index.ignored_chrome?(Html2rss::Html::SST::Node.build(name: :span))).to be(false)
     end
   end
 
@@ -42,7 +42,7 @@ RSpec.describe Html2rss::SST::Index do
       aside_link, nav_link, plain_link = doc.root.find_all(&:link?)
 
       expect([aside_link, nav_link, plain_link].map { doc.index.peripheral?(_1) }).to eq([true, false, false])
-      expect(doc.index.peripheral?(Html2rss::SST::Node.build(name: :span))).to be(false)
+      expect(doc.index.peripheral?(Html2rss::Html::SST::Node.build(name: :span))).to be(false)
     end
   end
 
@@ -68,12 +68,15 @@ RSpec.describe Html2rss::SST::Index do
       expect(described_class.descendant_or_self?(first, second)).to be(false)
     end
 
-    it 'scans the subtree for unindexed nodes', :aggregate_failures do
-      leaf = Html2rss::SST::Node.build(name: :span)
-      tree = Html2rss::SST::Node.build(name: :div, children: [Html2rss::SST::Node.build(name: :p, children: [leaf])])
+    it 'scans the subtree for unindexed nodes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      leaf = Html2rss::Html::SST::Node.build(name: :span)
+      tree = Html2rss::Html::SST::Node.build(name: :div,
+                                             children: [Html2rss::Html::SST::Node.build(
+                                               name: :p, children: [leaf]
+                                             )])
       expect(described_class.descendant_or_self?(leaf, tree)).to be(true)
       expect(described_class.descendant_or_self?(tree, leaf)).to be(false)
-      expect(described_class.descendant_or_self?(Html2rss::SST::Node.build(name: :span), tree)).to be(false)
+      expect(described_class.descendant_or_self?(Html2rss::Html::SST::Node.build(name: :span), tree)).to be(false)
     end
   end
 
@@ -161,7 +164,7 @@ RSpec.describe Html2rss::SST::Index do
     it 'binds every node of the document to its index', :aggregate_failures do
       expect(described_class.for_node(document.root)).to be(index)
       expect(described_class.for_node(nav_link)).to be(index)
-      expect(described_class.for_node(Html2rss::SST::Node.build(name: :span))).to be_nil
+      expect(described_class.for_node(Html2rss::Html::SST::Node.build(name: :span))).to be_nil
     end
   end
 
@@ -171,7 +174,7 @@ RSpec.describe Html2rss::SST::Index do
     end
 
     it 'raises the owner contract error for a node without a live index', :aggregate_failures do
-      unbound = Html2rss::SST::Node.build(name: :span)
+      unbound = Html2rss::Html::SST::Node.build(name: :span)
 
       expect { described_class.for_node!(unbound) }.to raise_error(described_class::InvalidError, /<span>/)
       expect(described_class::InvalidError).to be < Html2rss::ContractError
@@ -192,7 +195,7 @@ RSpec.describe Html2rss::SST::Index do
 
     it 'finds the node built from a parsed node, nil for a dropped or foreign one', :aggregate_failures do
       parsed = Nokogiri::HTML('<html><body><div id="w"><p>x</p><script>y</script></div></body></html>')
-      tracked = Html2rss::SST::Normalizer.call(parsed, vocabulary: all_scope, items: true)
+      tracked = Html2rss::Html::SST::Normalizer.call(parsed, vocabulary: all_scope, items: true)
 
       found = %w[#w p script].map { tracked.index.node_for(parsed.at_css(_1))&.name }
 

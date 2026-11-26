@@ -39,7 +39,7 @@ module Html2rss
 
         private_constant :LinkedLabel, :SectionLabel
 
-        # @param document [SST::Document, nil]
+        # @param document [Html::SST::Document, nil]
         # @param link_resolver [Scoring::LinkResolver, nil]
         # @param identity [#call] {PageLinks#identity}, the page's one article key for a destination URL
         def initialize(document, link_resolver, identity)

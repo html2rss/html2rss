@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::SST::Tags do
-  describe 'chrome scope rule (SST::Tags.chrome_scope)' do
+RSpec.describe Html2rss::Html::SST::Tags do
+  describe 'chrome scope rule (Html::SST::Tags.chrome_scope)' do
     {
       %w[<div> page] => :page,
       %w[<header> page] => :chrome,
@@ -56,9 +56,9 @@ RSpec.describe Html2rss::SST::Tags do
 
       before do
         own = %i[pager_label page_link page_link_label].to_h { [_1, xx.own_alternation(_1)] }
-        by_scope = Html2rss::SST::Tags::PagerReadings::BY_SCOPE
-        stub_const('Html2rss::SST::Tags::PagerReadings::BY_SCOPE',
-                   by_scope.merge(zh: Html2rss::SST::Tags::PagerReadings.build(own)))
+        by_scope = Html2rss::Html::SST::Tags::PagerReadings::BY_SCOPE
+        stub_const('Html2rss::Html::SST::Tags::PagerReadings::BY_SCOPE',
+                   by_scope.merge(zh: Html2rss::Html::SST::Tags::PagerReadings.build(own)))
       end
 
       it 'reads an own pager noun as a whole aria-label, on its own page only', :aggregate_failures do
@@ -77,7 +77,7 @@ RSpec.describe Html2rss::SST::Tags do
       end
 
       it 'leaves every shared scope on the one shared reading', :aggregate_failures do
-        readings = Html2rss::SST::Tags::PagerReadings.const_get(:BY_SCOPE)
+        readings = Html2rss::Html::SST::Tags::PagerReadings.const_get(:BY_SCOPE)
 
         %i[en ja de all].each { expect(readings.fetch(_1)).to be(readings.fetch(:en)) }
         expect(readings.fetch(:zh)).not_to be(readings.fetch(:en))

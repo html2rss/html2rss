@@ -449,7 +449,7 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       before do
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_wrap_original do |method, *args, **kwargs|
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_wrap_original do |method, *args, **kwargs|
           counts[:sst] += 1
           method.call(*args, **kwargs)
         end

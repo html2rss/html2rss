@@ -29,7 +29,7 @@ module Html2rss
       # Flat ordered list (request slot accounting, detection helpers).
       SCRAPERS = (DOCUMENT_SCRAPERS + SCRAPER_TIERS.flatten).freeze
 
-      # Heuristic scrapers that share one memoized SST::Document per page. The only titles composed
+      # Heuristic scrapers that share one memoized Html2rss::Html::SST::Document per page. The only titles composed
       # (+Kicker: Headline+, noise stripped): their cards are read by Html::SstArticleExtractor. Every
       # other scraper yields publisher-declared or structured headlines, kept verbatim (collapse only).
       HEURISTIC_SCRAPERS = Set[SemanticHtml, Html].freeze

@@ -63,7 +63,7 @@ module Html2rss
       end
 
       def normalize(root)
-        SST::Normalizer.call(root, vocabulary: @vocabulary, items: true, within: scope_above(root))
+        Html::SST::Normalizer.call(root, vocabulary: @vocabulary, items: true, within: scope_above(root))
       end
 
       def scope_above(node) = node.parent ? Html::Navigator.nokogiri_chrome_scope(node.parent, @vocabulary) : :page
@@ -97,7 +97,7 @@ module Html2rss
           parent.element_children.any? { |child| child != branch && kept?(child) }
       end
 
-      def kept?(element) = SST::Normalizer.kept_tag?(Html::Probe.tag(element), items: true)
+      def kept?(element) = Html::SST::Normalizer.kept_tag?(Html::Probe.tag(element), items: true)
 
       # The SST root of +item+ normalized by itself, kept alive with the rest, or +nil+ for an item that is no
       # SST node at all (a +script+, +style+, +svg+ or +iframe+ element).

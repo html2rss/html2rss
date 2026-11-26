@@ -154,7 +154,7 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     let(:launch_href) { '/news/2024/launch' }
 
     it 'derives facts from a node href and returns the same object for a node seen twice', :aggregate_failures do
-      node = Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: launch_href))
+      node = Html2rss::Html::SST::Node.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: launch_href))
       facts = resolver.destination_facts(node)
 
       expect(facts.destination).to eq('https://example.com/news/2024/launch')
@@ -162,8 +162,8 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     end
 
     it 'shares facts between distinct nodes and plain hrefs with the same target', :aggregate_failures do
-      first = Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: launch_href))
-      second = Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: launch_href))
+      first = Html2rss::Html::SST::Node.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: launch_href))
+      second = Html2rss::Html::SST::Node.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: launch_href))
       facts = resolver.destination_facts(first)
 
       expect(facts).to be_a(Html2rss::LinkDestination::DestinationFacts)
@@ -182,7 +182,7 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
     end
 
     it 'returns nil for nodes without an href, blank hrefs, and nil', :aggregate_failures do
-      expect(resolver.destination_facts(Html2rss::SST::Node.build(name: :a))).to be_nil
+      expect(resolver.destination_facts(Html2rss::Html::SST::Node.build(name: :a))).to be_nil
       expect(resolver.destination_facts('')).to be_nil
       expect(resolver.destination_facts(nil)).to be_nil
     end

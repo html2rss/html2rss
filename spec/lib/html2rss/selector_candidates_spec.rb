@@ -16,8 +16,8 @@ RSpec.describe Html2rss::SelectorCandidates do
     end
 
     it 'ranks items best-first and deduplicates selectors', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      empty = Html2rss::SST::Attrs.empty
-      root = Html2rss::SST::Node.build(name: :div, attrs: empty, tag_path: '/html/body/div')
+      empty = Html2rss::Html::SST::Attrs.empty
+      root = Html2rss::Html::SST::Node.build(name: :div, attrs: empty, tag_path: '/html/body/div')
       evidence = [
         { selector: 'main > div', enhance: true, strategy: :list, kind: :path, match_count: 3,
           roots: [root, root] },
@@ -38,19 +38,19 @@ RSpec.describe Html2rss::SelectorCandidates do
     it 'derives repeated relative title, link, and published selectors', :aggregate_failures do
       roots = Array.new(2) do |index|
         href = "/post-#{index + 1}"
-        link = Html2rss::SST::Node.build(
-          name: :a, attrs: Html2rss::SST::Attrs.build(href:), own_text: "Post #{index}",
+        link = Html2rss::Html::SST::Node.build(
+          name: :a, attrs: Html2rss::Html::SST::Attrs.build(href:), own_text: "Post #{index}",
           tag_path: '/html/body/div/h2/a'
         )
-        heading = Html2rss::SST::Node.build(
-          name: :h2, attrs: Html2rss::SST::Attrs.empty, children: [link], tag_path: '/html/body/div/h2'
+        heading = Html2rss::Html::SST::Node.build(
+          name: :h2, attrs: Html2rss::Html::SST::Attrs.empty, children: [link], tag_path: '/html/body/div/h2'
         )
-        time = Html2rss::SST::Node.build(
-          name: :time, attrs: Html2rss::SST::Attrs.build(datetime: "2024-01-0#{index + 1}"),
+        time = Html2rss::Html::SST::Node.build(
+          name: :time, attrs: Html2rss::Html::SST::Attrs.build(datetime: "2024-01-0#{index + 1}"),
           own_text: 'Jan', tag_path: '/html/body/div/time'
         )
-        Html2rss::SST::Node.build(
-          name: :div, attrs: Html2rss::SST::Attrs.build(class_names: ['item']),
+        Html2rss::Html::SST::Node.build(
+          name: :div, attrs: Html2rss::Html::SST::Attrs.build(class_names: ['item']),
           children: [heading, time], tag_path: '/html/body/div'
         )
       end
@@ -69,12 +69,12 @@ RSpec.describe Html2rss::SelectorCandidates do
     it 'derives field buckets per item candidate when title selectors differ', :aggregate_failures do
       build_roots = lambda do |tag, title_tag|
         Array.new(2) do |index|
-          title = Html2rss::SST::Node.build(
-            name: title_tag, attrs: Html2rss::SST::Attrs.empty, own_text: "#{tag} #{index}",
+          title = Html2rss::Html::SST::Node.build(
+            name: title_tag, attrs: Html2rss::Html::SST::Attrs.empty, own_text: "#{tag} #{index}",
             tag_path: "/html/body/#{tag}/#{title_tag}"
           )
-          Html2rss::SST::Node.build(
-            name: tag, attrs: Html2rss::SST::Attrs.empty, children: [title], tag_path: "/html/body/#{tag}"
+          Html2rss::Html::SST::Node.build(
+            name: tag, attrs: Html2rss::Html::SST::Attrs.empty, children: [title], tag_path: "/html/body/#{tag}"
           )
         end
       end
@@ -110,32 +110,32 @@ RSpec.describe Html2rss::SelectorCandidates do
     # rubocop:disable-next RSpec/ExampleLength -- min_matches gate for published vs title
     it 'omits field selectors that appear on fewer than min_matches roots', :aggregate_failures do
       with_time = begin
-        link = Html2rss::SST::Node.build(
-          name: :a, attrs: Html2rss::SST::Attrs.build(href: '/1'), own_text: 'One',
+        link = Html2rss::Html::SST::Node.build(
+          name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: '/1'), own_text: 'One',
           tag_path: '/html/body/div/h2/a'
         )
-        heading = Html2rss::SST::Node.build(
-          name: :h2, attrs: Html2rss::SST::Attrs.empty, children: [link], tag_path: '/html/body/div/h2'
+        heading = Html2rss::Html::SST::Node.build(
+          name: :h2, attrs: Html2rss::Html::SST::Attrs.empty, children: [link], tag_path: '/html/body/div/h2'
         )
-        time = Html2rss::SST::Node.build(
-          name: :time, attrs: Html2rss::SST::Attrs.build(datetime: '2024-01-01'),
+        time = Html2rss::Html::SST::Node.build(
+          name: :time, attrs: Html2rss::Html::SST::Attrs.build(datetime: '2024-01-01'),
           own_text: 'Jan', tag_path: '/html/body/div/time'
         )
-        Html2rss::SST::Node.build(
-          name: :div, attrs: Html2rss::SST::Attrs.build(class_names: ['item']),
+        Html2rss::Html::SST::Node.build(
+          name: :div, attrs: Html2rss::Html::SST::Attrs.build(class_names: ['item']),
           children: [heading, time], tag_path: '/html/body/div'
         )
       end
       without_time = begin
-        link = Html2rss::SST::Node.build(
-          name: :a, attrs: Html2rss::SST::Attrs.build(href: '/2'), own_text: 'Two',
+        link = Html2rss::Html::SST::Node.build(
+          name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: '/2'), own_text: 'Two',
           tag_path: '/html/body/div/h2/a'
         )
-        heading = Html2rss::SST::Node.build(
-          name: :h2, attrs: Html2rss::SST::Attrs.empty, children: [link], tag_path: '/html/body/div/h2'
+        heading = Html2rss::Html::SST::Node.build(
+          name: :h2, attrs: Html2rss::Html::SST::Attrs.empty, children: [link], tag_path: '/html/body/div/h2'
         )
-        Html2rss::SST::Node.build(
-          name: :div, attrs: Html2rss::SST::Attrs.build(class_names: ['item']),
+        Html2rss::Html::SST::Node.build(
+          name: :div, attrs: Html2rss::Html::SST::Attrs.build(class_names: ['item']),
           children: [heading], tag_path: '/html/body/div'
         )
       end
@@ -152,12 +152,12 @@ RSpec.describe Html2rss::SelectorCandidates do
     # rubocop:disable-next RSpec/ExampleLength -- wrapping-anchor roots skip link bucket
     it 'skips link candidates when the item root is itself a link', :aggregate_failures do
       roots = %w[/news/one /news/two].map do |href|
-        Html2rss::SST::Node.build(
+        Html2rss::Html::SST::Node.build(
           name: :a,
-          attrs: Html2rss::SST::Attrs.build(href:),
+          attrs: Html2rss::Html::SST::Attrs.build(href:),
           children: [
-            Html2rss::SST::Node.build(
-              name: :h2, attrs: Html2rss::SST::Attrs.empty, own_text: href,
+            Html2rss::Html::SST::Node.build(
+              name: :h2, attrs: Html2rss::Html::SST::Attrs.empty, own_text: href,
               tag_path: '/html/body/a/h2'
             )
           ],
@@ -176,26 +176,26 @@ RSpec.describe Html2rss::SelectorCandidates do
     # rubocop:disable-next RSpec/ExampleLength -- identifying class plus one CSS-escape token
     it 'publishes the identifying title class instead of the smallest utility class', :aggregate_failures do
       bold = [%w[flex font-semibold], %w[hidden font-semibold]].map.with_index do |class_names, index|
-        title = Html2rss::SST::Node.build(
+        title = Html2rss::Html::SST::Node.build(
           name: :span,
-          attrs: Html2rss::SST::Attrs.build(class_names:),
+          attrs: Html2rss::Html::SST::Attrs.build(class_names:),
           own_text: "Headline #{index}",
           tag_path: '/html/body/div/span'
         )
-        Html2rss::SST::Node.build(
-          name: :div, attrs: Html2rss::SST::Attrs.build(class_names: ['item']),
+        Html2rss::Html::SST::Node.build(
+          name: :div, attrs: Html2rss::Html::SST::Attrs.build(class_names: ['item']),
           children: [title], tag_path: '/html/body/div'
         )
       end
       broken = [['a', 'title]'], ['flex', 'title]']].map.with_index do |class_names, index|
-        title = Html2rss::SST::Node.build(
+        title = Html2rss::Html::SST::Node.build(
           name: :span,
-          attrs: Html2rss::SST::Attrs.build(class_names:),
+          attrs: Html2rss::Html::SST::Attrs.build(class_names:),
           own_text: "Headline #{index}",
           tag_path: '/html/body/div/span'
         )
-        Html2rss::SST::Node.build(
-          name: :div, attrs: Html2rss::SST::Attrs.build(class_names: ['item']),
+        Html2rss::Html::SST::Node.build(
+          name: :div, attrs: Html2rss::Html::SST::Attrs.build(class_names: ['item']),
           children: [title], tag_path: '/html/body/div'
         )
       end

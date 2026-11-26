@@ -25,7 +25,7 @@ module Html2rss
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
-        # @param document [SST::Document, nil] memoized SST document from AutoSource
+        # @param document [Html2rss::Html::SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
         # @param time_zone [String, nil] channel time zone for naive leftover dates
         # @param opts [Hash]
