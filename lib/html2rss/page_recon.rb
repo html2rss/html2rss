@@ -56,9 +56,8 @@ module Html2rss
     ##
     # @param response [Html2rss::RequestService::Response]
     # @param url [String, Html2rss::Url] requested entry URL
-    # @param strategy [Symbol, nil] unused (reserved for callers that already chose a strategy)
     # @return [Result]
-    def self.call(response:, url:, strategy: nil) # rubocop:disable Lint/UnusedMethodArgument
+    def self.call(response:, url:)
       new(response:, url:).call
     end
 
@@ -78,7 +77,7 @@ module Html2rss
       Probe.new(
         session:,
         response:,
-        result: call(response:, url: url_obj, strategy: resolved),
+        result: call(response:, url: url_obj),
         strategy: resolved
       )
     end
