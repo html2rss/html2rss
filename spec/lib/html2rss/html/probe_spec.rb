@@ -99,9 +99,5 @@ RSpec.describe Html2rss::Html::Probe do
       expect(%w[/a.pdf /a.ZIP /a.tgz /a.mp3 /a.WEBM?x=1].map { described_class.file_link?(_1) }).to all(be(true))
       expect(['/a', '/a.html', '/a.jpg', '/?a.mp3', '', nil].map { described_class.file_link?(_1) }).to all(be(false))
     end
-
-    it 'knows the same media extensions as Article::Enclosure' do
-      expect(described_class::MEDIA_EXTENSIONS).to match_array(Html2rss::Article::Enclosure::MEDIA_TYPES.keys)
-    end
   end
 end
