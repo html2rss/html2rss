@@ -54,9 +54,9 @@ module Html2rss
         private_constant :WORD, :LETTER, :LINK_NAMES
 
         ##
-        # @param root [SST::Node] card root
-        # @param source [SST::Node, nil] headline source: the heading, else the anchor
-        # @param anchor [SST::Node, nil] the card's selected anchor
+        # @param root [Html::SST::Node] card root
+        # @param source [Html::SST::Node, nil] headline source: the heading, else the anchor
+        # @param anchor [Html::SST::Node, nil] the card's selected anchor
         # @param vocabulary [Vocabulary::Scope] the page language's scope, read for kicker type markers
         def initialize(root, source, vocabulary:, anchor: nil)
           @anchor = anchor
@@ -66,7 +66,7 @@ module Html2rss
         end
 
         ##
-        # @return [SST::Node, nil] the kicker element ({Kicker})
+        # @return [Html::SST::Node, nil] the kicker element ({Kicker})
         def kicker = @kicker.element
 
         ##
@@ -74,7 +74,7 @@ module Html2rss
         def kicker_text = @kicker.text
 
         ##
-        # @param node [SST::Node, nil] heading or anchor
+        # @param node [Html::SST::Node, nil] heading or anchor
         # @return [String, nil] its headline text (see the class notes)
         def headline_text(node)
           return unless node
@@ -85,7 +85,7 @@ module Html2rss
         end
 
         ##
-        # @param node [SST::Node, nil] heading or anchor
+        # @param node [Html::SST::Node, nil] heading or anchor
         # @return [Array<String>] texts of the pieces left out of its headline; the date chips among them
         #   still carry the card's date
         def dropped_texts(node)
