@@ -175,9 +175,9 @@ module Html2rss
       return if value.nil?
 
       case value
-      when Hash, EntryResolution::Diag then value.to_h
+      when Hash, AutoSource::EntryResolution::Diag then value.to_h
       else
-        raise InvalidError, "entry_resolution must be a Hash or EntryResolution::Diag, got #{value.class}"
+        raise InvalidError, "entry_resolution must be a Hash or AutoSource::EntryResolution::Diag, got #{value.class}"
       end.transform_keys(&:to_sym).freeze
     end
 

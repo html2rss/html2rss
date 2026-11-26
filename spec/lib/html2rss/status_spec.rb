@@ -182,7 +182,7 @@ RSpec.describe Html2rss::Status do
     it 'rejects entry_resolution values that are not a Hash or Diag' do
       expect do
         described_class.build(articles: [], dedup_dropped: 0, entry_resolution: Object.new)
-      end.to raise_error(Html2rss::Status::InvalidError, /Hash or EntryResolution::Diag/)
+      end.to raise_error(Html2rss::Status::InvalidError, /Hash or AutoSource::EntryResolution::Diag/)
     end
   end
 

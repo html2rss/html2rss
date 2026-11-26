@@ -11,7 +11,7 @@ Use `:auto` when you want `default` (HTTPX) first and a browser-backed hop only 
 1. **Default (HTTPX)** — plain HTTP (faster, cheaper).
 2. **Botasaurus** — attempted when default raises a fallback-eligible error (for example `BlockedSurfaceDetected` or timeout) or extracts zero feed items.
 
-Before escalating default → Botasaurus on a **weak** auto-source extract (empty / below floor / high-entropy / app-shell / unsupported — not blocked), `EntryResolution` may probe up to five same-origin listing or native-feed candidates and rewrite the effective scrape URL via {ScrapeTarget}. Botasaurus then uses the resolved URL. Direct RSS/Atom/RDF entry URLs are parsed via `Syndication::Parser` without HTML AutoSource.
+Before escalating default → Botasaurus on a **weak** auto-source extract (empty / below floor / high-entropy / app-shell / unsupported — not blocked), `AutoSource::EntryResolution` may probe up to five same-origin listing or native-feed candidates and rewrite the effective scrape URL via {ScrapeTarget}. Botasaurus then uses the resolved URL. Direct RSS/Atom/RDF entry URLs are parsed via `Syndication::Parser` without HTML AutoSource.
 
 There is no Browserless / Puppeteer-in-gem tier. Pin `botasaurus` when you want browser rendering without default first. Botasaurus needs `BOTASAURUS_SCRAPER_URL`.
 
@@ -35,7 +35,7 @@ These abort immediately (`AutoFallback::NON_FALLBACK_ERRORS`): unknown strategy,
 
 Retries share the feed's request/session policy. Pin a concrete strategy when you need a single-hop budget profile.
 
-`AutoFallback` owns the entry-resolution attempt: it hands `EntryResolution.call` the request slots left minus the initial fetch a later strategy needs, records the returned diagnostic, and extracts the winning probe's response without fetching it again. The resolved page's own scraper follow-ups draw on the same budget, so on a zero-item retry they can still spend the slot reserved for the next strategy.
+`AutoFallback` owns the entry-resolution attempt: it hands `AutoSource::EntryResolution.call` the request slots left minus the initial fetch a later strategy needs, records the returned diagnostic, and extracts the winning probe's response without fetching it again. The resolved page's own scraper follow-ups draw on the same budget, so on a zero-item retry they can still spend the slot reserved for the next strategy.
 
 ### Terminal fallback outcome
 

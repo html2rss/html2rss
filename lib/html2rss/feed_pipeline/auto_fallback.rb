@@ -76,7 +76,7 @@ module Html2rss
         # @return [void]
         def remember_entry_resolution(result)
           @resolution_tried = true
-          @entry_resolution = EntryResolution::Diag.from_result(result)
+          @entry_resolution = AutoSource::EntryResolution::Diag.from_result(result)
         end
 
         # @param strategy [Symbol] strategy that raised
@@ -262,8 +262,8 @@ module Html2rss
       end
 
       def run_tournament(hop, response, extraction)
-        EntryResolution.call(response:, session: hop.request_session, config:, articles: extraction.articles,
-                             slots: budget.remaining_requests)
+        AutoSource::EntryResolution.call(response:, session: hop.request_session, config:, articles: extraction.articles,
+                                         slots: budget.remaining_requests)
       end
 
       # Extracts the winner's already fetched response; the target turns sticky only when it yields items.
