@@ -8,7 +8,7 @@ module Html2rss
     # Owns surface class, native feed hints, segment stats, and a cheap AutoSource
     # article count. Diagnostic fetch for Inspect/Recon lives on {.probe} — not twin
     # fetch helpers in those callers.
-    class PageRecon # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
+    class PageProbe # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
       Result = Data.define(
         :requested_url,
         :final_url,
@@ -51,8 +51,8 @@ module Html2rss
 
       ##
       # Diagnostic fetch + assess bundle. One home for session build + initial GET + {call}.
-      # Consumed by curation {Html2rss::Curation::Recon} and {Html2rss::Curation::PageRecon::Diagnostics}.
-      Probe = Data.define(:session, :response, :result, :strategy)
+      # Consumed by curation {Html2rss::Curation::Recon} and {Html2rss::Curation::Inspect}.
+      Fetch = Data.define(:session, :response, :result, :strategy)
 
       ##
       # @param response [Html2rss::RequestService::Response]
@@ -69,13 +69,13 @@ module Html2rss
       # @param strategy [Symbol] request strategy (:auto resolves to a concrete diagnostic strategy)
       # @option options [Integer, nil] :max_redirects
       # @option options [Integer, nil] :max_requests
-      # @return [Probe]
+      # @return [Fetch]
       def self.probe(url, strategy: :auto, **)
         url_obj = Url.from_absolute(url)
         resolved = FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
         session = build_probe_session(url_obj, resolved, **)
         response = session.fetch_initial_response
-        Probe.new(
+        Fetch.new(
           session:,
           response:,
           result: call(response:, url: url_obj),

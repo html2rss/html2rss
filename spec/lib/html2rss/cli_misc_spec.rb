@@ -7,7 +7,7 @@ RSpec.describe Html2rss::CLI do
 
   describe '#inspect' do
     let(:wire) { { requested_url: 'https://a.test', surface_category: 'listing', articles_count: 2 } }
-    let(:inspection) { instance_double(Html2rss::Curation::PageRecon::Diagnostics::Report, to_wire_h: wire) }
+    let(:inspection) { instance_double(Html2rss::Curation::Inspect::Report, to_wire_h: wire) }
 
     before do
       allow(Html2rss).to receive_messages(inspect: inspection,

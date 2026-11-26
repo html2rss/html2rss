@@ -42,8 +42,8 @@ RSpec.describe 'curation golden path (MCP policy)' do
 
   describe 'defer verdict stops before capture (native feed wins)' do
     before do
-      allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:call).and_return(
-        Html2rss::Curation::PageRecon::Diagnostics::Report.new(
+      allow(Html2rss::Curation::Inspect).to receive(:call).and_return(
+        Html2rss::Curation::Inspect::Report.new(
           data: {
             requested_url: url,
             alternate_feeds: [{ href: 'https://example.com/feed.xml', type: 'application/rss+xml' }]
@@ -131,8 +131,8 @@ RSpec.describe 'curation golden path (MCP policy)' do
     end
 
     before do
-      allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:call).and_return(
-        Html2rss::Curation::PageRecon::Diagnostics::Report.new(
+      allow(Html2rss::Curation::Inspect).to receive(:call).and_return(
+        Html2rss::Curation::Inspect::Report.new(
           data: {
             requested_url: url,
             alternate_feeds: [{ href: 'https://example.com/feed.xml', type: 'application/rss+xml' }]

@@ -109,7 +109,7 @@ module Html2rss
         url_obj = Url.from_absolute(url)
 
         begin
-          probe = PageRecon.probe(url_obj, strategy:, **)
+          probe = PageProbe.probe(url_obj, strategy:, **)
         rescue Html2rss::ContractError
           raise
         rescue Html2rss::Error => error

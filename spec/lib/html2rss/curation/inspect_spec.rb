@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- response/probe fixtures share across contexts
-RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
+RSpec.describe Html2rss::Curation::Inspect do
   let(:html) { File.read('spec/fixtures/local_feed_test.html') }
   let(:response_url) { Html2rss::Url.from_absolute('https://example.com/blog') }
   let(:response_status) { 200 }
@@ -18,16 +18,16 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
   end
   let(:probe_strategy) { :default }
   let(:probe) do
-    Html2rss::Curation::PageRecon::Probe.new(
+    Html2rss::Curation::PageProbe::Fetch.new(
       session: instance_double(Html2rss::RequestSession),
       response:,
-      result: Html2rss::Curation::PageRecon.call(response:, url: 'https://example.com/blog'),
+      result: Html2rss::Curation::PageProbe.call(response:, url: 'https://example.com/blog'),
       strategy: probe_strategy
     )
   end
 
   before do
-    allow(Html2rss::Curation::PageRecon).to receive(:probe) { probe }
+    allow(Html2rss::Curation::PageProbe).to receive(:probe) { probe }
   end
 
   it 'reports strategy, scrapers, and SST segment stats', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -133,7 +133,7 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
   context 'when a blocked interstitial is detected' do
     let(:response_body) { '<html><body>Checking your browser before accessing</body></html>' }
     let(:blocked_recon) do
-      Html2rss::Curation::PageRecon::Result.new(
+      Html2rss::Curation::PageProbe::Result.new(
         requested_url: 'https://example.com/blog',
         final_url: 'https://example.com/blog',
         status: 200,
@@ -150,7 +150,7 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
       )
     end
     let(:probe) do
-      Html2rss::Curation::PageRecon::Probe.new(
+      Html2rss::Curation::PageProbe::Fetch.new(
         session: instance_double(Html2rss::RequestSession),
         response:,
         result: blocked_recon,
@@ -169,22 +169,22 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
   describe '.call with deep: true' do
     it 'uses botasaurus when configured and strategy is auto', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::RequestService).to receive(:botasaurus_configured?).and_return(true)
-      allow(Html2rss::Curation::PageRecon).to receive(:probe).and_return(probe)
+      allow(Html2rss::Curation::PageProbe).to receive(:probe).and_return(probe)
 
       described_class.call(url: 'https://example.com/blog', strategy: :auto, deep: true)
 
-      expect(Html2rss::Curation::PageRecon).to have_received(:probe).with(
+      expect(Html2rss::Curation::PageProbe).to have_received(:probe).with(
         'https://example.com/blog', hash_including(strategy: :botasaurus)
       )
     end
   end
 
-  it 'builds a request session via PageRecon.probe', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    allow(Html2rss::Curation::PageRecon).to receive(:probe).and_call_original
+  it 'builds a request session via PageProbe.probe', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    allow(Html2rss::Curation::PageProbe).to receive(:probe).and_call_original
     session = instance_double(Html2rss::RequestSession, fetch_initial_response: response)
     allow(Html2rss::RequestSession).to receive(:build).and_return(session)
 
-    result = Html2rss::Curation::PageRecon.probe('https://example.com/blog', strategy: :default)
+    result = Html2rss::Curation::PageProbe.probe('https://example.com/blog', strategy: :default)
     expect(result.response).to eq(response)
     expect(Html2rss::RequestSession).to have_received(:build)
   end
@@ -210,13 +210,13 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
         }
       ]
     )
-    bot_probe = Html2rss::Curation::PageRecon::Probe.new(
+    bot_probe = Html2rss::Curation::PageProbe::Fetch.new(
       session: instance_double(Html2rss::RequestSession),
       response: captured_response,
-      result: Html2rss::Curation::PageRecon.call(response: captured_response, url: 'https://example.com/blog'),
+      result: Html2rss::Curation::PageProbe.call(response: captured_response, url: 'https://example.com/blog'),
       strategy: :botasaurus
     )
-    allow(Html2rss::Curation::PageRecon).to receive(:probe).and_return(bot_probe)
+    allow(Html2rss::Curation::PageProbe).to receive(:probe).and_return(bot_probe)
 
     result = described_class.call(url: 'https://example.com/blog', strategy: :botasaurus).to_wire_h
 
@@ -308,14 +308,14 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
       large = Html2rss::RequestService::Response.new(
         body: 'x' * 9_000, url: response_url, headers: { 'content-type' => 'text/html' }, status: 200
       )
-      recon = Html2rss::Curation::PageRecon::Result.new(
+      recon = Html2rss::Curation::PageProbe::Result.new(
         requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog', status: 200,
         scheme_downgrade: false, alternate_feeds: [], surface_category: :high_entropy_surface,
         articles_count: 0, admission_drops: {}, segment_stats: nil, html_response: true,
         content_type: 'text/html', blocked_surface: nil, sst: nil
       )
-      allow(Html2rss::Curation::PageRecon).to receive(:probe).and_return(
-        Html2rss::Curation::PageRecon::Probe.new(
+      allow(Html2rss::Curation::PageProbe).to receive(:probe).and_return(
+        Html2rss::Curation::PageProbe::Fetch.new(
           session: instance_double(Html2rss::RequestSession), response: large, result: recon, strategy: :default
         )
       )
@@ -338,9 +338,9 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
       }
     end
     let(:response_body) { 'x' * 9_000 }
-    let(:recon) { Html2rss::Curation::PageRecon::Result.new(**recon_fields) }
+    let(:recon) { Html2rss::Curation::PageProbe::Result.new(**recon_fields) }
     let(:probe) do
-      Html2rss::Curation::PageRecon::Probe.new(
+      Html2rss::Curation::PageProbe::Fetch.new(
         session: instance_double(Html2rss::RequestSession), response:, result: recon, strategy: probe_strategy
       )
     end
@@ -418,7 +418,7 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
     end
   end
 
-  describe Html2rss::Curation::PageRecon::Result do
+  describe Html2rss::Curation::PageProbe::Result do
     let(:fields) do
       {
         requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog', status: 200,
@@ -449,7 +449,7 @@ RSpec.describe Html2rss::Curation::PageRecon::Diagnostics do
     end
   end
 
-  describe Html2rss::Curation::PageRecon::Diagnostics::Report do
+  describe Html2rss::Curation::Inspect::Report do
     it 'exposes alternate_feeds? and articles_count predicates', :aggregate_failures do
       report = described_class.new(data: { alternate_feeds: [{ href: 'https://example.com/feed.xml' }],
                                            articles_count: 3 })

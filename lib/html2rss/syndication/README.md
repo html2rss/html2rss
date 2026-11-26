@@ -18,7 +18,7 @@ Native RSS/Atom/RDF discovery and parse for auto-source promotion and direct fee
 ## Non-goals
 
 - Entry-URL tournament / listing resolution (`AutoSource::EntryResolution`)
-- Page recon / surface classification (`PageRecon`)
+- Page recon / surface classification (`PageProbe`)
 - Feed channel metadata for output and its precedence (`Channel` / `FeedBuilder`); Syndication only reads what a feed states
 - Ranking or quality scoring of competing feeds beyond the audio-hint order and first feedish hit
 

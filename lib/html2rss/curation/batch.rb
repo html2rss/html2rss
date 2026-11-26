@@ -85,7 +85,7 @@ module Html2rss
         # @return [BatchResult]
         def batch_inspect(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY)
           plan = FeedPipeline::StrategyPlan.coerce(strategy)
-          reports = PageRecon::Diagnostics.batch(urls: Option.list(:urls, urls), strategy: plan, concurrency:)
+          reports = Inspect.batch(urls: Option.list(:urls, urls), strategy: plan, concurrency:)
           results = reports.map(&:to_wire_h)
           successful = reports.count { |report| diagnostic_success?(report) }
 

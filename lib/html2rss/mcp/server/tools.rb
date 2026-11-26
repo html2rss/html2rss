@@ -37,7 +37,7 @@ module Html2rss
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |url:, strategy: 'auto', **|
               Outcome.inspect_report(
-                report: Curation::PageRecon::Diagnostics.call(
+                report: Curation::Inspect.call(
                   url:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), deep: false
                 )
               )

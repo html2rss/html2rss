@@ -4,7 +4,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Curation::PageRecon do
+RSpec.describe Html2rss::Curation::PageProbe do
   let(:html) { File.read('spec/fixtures/local_feed_test.html') }
   let(:response) do
     Html2rss::RequestService::Response.new(
@@ -155,12 +155,12 @@ RSpec.describe Html2rss::Curation::PageRecon do
     expect(result.segment_stats).to be_nil
   end
 
-  it 'probe builds a session, fetches, and returns Probe', :aggregate_failures do
+  it 'probe builds a session, fetches, and returns Fetch', :aggregate_failures do
     session = instance_double(Html2rss::RequestSession, fetch_initial_response: response)
     allow(Html2rss::RequestSession).to receive(:build).and_return(session)
 
     probe = described_class.probe('https://example.com/blog', strategy: :default)
-    expect(probe).to be_a(described_class::Probe)
+    expect(probe).to be_a(described_class::Fetch)
     expect(probe.session).to eq(session)
     expect(probe.response).to eq(response)
     expect(probe.strategy).to eq(:default)

@@ -59,7 +59,7 @@ module Html2rss
         end
 
         ##
-        # @param report [Curation::PageRecon::Diagnostics::Report]
+        # @param report [Curation::Inspect::Report]
         # @return [Outcome]
         def inspect_report(report:)
           next_step = inspect_next_step(report)

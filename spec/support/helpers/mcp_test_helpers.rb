@@ -2,7 +2,7 @@
 
 module McpTestHelpers
   def report(**data)
-    Html2rss::Curation::PageRecon::Diagnostics::Report.new(
+    Html2rss::Curation::Inspect::Report.new(
       data: { articles_count: 0, alternate_feeds: [], **data }
     )
   end

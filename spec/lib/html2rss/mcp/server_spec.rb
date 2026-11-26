@@ -637,8 +637,8 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'inspect' do
       before do
-        allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:call).and_return(
-          Html2rss::Curation::PageRecon::Diagnostics::Report.new(
+        allow(Html2rss::Curation::Inspect).to receive(:call).and_return(
+          Html2rss::Curation::Inspect::Report.new(
             data: { requested_url: 'https://example.com', strategy: :default, html_response: true }
           )
         )
@@ -649,7 +649,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('inspect', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::Curation::PageRecon::Diagnostics).to have_received(:call).with(
+        expect(Html2rss::Curation::Inspect).to have_received(:call).with(
           url: 'https://example.com',
           strategy: :auto,
           deep: false
@@ -730,7 +730,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks inspect failures as isError' do
-        allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:call).and_raise(StandardError, 'inspect boom')
+        allow(Html2rss::Curation::Inspect).to receive(:call).and_raise(StandardError, 'inspect boom')
         result = call_tool.call('inspect', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)

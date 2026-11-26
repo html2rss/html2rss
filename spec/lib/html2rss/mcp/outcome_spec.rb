@@ -41,7 +41,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     describe '.inspect_guidance' do
       it 'returns default inspect guidance when articles are present' do
-        populated = Html2rss::Curation::PageRecon::Diagnostics::Report.new(
+        populated = Html2rss::Curation::Inspect::Report.new(
           data: { articles_count: 3, alternate_feeds: [] }
         )
 

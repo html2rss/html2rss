@@ -173,7 +173,7 @@ RSpec.describe Html2rss::CLI do
         strategy: :default
       }
     end
-    let(:report) { instance_double(Html2rss::Curation::PageRecon::Diagnostics::Report, to_wire_h: inspect_data) }
+    let(:report) { instance_double(Html2rss::Curation::Inspect::Report, to_wire_h: inspect_data) }
     let(:batch_result) do
       Html2rss::Curation::Batch::BatchResult.new(total: 1, successful: 1, results: [inspect_data])
     end

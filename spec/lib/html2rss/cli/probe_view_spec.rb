@@ -36,6 +36,8 @@ RSpec.describe Html2rss::CLI::ProbeView do
   end
 
   describe '.from_recon' do
+    let(:drop) { Html2rss::Curation::Recon::Verdict[:drop] }
+
     it 'maps a recon result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       verdict = Html2rss::Curation::Recon::Verdict[:defer]
       result = Html2rss::Curation::Recon::Result.new(
@@ -51,8 +53,6 @@ RSpec.describe Html2rss::CLI::ProbeView do
                             alternate_feeds: [], notes: %w[n], strategy: nil)
       )
     end
-
-    let(:drop) { Html2rss::Curation::Recon::Verdict[:drop] }
 
     it 'keeps a missing native feed nil' do
       result = Html2rss::Curation::Recon::Result.new(

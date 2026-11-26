@@ -23,9 +23,9 @@ module Html2rss
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param deep [Boolean] when true and strategy is :auto, one Botasaurus hop if configured
-  # @return [Html2rss::Curation::PageRecon::Diagnostics::Report]
+  # @return [Html2rss::Curation::Inspect::Report]
   def self.inspect(url, strategy: :auto, deep: false, **)
-    Curation::PageRecon::Diagnostics.call(url:, strategy:, deep:, **)
+    Curation::Inspect.call(url:, strategy:, deep:, **)
   end
 
   ##

@@ -38,21 +38,21 @@ RSpec.describe Html2rss::Curation::Recon do
   let(:fake_session) do
     instance_double(Html2rss::RequestSession, fetch_initial_response: fake_response, follow_up: fake_response)
   end
-  let(:page_recon_result) do
-    Html2rss::Curation::PageRecon.call(response: fake_response, url:)
+  let(:page_probe_result) do
+    Html2rss::Curation::PageProbe.call(response: fake_response, url:)
   end
   let(:probe) do
-    Html2rss::Curation::PageRecon::Probe.new(
+    Html2rss::Curation::PageProbe::Fetch.new(
       session: fake_session,
       response: fake_response,
-      result: page_recon_result,
+      result: page_probe_result,
       strategy: :default
     )
   end
   let(:discovered_feed) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
 
   before do
-    allow(Html2rss::Curation::PageRecon).to receive(:probe).and_return(probe)
+    allow(Html2rss::Curation::PageProbe).to receive(:probe).and_return(probe)
     allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(discovered_feed)
   end
 
@@ -62,7 +62,7 @@ RSpec.describe Html2rss::Curation::Recon do
       expect(result).to be_a(Html2rss::Curation::Recon::Result)
       expect(result.defer?).to be(true)
       expect(result.verdict).to eq(Html2rss::Curation::Recon::Verdict[:defer])
-      expect(Html2rss::Curation::PageRecon).to have_received(:probe).with(
+      expect(Html2rss::Curation::PageProbe).to have_received(:probe).with(
         kind_of(Html2rss::Url), hash_including(strategy: :auto)
       )
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
@@ -79,13 +79,13 @@ RSpec.describe Html2rss::Curation::Recon do
       expect(result.final_url.to_s).to eq(url)
       expect(result.status).to eq(200)
       expect(result.native_feed.to_s).to eq('https://example.com/feed.xml')
-      expect(result.surface_category).to eq(Html2rss::AutoSource::SurfaceCategory[page_recon_result.surface_category])
-      expect(result.articles_count).to eq(page_recon_result.articles_count)
+      expect(result.surface_category).to eq(Html2rss::AutoSource::SurfaceCategory[page_probe_result.surface_category])
+      expect(result.articles_count).to eq(page_probe_result.articles_count)
       expect(result.scheme_downgrade).to be(false)
       expect(result.html_bytesize).to eq(html_body.bytesize)
       expect(result.notes).to all(be_a(String))
       expect(result.notes.join).to include('native_rss=https://example.com/feed.xml')
-      expect(Html2rss::Curation::PageRecon).to have_received(:probe).with(
+      expect(Html2rss::Curation::PageProbe).to have_received(:probe).with(
         kind_of(Html2rss::Url), hash_including(strategy: :auto, max_redirects: 2)
       )
     end
@@ -101,7 +101,7 @@ RSpec.describe Html2rss::Curation::Recon do
       end
       let(:discovered_feed) { nil }
 
-      it 'returns BUILD verdict and does not fall back to PageRecon alternates' do
+      it 'returns BUILD verdict and does not fall back to PageProbe alternates' do
         result = described_class.call(url)
         expect(result.build?).to be(true)
       end
@@ -142,7 +142,7 @@ RSpec.describe Html2rss::Curation::Recon do
     end
 
     context 'when HTTP status is missing' do
-      let(:page_recon_result) { super().with(status: nil) }
+      let(:page_probe_result) { super().with(status: nil) }
       let(:discovered_feed) { nil }
 
       it 'returns DROP verdict' do
@@ -151,7 +151,7 @@ RSpec.describe Html2rss::Curation::Recon do
     end
 
     context 'when HTTP status is 400' do
-      let(:page_recon_result) { super().with(status: 400) }
+      let(:page_probe_result) { super().with(status: 400) }
       let(:discovered_feed) { nil }
 
       it 'returns DROP verdict' do
@@ -160,7 +160,7 @@ RSpec.describe Html2rss::Curation::Recon do
     end
 
     context 'when HTTP status is 399' do
-      let(:page_recon_result) { super().with(status: 399) }
+      let(:page_probe_result) { super().with(status: 399) }
       let(:discovered_feed) { nil }
 
       it 'returns BUILD verdict' do
@@ -169,7 +169,7 @@ RSpec.describe Html2rss::Curation::Recon do
     end
 
     context 'when the surface is blocked' do
-      let(:page_recon_result) { super().with(status: 200, surface_category: :blocked_surface, scheme_downgrade: false) }
+      let(:page_probe_result) { super().with(status: 200, surface_category: :blocked_surface, scheme_downgrade: false) }
       let(:discovered_feed) { nil }
 
       it 'returns DROP verdict' do
@@ -259,8 +259,8 @@ RSpec.describe Html2rss::Curation::Recon do
         )
       end
       let(:probe) do
-        Html2rss::Curation::PageRecon::Probe.new(
-          session: fake_session, response: empty_response, result: page_recon_result, strategy: :default
+        Html2rss::Curation::PageProbe::Fetch.new(
+          session: fake_session, response: empty_response, result: page_probe_result, strategy: :default
         )
       end
 
@@ -274,7 +274,7 @@ RSpec.describe Html2rss::Curation::Recon do
 
     context 'when probe raises an error' do
       before do
-        allow(Html2rss::Curation::PageRecon).to receive(:probe).and_raise(Html2rss::Error.new('connection refused'))
+        allow(Html2rss::Curation::PageProbe).to receive(:probe).and_raise(Html2rss::Error.new('connection refused'))
       end
 
       it 'returns DROP verdict with error note', :aggregate_failures do
@@ -287,7 +287,7 @@ RSpec.describe Html2rss::Curation::Recon do
 
     context 'when probe raises a contract error' do
       it 'propagates instead of returning a DROP verdict' do
-        allow(Html2rss::Curation::PageRecon).to receive(:probe).and_raise(Html2rss::RequestService::Context::InvalidError)
+        allow(Html2rss::Curation::PageProbe).to receive(:probe).and_raise(Html2rss::RequestService::Context::InvalidError)
 
         expect { described_class.call(url) }.to raise_error(Html2rss::ContractError)
       end
@@ -295,7 +295,7 @@ RSpec.describe Html2rss::Curation::Recon do
 
     context 'when probe hits a programmer error' do
       it 'propagates instead of masking it as a DROP verdict' do
-        allow(Html2rss::Curation::PageRecon).to receive(:probe).and_raise(NoMethodError)
+        allow(Html2rss::Curation::PageProbe).to receive(:probe).and_raise(NoMethodError)
 
         expect { described_class.call(url) }.to raise_error(NoMethodError)
       end

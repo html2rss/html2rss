@@ -252,10 +252,10 @@ RSpec.describe Html2rss::Curation::Batch do
     let(:urls) { ['https://example.com/one', 'https://example.com/two'] }
 
     before do
-      allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:batch).with(urls:, strategy: :auto,
-                                                                                concurrency: 2) do
+      allow(Html2rss::Curation::Inspect).to receive(:batch).with(urls:, strategy: :auto,
+                                                                 concurrency: 2) do
         [
-          Html2rss::Curation::PageRecon::Diagnostics::Report.new(
+          Html2rss::Curation::Inspect::Report.new(
             data: {
               requested_url: 'https://example.com/one',
               final_url: 'https://example.com/one',
@@ -270,7 +270,7 @@ RSpec.describe Html2rss::Curation::Batch do
               scraper_eligibility: []
             }
           ),
-          Html2rss::Curation::PageRecon::Diagnostics::Report.new(
+          Html2rss::Curation::Inspect::Report.new(
             data: {
               requested_url: 'https://example.com/two',
               final_url: 'https://example.com/two',
@@ -308,11 +308,11 @@ RSpec.describe Html2rss::Curation::Batch do
 
     # rubocop:disable-next RSpec/ExampleLength -- 399, 400, and a missing status share one count
     it 'counts a status of 399 and rejects 400 or a missing status' do
-      allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:batch).and_return(
+      allow(Html2rss::Curation::Inspect).to receive(:batch).and_return(
         [
-          Html2rss::Curation::PageRecon::Diagnostics::Report.new(data: { status: 399 }),
-          Html2rss::Curation::PageRecon::Diagnostics::Report.new(data: { status: 400 }),
-          Html2rss::Curation::PageRecon::Diagnostics::Report.new(data: {})
+          Html2rss::Curation::Inspect::Report.new(data: { status: 399 }),
+          Html2rss::Curation::Inspect::Report.new(data: { status: 400 }),
+          Html2rss::Curation::Inspect::Report.new(data: {})
         ]
       )
       result = described_class.batch_inspect(urls: ['https://example.com/edge'], strategy: :auto)
@@ -321,19 +321,19 @@ RSpec.describe Html2rss::Curation::Batch do
 
     # rubocop:disable-next RSpec/ExampleLength
     it 'coerces a string strategy and rejects an empty URL list', :aggregate_failures do
-      allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:batch).and_return([])
+      allow(Html2rss::Curation::Inspect).to receive(:batch).and_return([])
       described_class.batch_inspect(urls:, strategy: 'botasaurus')
 
-      expect(Html2rss::Curation::PageRecon::Diagnostics).to have_received(:batch)
+      expect(Html2rss::Curation::Inspect).to have_received(:batch)
         .with(urls:, strategy: :botasaurus, concurrency: described_class::DEFAULT_CONCURRENCY)
       expect { described_class.batch_inspect(urls: []) }
         .to raise_error(Html2rss::InvalidOption, /urls must be a non-empty Array/)
     end
 
     it 'uses auto and the default worker count when strategy and concurrency are omitted' do
-      allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:batch).and_return([])
+      allow(Html2rss::Curation::Inspect).to receive(:batch).and_return([])
       described_class.batch_inspect(urls:)
-      expect(Html2rss::Curation::PageRecon::Diagnostics).to have_received(:batch).with(
+      expect(Html2rss::Curation::Inspect).to have_received(:batch).with(
         urls:, strategy: :auto, concurrency: described_class::DEFAULT_CONCURRENCY
       )
     end

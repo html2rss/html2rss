@@ -51,7 +51,7 @@ Every tool result is one JSON object (text body and `structuredContent`):
 | Catalog fingerprint + `mcp_contract_version` | `MCP::Contract` (+ `Runtime.snapshot` wire)      |
 | Envelope factories, `next_step` routing       | `MCP::Outcome`                                   |
 | Runtime instructions, guidance, prompt bodies | `Outcome::Playbook` (SSOT — `Server` delegates)  |
-| Diagnostic fetch + assess                     | `PageRecon::Diagnostics`                         |
+| Diagnostic fetch + assess                     | `Inspect`                         |
 | Curation verdict                              | `Recon`                                          |
 | Capture YAML product                          | `Curation::Capture::CaptureResult#yaml`                    |
 | Batch concurrency                             | `Curation::Batch.map` (Thread pool; preserves input order) |
@@ -91,4 +91,4 @@ The one-shot CLI has no use for it; use `capture` or `--input -` for offline ite
 
 ## Inspect redirects
 
-`payload.final_url` is the post-redirect landing URL. When it differs from the URL you passed and `status` is 4xx, inspect still followed redirects — retry on `final_url` or pass the site's canonical hostname (often `www`). Cross-host redirects set `Host` per hop; html2rss does not pin the entry hostname. See [`page_recon/README.md`](../page_recon/README.md).
+`payload.final_url` is the post-redirect landing URL. When it differs from the URL you passed and `status` is 4xx, inspect still followed redirects — retry on `final_url` or pass the site's canonical hostname (often `www`). Cross-host redirects set `Host` per hop; html2rss does not pin the entry hostname. See [`page_probe/README.md`](../page_probe/README.md).

@@ -1,6 +1,6 @@
-# PageRecon — inspect diagnostics
+# PageProbe — inspect diagnostics
 
-`PageRecon::Diagnostics` powers the **inspect** verb (CLI, MCP, `Html2rss.inspect`). It fetches once via `PageRecon.probe`, classifies the surface, counts cheap AutoSource articles, and reports redirect facts. Full curation contract: `CONTEXT.md` § Frozen contract.
+`Inspect` powers the **inspect** verb (CLI, MCP, `Html2rss.inspect`). It fetches once via `PageProbe.probe`, classifies the surface, counts cheap AutoSource articles, and reports redirect facts. Full curation contract: `CONTEXT.md` § Frozen contract.
 
 ## What inspect reports
 
@@ -63,7 +63,7 @@ Follow golden-path `next_step` from MCP envelopes; do not call recon when inspec
 
 | Concern                             | Owner                                                                |
 | ----------------------------------- | -------------------------------------------------------------------- |
-| Diagnostic fetch + assess           | `PageRecon::Diagnostics` → `PageRecon.probe`                         |
+| Diagnostic fetch + assess           | `Inspect` → `PageProbe.probe`                         |
 | Surface class + cheap article count | `AutoSource::Assessment`                                             |
 | Redirect follow + terminal retry    | `RequestService::HttpxStrategy`                                      |
 | Outbound header normalization       | `Config::RequestHeaders` (no default `Host`; explicit override only) |

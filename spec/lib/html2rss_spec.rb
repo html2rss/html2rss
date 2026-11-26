@@ -578,12 +578,12 @@ RSpec.describe Html2rss do
   end
 
   describe '.inspect' do
-    it 'delegates to PageRecon::Diagnostics.call' do # rubocop:disable RSpec/ExampleLength
-      allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:call).with(
+    it 'delegates to Inspect.call' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Curation::Inspect).to receive(:call).with(
         url: 'https://example.com', strategy: :auto, deep: false
       )
       described_class.inspect('https://example.com')
-      expect(Html2rss::Curation::PageRecon::Diagnostics).to have_received(:call).with(
+      expect(Html2rss::Curation::Inspect).to have_received(:call).with(
         url: 'https://example.com', strategy: :auto, deep: false
       )
     end
