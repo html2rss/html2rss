@@ -19,7 +19,7 @@ module Html2rss
         /blog/rss.xml
       ].freeze
 
-      # HTML listing paths probed only by {EntryResolution::CandidateGenerator}.
+      # HTML listing paths probed only by {AutoSource::EntryResolution::CandidateGenerator}.
       LISTING_PATHS = %w[/news /blog /releases /changelog /updates].freeze
     end
   end
