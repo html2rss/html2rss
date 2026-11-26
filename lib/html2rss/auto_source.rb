@@ -237,7 +237,7 @@ module Html2rss
       @admission_drops = result.drop_tallies
       log_admission_emptied(captured_count, result) if captured_count.positive? && result.articles.empty?
       counting = counting(result.articles)
-      (counting + (result.articles - counting)).first(article_limit)
+      (counting + padding(result.articles, counting)).first(article_limit)
     end
 
     def log_admission_emptied(captured_count, result)
@@ -254,14 +254,25 @@ module Html2rss
 
     # The articles that count toward +limit+, in order: those the page shows in its content
     # ({Corroboration#shown?}), media items (audio, video) only on a media page
-    # ({Corroboration#media_page?}). The others stay admitted after the counting ones. A page is
+    # ({Corroboration#media_page?}), where only media items count (the other cards link to other
+    # shows and never pad). Elsewhere the others stay admitted after the counting ones. A page is
     # judged a media page only once a heuristic tier has read its cards: structured items alone
     # cannot tell a podcast page from a news page with an audio list. A media page's counting
     # items are in page order ({Corroboration#page_order}), not tier order.
     def counting(articles)
-      media_page = @cards_read && corroboration.media_page?(articles)
-      counted = articles.select { (media_page || !_1.media?) && corroboration.shown?(_1) }
+      media_page = media_page?(articles)
+      counted = articles.select { (media_page ? _1.media? : !_1.media?) && corroboration.shown?(_1) }
       media_page ? corroboration.page_order(counted) : counted
+    end
+
+    def media_page?(articles)
+      @cards_read && corroboration.media_page?(articles)
+    end
+
+    # The admitted items that fill a feed the counting ones leave short. A media page is its
+    # episodes: the other cards on it link to other shows, so they never pad.
+    def padding(articles, counting)
+      media_page?(articles) ? [] : articles - counting
     end
 
     # Prefer fewer clean items over refilling +limit+ from the Html heuristic tier.
