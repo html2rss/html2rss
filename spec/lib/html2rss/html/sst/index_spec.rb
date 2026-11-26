@@ -9,6 +9,7 @@ RSpec.describe Html2rss::Html::SST::Index do
     )
   end
   let(:index) { document.index }
+  let(:node) { Html2rss::Html::SST::Node }
   let(:wrapper) { document.root.find { |node| node.attrs.id == 'w' } }
   let(:nav_link) { document.root.find { |node| node.name == :nav }.children.first }
 
@@ -67,8 +68,6 @@ RSpec.describe Html2rss::Html::SST::Index do
       first, second = document_for('<html><body><p>Same</p><p>Same</p></body></html>').root.find_all { _1.name == :p }
       expect(described_class.descendant_or_self?(first, second)).to be(false)
     end
-
-    let(:node) { Html2rss::Html::SST::Node }
 
     it 'scans the subtree for unindexed nodes', :aggregate_failures do
       leaf = node.build(name: :span)
