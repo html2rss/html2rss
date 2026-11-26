@@ -11,7 +11,7 @@ module Html2rss
       class InvalidError < Html2rss::ContractError; end
 
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
-      # {Html2rss::SelectorCandidates}, which owns no copy of it.
+      # {Html2rss::Curation::Capture::SelectorCandidates}, which owns no copy of it.
       TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
       # Nested blocks that mean a category node is actually a content container.
       CATEGORY_CONTAINER_NAMES = Set[:p, :article, :section].freeze

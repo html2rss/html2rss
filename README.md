@@ -87,11 +87,11 @@ Historic CLI aliases: `feed` → `apply`, `auto` → `scrape`.
 
 Inspect follows redirects and reports the landing URL in `final_url`. CLI text shows a `Final:` line **only when** the landing URL differs from what you typed — that line means the redirect succeeded, not that inspect stopped early.
 
-Cross-host redirects (e.g. `https://apex.example/` → `https://www.example/`) set `Host` per hop via HTTPX; html2rss does not pin the entry hostname. When `final_url` differs and status is 4xx, retry on `final_url` or pass the site's canonical hostname. Details: [`lib/html2rss/page_recon/README.md`](lib/html2rss/page_recon/README.md).
+Cross-host redirects (e.g. `https://apex.example/` → `https://www.example/`) set `Host` per hop via HTTPX; html2rss does not pin the entry hostname. When `final_url` differs and status is 4xx, retry on `final_url` or pass the site's canonical hostname. Details: [`lib/html2rss/curation/page_recon/README.md`](lib/html2rss/curation/page_recon/README.md).
 
 ## Capture API
 
-`Html2rss.capture` returns a `Capture::CaptureResult`. Use `result.yaml` or `result.config`.
+`Html2rss.capture` returns a `Curation::Capture::CaptureResult`. Use `result.yaml` or `result.config`.
 
 ```ruby
 result = Html2rss.capture('https://example.com/articles')
@@ -99,7 +99,7 @@ File.write('my-feed.yml', result.yaml)
 # or: File.write('my-feed.yml', Html2rss::Config.to_yaml(result.config))
 ```
 
-The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`lib/html2rss/capture/README.md`](lib/html2rss/capture/README.md) for detailed documentation.
+The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`lib/html2rss/curation/capture/README.md`](lib/html2rss/curation/capture/README.md) for detailed documentation.
 
 ## MCP Server
 

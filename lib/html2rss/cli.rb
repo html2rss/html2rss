@@ -92,7 +92,7 @@ module Html2rss
     # @return [void]
     def recon(target = nil) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       with_recon_targets(target) do |targets|
-        results = Html2rss::Recon.batch(
+        results = Html2rss::Curation::Recon.batch(
           targets.urls,
           strategy: current_strategy,
           cache_dir: options[:cache_dir]
@@ -128,7 +128,7 @@ module Html2rss
       strategy, local_file_path, url = prepare_auto_inputs(target, options[:input])
       topics = options[:topics]&.split(',')&.map(&:strip)
 
-      result = Html2rss::Capture.build(url, strategy:, local_file_path:, topics:, **capture_options)
+      result = Html2rss::Curation::Capture.build(url, strategy:, local_file_path:, topics:, **capture_options)
 
       if result.native_feed? && !options[:force]
         $stderr.puts "First-party RSS/Atom/RDF feed detected at #{result.native_feed}. Use --force to capture anyway." # rubocop:disable Style/StderrPuts
@@ -295,7 +295,7 @@ module Html2rss
     def filter_recon_results(results, verdict_filter)
       return results unless verdict_filter
 
-      expected = Recon::Verdict[verdict_filter.downcase]
+      expected = Curation::Recon::Verdict[verdict_filter.downcase]
       results.select { |r| r.verdict == expected }
     rescue InvalidOption => error
       raise Thor::Error, error.message

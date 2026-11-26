@@ -7,7 +7,7 @@ RSpec.describe Html2rss::CLI, '#test' do
   let(:success) { true }
   let(:error_message) { nil }
   let(:result) do
-    Html2rss::Test::Result.new(
+    Html2rss::Curation::Test::Result.new(
       success:, item_count: 1, sample_items: [], channel_title: 'T', channel_url: 'https://a.test',
       strategy_used: :default, duration_seconds: 0.5, validation_issues: nil, error_message:, failure_kind: nil,
       rss: '<rss/>'

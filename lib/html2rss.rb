@@ -23,9 +23,9 @@ module Html2rss
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param deep [Boolean] when true and strategy is :auto, one Botasaurus hop if configured
-  # @return [Html2rss::PageRecon::Diagnostics::Report]
+  # @return [Html2rss::Curation::PageRecon::Diagnostics::Report]
   def self.inspect(url, strategy: :auto, deep: false, **)
-    PageRecon::Diagnostics.call(url:, strategy:, deep:, **)
+    Curation::PageRecon::Diagnostics.call(url:, strategy:, deep:, **)
   end
 
   ##
@@ -34,9 +34,9 @@ module Html2rss
   #
   # @param url [String, Html2rss::Url] source page URL
   # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
-  # @return [Html2rss::Recon::Result]
+  # @return [Html2rss::Curation::Recon::Result]
   def self.recon(url, strategy: :auto, **)
-    Recon.call(url, strategy:, **)
+    Curation::Recon.call(url, strategy:, **)
   end
 
   ##
@@ -55,9 +55,9 @@ module Html2rss
   # @option options [Integer, nil] :max_requests optional request budget override
   # @option options [Integer, nil] :limit max articles to keep
   # @option options [String, nil] :local_file_path optional local HTML file path
-  # @return [Html2rss::Capture::CaptureResult]
+  # @return [Html2rss::Curation::Capture::CaptureResult]
   def self.capture(url, strategy: :auto, **)
-    Capture.build(url, strategy:, **)
+    Curation::Capture.build(url, strategy:, **)
   end
 
   ##
@@ -85,11 +85,11 @@ module Html2rss
   # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
   # @param compare_enhance [Boolean] diagnostic enhance off vs on comparison on cached HTML
   # @param sample_limit [Integer] maximum number of +Result#items+, >= 0 (default: 3)
-  # @return [Html2rss::Test::Result]
+  # @return [Html2rss::Curation::Test::Result]
   def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, # rubocop:disable Metrics/ParameterLists
                 compare_enhance: false, sample_limit: 3)
-    Test.call(config_input, feed_name, min_items:, params:, strategy:, strict_quality:, compare_enhance:,
-                                       sample_limit:)
+    Curation::Test.call(config_input, feed_name, min_items:, params:, strategy:, strict_quality:, compare_enhance:,
+                                                 sample_limit:)
   end
 
   ##
@@ -100,9 +100,9 @@ module Html2rss
   # {.feed_result} instead.
   #
   # @param raw_config [Hash{Symbol => Object}] feed configuration
-  # @return [Html2rss::Apply::Result] responds to +to_rss+, +to_json_feed+, +status+, +empty?+
+  # @return [Html2rss::Curation::Apply::Result] responds to +to_rss+, +to_json_feed+, +status+, +empty?+
   def self.apply(raw_config)
-    Apply.call(raw_config)
+    Curation::Apply.call(raw_config)
   end
 
   ##
@@ -131,9 +131,9 @@ module Html2rss
   # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param limit [Integer] max articles to keep per URL (default: 10)
   # @param concurrency [Integer] max worker threads (default: 5)
-  # @return [Html2rss::Batch::BatchResult]
-  def self.batch_scrape(urls, strategy: :auto, limit: 10, concurrency: Batch::DEFAULT_CONCURRENCY)
-    Batch.batch_scrape(urls:, strategy:, limit:, concurrency:)
+  # @return [Html2rss::Curation::Batch::BatchResult]
+  def self.batch_scrape(urls, strategy: :auto, limit: 10, concurrency: Curation::Batch::DEFAULT_CONCURRENCY)
+    Curation::Batch.batch_scrape(urls:, strategy:, limit:, concurrency:)
   end
 
   ##
@@ -142,9 +142,9 @@ module Html2rss
   # @param urls [Enumerable<String>] list of URLs to inspect
   # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param concurrency [Integer] max worker threads (default: 5)
-  # @return [Html2rss::Batch::BatchResult]
-  def self.batch_inspect(urls, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY)
-    Batch.batch_inspect(urls:, strategy:, concurrency:)
+  # @return [Html2rss::Curation::Batch::BatchResult]
+  def self.batch_inspect(urls, strategy: :auto, concurrency: Curation::Batch::DEFAULT_CONCURRENCY)
+    Curation::Batch.batch_inspect(urls:, strategy:, concurrency:)
   end
 
   ##
@@ -154,9 +154,9 @@ module Html2rss
   # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param concurrency [Integer] max worker threads (default: 5)
   # @option options [String, nil] :cache_dir optional HTML cache directory
-  # @return [Html2rss::Batch::BatchResult]
-  def self.batch_recon(urls, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY, **)
-    Batch.batch_recon(urls:, strategy:, concurrency:, **)
+  # @return [Html2rss::Curation::Batch::BatchResult]
+  def self.batch_recon(urls, strategy: :auto, concurrency: Curation::Batch::DEFAULT_CONCURRENCY, **)
+    Curation::Batch.batch_recon(urls:, strategy:, concurrency:, **)
   end
 
   ##

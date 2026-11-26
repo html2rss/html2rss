@@ -11,7 +11,7 @@ MCP exposes the same seven user-facing verbs as the CLI and gem facades. Full co
 | capture  | `capture`  | YAML draft config                                            |
 | validate | `validate` | Schema only                                                  |
 | test     | `test`     | Schema + live extraction                                     |
-| apply    | `apply`    | Ship RSS from config (`Apply::Result`; zero items = isError) |
+| apply    | `apply`    | Ship RSS from config (`Curation::Apply::Result`; zero items = isError) |
 | scrape   | `scrape`   | Articles now (one-shot)                                      |
 
 Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
@@ -53,8 +53,8 @@ Every tool result is one JSON object (text body and `structuredContent`):
 | Runtime instructions, guidance, prompt bodies | `Outcome::Playbook` (SSOT — `Server` delegates)  |
 | Diagnostic fetch + assess                     | `PageRecon::Diagnostics`                         |
 | Curation verdict                              | `Recon`                                          |
-| Capture YAML product                          | `Capture::CaptureResult#yaml`                    |
-| Batch concurrency                             | `Batch.map` (Thread pool; preserves input order) |
+| Capture YAML product                          | `Curation::Capture::CaptureResult#yaml`                    |
+| Batch concurrency                             | `Curation::Batch.map` (Thread pool; preserves input order) |
 
 Do not duplicate playbook prose in `server.rb`.
 

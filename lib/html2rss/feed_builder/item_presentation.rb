@@ -41,7 +41,7 @@ module Html2rss
 
         ##
         # Sole owner of "a feed item needs content": a title or a description. Both {Rss} and {JsonFeed} render
-        # only these, and {Html2rss::Test} samples only these, so every output agrees with its item count.
+        # only these, and {Html2rss::Curation::Test} samples only these, so every output agrees with its item count.
         #
         # @param article [Html2rss::Article]
         # @return [Boolean] true when the item has a title, or a description after {.description_for}

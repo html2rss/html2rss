@@ -26,6 +26,6 @@ module FixtureHelpers
   def probe_audit(fixture_name, selectors, time_zone: 'UTC')
     response = enhance_audit_response(fixture_name)
     vocabulary = Html2rss::Vocabulary[Html2rss::Channel.language_for(response)]
-    Html2rss::Test::EnhanceAudit.probe(response:, selectors:, time_zone:, vocabulary:)
+    Html2rss::Curation::Test::EnhanceAudit.probe(response:, selectors:, time_zone:, vocabulary:)
   end
 end

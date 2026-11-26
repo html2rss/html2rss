@@ -37,7 +37,7 @@ module Html2rss
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |url:, strategy: 'auto', **|
               Outcome.inspect_report(
-                report: PageRecon::Diagnostics.call(
+                report: Curation::PageRecon::Diagnostics.call(
                   url:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), deep: false
                 )
               )
@@ -61,9 +61,10 @@ module Html2rss
                          'Returns structured JSON Feed items and extraction counts.',
             input_schema: Contract::BATCH_SCRAPE_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
-            call: lambda { |urls:, strategy: 'auto', concurrency: Batch::DEFAULT_CONCURRENCY, limit: 10, **|
+            call: lambda { |urls:, strategy: 'auto', concurrency: Curation::Batch::DEFAULT_CONCURRENCY, limit: 10, **|
               Outcome.batch_scrape(
-                Batch.batch_scrape(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), concurrency:, limit:)
+                Curation::Batch.batch_scrape(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy),
+                                             concurrency:, limit:)
               )
             }
           ),
@@ -74,9 +75,10 @@ module Html2rss
                          'Returns final redirected URLs, status codes, and rel="alternate" feeds.',
             input_schema: Contract::BATCH_INSPECT_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
-            call: lambda { |urls:, strategy: 'auto', concurrency: Batch::DEFAULT_CONCURRENCY, **|
+            call: lambda { |urls:, strategy: 'auto', concurrency: Curation::Batch::DEFAULT_CONCURRENCY, **|
               Outcome.batch_inspect(
-                Batch.batch_inspect(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), concurrency:)
+                Curation::Batch.batch_inspect(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy),
+                                              concurrency:)
               )
             }
           ),
@@ -87,9 +89,9 @@ module Html2rss
                          'Returns verdict, native_feed, and surface classification per URL.',
             input_schema: Contract::BATCH_RECON_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
-            call: lambda { |urls:, strategy: 'auto', concurrency: Batch::DEFAULT_CONCURRENCY, **|
+            call: lambda { |urls:, strategy: 'auto', concurrency: Curation::Batch::DEFAULT_CONCURRENCY, **|
               Outcome.batch_recon(
-                Batch.batch_recon(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), concurrency:)
+                Curation::Batch.batch_recon(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), concurrency:)
               )
             }
           ),
@@ -163,7 +165,7 @@ module Html2rss
           # @return [Outcome]
           def scrape_outcome(url:, strategy: 'auto', limit: AutoSource::DEFAULT_LIMIT, items_selector: nil)
             plan = FeedPipeline::StrategyPlan.coerce(strategy)
-            wire = Batch.scrape_wire(url:, strategy: plan, limit:, items_selector:)
+            wire = Curation::Batch.scrape_wire(url:, strategy: plan, limit:, items_selector:)
             Outcome.scrape(
               items: wire[:items],
               requested_strategy: wire[:strategy],
@@ -177,11 +179,11 @@ module Html2rss
           # @api private
           # @param url [String]
           # @param strategy [String, Symbol]
-          # @option options [Object] :topics the {Html2rss::Capture.build} keywords
+          # @option options [Object] :topics the {Html2rss::Curation::Capture.build} keywords
           # @return [Outcome]
           def capture_outcome(url:, strategy: 'auto', **)
             plan = FeedPipeline::StrategyPlan.coerce(strategy)
-            result = Html2rss::Capture.build(url, strategy: plan, **)
+            result = Html2rss::Curation::Capture.build(url, strategy: plan, **)
             Outcome.capture(result:, requested_strategy: plan)
           end
 

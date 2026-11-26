@@ -59,7 +59,7 @@ module Html2rss
         end
 
         ##
-        # @param report [PageRecon::Diagnostics::Report]
+        # @param report [Curation::PageRecon::Diagnostics::Report]
         # @return [Outcome]
         def inspect_report(report:)
           next_step = inspect_next_step(report)
@@ -68,7 +68,7 @@ module Html2rss
         end
 
         ##
-        # @param result [Html2rss::Recon::Result]
+        # @param result [Html2rss::Curation::Recon::Result]
         # @return [Outcome]
         def recon(result:)
           next_step = recon_next_step(result)
@@ -77,7 +77,7 @@ module Html2rss
         end
 
         ##
-        # @param result [Html2rss::Capture::CaptureResult]
+        # @param result [Html2rss::Curation::Capture::CaptureResult]
         # @param requested_strategy [String, Symbol]
         # @return [Outcome]
         def capture(result:, requested_strategy:)
@@ -98,7 +98,7 @@ module Html2rss
         end
 
         ##
-        # @param test_result [Html2rss::Test::Result]
+        # @param test_result [Html2rss::Curation::Test::Result]
         # @return [Outcome]
         def test(test_result)
           next_step = test_next_step(test_result)
@@ -111,17 +111,17 @@ module Html2rss
         end
 
         ##
-        # @param batch_result [Html2rss::Batch::BatchResult]
+        # @param batch_result [Html2rss::Curation::Batch::BatchResult]
         # @return [Outcome]
         def batch_scrape(batch_result) = batch(batch_result, NextStep[:scrape])
 
         ##
-        # @param batch_result [Html2rss::Batch::BatchResult]
+        # @param batch_result [Html2rss::Curation::Batch::BatchResult]
         # @return [Outcome]
         def batch_inspect(batch_result) = batch(batch_result, NextStep[:inspect])
 
         ##
-        # @param batch_result [Html2rss::Batch::BatchResult]
+        # @param batch_result [Html2rss::Curation::Batch::BatchResult]
         # @return [Outcome]
         def batch_recon(batch_result) = batch(batch_result, NextStep[:recon])
 

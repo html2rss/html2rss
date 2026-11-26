@@ -30,7 +30,7 @@ RSpec.describe Html2rss::CLI do
     let(:rss_xml) { '<rss><channel><title>Example</title></channel></rss>' }
     let(:feed_res) do
       instance_double(
-        Html2rss::Apply::Result,
+        Html2rss::Curation::Apply::Result,
         empty?: false,
         to_rss: rss_xml,
         to_json_feed: { title: 'Example', items: [] },
@@ -50,8 +50,8 @@ RSpec.describe Html2rss::CLI do
 
     context 'when the feed has zero items' do
       let(:feed_res) do
-        instance_double(Html2rss::Apply::Result, empty?: true, to_rss: rss_xml, to_json_feed: {},
-                                                 status: instance_double(Html2rss::Status, to_h: {}))
+        instance_double(Html2rss::Curation::Apply::Result, empty?: true, to_rss: rss_xml, to_json_feed: {},
+                                                           status: instance_double(Html2rss::Status, to_h: {}))
       end
 
       before { allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' }) }
@@ -173,9 +173,9 @@ RSpec.describe Html2rss::CLI do
         strategy: :default
       }
     end
-    let(:report) { instance_double(Html2rss::PageRecon::Diagnostics::Report, to_wire_h: inspect_data) }
+    let(:report) { instance_double(Html2rss::Curation::PageRecon::Diagnostics::Report, to_wire_h: inspect_data) }
     let(:batch_result) do
-      Html2rss::Batch::BatchResult.new(total: 1, successful: 1, results: [inspect_data])
+      Html2rss::Curation::Batch::BatchResult.new(total: 1, successful: 1, results: [inspect_data])
     end
 
     before do
@@ -212,11 +212,11 @@ RSpec.describe Html2rss::CLI do
 
   describe '#recon' do
     let(:recon_result) do
-      Html2rss::Recon::Result.new(
+      Html2rss::Curation::Recon::Result.new(
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 200,
-        verdict: Html2rss::Recon::Verdict[:build],
+        verdict: Html2rss::Curation::Recon::Verdict[:build],
         native_feed: nil,
         surface_category: Html2rss::AutoSource::SurfaceCategory[:listing],
         articles_count: 5,
@@ -227,7 +227,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     before do
-      allow(Html2rss::Recon).to receive(:batch).and_return([recon_result])
+      allow(Html2rss::Curation::Recon).to receive(:batch).and_return([recon_result])
     end
 
     it 'runs reconnaissance and prints card to stdout' do
@@ -235,11 +235,11 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'exits with 3 for single URL with DEFER verdict', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      defer_res = Html2rss::Recon::Result.new(
+      defer_res = Html2rss::Curation::Recon::Result.new(
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 200,
-        verdict: Html2rss::Recon::Verdict[:defer],
+        verdict: Html2rss::Curation::Recon::Verdict[:defer],
         native_feed: 'https://example.com/feed.xml',
         surface_category: Html2rss::AutoSource::SurfaceCategory[:listing],
         articles_count: 5,
@@ -247,18 +247,18 @@ RSpec.describe Html2rss::CLI do
         notes: [],
         html_bytesize: 2048
       )
-      allow(Html2rss::Recon).to receive(:batch).and_return([defer_res])
+      allow(Html2rss::Curation::Recon).to receive(:batch).and_return([defer_res])
       expect { cli.recon('https://example.com/news') }.to raise_error(SystemExit) do |e|
         expect(e.status).to eq(3)
       end
     end
 
     it 'exits with 1 for single URL with DROP verdict', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      drop_res = Html2rss::Recon::Result.new(
+      drop_res = Html2rss::Curation::Recon::Result.new(
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 404,
-        verdict: Html2rss::Recon::Verdict[:drop],
+        verdict: Html2rss::Curation::Recon::Verdict[:drop],
         native_feed: nil,
         surface_category: Html2rss::AutoSource::SurfaceCategory[:unsupported_surface],
         articles_count: 0,
@@ -266,7 +266,7 @@ RSpec.describe Html2rss::CLI do
         notes: [],
         html_bytesize: 0
       )
-      allow(Html2rss::Recon).to receive(:batch).and_return([drop_res])
+      allow(Html2rss::Curation::Recon).to receive(:batch).and_return([drop_res])
       expect { cli.recon('https://example.com/news') }.to raise_error(SystemExit) do |e|
         expect(e.status).to eq(1)
       end
@@ -313,7 +313,7 @@ RSpec.describe Html2rss::CLI do
         f.flush
         expect { cli.invoke(:recon, nil, { file: f.path, url_only: true }) }
           .to output(%r{https://example.com/news}).to_stdout
-        expect(Html2rss::Recon).to have_received(:batch).with(
+        expect(Html2rss::Curation::Recon).to have_received(:batch).with(
           ['https://example.com/news', 'https://example.com/blog'],
           hash_including(strategy: :auto)
         )
@@ -352,7 +352,7 @@ RSpec.describe Html2rss::CLI do
       }
     end
     let(:capture_result) do
-      Html2rss::Capture::CaptureResult.new(
+      Html2rss::Curation::Capture::CaptureResult.new(
         config: captured_config,
         yaml: "channel:\n  url: https://example.com\n",
         articles_count: 5,
@@ -367,10 +367,10 @@ RSpec.describe Html2rss::CLI do
     end
 
     before do
-      allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
+      allow(Html2rss::Curation::Capture).to receive(:build).and_return(capture_result)
     end
 
-    it_behaves_like 'a command reporting gem errors on one line', 'capture', Html2rss::Capture, :build
+    it_behaves_like 'a command reporting gem errors on one line', 'capture', Html2rss::Curation::Capture, :build
 
     it 'prints captured YAML to stdout' do
       expect { cli.capture('https://example.com') }.to output("channel:\n  url: https://example.com\n").to_stdout
@@ -381,14 +381,14 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'raises Thor::Error for a fractional --max-requests instead of a stack trace' do
-      allow(Html2rss::Capture).to receive(:build).and_call_original
+      allow(Html2rss::Curation::Capture).to receive(:build).and_call_original
 
       expect { cli.invoke(:capture, ['https://example.com'], { max_requests: 2.5 }) }
         .to raise_error(Thor::Error, /max_requests must be an Integer in 1\.\., got 2\.5/)
     end
 
     it 'raises Thor::Error for a non-positive --limit instead of a stack trace' do
-      allow(Html2rss::Capture).to receive(:build).and_call_original
+      allow(Html2rss::Curation::Capture).to receive(:build).and_call_original
 
       expect { cli.invoke(:capture, ['https://example.com'], { limit: 0 }) }
         .to raise_error(Thor::Error, /limit must be an Integer in 1\.\., got 0/)
@@ -417,7 +417,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'warns and exits with code 3 when native feed is found without --force', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      feed_capture_result = Html2rss::Capture::CaptureResult.new(
+      feed_capture_result = Html2rss::Curation::Capture::CaptureResult.new(
         config: captured_config,
         yaml: "channel:\n  url: https://example.com\n",
         articles_count: 5,
@@ -429,7 +429,7 @@ RSpec.describe Html2rss::CLI do
         native_feed: 'https://example.com/feed.xml',
         admission_drops: {}
       )
-      allow(Html2rss::Capture).to receive(:build).and_return(feed_capture_result)
+      allow(Html2rss::Curation::Capture).to receive(:build).and_return(feed_capture_result)
 
       expect { cli.capture('https://example.com') }
         .to output(%r{First-party RSS/Atom/RDF feed detected}).to_stderr
@@ -450,7 +450,7 @@ RSpec.describe Html2rss::CLI do
         { max_redirects: 8, max_requests: 4 }
       )
 
-      expect(Html2rss::Capture).to have_received(:build).with(
+      expect(Html2rss::Curation::Capture).to have_received(:build).with(
         'https://example.com',
         hash_including(max_redirects: 8, max_requests: 4)
       )
@@ -459,7 +459,7 @@ RSpec.describe Html2rss::CLI do
 
   describe '#test' do
     let(:test_result_success) do
-      Html2rss::Test::Result.new(
+      Html2rss::Curation::Test::Result.new(
         success: true,
         item_count: 10,
         sample_items: [{ title: 'Item 1', url: 'https://example.com/1', published_at: nil }],
@@ -475,7 +475,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     let(:test_result_failure) do
-      Html2rss::Test::Result.new(
+      Html2rss::Curation::Test::Result.new(
         success: false,
         item_count: 0,
         sample_items: [],
@@ -487,7 +487,7 @@ RSpec.describe Html2rss::CLI do
           Html2rss::Config::ValidationIssue.new(path: %i[channel url], code: :missing_key, message: 'is missing')
         ],
         error_message: 'Configuration schema validation failed',
-        failure_kind: Html2rss::Test::FailureKind[:schema],
+        failure_kind: Html2rss::Curation::Test::FailureKind[:schema],
         rss: nil
       )
     end

@@ -153,7 +153,7 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'batch_scrape' do
       let(:batch_result) do
-        Html2rss::Batch::BatchResult.new(
+        Html2rss::Curation::Batch::BatchResult.new(
           total: 2,
           successful: 1,
           results: [
@@ -164,7 +164,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       before do
-        allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
+        allow(Html2rss::Curation::Batch).to receive(:batch_scrape).and_return(batch_result)
       end
 
       # rubocop:disable-next RSpec/ExampleLength
@@ -172,7 +172,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('batch_scrape', { urls: ['https://example.com/a', 'https://example.com/b'] })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::Batch).to have_received(:batch_scrape).with(
+        expect(Html2rss::Curation::Batch).to have_received(:batch_scrape).with(
           urls: ['https://example.com/a', 'https://example.com/b'],
           strategy: :auto,
           limit: 10,
@@ -186,7 +186,7 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'batch_inspect' do
       let(:batch_result) do
-        Html2rss::Batch::BatchResult.new(
+        Html2rss::Curation::Batch::BatchResult.new(
           total: 2,
           successful: 2,
           results: [
@@ -197,7 +197,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       before do
-        allow(Html2rss::Batch).to receive(:batch_inspect).and_return(batch_result)
+        allow(Html2rss::Curation::Batch).to receive(:batch_inspect).and_return(batch_result)
       end
 
       # rubocop:disable-next RSpec/ExampleLength
@@ -205,7 +205,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('batch_inspect', { urls: ['https://example.com/a', 'https://example.com/b'] })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::Batch).to have_received(:batch_inspect).with(
+        expect(Html2rss::Curation::Batch).to have_received(:batch_inspect).with(
           urls: ['https://example.com/a', 'https://example.com/b'],
           strategy: :auto,
           concurrency: 5
@@ -218,7 +218,7 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'capture' do
       let(:capture_result) do
-        Html2rss::Capture::CaptureResult.new(
+        Html2rss::Curation::Capture::CaptureResult.new(
           config: valid_config,
           articles_count: 3,
           channel_title: 'Example',
@@ -230,7 +230,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       before do
-        allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
+        allow(Html2rss::Curation::Capture).to receive(:build).and_return(capture_result)
       end
 
       # rubocop:disable-next RSpec/ExampleLength -- tools/call envelope contract
@@ -238,7 +238,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('capture', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::Capture).to have_received(:build).with(
+        expect(Html2rss::Curation::Capture).to have_received(:build).with(
           'https://example.com',
           hash_including(strategy: :auto)
         )
@@ -259,7 +259,7 @@ RSpec.describe Html2rss::MCP::Server do
         call_tool.call('capture', { url: 'https://example.com', local_file_path: '/etc/passwd' })
 
         expect(Html2rss::MCP::Contract::CAPTURE_INPUT_SCHEMA[:properties]).not_to have_key(:local_file_path)
-        expect(Html2rss::Capture).to have_received(:build).with('https://example.com', strategy: :auto)
+        expect(Html2rss::Curation::Capture).to have_received(:build).with('https://example.com', strategy: :auto)
       end
     end
 
@@ -280,7 +280,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'includes quality_report in payload when present', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        quality_report = Html2rss::Test::QualityReport.new(
+        quality_report = Html2rss::Curation::Test::QualityReport.new(
           warnings: [:duplicate_urls],
           metrics: { item_count: 2, unique_url_count: 1, junk_title_count: 0, short_title_count: 0,
                      low_word_count: 0 },
@@ -322,7 +322,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'includes enhance_gains in quality_report when present', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        quality_report = Html2rss::Test::QualityReport.new(
+        quality_report = Html2rss::Curation::Test::QualityReport.new(
           warnings: [],
           metrics: {
             item_count: 2,
@@ -352,7 +352,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'routes quality failure next_step to capture', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        quality_report = Html2rss::Test::QualityReport.new(
+        quality_report = Html2rss::Curation::Test::QualityReport.new(
           warnings: [:duplicate_urls],
           metrics: { item_count: 2, unique_url_count: 1, junk_title_count: 0, short_title_count: 0,
                      low_word_count: 0 },
@@ -362,7 +362,7 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss).to receive(:test).and_return(
           test_result(
             success: false,
-            failure_kind: Html2rss::Test::FailureKind[:quality],
+            failure_kind: Html2rss::Curation::Test::FailureKind[:quality],
             error_message: 'Feed quality check failed (duplicate_urls)',
             quality_report:
           )
@@ -379,11 +379,11 @@ RSpec.describe Html2rss::MCP::Server do
 
       it 'preserves config strategy when MCP omits strategy argument', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         config_with_strategy = valid_config.merge(strategy: :default)
-        allow(Html2rss::Test).to receive(:call).and_return(test_result(success: true))
+        allow(Html2rss::Curation::Test).to receive(:call).and_return(test_result(success: true))
 
         call_tool.call('test', { config: config_with_strategy, min_items: 1 })
 
-        expect(Html2rss::Test).to have_received(:call).with(
+        expect(Html2rss::Curation::Test).to have_received(:call).with(
           hash_including(strategy: 'default'),
           nil,
           hash_including(min_items: 1, strategy: nil)
@@ -392,7 +392,7 @@ RSpec.describe Html2rss::MCP::Server do
 
       it 'routes schema failure next_step to validate', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
         allow(Html2rss).to receive(:test).and_return(
-          test_result(success: false, failure_kind: Html2rss::Test::FailureKind[:schema])
+          test_result(success: false, failure_kind: Html2rss::Curation::Test::FailureKind[:schema])
         )
 
         result = call_tool.call('test', { config: { bad: true } })
@@ -637,8 +637,8 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'inspect' do
       before do
-        allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_return(
-          Html2rss::PageRecon::Diagnostics::Report.new(
+        allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:call).and_return(
+          Html2rss::Curation::PageRecon::Diagnostics::Report.new(
             data: { requested_url: 'https://example.com', strategy: :default, html_response: true }
           )
         )
@@ -649,7 +649,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('inspect', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(
+        expect(Html2rss::Curation::PageRecon::Diagnostics).to have_received(:call).with(
           url: 'https://example.com',
           strategy: :auto,
           deep: false
@@ -714,7 +714,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks capture failures as isError' do
-        allow(Html2rss::Capture).to receive(:build).and_raise(StandardError, 'capture boom')
+        allow(Html2rss::Curation::Capture).to receive(:build).and_raise(StandardError, 'capture boom')
         result = call_tool.call('capture', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)
@@ -730,7 +730,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks inspect failures as isError' do
-        allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_raise(StandardError, 'inspect boom')
+        allow(Html2rss::Curation::PageRecon::Diagnostics).to receive(:call).and_raise(StandardError, 'inspect boom')
         result = call_tool.call('inspect', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)

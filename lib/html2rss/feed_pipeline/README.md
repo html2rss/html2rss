@@ -47,4 +47,4 @@ A hop that returns zero items does **not** erase an earlier terminal transport f
 - `Html2rss::Status` records selected strategy and attempt tallies for MCP envelope payload / CLI `--explain`.
 - Fallback hops log at info/warn (`AutoFallback`).
 
-See also {Html2rss::AutoSource} for article scraping (a different pipeline) and {Html2rss::Capture} for durable configs that stamp the selected strategy.
+See also {Html2rss::AutoSource} for article scraping (a different pipeline) and {Html2rss::Curation::Capture} for durable configs that stamp the selected strategy.

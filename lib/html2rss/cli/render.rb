@@ -19,14 +19,14 @@ module Html2rss
         end
 
         ##
-        # @param results [Array<Html2rss::Recon::Result>]
+        # @param results [Array<Html2rss::Curation::Recon::Result>]
         # @return [void]
         def recon_urls(results)
           results.each { |r| puts r.requested_url }
         end
 
         ##
-        # @param results [Array<Html2rss::Recon::Result>]
+        # @param results [Array<Html2rss::Curation::Recon::Result>]
         # @return [void]
         def recon_tsv(results)
           puts %w[verdict status requested_url final_url native_feed notes].join("\t")
@@ -34,7 +34,7 @@ module Html2rss
         end
 
         ##
-        # @param results [Array<Html2rss::Recon::Result>]
+        # @param results [Array<Html2rss::Curation::Recon::Result>]
         # @return [void]
         def recon_cards(results)
           results.each { |r| probe_card(ProbeView.from_recon(r)) }
@@ -62,7 +62,7 @@ module Html2rss
         end
 
         ##
-        # @param result [Html2rss::Test::Result]
+        # @param result [Html2rss::Curation::Test::Result]
         # @param source [String]
         # @return [void]
         def test_card(result, source) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -97,7 +97,7 @@ module Html2rss
         private
 
         ##
-        # @param result [Html2rss::Recon::Result]
+        # @param result [Html2rss::Curation::Recon::Result]
         # @return [Array<String>]
         def tsv_row(result)
           [

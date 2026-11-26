@@ -6,7 +6,7 @@ RSpec.describe Html2rss::CLI, '#capture' do
   # rubocop:disable RSpec/ExampleLength -- CLI option wiring contracts
   let(:native_feed) { nil }
   let(:capture_result) do
-    Html2rss::Capture::CaptureResult.new(
+    Html2rss::Curation::Capture::CaptureResult.new(
       config: { channel: { url: 'https://www.example.com/blog' } }, yaml: "yaml: 1\n", articles_count: 5,
       channel_title: 'Example', has_selectors: true, segment_strategy: :list, selected_strategy: nil,
       inferred_topics: %w[tech], native_feed:, admission_drops: { a: 1 }
@@ -14,12 +14,12 @@ RSpec.describe Html2rss::CLI, '#capture' do
   end
   let(:run_capture) { ->(args, options = {}) { described_class.new.invoke(:capture, args, options) } }
 
-  before { allow(Html2rss::Capture).to receive(:build).and_return(capture_result) }
+  before { allow(Html2rss::Curation::Capture).to receive(:build).and_return(capture_result) }
 
   it 'forwards the documented defaults', :aggregate_failures do
     run_capture.call(['https://example.com'])
 
-    expect(Html2rss::Capture).to have_received(:build).with(
+    expect(Html2rss::Curation::Capture).to have_received(:build).with(
       'https://example.com', strategy: :auto, items_selector: nil, topics: nil, title: nil, summary: nil,
                              force: false, enhance: nil, limit: nil, max_redirects: nil, max_requests: nil,
                              local_file_path: nil
@@ -33,7 +33,7 @@ RSpec.describe Html2rss::CLI, '#capture' do
         force: true, enhance: false, limit: 7, max_redirects: 2, max_requests: 3 }
     )
 
-    expect(Html2rss::Capture).to have_received(:build).with(
+    expect(Html2rss::Curation::Capture).to have_received(:build).with(
       'https://example.com', strategy: :default, items_selector: '.card', topics: %w[tech jobs culture], title: 'T',
                              summary: 'S', force: true, enhance: false, limit: 7, max_redirects: 2, max_requests: 3,
                              local_file_path: nil
@@ -53,7 +53,7 @@ RSpec.describe Html2rss::CLI, '#capture' do
     it 'captures the local file with the local_file strategy and the detected url', :aggregate_failures do
       run_capture.call([nil], { input: path, strategy: 'default' })
 
-      expect(Html2rss::Capture).to have_received(:build).with(
+      expect(Html2rss::Curation::Capture).to have_received(:build).with(
         'https://canon.test/x', hash_including(strategy: :local_file, local_file_path: File.expand_path(path))
       )
     end
@@ -61,8 +61,8 @@ RSpec.describe Html2rss::CLI, '#capture' do
     it 'prefers an explicit url over detection' do
       run_capture.call(['https://given.test'], { input: path })
 
-      expect(Html2rss::Capture).to have_received(:build).with('https://given.test',
-                                                              hash_including(strategy: :local_file))
+      expect(Html2rss::Curation::Capture).to have_received(:build).with('https://given.test',
+                                                                        hash_including(strategy: :local_file))
     end
 
     it 'reports a missing file' do

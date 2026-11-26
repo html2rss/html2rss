@@ -36,8 +36,8 @@ Architecture and seam ownership map: `CONTEXT.md`.
 
 User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share seven verbs (`inspect`, `recon`, `capture`, `validate`, `test`, `apply`, `scrape`) plus batch variants (`batch_inspect`, `batch_recon`, `batch_scrape`). Canonical contract: `CONTEXT.md` § Frozen contract. Module guide: `lib/html2rss/mcp/README.md`. When verbs change, update `CONTEXT.md` § Frozen contract, this section, `README.md`, and `lib/html2rss/mcp/README.md`.
 
-- **Apply:** `Apply.call` / `Apply::Result` is the one result of the apply verb (feed, RSS, lazy `quality_report`, `empty?`); CLI and MCP render it. CLI `apply` exits 1 on zero items, MCP returns `isError`, `Html2rss.apply` returns the empty result without raising.
-- **Enhance audit:** `selectors.items.enhance` enriches matched item nodes via `Selectors::ItemEnhancer` (`AutoSource::ArticleExtractor::Item`). `Test::EnhanceAudit` owns `quality_report.metrics.enhance_gains` and warn-only enhance warnings; `compare_enhance` on test is diagnostic only. Auto-source-only configs (no selectors) skip `enhance_gains`.
+- **Apply:** `Curation::Apply.call` / `Curation::Apply::Result` is the one result of the apply verb (feed, RSS, lazy `quality_report`, `empty?`); CLI and MCP render it. CLI `apply` exits 1 on zero items, MCP returns `isError`, `Html2rss.apply` returns the empty result without raising.
+- **Enhance audit:** `selectors.items.enhance` enriches matched item nodes via `Selectors::ItemEnhancer` (`AutoSource::ArticleExtractor::Item`). `Curation::Test::EnhanceAudit` owns `quality_report.metrics.enhance_gains` and warn-only enhance warnings; `compare_enhance` on test is diagnostic only. Auto-source-only configs (no selectors) skip `enhance_gains`.
 - **Default items selector:** `Selectors::DEFAULT_ITEMS_SELECTOR` expands to `Html::Navigator::MAIN_ANCHOR_SELECTOR` only for that spelling (or blank), applied by `Config.prepare_defaults` only when `selectors:` is present (`CONTEXT.md` § Default items selector).
 
 ## Operating Checklist
@@ -48,7 +48,7 @@ User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share seven verbs 
 - Keep YARD lint clean without baseline/todo suppression files. `docs/` is generated YARD HTML only (`make docs` / `make clean`); never commit source markdown there.
 - `CHANGELOG.md` is the 0.19.x archive; release notes are GitHub Releases (release-drafter).
 - Keep living module guides at `lib/html2rss/{auto_source,capture,feed_pipeline,mcp,selectors}/README.md`, wired via `{include:file:lib/.../README.md}` on the owning class. Never add them to `.yardopts --files` (all `README.md` extra files emit `file.README.html` and clobber the gem README).
-- Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.
+- Zeitwerk ignores `.md`. `lib/html2rss/curation/capture.rb` owns the class; `lib/html2rss/curation/capture/` holds `README.md` and `selector_candidates.rb` (no nested `capture.rb`).
 
 ## Agent Efficiency
 

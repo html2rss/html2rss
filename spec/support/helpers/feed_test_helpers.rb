@@ -78,7 +78,7 @@ module FeedTestHelpers
 
   def quality_report_with(**overrides)
     metrics = { item_count: 4, unique_url_count: 4, junk_title_count: 0, short_title_count: 0, low_word_count: 0 }
-    Html2rss::Test::QualityReport.new(
+    Html2rss::Curation::Test::QualityReport.new(
       warnings: [], metrics: metrics.merge(overrides), native_feed: nil, defer_reason: nil
     )
   end
