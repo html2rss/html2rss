@@ -133,7 +133,7 @@ module Html2rss
 
           response = @last_response
           surface_category = PageRecon.surface_category_for(response:, url: response.url) if response
-          raise NoFeedItemsExtracted.new(attempts:, surface_category:)
+          raise FeedPipeline.empty_feed_error(attempts:, surface_category:)
         end
 
         private

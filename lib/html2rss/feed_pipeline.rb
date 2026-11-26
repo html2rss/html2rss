@@ -6,6 +6,9 @@ module Html2rss
   #
   # {include:file:lib/html2rss/feed_pipeline/README.md}
   class FeedPipeline # rubocop:disable Metrics/ClassLength -- outcome + collect seams stay co-located
+    # Surface categories whose shared guidance is appended to the empty-feed message.
+    SURFACE_HINT_CATEGORIES = Set[:app_shell, :blocked_surface, :high_entropy_surface].freeze
+
     PipelineOutcome = Data.define(
       :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
       :admission_drops, :scrape_target, :entry_resolution, :feed_channel, :enrichment
@@ -37,6 +40,29 @@ module Html2rss
       # @option fields [Object] :articles the other members, as named above
       def initialize(enrichment: {}, **fields) = super
     end
+
+    ##
+    # Builds the empty-feed error with its guidance; the one owner of that composition rule.
+    #
+    # @param attempts [Array<Hash{Symbol => Object}>] tier attempt diagnostics
+    # @param surface_category [Symbol, nil] Scraper surface classification
+    # @return [NoFeedItemsExtracted]
+    def self.empty_feed_error(attempts:, surface_category: nil)
+      surface = SurfaceCategory::MESSAGES.fetch(surface_category) if SURFACE_HINT_CATEGORIES.include?(surface_category)
+      guidance = [surface, botasaurus_hint(attempts, surface)].compact.join(' ')
+      NoFeedItemsExtracted.new(attempts:, surface_category:, guidance: guidance.empty? ? nil : guidance)
+    end
+
+    # @param attempts [Array<Hash{Symbol => Object}>]
+    # @param surface [String, nil] surface guidance already chosen
+    # @return [String, nil]
+    def self.botasaurus_hint(attempts, surface)
+      return if surface&.include?('BOTASAURUS_SCRAPER_URL')
+
+      name = RequestService::BotasaurusConfigurationError.name
+      RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT if attempts.any? { |a| a[:error_class] == name }
+    end
+    private_class_method :botasaurus_hint
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
@@ -152,7 +178,7 @@ module Html2rss
     end
 
     def raise_empty_auto_source!(strategy:, response:)
-      raise NoFeedItemsExtracted.new(
+      raise self.class.empty_feed_error(
         attempts: [{ strategy:, items_count: 0, error_class: nil }],
         surface_category: empty_auto_source_surface(response)
       )

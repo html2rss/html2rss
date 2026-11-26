@@ -26,6 +26,21 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
     end
   end
 
+  describe '.coerce' do
+    it 'maps nil to :auto and symbolizes strings', :aggregate_failures do
+      expect(described_class.coerce(nil)).to eq(:auto)
+      expect(described_class.coerce('default')).to eq(:default)
+      expect(described_class.coerce(:botasaurus)).to eq(:botasaurus)
+    end
+
+    it 'rejects unknown and non-name values listing the accepted names', :aggregate_failures do
+      expect { described_class.coerce('nope') }.to raise_error(Html2rss::InvalidOption, /one of auto, .*"nope"/)
+      [1, [], {}].each do |value|
+        expect { described_class.coerce(value) }.to raise_error(Html2rss::InvalidOption)
+      end
+    end
+  end
+
   describe '.concrete_for_diagnostic' do
     it 'collapses :auto to the default strategy' do
       expect(described_class.concrete_for_diagnostic(:auto)).to eq(:default)

@@ -359,4 +359,26 @@ RSpec.describe Html2rss::RequestService do
       expect(Fiber[:html2rss_cache_hits]).to be_nil
     end
   end
+
+  describe '.botasaurus_configured?' do
+    before { allow(ENV).to receive(:[]).and_call_original }
+
+    it 'is true when BOTASAURUS_SCRAPER_URL carries a value' do
+      allow(ENV).to receive(:[]).with('BOTASAURUS_SCRAPER_URL').and_return('http://localhost:3000')
+
+      expect(described_class.botasaurus_configured?).to be(true)
+    end
+
+    it 'is false when BOTASAURUS_SCRAPER_URL is unset' do
+      allow(ENV).to receive(:[]).with('BOTASAURUS_SCRAPER_URL').and_return(nil)
+
+      expect(described_class.botasaurus_configured?).to be(false)
+    end
+
+    it 'is false when BOTASAURUS_SCRAPER_URL is blank after stripping whitespace' do
+      allow(ENV).to receive(:[]).with('BOTASAURUS_SCRAPER_URL').and_return("  \t ")
+
+      expect(described_class.botasaurus_configured?).to be(false)
+    end
+  end
 end

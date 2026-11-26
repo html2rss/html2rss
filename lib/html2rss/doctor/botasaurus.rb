@@ -58,7 +58,7 @@ module Html2rss
       def self.env_check
         base = ENV.fetch(ENV_VAR, '').strip
         {
-          configured: MCP::Runtime.botasaurus_configured?,
+          configured: RequestService.botasaurus_configured?,
           var: ENV_VAR,
           base_url: base.empty? ? nil : base
         }

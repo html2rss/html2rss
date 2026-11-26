@@ -168,7 +168,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
 
   describe '.call with deep: true' do
     it 'uses botasaurus when configured and strategy is auto', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      allow(Html2rss::MCP::Runtime).to receive(:botasaurus_configured?).and_return(true)
+      allow(Html2rss::RequestService).to receive(:botasaurus_configured?).and_return(true)
       allow(Html2rss::PageRecon).to receive(:probe).and_return(probe)
 
       described_class.call(url: 'https://example.com/blog', strategy: :auto, deep: true)

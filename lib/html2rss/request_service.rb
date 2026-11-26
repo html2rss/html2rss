@@ -89,7 +89,7 @@ module Html2rss
 
     # Raised when Botasaurus configuration is missing or invalid.
     class BotasaurusConfigurationError < Html2rss::Error
-      # Short empty-feed guidance owned once (composed by {Html2rss::NoFeedItemsExtracted}).
+      # Short empty-feed guidance owned once (composed by {Html2rss::FeedPipeline.empty_feed_error}).
       EMPTY_FEED_HINT = 'Configure BOTASAURUS_SCRAPER_URL to enable the Botasaurus request strategy.'
     end
 
@@ -132,7 +132,15 @@ module Html2rss
     COOKIE_STORE_MUTEX = Mutex.new
     private_constant :DEPRECATION_MUTEX, :COOKIE_STORE_MUTEX
 
+    # Default `User-Agent` sent by every transport.
+    DEFAULT_USER_AGENT = "html2rss/#{Html2rss::VERSION}".freeze
+
     class << self
+      # @return [Boolean] whether +BOTASAURUS_SCRAPER_URL+ carries a value in this process
+      def botasaurus_configured?
+        !ENV['BOTASAURUS_SCRAPER_URL'].to_s.strip.empty?
+      end
+
       # @param store [#fetch, #write, #evict, nil] replacement cookie store (nil restores the in-memory default)
       # @return [void]
       def cookie_store=(store)

@@ -40,21 +40,6 @@ RSpec.describe Html2rss::Option do
     end
   end
 
-  describe '.strategy' do
-    it 'maps nil to :auto and symbolizes strings', :aggregate_failures do
-      expect(described_class.strategy(nil)).to eq(:auto)
-      expect(described_class.strategy('default')).to eq(:default)
-      expect(described_class.strategy(:botasaurus)).to eq(:botasaurus)
-    end
-
-    it 'rejects unknown and non-name values listing the accepted names', :aggregate_failures do
-      expect { described_class.strategy('nope') }.to raise_error(Html2rss::InvalidOption, /one of auto, .*"nope"/)
-      [1, [], {}].each do |value|
-        expect { described_class.strategy(value) }.to raise_error(Html2rss::InvalidOption)
-      end
-    end
-  end
-
   describe '.list' do
     it 'returns a non-empty Array' do
       expect(described_class.list(:urls, %w[a])).to eq(%w[a])

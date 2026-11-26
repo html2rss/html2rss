@@ -50,7 +50,7 @@ module Html2rss
       # @param items_selector [String, nil]
       # @return [Hash{Symbol => Object}] +:strategy+, +:items+, +:channel_title+, +:admission_drops+
       def scrape_wire(url:, strategy:, limit:, items_selector: nil)
-        plan = Option.strategy(strategy)
+        plan = FeedPipeline::StrategyPlan.coerce(strategy)
         feed_result = Html2rss.scrape(url, strategy: plan, limit:, **{ items_selector: }.compact)
         feed = feed_result.to_json_feed
         {
@@ -70,7 +70,7 @@ module Html2rss
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
       def batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: DEFAULT_CONCURRENCY)
-        strategy = Option.strategy(strategy)
+        strategy = FeedPipeline::StrategyPlan.coerce(strategy)
         Option.integer(:limit, limit, min: 1)
         run(Option.list(:urls, urls), concurrency:) { |url| scrape_single_url(url:, strategy:, limit:) }
       end
@@ -83,8 +83,8 @@ module Html2rss
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
       def batch_inspect(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY)
-        reports = PageRecon::Diagnostics.batch(urls: Option.list(:urls, urls), strategy: Option.strategy(strategy),
-                                               concurrency:)
+        plan = FeedPipeline::StrategyPlan.coerce(strategy)
+        reports = PageRecon::Diagnostics.batch(urls: Option.list(:urls, urls), strategy: plan, concurrency:)
         results = reports.map(&:to_wire_h)
         successful = reports.count { |report| diagnostic_success?(report) }
 
@@ -101,7 +101,7 @@ module Html2rss
       # @return [BatchResult]
       def batch_recon(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY, **)
         Option.integer(:concurrency, concurrency, min: 1, max: MAX_CONCURRENCY)
-        results = Recon.batch(Option.list(:urls, urls), strategy: Option.strategy(strategy),
+        results = Recon.batch(Option.list(:urls, urls), strategy: FeedPipeline::StrategyPlan.coerce(strategy),
                                                         max_threads: concurrency, **)
         successful = results.count { |result| http_success?(result.status) }
         BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
