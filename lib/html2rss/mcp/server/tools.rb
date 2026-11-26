@@ -38,7 +38,7 @@ module Html2rss
             call: lambda { |url:, strategy: 'auto', **|
               Outcome.inspect_report(
                 report: PageRecon::Diagnostics.call(
-                  url:, strategy: Option.strategy(strategy), deep: false
+                  url:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), deep: false
                 )
               )
             }
@@ -51,7 +51,7 @@ module Html2rss
             input_schema: Contract::RECON_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |url:, strategy: 'auto', **|
-              Outcome.recon(result: Html2rss.recon(url, strategy: Option.strategy(strategy)))
+              Outcome.recon(result: Html2rss.recon(url, strategy: FeedPipeline::StrategyPlan.coerce(strategy)))
             }
           ),
           Tool.new(
@@ -63,7 +63,7 @@ module Html2rss
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |urls:, strategy: 'auto', concurrency: Batch::DEFAULT_CONCURRENCY, limit: 10, **|
               Outcome.batch_scrape(
-                Batch.batch_scrape(urls:, strategy: Option.strategy(strategy), concurrency:, limit:)
+                Batch.batch_scrape(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), concurrency:, limit:)
               )
             }
           ),
@@ -76,7 +76,7 @@ module Html2rss
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |urls:, strategy: 'auto', concurrency: Batch::DEFAULT_CONCURRENCY, **|
               Outcome.batch_inspect(
-                Batch.batch_inspect(urls:, strategy: Option.strategy(strategy), concurrency:)
+                Batch.batch_inspect(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), concurrency:)
               )
             }
           ),
@@ -89,7 +89,7 @@ module Html2rss
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |urls:, strategy: 'auto', concurrency: Batch::DEFAULT_CONCURRENCY, **|
               Outcome.batch_recon(
-                Batch.batch_recon(urls:, strategy: Option.strategy(strategy), concurrency:)
+                Batch.batch_recon(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), concurrency:)
               )
             }
           ),
@@ -135,7 +135,7 @@ module Html2rss
                               compare_enhance: false, **kwargs|
               feed_config = ConfigArgument.parse(config:, yaml:).config
               test_args = { min_items:, strict_quality:, compare_enhance: }
-              test_args[:strategy] = Option.strategy(kwargs[:strategy]) if kwargs.key?(:strategy)
+              test_args[:strategy] = FeedPipeline::StrategyPlan.coerce(kwargs[:strategy]) if kwargs.key?(:strategy)
               Outcome.test(Html2rss.test(feed_config, **test_args))
             }
           ),
@@ -162,7 +162,8 @@ module Html2rss
           # @param items_selector [String, nil]
           # @return [Outcome]
           def scrape_outcome(url:, strategy: 'auto', limit: AutoSource::DEFAULT_LIMIT, items_selector: nil)
-            wire = Batch.scrape_wire(url:, strategy: Option.strategy(strategy), limit:, items_selector:)
+            plan = FeedPipeline::StrategyPlan.coerce(strategy)
+            wire = Batch.scrape_wire(url:, strategy: plan, limit:, items_selector:)
             Outcome.scrape(
               items: wire[:items],
               requested_strategy: wire[:strategy],
@@ -179,7 +180,7 @@ module Html2rss
           # @option options [Object] :topics the {Html2rss::Capture.build} keywords
           # @return [Outcome]
           def capture_outcome(url:, strategy: 'auto', **)
-            plan = Option.strategy(strategy)
+            plan = FeedPipeline::StrategyPlan.coerce(strategy)
             result = Html2rss::Capture.build(url, strategy: plan, **)
             Outcome.capture(result:, requested_strategy: plan)
           end

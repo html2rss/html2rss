@@ -53,7 +53,7 @@ module Html2rss
       # @param total_timeout_seconds [Integer, nil] wall-clock bound for the whole request chain
       # @return [RequestControls]
       def self.from_shortcut(strategy:, max_redirects: nil, max_requests: nil, total_timeout_seconds: nil)
-        strategy = Option.strategy(strategy) unless strategy.nil?
+        strategy = FeedPipeline::StrategyPlan.coerce(strategy) unless strategy.nil?
         check_budgets!(max_redirects, max_requests)
         Option.optional_integer(:total_timeout_seconds, total_timeout_seconds, min: 1)
         keys = []
@@ -73,7 +73,7 @@ module Html2rss
       # @param max_requests [Integer, nil]
       # @return [RequestControls]
       def self.from_cli_options(strategy:, max_redirects: nil, max_requests: nil)
-        strategy_sym = Option.strategy(strategy) if strategy
+        strategy_sym = FeedPipeline::StrategyPlan.coerce(strategy) if strategy
         check_budgets!(max_redirects, max_requests)
         keys = []
         keys << :strategy if strategy

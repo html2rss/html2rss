@@ -29,18 +29,6 @@ module Html2rss
       def optional_integer(name, value, min:, max: nil) = (integer(name, value, min:, max:) unless value.nil?)
 
       ##
-      # @param value [Symbol, String, nil] strategy plan name (+nil+ means +:auto+)
-      # @return [Symbol] the plan name
-      # @raise [InvalidOption] when +value+ is not a registered plan
-      def strategy(value)
-        name = value.nil? ? FeedPipeline::StrategyPlan::AUTO_NAME : value
-        return name.to_sym if FeedPipeline::StrategyPlan.valid?(name)
-
-        accepted = FeedPipeline::StrategyPlan.accepted_names.join(', ')
-        raise InvalidOption, "strategy must be one of #{accepted}, got #{value.inspect}"
-      end
-
-      ##
       # @param name [Symbol] option name used in the error message
       # @param value [Object] candidate list
       # @return [Array] +value+ when it is a non-empty Array

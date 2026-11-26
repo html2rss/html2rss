@@ -69,6 +69,19 @@ module Html2rss
         end
 
         ##
+        # Caller-option coercion: the edge check for a request-strategy name.
+        #
+        # @param value [Symbol, String, nil] plan name (+nil+ means +:auto+)
+        # @return [Symbol] the plan name
+        # @raise [InvalidOption] when +value+ is not a valid plan name
+        def coerce(value)
+          name = value.nil? ? AUTO_NAME : value
+          return name.to_sym if valid?(name)
+
+          raise InvalidOption, "strategy must be one of #{accepted_names.join(', ')}, got #{value.inspect}"
+        end
+
+        ##
         # @return [Array<Symbol>] accepted plan names (+:auto+ plus registered strategies)
         def accepted_names
           [AUTO_NAME, *RequestService.strategy_names.map(&:to_sym)].uniq
