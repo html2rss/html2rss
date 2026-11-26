@@ -13,11 +13,6 @@ module Html2rss
       # fixed to UTF-8 (+/u+): a pure-ASCII regexp would be recompiled, and allocate, on each non-ASCII text.
       NEVER = /(?!)/u
 
-      # Direction marks and embedding/isolate controls (LRM, RLM, ALM, LRE..RLO, LRI..PDI): they render nothing and
-      # change no letter, so a label ("\u200FContact\u200F") is read without them ({.strip_bidi}). Only the
-      # label text is read this way; extracted titles and descriptions keep them.
-      BIDI_MARKS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/
-
       # The three label readings, as the alternatives of each scoped concept: a prefix, a whole text, a
       # recommendation. A utility label is a utility word or a recommendation label.
       READINGS = {
@@ -34,13 +29,6 @@ module Html2rss
         # @param vocabulary [Vocabulary::Scope] the page language's scope ({Vocabulary.[]})
         # @return [TextClassifier]
         def for(vocabulary) = SHARED.fetch(vocabulary.code)
-
-        # The one owner of reading a label without direction marks ({BIDI_MARKS}). Text without a mark is
-        # returned as is, so the common case allocates nothing.
-        #
-        # @param text [String]
-        # @return [String] +text+ without bidi marks
-        def strip_bidi(text) = text.match?(BIDI_MARKS) ? text.gsub(BIDI_MARKS, '') : text
 
         ##
         # Compiles the anchored matcher of one reading from its alternatives, +NEVER+ without any. The
@@ -99,7 +87,7 @@ module Html2rss
       OWN = Vocabulary.by_own_terms(Vocabulary::SCOPED_PATTERNS) do |own, _|
         READINGS.transform_values { whole_label(own.values_at(*_1)) }.freeze
       end
-      private_constant :NEVER, :BIDI_MARKS, :BRACKETED_COUNT, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
+      private_constant :NEVER, :BRACKETED_COUNT, :UNAMBIGUOUS, :AMBIGUOUS, :OWN
 
       # Zero-width non-joiner and joiner. Inside a word they spell Persian, Urdu and Indic words, so a label
       # holding one is trimmed only at its edges, up to the first and last {LABEL_CHAR}.
@@ -179,7 +167,7 @@ module Html2rss
       end
 
       # Every label is read in NFC, so a decomposed accent matches the precomposed vocabulary, without bidi
-      # marks ({BIDI_MARKS}), without its trailing new-window notice ("(opens in new tab)") and without
+      # marks ({StringUtil.strip_bidi}), without its trailing new-window notice ("(opens in new tab)") and without
       # joiners at its edges ({JOINER}).
       def normalize(text)
         string = text.to_s
@@ -190,7 +178,7 @@ module Html2rss
 
       def compute_normal(string)
         text = string.ascii_only? ? string : string.unicode_normalize(:nfc)
-        text = self.class.strip_bidi(text).sub(@page.fetch(:new_window), '')
+        text = StringUtil.strip_bidi(text).sub(@page.fetch(:new_window), '')
         text.match?(JOINER) ? trim_edges(text) : text
       end
 

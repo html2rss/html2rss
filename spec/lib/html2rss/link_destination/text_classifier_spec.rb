@@ -125,18 +125,6 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
       expect(classifier.utility?("\u200FContactless payments\u200F")).to be(false)
       expect(classifier.read_more?("\u200FRead more about the budget\u200F")).to be(false)
     end
-
-    it 'strips every direction mark and control, but keeps ZWNJ and ZWJ', :aggregate_failures do
-      all = [0x200E, 0x200F, 0x061C, 0x202A, 0x202E, 0x2066, 0x2069].pack('U*')
-      joined = "a#{[0x200C, 0x200D].pack('U*')}b"
-      expect(described_class.strip_bidi("#{all}a")).to eq('a')
-      expect(described_class.strip_bidi(joined)).to eq(joined)
-    end
-
-    it 'returns text without marks as the same object' do
-      text = +'Video'
-      expect(described_class.strip_bidi(text)).to equal(text)
-    end
   end
 
   describe '#utility_chrome?' do

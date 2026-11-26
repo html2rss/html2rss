@@ -30,4 +30,18 @@ RSpec.describe Html2rss::StringUtil do
       [nil, '', ' ', 12, ['a']].each { |value| expect(described_class.presence(value)).to be_nil }
     end
   end
+
+  describe '.strip_bidi' do
+    it 'strips every direction mark and control, but keeps ZWNJ and ZWJ', :aggregate_failures do
+      all = [0x200E, 0x200F, 0x061C, 0x202A, 0x202E, 0x2066, 0x2069].pack('U*')
+      joined = "a#{[0x200C, 0x200D].pack('U*')}b"
+      expect(described_class.strip_bidi("#{all}a")).to eq('a')
+      expect(described_class.strip_bidi(joined)).to eq(joined)
+    end
+
+    it 'returns text without marks as the same object' do
+      text = +'Video'
+      expect(described_class.strip_bidi(text)).to equal(text)
+    end
+  end
 end

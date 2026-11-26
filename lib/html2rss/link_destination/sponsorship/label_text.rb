@@ -73,7 +73,7 @@ module Html2rss
           # @return [Boolean]
           def candidate?(text, vocabulary:)
             reading = BY_SCOPE.fetch(vocabulary.code)
-            text = TextClassifier.strip_bidi(text.unicode_normalize)
+            text = StringUtil.strip_bidi(text.unicode_normalize)
             text.match?(reading.label) || text.match?(reading.element_label_word)
           end
 
@@ -82,7 +82,7 @@ module Html2rss
           def kind_in(reading, text, element)
             return if text.nil?
 
-            text = TextClassifier.strip_bidi(text.unicode_normalize)
+            text = StringUtil.strip_bidi(text.unicode_normalize)
             return :label if element && text.match?(reading.element_label)
 
             match = reading.label.match(text)

@@ -19,7 +19,7 @@ module Html2rss
     # A Japanese headline may open with a bracket label (+【速報】+, +＜動画＞+): one naming a content type
     # ({TYPE_MARKERS}) is removed, any other leading bracket text becomes the kicker ({LEADING_BRACKET}).
     #
-    # Pieces and kickers are matched without bidi marks ({LinkDestination::TextClassifier.strip_bidi}); the
+    # Pieces and kickers are matched without bidi marks ({StringUtil.strip_bidi}); the
     # title keeps its text.
     #
     # Headline text is never noise-stripped: +20:15 Uhr: Neuer Krimi+ or +9:41 is the time+ is a real
@@ -251,7 +251,7 @@ module Html2rss
 
         # The text as matching reads it: bidi marks gone first, so marks set off by spaces collapse away too
         # ({.collapse} keeps them in a title). A marks-only text reads as blank.
-        def read(text) = collapse(LinkDestination::TextClassifier.strip_bidi(text.to_s))
+        def read(text) = collapse(StringUtil.strip_bidi(text.to_s))
 
         def trim(text, prefix)
           return unless (collapsed = collapse(text))
