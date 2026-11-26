@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
+# rubocop:disable RSpec/ExampleLength
 
 require 'spec_helper'
 
@@ -87,66 +87,57 @@ RSpec.describe Html2rss::AutoSource::Assessment do
     expect(assessment.admission_drops).to eq({})
   end
 
-  describe 'surface category and predicates' do
-    let(:build) do
-      lambda do |body|
-        Html2rss::RequestService::Response.new(
-          body:, url: Html2rss::Url.from_absolute('https://example.com/'),
-          headers: { 'content-type' => 'text/html' }, status: 200
-        )
-      end
-    end
+  it 'classifies HTML surfaces and exposes them as the category', :aggregate_failures do
+    page = ->(body) { Html2rss::RequestService::Response.new(body:, url: response.url, headers: response.headers, status: 200) }
+    links = (1..25).map { |i| "<a href=\"/p/#{i}\">x</a>" }.join
+    entropy = page.call("<html><body>#{links}</body></html>")
+    blocked = page.call('<html><head><title>Just a moment...</title></head><body>Cloudflare Ray ID: 1</body></html>')
+    app_shell = page.call('<html><body><div id="app"></div></body></html>')
 
-    let(:entropy_response) do
-      links = (1..25).map { |i| "<a href=\"/p/#{i}\">x</a>" }.join
-      build.call("<html><body>#{links}</body></html>")
-    end
-    let(:blocked_response) do
-      build.call('<html><head><title>Just a moment...</title></head><body>Cloudflare Ray ID: 1</body></html>')
-    end
-    let(:app_shell_response) { build.call('<html><body><div id="app"></div></body></html>') }
+    expect(described_class.surface_category_for(response: entropy)).to eq(:high_entropy_surface)
+    expect(described_class.surface_category_for(response: blocked)).to eq(:blocked_surface)
+    expect(described_class.call(response: app_shell).category).to be(Html2rss::AutoSource::SurfaceCategory[:app_shell])
+  end
 
-    it 'classifies HTML surfaces and exposes them as the category', :aggregate_failures do
-      expect(described_class.surface_category_for(response: entropy_response)).to eq(:high_entropy_surface)
-      expect(described_class.surface_category_for(response: blocked_response)).to eq(:blocked_surface)
-      expect(described_class.call(response: app_shell_response).category)
-        .to be(Html2rss::AutoSource::SurfaceCategory[:app_shell])
-    end
+  it 'classifies from the raw body, not the re-serialized document' do
+    raw = Html2rss::RequestService::Response.new(
+      body: '<html><head><title>Just a moment...</title></head><body>&#99;f-challenge</body></html>',
+      url: response.url, headers: response.headers, status: 200
+    )
 
-    it 'classifies from the raw body, not the re-serialized document' do
-      raw = build.call('<html><head><title>Just a moment...</title></head><body>&#99;f-challenge</body></html>')
+    expect(described_class.surface_category_for(response: raw)).not_to eq(:blocked_surface)
+  end
 
-      expect(described_class.surface_category_for(response: raw)).not_to eq(:blocked_surface)
-    end
+  it 'keeps the surface category on non-HTML responses', :aggregate_failures do
+    plain = Html2rss::RequestService::Response.new(
+      body: 'x', url: response.url, headers: { 'content-type' => 'text/plain' }, status: 200
+    )
+    assessment = described_class.call(response: plain)
 
-    it 'keeps the surface category on non-HTML responses', :aggregate_failures do
-      plain = Html2rss::RequestService::Response.new(
-        body: 'x', url: Html2rss::Url.from_absolute('https://example.com/'),
-        headers: { 'content-type' => 'text/plain' }, status: 200
-      )
-      assessment = described_class.call(response: plain)
+    expect(assessment.surface_category).to eq(:unsupported_surface)
+    expect(assessment.weak?).to be(true)
+  end
 
-      expect(assessment.surface_category).to eq(:unsupported_surface)
-      expect(assessment.weak?).to be(true)
-    end
+  it 'delegates weak?, blocked? and listing_bonus? to the category', :aggregate_failures do
+    blocked_page = Html2rss::RequestService::Response.new(
+      body: '<html><head><title>Just a moment...</title></head><body>Cloudflare Ray ID: 1</body></html>',
+      url: response.url, headers: response.headers, status: 200
+    )
+    blocked = described_class.call(response: blocked_page)
+    listing = described_class.new(surface_category: :listing, articles_count: 3, admission_drops: {})
 
-    it 'delegates weak?, blocked? and listing_bonus? to the category', :aggregate_failures do
-      blocked = described_class.call(response: blocked_response)
-      listing = described_class.new(surface_category: :listing, articles_count: 3, admission_drops: {})
+    expect([blocked.weak?, blocked.blocked?, blocked.listing_bonus?]).to eq([false, true, false])
+    expect([listing.weak?, listing.blocked?, listing.listing_bonus?]).to eq([false, false, true])
+  end
 
-      expect([blocked.weak?, blocked.blocked?, blocked.listing_bonus?]).to eq([false, true, false])
-      expect([listing.weak?, listing.blocked?, listing.listing_bonus?]).to eq([false, false, true])
-    end
+  it 'carries the admission drops of the cheap extract', :aggregate_failures do
+    source = instance_double(Html2rss::AutoSource, articles: [], admission_drops: { chrome: 2 })
+    allow(Html2rss::AutoSource).to receive(:new).and_return(source)
+    assessment = described_class.call(response: list_response)
 
-    it 'carries the admission drops of the cheap extract', :aggregate_failures do
-      source = instance_double(Html2rss::AutoSource, articles: [], admission_drops: { chrome: 2 })
-      allow(Html2rss::AutoSource).to receive(:new).and_return(source)
-      assessment = described_class.call(response: list_response)
-
-      expect(assessment.admission_drops).to eq({ chrome: 2 })
-      expect(assessment.articles_count).to eq(0)
-    end
+    expect(assessment.admission_drops).to eq({ chrome: 2 })
+    expect(assessment.articles_count).to eq(0)
   end
 end
 
-# rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
+# rubocop:enable RSpec/ExampleLength
