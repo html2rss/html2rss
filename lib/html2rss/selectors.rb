@@ -98,7 +98,7 @@ module Html2rss
     # Yields +baseline+, +enhanced+, and the item node per list entry for enhance diagnostics.
     #
     # @param linked_only [Boolean] skip items {#each} would drop for having no URL
-    # Consumed by {Test::EnhanceAudit} so the extraction loop has one owner.
+    # Consumed by {Curation::Test::EnhanceAudit} so the extraction loop has one owner.
     #
     # @yieldparam baseline [Hash]
     # @yieldparam enhanced [Hash]

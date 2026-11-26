@@ -6,7 +6,7 @@ module Html2rss
     # Thin MCP wire adapter over public html2rss APIs.
     #
     # Ownership: scraping/capture/validate/feed stay on gem entrypoints
-    # ({Html2rss.scrape}, {Capture.build}, {Config.validate}, {Html2rss.feed_result}).
+    # ({Html2rss.scrape}, {Curation::Capture.build}, {Config.validate}, {Html2rss.feed_result}).
     # This module maps MCP kwargs to those APIs, then {Outcome} + {Contract} shape the envelope.
     #
     # Strategy note: MCP +auto+ passes through to FeedPipeline AutoFallback

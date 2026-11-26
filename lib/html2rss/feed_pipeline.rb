@@ -74,7 +74,7 @@ module Html2rss
 
     ##
     # Runs the pipeline once and returns scrape-finished outcome (before Channel/Status).
-    # Used by {Capture} which needs the response body for SST selector derivation.
+    # Used by {Curation::Capture} which needs the response body for SST selector derivation.
     #
     # @return [PipelineOutcome]
     def to_outcome
