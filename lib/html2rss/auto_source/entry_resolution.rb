@@ -123,9 +123,9 @@ module Html2rss
         def log(result)
           scrape_host = Url.from_absolute(result.scrape_url).host
           Log.event(
-            :info, 'feed_resolution.result',
+            :info, 'entry_resolution.result',
             host: entry_url.host,
-            message: "FeedResolution: entry_host=#{entry_url.host} scrape_host=#{scrape_host} " \
+            message: "EntryResolution: entry_host=#{entry_url.host} scrape_host=#{scrape_host} " \
                      "applied=#{result.applied} probe_count=#{result.probe_count} " \
                      "winner_score=#{result.winner_score.inspect} reason=#{result.reason}"
           )

@@ -202,8 +202,8 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
           selected_strategy: :botasaurus, entry_resolution: hash_including(applied: true)
         )
         expect(Html2rss::Log).to have_received(:warn).with(
-          a_string_including('"event_name":"feed_resolution.budget_exhausted"', '"host":"example.com"',
-                             '"message":"FeedResolution: entry resolution skipped (request budget exhausted)"')
+          a_string_including('"event_name":"entry_resolution.budget_exhausted"', '"host":"example.com"',
+                             '"message":"EntryResolution: entry resolution skipped (request budget exhausted)"')
             .and(satisfy { |line| !line.include?('error_class') })
         )
         expect(Html2rss::Log).to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
@@ -216,9 +216,9 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback, '#call' do
         expect(Html2rss::Log).to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
         expect(Html2rss::Log).to have_received(:warn).with(
           a_string_including(
-            '"event_name":"feed_resolution.retry_failed"', '"host":"example.com"',
+            '"event_name":"entry_resolution.retry_failed"', '"host":"example.com"',
             '"error_class":"Html2rss::RequestService::ConnectionFailed"',
-            '"message":"FeedResolution: entry resolution retry failed (Html2rss::RequestService::ConnectionFailed)"'
+            '"message":"EntryResolution: entry resolution retry failed (Html2rss::RequestService::ConnectionFailed)"'
           )
         )
       end

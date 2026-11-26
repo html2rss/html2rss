@@ -178,8 +178,8 @@ RSpec.describe Html2rss::AutoSource::EntryResolution do
     described_class.call(response:, session:, config:, articles: [], slots: 5)
 
     expect(Html2rss::Log).to have_received(:info).with(
-      a_string_including('"event_name":"feed_resolution.result"', '"host":"example.com"',
-                         '"message":"FeedResolution: entry_host=example.com scrape_host=example.com applied=true ' \
+      a_string_including('"event_name":"entry_resolution.result"', '"host":"example.com"',
+                         '"message":"EntryResolution: entry_host=example.com scrape_host=example.com applied=true ' \
                          "probe_count=2 winner_score=#{resolution.winner_score} reason=winner")
     ).once
     expect(Html2rss::Log).to have_received(:info).with(

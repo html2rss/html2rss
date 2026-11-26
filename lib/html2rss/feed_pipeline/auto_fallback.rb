@@ -284,8 +284,8 @@ module Html2rss
       end
 
       def log_resolution_failure(event, summary, error_class: nil)
-        fields = { host: Url.from_absolute(config.url).host, error_class:, message: "FeedResolution: #{summary}" }
-        Log.event(:warn, "feed_resolution.#{event}", **fields.compact)
+        fields = { host: Url.from_absolute(config.url).host, error_class:, message: "EntryResolution: #{summary}" }
+        Log.event(:warn, "entry_resolution.#{event}", **fields.compact)
       end
 
       def record_success(hop, response, extraction, scrape_target: self.scrape_target)
