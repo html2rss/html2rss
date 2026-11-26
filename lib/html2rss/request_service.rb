@@ -89,7 +89,7 @@ module Html2rss
 
     # Raised when Botasaurus configuration is missing or invalid.
     class BotasaurusConfigurationError < Html2rss::Error
-      # Short empty-feed guidance owned once (composed by FeedPipeline.empty_feed_error).
+      # Short empty-feed guidance owned once (composed by {Html2rss::FeedPipeline.empty_feed_error}).
       EMPTY_FEED_HINT = 'Configure BOTASAURUS_SCRAPER_URL to enable the Botasaurus request strategy.'
     end
 
