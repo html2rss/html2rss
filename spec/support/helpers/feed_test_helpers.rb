@@ -36,8 +36,7 @@ module FeedTestHelpers
     Html2rss::AutoSource::Assessment.new(
       surface_category:,
       articles_count:,
-      admission_drops:,
-      html_response: true
+      admission_drops:
     )
   end
 

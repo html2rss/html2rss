@@ -2,7 +2,7 @@
 
 module Html2rss
   class AutoSource
-    Assessment = Data.define(:surface_category, :articles_count, :admission_drops, :html_response)
+    Assessment = Data.define(:surface_category, :articles_count, :admission_drops)
 
     ##
     # Cheap surface + admission facts shared by AutoFallback gates and EntryResolution probes.
@@ -19,13 +19,13 @@ module Html2rss
       # @return [Assessment]
       def self.call(response:, channel: {}, vocabulary: nil)
         category = surface_category_for(response:)
-        return new(surface_category: category, articles_count: 0, admission_drops: {}, html_response: false) \
+        return new(surface_category: category, articles_count: 0, admission_drops: {}) \
           unless response.html_response?
 
         vocabulary ||= Vocabulary[Channel.language_for(response, channel)]
         source = AutoSource.new(response, DEFAULT_CONFIG.merge(limit: CHEAP_LIMIT), vocabulary:)
         new(surface_category: category, articles_count: source.articles.size,
-            admission_drops: source.admission_drops, html_response: true)
+            admission_drops: source.admission_drops)
       end
 
       ##
