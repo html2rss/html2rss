@@ -262,7 +262,7 @@ module Html2rss
       end
 
       def extract_published_at(lines, root: @root)
-        datetimes = root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
+        datetimes = root.each_node.map { |n| n.attrs.datetime }
         ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
       end
 
