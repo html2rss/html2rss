@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Html
+  class AutoSource
     ##
     # DOM-agnostic article field rules shared by Nokogiri and SST adapters.
     module ArticleRules

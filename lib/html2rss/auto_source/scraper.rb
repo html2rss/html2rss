@@ -30,7 +30,7 @@ module Html2rss
       SCRAPERS = (DOCUMENT_SCRAPERS + SCRAPER_TIERS.flatten).freeze
 
       # Heuristic scrapers that share one memoized Html2rss::Html::SST::Document per page. The only titles composed
-      # (+Kicker: Headline+, noise stripped): their cards are read by Html::SstArticleExtractor. Every
+      # (+Kicker: Headline+, noise stripped): their cards are read by AutoSource::ArticleExtractor. Every
       # other scraper yields publisher-declared or structured headlines, kept verbatim (collapse only).
       HEURISTIC_SCRAPERS = Set[SemanticHtml, Html].freeze
       # In-page structured scrapers whose items {Corroboration} checks against the rendered page.

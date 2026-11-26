@@ -4,7 +4,7 @@ require 'date'
 require 'tzinfo'
 
 module Html2rss
-  module Html
+  class AutoSource
     module ArticleRules
       ##
       # DOM-agnostic datetime aggregation for article published_at.

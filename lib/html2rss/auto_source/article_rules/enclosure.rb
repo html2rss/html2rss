@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Html
+  class AutoSource
     module ArticleRules
       ##
       # The one rule for which HTML elements become enclosures, and their URL/type normalization.
       #
-      # DOM-agnostic: {SstArticleExtractor} (and its {SstArticleExtractor::Item} reader) only visits
+      # DOM-agnostic: {ArticleExtractor} (and its {ArticleExtractor::Item} reader) only visits
       # {ELEMENT_NAMES}, adapts its node API to {.from_element} and passes the result through {.unique}.
       # Images (+img[src]+), players (+audio[src]+, +video[src]+), a player's +source[src]+ with
       # its +type+, and file links ({FILE_LINK}) qualify; an +iframe+ (embed player page) never does,

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::ArticleRules::Date do
+RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
   describe '.at_midnight' do
     it 'is local midnight of the day in the time zone' do
       result = described_class.at_midnight(Date.new(2026, 11, 20), time_zone: 'Europe/Berlin')
@@ -60,14 +60,14 @@ RSpec.describe Html2rss::Html::ArticleRules::Date do
     end
 
     it 'returns nil for blank, over-long, and unparseable text', :aggregate_failures do
-      too_long = "2024-07-12#{' ' * Html2rss::Html::ArticleRules::Description::MAX_DATE_CHARS}"
+      too_long = "2024-07-12#{' ' * Html2rss::AutoSource::ArticleRules::Description::MAX_DATE_CHARS}"
       expect(described_class.parse_datetime('', time_zone: nil)).to be_nil
       expect(described_class.parse_datetime(too_long, time_zone: nil)).to be_nil
       expect(described_class.parse_datetime('not a date', time_zone: nil)).to be_nil
     end
 
     it 'accepts text of exactly the maximum length' do
-      max = Html2rss::Html::ArticleRules::Description::MAX_DATE_CHARS
+      max = Html2rss::AutoSource::ArticleRules::Description::MAX_DATE_CHARS
       expect(described_class.parse_datetime("2024-07-12#{' ' * (max - 10)}", time_zone: nil)).not_to be_nil
     end
   end

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
+RSpec.describe Html2rss::AutoSource::ArticleRules::UrlDate do
   describe '.call' do
-    before { allow(Html2rss::Html::ArticleRules::Date).to receive(:local_today).and_return(Date.new(2026, 11, 20)) }
+    before { allow(Html2rss::AutoSource::ArticleRules::Date).to receive(:local_today).and_return(Date.new(2026, 11, 20)) }
 
     fixture = File.join(__dir__, '../../../../fixtures/link_destination/newspaper4k_pubdate_urls.txt')
     File.readlines(fixture, chomp: true).grep_v(/\A#/).reject(&:empty?).map { _1.split(' ', 2) }.each do |label, url|
@@ -80,7 +80,7 @@ RSpec.describe Html2rss::Html::ArticleRules::UrlDate do
     end
 
     it 'judges the future bound against today in the configured time zone', :aggregate_failures do
-      rules_date = Html2rss::Html::ArticleRules::Date
+      rules_date = Html2rss::AutoSource::ArticleRules::Date
       allow(rules_date).to receive(:local_today).with(time_zone: 'Pacific/Kiritimati').and_return(Date.new(2026, 11,
                                                                                                            21))
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Host specs define title_for as a lambda: ->(html) { String or nil }, html being one <article> card.
-# Both extractors read kicker and headline through Html::TitlePieces (one rule; see its class notes):
+# Both extractors read kicker and headline through AutoSource::ArticleExtractor::TitlePieces (one rule; see its class notes):
 # headline piece, kicker, concealed, date, lead and tag pieces are all judged by element, so these must agree.
 RSpec.shared_examples 'article extractor title pieces' do
   {

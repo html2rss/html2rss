@@ -780,7 +780,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     # rubocop:disable-next RSpec/ExampleLength
-    it 'only calls Html::SstArticleExtractor on the final winners', :aggregate_failures do
+    it 'only calls AutoSource::ArticleExtractor on the final winners', :aggregate_failures do
       article = Html2rss::Article.new(
         title: 'Story A',
         url: Html2rss::Url.from_relative('/news/story-a', 'https://example.com'),
@@ -792,13 +792,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         enclosures: [],
         scraper: described_class
       )
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
       scraper = described_class.new(parsed_body, url: 'https://example.com')
       results = scraper.each.to_a
 
       expect(results.size).to eq(1)
-      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).once
+      expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call).once
     end
   end
 

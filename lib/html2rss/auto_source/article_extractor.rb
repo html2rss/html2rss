@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Html
+  class AutoSource
     ##
     # Builds an {Html2rss::Article} from an SST segment / ranked segment.
     # {Item} reads a card a selector config picked.
     # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated
-    class SstArticleExtractor
+    class ArticleExtractor
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
       # {Html2rss::SelectorCandidates}, which owns no copy of it.
       TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
@@ -36,7 +36,7 @@ module Html2rss
       # @param link_resolver [Scoring::LinkResolver] see {.call}
       def initialize(ranked_or_segment, base_url:, scraper:, time_zone:, link_resolver:)
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
-        raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
+        raise Html::InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
         @root = segment.root_node
         @selected_anchor = segment.primary_link
@@ -176,7 +176,7 @@ module Html2rss
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)
-        CardWalk.miss?(
+        Html::CardWalk.miss?(
           heading_or_anchor_item: heading_or_anchor_item?,
           published_at:,
           description: ArticleRules::Description.from_lines(lines,
@@ -200,23 +200,23 @@ module Html2rss
 
       def immediate_card_parent
         parent = sst_parent
-        SST::Index.for_node!(@root).parent_until(parent, ->(node) { usable_walk_parent?(node) })
+        Html::SST::Index.for_node!(@root).parent_until(parent, ->(node) { usable_walk_parent?(node) })
       end
 
       def usable_walk_parent?(node)
-        Navigator.usable_card_parent?(node, vocabulary: @vocabulary) && !thin_heading_wrapper?(node)
+        Html::Navigator.usable_card_parent?(node, vocabulary: @vocabulary) && !thin_heading_wrapper?(node)
       end
 
       def thin_heading_wrapper?(node)
-        CardWalk.thin_wrapper?(
+        Html::CardWalk.thin_wrapper?(
           children: node.children,
           item: @root,
-          descendant_of: ->(item, child) { SST::Index.descendant_or_self?(item, child) }
+          descendant_of: ->(item, child) { Html::SST::Index.descendant_or_self?(item, child) }
         )
       end
 
       def crowded_parent?(node)
-        CardWalk.crowded?(
+        Html::CardWalk.crowded?(
           heading_count: node.each_node.count(&:heading?),
           distinct_main_hrefs: distinct_main_hrefs(node)
         )
@@ -227,7 +227,7 @@ module Html2rss
       end
 
       def sst_parent
-        SST::Index.for_node!(@root).parent_of(@root)
+        Html::SST::Index.for_node!(@root).parent_of(@root)
       end
 
       # DOM id of the card (the root or its first descendant carrying one), else the link's path. The path is never

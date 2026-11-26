@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::ArticleRules::Description do
+RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
   let(:vocabulary) { Html2rss::Vocabulary[nil] }
 
   describe '.date_core' do
@@ -120,7 +120,7 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
       zh = Html2rss::Vocabulary[:zh]
       line = '独自 | 2026-11-10'
 
-      expect(Html2rss::Html::ArticleRules::Date.earliest([], leftover_lines: [line], time_zone: 'UTC'))
+      expect(Html2rss::AutoSource::ArticleRules::Date.earliest([], leftover_lines: [line], time_zone: 'UTC'))
         .to eq(DateTime.parse('2026-11-10T00:00:00Z'))
       expect(described_class.from_lines([line, 'Kept dek'], vocabulary: zh)).to eq('Kept dek')
     end

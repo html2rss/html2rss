@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::SstArticleExtractor::Item do
+RSpec.describe Html2rss::AutoSource::ArticleExtractor::Item do
   describe 'leftover hygiene' do
     let(:extractor_time_zone) { 'UTC' }
     let(:leftover_fields) do

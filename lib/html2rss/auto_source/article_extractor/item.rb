@@ -3,8 +3,8 @@
 require 'zlib'
 
 module Html2rss
-  module Html
-    class SstArticleExtractor
+  class AutoSource
+    class ArticleExtractor
       ##
       # Reads the fields of an item a feed config selected (+selectors.items.enhance+), not of a card the
       # heuristic found. A configured item need not carry a link, a heading tag or an id, so where the
@@ -12,7 +12,7 @@ module Html2rss
       # (else the heading-like node, else the first text), and the id from the DOM, else the title.
       # {#call} returns the field Hash for {Html2rss::Selectors} to merge under its explicit selectors; it
       # builds no {Article} and drops nothing.
-      class Item < SstArticleExtractor
+      class Item < ArticleExtractor
         # Attributes that label a node as the headline when the item has no heading tag.
         LABEL_ATTRIBUTES = %w[aria-label title].freeze
         # Tags that mark a headline when the item has no heading tag and no anchor.
@@ -20,7 +20,7 @@ module Html2rss
         private_constant :LABEL_ATTRIBUTES, :FALLBACK_HEADING_NAMES
 
         ##
-        # @return [Hash{Symbol => Object}] see {SstArticleExtractor#fields}
+        # @return [Hash{Symbol => Object}] see {ArticleExtractor#fields}
         alias call fields
 
         private

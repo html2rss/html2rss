@@ -354,7 +354,7 @@ module Html2rss
       when Hash
         # Hash items carry publisher-declared or structured titles: verbatim (collapse only), except an item
         # with an explicit +kicker+, which composes +Kicker: Headline+. Heuristic scrapers yield Articles
-        # composed by Html::SstArticleExtractor.
+        # composed by AutoSource::ArticleExtractor.
         Article.new(**localized_date(composed_title(item)), scraper: instance.class)
       else
         raise ScraperContractError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
@@ -364,7 +364,7 @@ module Html2rss
     # Hash scrapers emit published_at strings; a naive one is read in the channel time zone.
     def localized_date(item)
       string = item[:published_at].to_s
-      parsed = Html::ArticleRules::Date.parse_datetime(string, time_zone: @time_zone)
+      parsed = AutoSource::ArticleRules::Date.parse_datetime(string, time_zone: @time_zone)
       parsed ? item.merge(published_at: parsed) : item
     end
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Html
+  class AutoSource
     module ArticleRules
       ##
       # Shared category term vocabulary and text accumulation (DOM walk stays in adapters).

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::ArticleRules::Category::Collector do
+RSpec.describe Html2rss::AutoSource::ArticleRules::Category::Collector do
   let(:vocabulary) { Html2rss::Vocabulary[nil] }
 
   describe '#add_split' do

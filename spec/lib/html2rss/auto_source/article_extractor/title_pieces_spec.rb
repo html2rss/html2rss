@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::TitlePieces do
+RSpec.describe Html2rss::AutoSource::ArticleExtractor::TitlePieces do
   context 'with SST nodes' do
     let(:pieces_for) do
       lambda do |html|

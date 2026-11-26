@@ -3,7 +3,7 @@
 require 'date'
 
 module Html2rss
-  module Html
+  class AutoSource
     module ArticleRules
       ##
       # Sole owner of "publication date from an article URL path". It is applied once, on the final

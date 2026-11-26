@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::ArticleRules::Category do
+RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
   describe 'constants' do
     it 'does not treat layout label/section words as category terms' do
       expect(described_class::CATEGORY_TERMS).not_to include('label', 'labels', 'section', 'sections')

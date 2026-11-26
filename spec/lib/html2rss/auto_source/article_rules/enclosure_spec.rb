@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::ArticleRules::Enclosure do
+RSpec.describe Html2rss::AutoSource::ArticleRules::Enclosure do
   let(:base_url) { 'https://example.com' }
 
   describe '.from_element' do

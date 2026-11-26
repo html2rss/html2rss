@@ -205,7 +205,7 @@ module Html2rss
         end
 
         # The node whose children to normalize, or nil for a stripped tag. A +noscript+ is kept only for the
-        # file links inside it ({Html::ArticleRules::Enclosure.file_link?}), as its only children, so a
+        # file links inside it ({Html2rss::AutoSource::ArticleRules::Enclosure.file_link?}), as its only children, so a
         # card's no-script download link still names its enclosure; its text stays invisible
         # ({Tags::INVISIBLE_NAMES}) and a +noscript+ without one is stripped; its file links come back as an
         # Array standing in for its children. The root of a region is a +template+ the config selected as an
@@ -216,7 +216,7 @@ module Html2rss
           return nk_node if self.class.kept_tag?(tag, items: @items) || region_template?(nk_node, tag)
           return unless tag == 'noscript'
 
-          links = nk_node.xpath('.//a[@href]').select { Html::ArticleRules::Enclosure.file_link?(_1['href']) }
+          links = nk_node.xpath('.//a[@href]').select { Html2rss::AutoSource::ArticleRules::Enclosure.file_link?(_1['href']) }
           links unless links.empty?
         end
 

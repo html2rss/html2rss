@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::ArticleRules::Image do
+RSpec.describe Html2rss::AutoSource::ArticleRules::Image do
   describe '.remote_src?' do
     it 'accepts a URL and rejects blank or inline data sources', :aggregate_failures do
       expect(described_class.remote_src?('/posters/clip.jpg')).to be(true)

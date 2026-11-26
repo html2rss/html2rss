@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::SstArticleExtractor do
+RSpec.describe Html2rss::AutoSource::ArticleExtractor do
   it 'rejects a value that is not a segment' do
     expect { described_class.call(Object.new, base_url: 'https://example.com', time_zone: 'UTC', link_resolver: page_resolver) }
       .to raise_error(Html2rss::Html::InvalidError, 'segment is required')

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Html
+  class AutoSource
     module ArticleRules
       ##
       # DOM-agnostic image URL selection (srcset sizing, CSS background urls).
@@ -41,7 +41,7 @@ module Html2rss
           def remote_src?(src) = src.to_s.match?(/\S/) && !src.start_with?('data:')
 
           ##
-          # The one owner of which nodes carry a card image; {Html::SstArticleExtractor} reads its image from
+          # The one owner of which nodes carry a card image; {AutoSource::ArticleExtractor} reads its image from
           # these and the segmenter reads them to tell a card's own image from a neighbour's.
           #
           # @param node [SST::Node]

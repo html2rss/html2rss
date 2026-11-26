@@ -40,7 +40,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
   let(:entry) do
     lambda do |article:, position: 0, final: 65.0, quality: 75.0, href: '/news/story', root: root_node|
       ranked = build_ranked.call(href:, final:, quality:, position:, root:)
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).with(ranked, any_args).and_return(article)
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).with(ranked, any_args).and_return(article)
       ranked
     end
   end
@@ -239,9 +239,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       end
       first = anchorless.call(0)
       second = anchorless.call(1)
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).with(first, any_args).and_return(build_article.call)
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).with(second, any_args)
-                                                                  .and_return(build_article.call(description: 'x'))
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).with(first,
+                                                                           any_args).and_return(build_article.call)
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).with(second, any_args)
+                                                                     .and_return(build_article.call(description: 'x'))
 
       expect(deduplicator.call([first, second]).size).to eq(1)
     end
@@ -252,10 +253,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
     it 'extracts with the page base url and the scraper class', :aggregate_failures do
       ranked = build_ranked.call
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
       expect(deduplicator.article_for(ranked)).to be(article)
-      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
+      expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call).with(
         ranked, base_url: 'https://example.com', time_zone: nil, scraper: scraper_class,
                 link_resolver: be_a(Html2rss::Scoring::LinkResolver)
       )
@@ -263,34 +264,34 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
     it 'extracts with the channel time zone', :aggregate_failures do
       ranked = build_ranked.call
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
       described_class.new('https://example.com', scraper: scraper_class, time_zone: 'Europe/Berlin')
                      .article_for(ranked)
 
-      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call)
+      expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call)
         .with(ranked, hash_including(time_zone: 'Europe/Berlin'))
     end
 
     it 'extracts with the page resolver, which carries the page language', :aggregate_failures do
       resolver = Html2rss::Scoring::LinkResolver.new('https://example.com', vocabulary: Html2rss::Vocabulary['zh-Hant'])
       ranked = build_ranked.call
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
       described_class.new('https://example.com', scraper: scraper_class, link_resolver: resolver).article_for(ranked)
 
-      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
+      expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call).with(
         ranked, base_url: 'https://example.com', time_zone: nil, scraper: scraper_class, link_resolver: resolver
       )
     end
 
     it 'extracts each entry only once' do
       ranked = build_ranked.call
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
       2.times { deduplicator.article_for(ranked) }
 
-      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).once
+      expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call).once
     end
   end
 end

@@ -5,7 +5,7 @@ module Html2rss
     ##
     # Leftover parent-card walk policy shared by Nokogiri and SST extractors.
     # Adapters traverse; this module decides miss / thin wrapper / crowded abort.
-    # Keep/drop stays on {ArticleRules::Description}. Capture's selector lift is a
+    # Keep/drop stays on {AutoSource::ArticleRules::Description}. Capture's selector lift is a
     # separate job (set-aware abort) and is not encoded here.
     module CardWalk
       class << self
