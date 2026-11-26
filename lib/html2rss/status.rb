@@ -21,7 +21,7 @@ module Html2rss
     ALWAYS_REPORTED = %i[version dedup_dropped].freeze
     private_constant :ALWAYS_REPORTED
 
-    # Article-enrichment counters (see {Article::Enrichment::Result}).
+    # Article-enrichment counters (see {FeedPipeline::Enrichment::Result}).
     ENRICHMENT_KEYS = %i[enriched enrich_failed enrich_skipped_cross_origin].freeze
     private_constant :ENRICHMENT_KEYS
 
@@ -35,11 +35,11 @@ module Html2rss
       # @param attempt_count [Integer] auto-fallback attempt count (0 when not under +:auto+)
       # @param strategy_attempts [Array<Hash>] auto-fallback attempt hashes (empty outside +:auto+)
       # @param admission_drops [Hash{String => Integer}] Cleanup reason → count (empty when unused)
-      # @param scrape_target [Html2rss::ScrapeTarget, nil] domain URL pair (mapped to wire strings)
+      # @param scrape_target [Html2rss::FeedPipeline::ScrapeTarget, nil] domain URL pair (mapped to wire strings)
       # @param entry_url [String, nil] original channel URL when entry resolution ran
       # @param scrape_url [String, nil] effective scrape URL after resolution
       # @param entry_resolution [Html2rss::FeedResolution::Diag, Hash, nil] resolution diagnostics
-      # @param enrichment [Hash{Symbol => Integer}] {Article::Enrichment} tally (empty when off)
+      # @param enrichment [Hash{Symbol => Integer}] {FeedPipeline::Enrichment} tally (empty when off)
       # @return [Html2rss::Status]
       # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- Status kwargs stay co-located
       def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0,

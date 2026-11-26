@@ -61,7 +61,7 @@ RSpec.describe Html2rss::FeedPipeline do
         outcome, result = pipeline.to_outcome_and_result
 
         expect(outcome.articles.map(&:title)).to eq(['default'])
-        expect(outcome.scrape_target).to eq(Html2rss::ScrapeTarget.from_config(Html2rss::Config.from_hash(config)))
+        expect(outcome.scrape_target).to eq(Html2rss::FeedPipeline::ScrapeTarget.from_config(Html2rss::Config.from_hash(config)))
         expect(result.to_rss.items.map(&:title)).to eq(['default'])
       end
 
