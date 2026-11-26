@@ -958,7 +958,7 @@ RSpec.describe Html2rss::Config do
 
       let(:expected_auto_source_config) do
         {
-          limit: 25,
+          limit: 50,
           entry_resolution: { enabled: true, max_probes: 5 },
           scraper: {
             semantic_html: { enabled: true }, # wasn't explicitly set -> default

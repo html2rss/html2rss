@@ -56,7 +56,7 @@ RSpec.describe Html2rss::CLI do
             enhance: { type: :boolean, default: nil, enum: nil, aliases: [],
                        description: 'Force enhance: true on items selector' },
             force: { type: :boolean, default: false, enum: nil, aliases: [], description: 'Bypass native feed check' },
-            limit: { type: :numeric, default: nil, enum: nil, aliases: [], description: 'Article limit (default: 25)' },
+            limit: { type: :numeric, default: nil, enum: nil, aliases: [], description: 'Article limit (default: 50)' },
             explain: { type: :boolean, default: false, enum: nil, aliases: [],
                        description: 'Print capture diagnostics to stderr' }
           }

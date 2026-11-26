@@ -401,7 +401,7 @@
       },
       "required": [],
       "default": {
-        "limit": 25,
+        "limit": 50,
         "entry_resolution": {
           "enabled": true,
           "max_probes": 5

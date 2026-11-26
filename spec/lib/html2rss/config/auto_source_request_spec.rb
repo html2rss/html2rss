@@ -69,7 +69,7 @@ RSpec.describe Html2rss::Config::AutoSourceRequest do
       config = described_class.new(url: 'https://example.com').to_config
 
       expect(config[:auto_source]).to equal(Html2rss::AutoSource::DEFAULT_CONFIG)
-      expect(config[:auto_source][:limit]).to eq(25)
+      expect(config[:auto_source][:limit]).to eq(Html2rss::AutoSource::DEFAULT_LIMIT)
     end
 
     [true, false].each do |value|

@@ -120,7 +120,7 @@ module Html2rss
     method_option :summary, type: :string, desc: 'Directory summary override'
     method_option :enhance, type: :boolean, desc: 'Force enhance: true on items selector'
     method_option :force, type: :boolean, desc: 'Bypass native feed check', default: false
-    method_option :limit, type: :numeric, desc: 'Article limit (default: 25)'
+    method_option :limit, type: :numeric, desc: 'Article limit (default: 50)'
     method_option :explain, type: :boolean, desc: 'Print capture diagnostics to stderr', default: false
     # @param target [String, nil] URL or local HTML file
     # @return [void]

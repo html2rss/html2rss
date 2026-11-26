@@ -34,8 +34,8 @@ RSpec.describe Html2rss::AutoSource do
   end
 
   describe '::DEFAULT_LIMIT' do
-    it 'defaults to twenty-five articles' do
-      expect(described_class::DEFAULT_LIMIT).to eq(25)
+    it 'defaults to fifty articles' do
+      expect(described_class::DEFAULT_LIMIT).to eq(50)
     end
   end
 
@@ -564,6 +564,7 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     context 'with a podcast page of episodes and promo cards' do
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 25) }
       let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_podcast_episode_page.html') }
       let(:url) { Html2rss::Url.from_absolute('https://example.com/podcasts/harbor-hour/') }
 
@@ -1243,7 +1244,7 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     it 'normalizes each URL once and reuses one Cleanup result', :aggregate_failures do
-      expect(auto_source.articles.size).to eq(25)
+      expect(auto_source.articles.size).to eq(50)
       expect(counts[:cleanup]).to eq(1)
       expect(counts[:normalize]).to be <= 160 # measured: 139
     end
