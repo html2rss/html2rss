@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Html::Rendering::Media do
+RSpec.describe Html2rss::FeedBuilder::Rendering::Media do
   describe '.image' do
     it 'renders the exact img tag', :aggregate_failures do
       html = described_class.image(url: 'https://example.com/i.jpg', title: 'Title')

@@ -3,7 +3,7 @@
 require 'cgi/escape'
 
 module Html2rss
-  module Html
+  module FeedBuilder
     module Rendering
       # Renders the one media element of a feed item description: an image, or an audio or video player.
       # Every attribute value is HTML-escaped; each snippet is a single line.

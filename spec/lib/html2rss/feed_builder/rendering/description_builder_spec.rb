@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'nokogiri'
 
-RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
+RSpec.describe Html2rss::FeedBuilder::Rendering::DescriptionBuilder do
   describe '#call' do
     context 'when base is plain text' do
       subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure: nil, image: nil).call }

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Html
+  module FeedBuilder
     module Rendering
       # Builds a sanitized article description from the base text, title, and at most one media element.
       #
