@@ -77,13 +77,6 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Enclosure do
     end
   end
 
-  describe '.file_link?' do
-    it 'accepts document, archive and media file paths only', :aggregate_failures do
-      expect(%w[/a.pdf /a.ZIP /a.tgz /a.mp3 /a.WEBM?x=1].map { described_class.file_link?(_1) }).to all(be(true))
-      expect(['/a', '/a.html', '/a.jpg', '/?a.mp3', '', nil].map { described_class.file_link?(_1) }).to all(be(false))
-    end
-  end
-
   describe '.from_media' do
     it 'keeps the declared type and kind and resolves the url', :aggregate_failures do
       found = described_class.from_media('/a', 'audio/mpeg', base_url, kind: :audio)

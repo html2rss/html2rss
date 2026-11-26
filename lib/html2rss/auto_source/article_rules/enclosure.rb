@@ -9,17 +9,9 @@ module Html2rss
       # DOM-agnostic: {ArticleExtractor} (and its {ArticleExtractor::Item} reader) only visits
       # {ELEMENT_NAMES}, adapts its node API to {.from_element} and passes the result through {.unique}.
       # Images (+img[src]+), players (+audio[src]+, +video[src]+), a player's +source[src]+ with
-      # its +type+, and file links ({FILE_LINK}) qualify; an +iframe+ (embed player page) never does,
+      # its +type+, and file links ({Html::Probe.file_link?}) qualify; an +iframe+ (embed player page) never does,
       # and only an http(s) URL is one (no +data:+, +blob:+, +javascript:+ or +mailto:+).
       module Enclosure
-        # A link to a file: its path (before any query or fragment) ends, in any case, in a downloadable
-        # document or archive extension (+.pdf+, +.zip+, +.tar.gz+, +.tgz+) or an audio or video one
-        # ({Article::Enclosure::MEDIA_TYPES}, which also types it), such as an episode's download link.
-        FILE_LINK = /
-          \A[^?\#]*\.
-          (?:pdf|zip|tar\.gz|tgz|#{Regexp.union(Article::Enclosure::MEDIA_TYPES.keys).source})
-          (?:[?\#]|\z)
-        /ix
         # Element names that may carry an enclosure.
         ELEMENT_NAMES = %w[img audio video source a].freeze
         # Players whose own +src+ and inner +source+ elements name a media file.
@@ -48,11 +40,6 @@ module Html2rss
             when 'a' then from_anchor(href, base_url)
             end
           end
-
-          ##
-          # @param href [String, nil] an anchor's +href+
-          # @return [Boolean] whether it names a file {.from_element} turns into an enclosure ({FILE_LINK})
-          def file_link?(href) = href.to_s.match?(FILE_LINK)
 
           ##
           # @param src [String, nil]
@@ -89,7 +76,7 @@ module Html2rss
           end
 
           def from_anchor(href, base_url)
-            return unless file_link?(href) && (url = Url.resolve_web(href, base_url))
+            return unless Html::Probe.file_link?(href) && (url = Url.resolve_web(href, base_url))
 
             { url: }
           end

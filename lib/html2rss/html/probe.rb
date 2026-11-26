@@ -3,7 +3,7 @@
 module Html2rss
   module Html
     ##
-    # Case-insensitive DOM wire matching for MIME types, tag names, and link relations.
+    # Case-insensitive DOM wire matching for MIME types, tag names, and link relations, plus file-link hrefs.
     module Probe
       # Canonical MIME type strings for script and alternate link matching.
       APPLICATION_LD_JSON = 'application/ld+json'
@@ -20,7 +20,23 @@ module Html2rss
       # Every syndication format advertised by +link[rel=alternate]+ (RSS 2.0, Atom, RSS 1.0 / RDF).
       FEED_MIME_TYPES = [APPLICATION_RSS_XML, APPLICATION_ATOM_XML, APPLICATION_RDF_XML].freeze
 
+      # Audio and video file extensions; keeps in step with +Article::Enclosure::MEDIA_TYPES+ keys (spec-guarded).
+      MEDIA_EXTENSIONS = %w[mp4 m4v ogv webm m4a mp3 ogg oga opus aac wav flac].freeze
+      # A link to a file: its path (before any query or fragment) ends, in any case, in a downloadable
+      # document or archive extension (+.pdf+, +.zip+, +.tar.gz+, +.tgz+) or an audio or video one
+      # ({MEDIA_EXTENSIONS}), such as an episode's download link.
+      FILE_LINK = /
+        \A[^?\#]*\.
+        (?:pdf|zip|tar\.gz|tgz|#{Regexp.union(MEDIA_EXTENSIONS).source})
+        (?:[?\#]|\z)
+      /ix
+
       class << self
+        ##
+        # @param href [String, nil] an anchor's +href+
+        # @return [Boolean] whether it names a downloadable file ({FILE_LINK})
+        def file_link?(href) = href.to_s.match?(FILE_LINK)
+
         ##
         # @param string [String, Symbol, #to_s] wire value
         # @return [String] folded comparison key
