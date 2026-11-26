@@ -154,7 +154,8 @@ module Html2rss
 
             kind = types.filter_map { MEDIA_KINDS[_1] }.first
             type = mime_type(node[:encodingFormat])
-            Html2rss::Html::ArticleRules::Enclosure.from_media(src, type, base_url, kind:)&.merge(file_facts(node))
+            Html2rss::AutoSource::ArticleRules::Enclosure.from_media(src, type, base_url,
+                                                                     kind:)&.merge(file_facts(node))
           end
 
           # @param node [Hash] media object

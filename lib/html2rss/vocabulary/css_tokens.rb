@@ -3,7 +3,8 @@
 module Html2rss
   module Vocabulary
     # Class and id tokens that mark an element as content or as junk, read by
-    # {Scoring::LinkResolver::CONTENT_TOKEN_REGEXP} and {Scoring::LinkResolver::JUNK_TOKEN_REGEXP}. A list of its
+    # {AutoSource::Scoring::LinkResolver::CONTENT_TOKEN_REGEXP} and
+    # {AutoSource::Scoring::LinkResolver::JUNK_TOKEN_REGEXP}. A list of its
     # own, apart from the path words: a CSS token is matched as a whole space, hyphen or underscore delimited
     # word, a path segment as a folded URL segment. Both lists are frozen sets of lowercase words.
     module CssTokens

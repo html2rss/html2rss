@@ -5,19 +5,19 @@ module Html2rss
     ##
     # Presentation rules for rendering an {Html2rss::Article} into feed wire formats.
     #
-    # Owns description enrichment ({Html::Rendering::DescriptionBuilder}), RSS enclosure
+    # Owns description enrichment ({Html2rss::FeedBuilder::Rendering::DescriptionBuilder}), RSS enclosure
     # choice and the media-feed rule. {Article} keeps raw extracted fields only; media-file
     # facts live on {Article::Enclosure}.
     module ItemPresentation
       class << self
         ##
         # The item body: sanitized description text after at most one media element, the RSS enclosure
-        # ({.rss_enclosure_for}) when it is audio or video, else the item image ({Html::Rendering::DescriptionBuilder}).
+        # ({.rss_enclosure_for}) when it is audio or video, else the item image ({Html2rss::FeedBuilder::Rendering::DescriptionBuilder}).
         #
         # @param article [Html2rss::Article]
         # @return [String, nil] sanitized description HTML/text for feed item bodies
         def description_for(article)
-          Html::Rendering::DescriptionBuilder.new(
+          Rendering::DescriptionBuilder.new(
             base: article.description,
             title: article.title,
             url: article.url,

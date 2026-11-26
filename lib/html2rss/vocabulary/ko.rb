@@ -5,7 +5,8 @@ module Html2rss
     # Korean. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +ko+, and nowhere else. Korean
     # attaches particles and endings to nouns ("로그인 오류로", "구독 경제가"), so no term is read as a prefix: each
     # label form is listed whole, with and without its inner space, and read as a whole text only (no trailing word,
-    # no headline opener, see {LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed
+    # no headline opener, see {AutoSource::LinkDestination::TextClassifier}). Only the concepts read through a {Scope}
+    # are listed
     # (label words, the call to action, read-more and the new-window notice); the others stay +NONE+ until their
     # readers take the page scope. It lists no type marker (stripping a short kicker could leave a headline below the
     # title floor) and no section name (+정치+, +사회+ and +스포츠+ are topics a feed may carry). A term whose

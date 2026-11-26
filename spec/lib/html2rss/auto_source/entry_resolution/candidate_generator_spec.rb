@@ -1,0 +1,208 @@
+# frozen_string_literal: true
+
+# rubocop:disable RSpec/ExampleLength
+
+require 'spec_helper'
+
+RSpec.describe Html2rss::AutoSource::EntryResolution::CandidateGenerator do
+  let(:entry_url) { 'https://example.com/' }
+  let(:vocabulary) { Html2rss::Vocabulary[nil] }
+  let(:html) do
+    <<~HTML
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <link rel="alternate" type="application/rss+xml" href="/feed.xml">
+      </head>
+      <body>
+        <header><a href="/blog">Blog</a></header>
+        <nav><a href="/news">News</a></nav>
+        <main>
+          <a href="/about">About</a>
+        </main>
+      </body>
+      </html>
+    HTML
+  end
+  let(:response) do
+    Html2rss::RequestService::Response.new(
+      body: html,
+      url: Html2rss::Url.from_absolute(entry_url),
+      headers: { 'content-type' => 'text/html' },
+      status: 200
+    )
+  end
+
+  it 'keeps one feed slot and listing nav without feed-path starvation', :aggregate_failures do
+    urls = described_class.call(entry_url:, response:, vocabulary:, max: 5).map(&:to_s)
+
+    expect(urls.grep(%r{/feed(?:\.xml)?\z|/rss(?:\.xml)?\z})).to eq(['https://example.com/feed.xml'])
+    expect(urls).to include('https://example.com/blog').and have_attributes(size: be <= 5)
+    expect(urls).not_to include('https://example.com/')
+  end
+
+  it 'ranks links by the scope it was given', :aggregate_failures do
+    allow(Html2rss::AutoSource::LinkDestination::DestinationFacts).to receive(:build).and_call_original
+    scope = Html2rss::Vocabulary[:sv]
+    described_class.call(entry_url:, response:, vocabulary: scope, max: 5)
+
+    expect(Html2rss::AutoSource::LinkDestination::DestinationFacts).to have_received(:build)
+      .with(anything, vocabulary: be(scope)).at_least(:once)
+    expect(Html2rss::AutoSource::LinkDestination::DestinationFacts).not_to have_received(:build)
+      .with(anything, vocabulary: be(vocabulary))
+  end
+
+  it 'returns only the feed slot when max is 1' do
+    urls = described_class.call(entry_url:, response:, vocabulary:, max: 1).map(&:to_s)
+
+    expect(urls).to eq(['https://example.com/feed.xml'])
+  end
+
+  context 'when an audio-hinted alternate on another domain ranks before the site feed' do
+    let(:html) do
+      <<~HTML
+        <html><head>
+          <title>Example Podcast</title>
+          <link rel="alternate" type="application/rss+xml" title="Site feed" href="/feed.xml">
+          <link rel="alternate" type="application/rss+xml" title="Podcast" href="https://feeds.example.net/show.xml">
+        </head><body></body></html>
+      HTML
+    end
+
+    it 'fills the feed slot with the first same-domain candidate' do
+      expect(described_class.call(entry_url:, response:, vocabulary:, max: 1).map(&:to_s)).to eq(['https://example.com/feed.xml'])
+    end
+  end
+
+  context 'when the only alternate is on another domain' do
+    let(:html) do
+      '<html><head><link rel="alternate" type="application/rss+xml" href="https://feeds.example.net/x.xml"></head></html>'
+    end
+
+    it 'falls back to the first same-domain path guess' do
+      expect(described_class.call(entry_url:, response:, vocabulary:, max: 1).map(&:to_s)).to eq(['https://example.com/feed'])
+    end
+  end
+
+  it 'uses cluster primary links when list cannot group isolated class cards', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <!DOCTYPE html>
+      <html>
+      <body>
+        <section>
+          <nav><a href="/news/alpha-sidebar-notes">Alpha sidebar notes extra words here</a></nav>
+          <div class="card-item">
+            <a href="javascript:void(0)">Share</a>
+            <h2><a href="/posts/alpha-release">Alpha release notes for the first card</a></h2>
+            <p>Description text for the first clustered card goes here extra.</p>
+          </div>
+        </section>
+        <section>
+          <nav><a href="/news/beta-sidebar-notes">Beta sidebar notes extra words here</a></nav>
+          <div class="card-item">
+            <a href="mailto:ed@example.com">Email</a>
+            <h2><a href="/posts/beta-release">Beta release notes for the second card</a></h2>
+            <p>Description text for the second clustered card goes here extra.</p>
+          </div>
+        </section>
+        <section>
+          <nav><a href="/news/gamma-sidebar-notes">Gamma sidebar notes extra words here</a></nav>
+          <div class="card-item">
+            <a href="javascript:void(0)">Share</a>
+            <h2><a href="/posts/gamma-release">Gamma release notes for the third card</a></h2>
+            <p>Description text for the third clustered card goes here extra.</p>
+          </div>
+        </section>
+      </body>
+      </html>
+    HTML
+    response = Html2rss::RequestService::Response.new(
+      body: html,
+      url: Html2rss::Url.from_absolute(entry_url),
+      headers: { 'content-type' => 'text/html' },
+      status: 200
+    )
+
+    urls = described_class.call(entry_url:, response:, vocabulary:, max: 8).map(&:to_s)
+
+    expect(urls).to include(
+      'https://example.com/posts/alpha-release',
+      'https://example.com/posts/beta-release'
+    )
+    expect(urls.grep(/javascript:|mailto:/)).to be_empty
+  end
+
+  context 'when the response is not HTML' do
+    let(:response) do
+      Html2rss::RequestService::Response.new(
+        body: '{"items":[]}',
+        url: Html2rss::Url.from_absolute(entry_url),
+        headers: { 'content-type' => 'application/json' },
+        status: 200
+      )
+    end
+
+    it 'offers only listing paths without a feed slot or nav seeds' do
+      urls = described_class.call(entry_url:, response:, vocabulary:, max: 5).map(&:to_s)
+
+      expect(urls).to eq(%w[https://example.com/news https://example.com/blog
+                            https://example.com/releases https://example.com/changelog])
+    end
+  end
+
+  context 'with ranked navigation, duplicates and foreign links' do
+    let(:html) do
+      <<~HTML
+        <!DOCTYPE html>
+        <html>
+        <body>
+          <header>
+            <a href="/stories/launch-party">Launch party</a>
+            <a href="#top">Top</a>
+            <a href="/about-us">About</a>
+            <a href="https://other.example.net/category/elsewhere">Elsewhere</a>
+          </header>
+          <nav>
+            <a href="/category/tech">Tech</a>
+            <a href="/category/tech">Tech again</a>
+          </nav>
+        </body>
+        </html>
+      HTML
+    end
+
+    it 'orders destinations by rank, drops unranked and foreign links, and dedupes', :aggregate_failures do
+      urls = described_class.call(entry_url:, response:, vocabulary:, max: 5).map(&:to_s)
+
+      expect(urls).to eq(%w[https://example.com/feed https://example.com/category/tech
+                            https://example.com/stories/launch-party https://example.com/news
+                            https://example.com/blog])
+    end
+
+    it 'caps listing seeds at max minus the feed slot' do
+      urls = described_class.call(entry_url:, response:, vocabulary:, max: 3).map(&:to_s)
+
+      expect(urls).to eq(%w[https://example.com/feed https://example.com/category/tech
+                            https://example.com/stories/launch-party])
+    end
+
+    it 'defaults the candidate budget to DEFAULT_MAX when max is omitted', :aggregate_failures do
+      expected = described_class.call(entry_url:, response:, vocabulary:, max: 5)
+
+      expect(described_class.call(entry_url:, response:, vocabulary:)).to eq(expected)
+      expect(described_class.new(entry_url:, response:, vocabulary:).call).to eq(expected)
+    end
+
+    context 'when the entry page is itself linked with a fragment' do
+      let(:entry_url) { 'https://example.com/category/tech' }
+
+      it 'does not offer the entry document as a candidate' do
+        urls = described_class.call(entry_url:, response:, vocabulary:, max: 5).map(&:to_s)
+
+        expect(urls.grep(%r{category/tech(#|\z)})).to be_empty
+      end
+    end
+  end
+end
+
+# rubocop:enable RSpec/ExampleLength

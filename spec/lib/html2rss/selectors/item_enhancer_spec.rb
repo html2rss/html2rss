@@ -40,11 +40,11 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
     end
 
     it 'builds the SST document once for all items' do
-      allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
+      allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_call_original
 
       parsed.css('.card').each { enhancer.fields_for(_1) }
 
-      expect(Html2rss::SST::Normalizer).to have_received(:call).once
+      expect(Html2rss::Html::SST::Normalizer).to have_received(:call).once
     end
 
     it 'keeps the document alive across garbage collection, so a card walk still finds its parent',
@@ -59,7 +59,7 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
 
     it 'never degrades a page past the node ceiling: an item the heuristic would drop is still read',
        :aggregate_failures do
-      stub_const('Html2rss::SST::Normalizer::MAX_NODES', 2)
+      stub_const('Html2rss::Html::SST::Normalizer::MAX_NODES', 2)
       page = Nokogiri::HTML('<main><p><span class="card"><a href="/s">Story</a></span></p></main>')
       fields = enhancer_for.call(page).fields_for(page.at_css('.card'))
 
@@ -135,10 +135,10 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
       it 'normalizes the lowest element holding the items and their parent cards, seeded with its scope' do # rubocop:disable RSpec/ExampleLength
         page = Nokogiri::HTML('<html><body><header><p>Page</p></header><main><ul><li><h3><a href="/a">A</a></h3></li>' \
                               '<li><h3><a href="/b">B</a></h3></li></ul></main><footer>Page end</footer></body></html>')
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_call_original
         enhancer_for.call(page, page.css('h3')).fields_for(page.at_css('h3'))
 
-        expect(Html2rss::SST::Normalizer).to have_received(:call)
+        expect(Html2rss::Html::SST::Normalizer).to have_received(:call)
           .with(page.at_css('ul'), hash_including(items: true, within: :sectioned)).once
       end
     end
@@ -154,10 +154,10 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
     it 'stops the walk at a parent that holds a noscript, which the items keep', :aggregate_failures do
       page = Nokogiri::HTML('<html><body><ul><li><div><h3><a href="/a">A</a></h3></div><noscript>x</noscript></li>' \
                             '</ul></body></html>')
-      allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
+      allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_call_original
       enhancer_for.call(page, page.css('h3')).fields_for(page.at_css('h3'))
 
-      expect(Html2rss::SST::Normalizer).to have_received(:call).with(page.at_css('li'), anything)
+      expect(Html2rss::Html::SST::Normalizer).to have_received(:call).with(page.at_css('li'), anything)
     end
 
     it 'reads an item of no selected set by itself' do
@@ -180,10 +180,10 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
 
       it 'seeds the chrome scope its ancestors give it', :aggregate_failures do
         page = Nokogiri::HTML('<template><nav><div class="card"><a href="/n">Nav card</a></div></nav></template>')
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_call_original
 
         expect(enhancer_for.call(page).fields_for(page.at_css('.card'))[:title]).to eq('Nav card')
-        expect(Html2rss::SST::Normalizer).to have_received(:call)
+        expect(Html2rss::Html::SST::Normalizer).to have_received(:call)
           .with(page.at_css('.card'), hash_including(items: true, within: :chrome))
       end
     end
@@ -195,11 +195,11 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
 
       it 'reads the items of every root, each by itself', :aggregate_failures do
         first, second = parsed.css('.card')
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_call_original
 
         expect(enhancer.fields_for(first)[:title]).to eq('One')
         expect(enhancer.fields_for(second)[:title]).to eq('Two')
-        expect(Html2rss::SST::Normalizer).to have_received(:call).twice
+        expect(Html2rss::Html::SST::Normalizer).to have_received(:call).twice
       end
 
       it 'logs the item read apart at debug, and nothing at warn', :aggregate_failures do

@@ -23,7 +23,7 @@ module Html2rss
         # @param page_state [Hash] any other field; the rest default to {PAGE_STATE}
         # @option page_state [Html2rss::RequestSession, nil] :request_session
         # @option page_state [String, nil] :body raw response body
-        # @option page_state [SST::Document, nil] :document
+        # @option page_state [Html2rss::Html::SST::Document, nil] :document
         # @option page_state [Scoring::LinkResolver, nil] :link_resolver
         # @option page_state [String, nil] :time_zone
         # @option page_state [Array<Hash>] :captured_responses

@@ -3,14 +3,14 @@
 module Html2rss
   class AutoSource
     ##
-    # Discovers candidate content segments from an SST::Document.
+    # Discovers candidate content segments from an Html::SST::Document.
     #
     # Strategies:
     # - +:semantic+ — leaf article/section/li/tr/div containers with a primary link
     # - +:list+ — repeated cards grouped by parent (`main` is a filter when present)
     # - +:cluster+ — class / structure clustering for anchorless card grids
     class Segmenter
-      # @param document [SST::Document]
+      # @param document [Html::SST::Document]
       # @param base_url [String, Html2rss::Url]
       # @param strategy [Symbol]
       # @param opts [Hash] segmentation options
@@ -23,7 +23,7 @@ module Html2rss
         new(document, base_url:, strategy:, **opts).call
       end
 
-      # @param document [SST::Document]
+      # @param document [Html::SST::Document]
       # @param base_url [String, Html2rss::Url]
       # @param strategy [Symbol]
       # @param opts [Hash] segmentation options
@@ -31,7 +31,7 @@ module Html2rss
       # @option opts [Integer] :use_top_selectors list strategy selector budget
       # @option opts [Scoring::LinkResolver, nil] :link_resolver page-scoped destination facts cache
       def initialize(document, base_url:, strategy:, **opts)
-        raise Segment::InvalidError, 'document must be SST::Document' unless document.is_a?(SST::Document)
+        raise Segment::InvalidError, 'document must be SST::Document' unless document.is_a?(Html::SST::Document)
 
         @document = document
         @base_url = base_url
@@ -54,14 +54,14 @@ module Html2rss
       attr_reader :document, :base_url, :minimum_selector_frequency,
                   :use_top_selectors, :link_resolver, :noise_policy
 
-      # @return [SST::Index]
+      # @return [Html::SST::Index]
       def index = document.index
 
       ##
       # Whether +anchor+ has a utility-landmark ancestor outside +container+.
       #
-      # @param anchor [SST::Node]
-      # @param container [SST::Node]
+      # @param anchor [Html::SST::Node]
+      # @param container [Html::SST::Node]
       # @return [Boolean]
       def landmark_ancestor?(anchor, container)
         cache = (@landmark_cache ||= {}.compare_by_identity)

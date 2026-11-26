@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 # Captures wall time + allocation baseline for the feed-building path: native-feed parsing, RSS and
-# JSON Feed rendering, and the item description (Html2rss::Html::Rendering::DescriptionBuilder).
+# JSON Feed rendering, and the item description (Html2rss::FeedBuilder::Rendering::DescriptionBuilder).
 # Budget rule: bin/lib/perf_baseline.rb.
 # Usage: mise exec -- bin/feed-perf-baseline [--write PATH] [--check PATH]
 

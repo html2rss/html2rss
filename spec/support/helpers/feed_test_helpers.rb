@@ -33,16 +33,15 @@ module FeedTestHelpers
   end
 
   def assessment(surface_category:, articles_count:, admission_drops: {})
-    Html2rss::PageRecon::Assessment.new(
+    Html2rss::AutoSource::Assessment.new(
       surface_category:,
       articles_count:,
-      admission_drops:,
-      html_response: true
+      admission_drops:
     )
   end
 
   def scored_probe(url:, score:, articles_count:)
-    Html2rss::FeedResolution::Probe::Scored.new(
+    Html2rss::AutoSource::EntryResolution::Probe::Scored.new(
       url: Html2rss::Url.from_absolute(url),
       score:,
       articles_count:,
@@ -57,7 +56,7 @@ module FeedTestHelpers
   alias rss_item rss_channel_item
 
   def classifier_for(*segments)
-    Html2rss::LinkDestination::PathClassifier.new(segments)
+    Html2rss::AutoSource::LinkDestination::PathClassifier.new(segments)
   end
 
   def mock_session(*xml_bodies)

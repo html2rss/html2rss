@@ -39,7 +39,7 @@ module Html2rss
           min = segmenter.minimum_selector_frequency
 
           segmenter.index.each_node do |node|
-            next if SST::Tags::CLUSTER_EXCLUDED_NAMES.include?(node.name)
+            next if Html::SST::Tags::CLUSTER_EXCLUDED_NAMES.include?(node.name)
             next if segmenter.index.ignored_chrome?(node)
 
             cls = normalize_class(node.attrs.class_names)
@@ -82,15 +82,15 @@ module Html2rss
           # Cap pairwise work on dense class grids.
           MAX_GROUPS = 40
 
-          # @param index [SST::Index]
+          # @param index [Html::SST::Index]
           def initialize(index:)
             @index = index
-            @layout_tags = SST::Tags::LAYOUT_NAMES
+            @layout_tags = Html::SST::Tags::LAYOUT_NAMES
             @scorer = Scoring::ClusterScorer.new
           end
 
-          # @param groups [Hash{String => Array<SST::Node>}]
-          # @return [Hash{String => Array<SST::Node>}]
+          # @param groups [Hash{String => Array<Html::SST::Node>}]
+          # @return [Hash{String => Array<Html::SST::Node>}]
           def filter_containers(groups)
             capped = cap_groups(groups)
             capped.reject do |cls_a, nodes_a|
@@ -98,8 +98,8 @@ module Html2rss
             end
           end
 
-          # @param groups [Hash{String => Array<SST::Node>}]
-          # @return [Hash{String => Array<SST::Node>}]
+          # @param groups [Hash{String => Array<Html::SST::Node>}]
+          # @return [Hash{String => Array<Html::SST::Node>}]
           def filter_1_to_1_overlap(groups)
             discarded = {}
             groups.each_key do |cls_a|

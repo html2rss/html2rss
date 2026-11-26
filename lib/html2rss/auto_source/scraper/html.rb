@@ -5,7 +5,7 @@ module Html2rss
     module Scraper
       ##
       # Fallback HTML list scraper via SST pipeline
-      # (Normalizer → Segmenter → Scoring::Engine → Html::SstArticleExtractor).
+      # (Normalizer → Segmenter → Scoring::Engine → AutoSource::ArticleExtractor).
       class Html < PageCards
         # Minimum selector frequency required to treat a path as a stable list signal.
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
@@ -25,7 +25,7 @@ module Html2rss
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
-        # @param document [SST::Document, nil] memoized SST document from AutoSource
+        # @param document [Html2rss::Html::SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
         # @param time_zone [String, nil] channel time zone for naive leftover dates
         # @param opts [Hash]
@@ -70,8 +70,8 @@ module Html2rss
 
         def materialize(ranked)
           ranked.filter_map do |entry|
-            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: url, scraper: self.class,
-                                                              time_zone:, link_resolver:)
+            ::Html2rss::AutoSource::ArticleExtractor.call(entry, base_url: url, scraper: self.class,
+                                                                 time_zone:, link_resolver:)
           end
         end
 

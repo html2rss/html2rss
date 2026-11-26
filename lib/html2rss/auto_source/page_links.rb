@@ -10,8 +10,8 @@ module Html2rss
     # placement params ({PlacementParams}: a param the page's content links use to place the same story
     # in several slots), which the page's links show and which {#identity} and {#without_placement} drop
     # for every consumer of that key ({Corroboration}, {Cleanup}). Chrome and
-    # peripheral both come from the one SST scope rule ({SST::Tags.chrome_scope}, read through
-    # {SST::Index#ignored_chrome?} and {SST::Index#peripheral?}): utility landmarks that are not
+    # peripheral both come from the one SST scope rule ({Html::SST::Tags.chrome_scope}, read through
+    # {Html::SST::Index#ignored_chrome?} and {Html::SST::Index#peripheral?}): utility landmarks that are not
     # chrome (+aside+, +menu+, role=complementary, in-content +nav+, sectioned +footer+) are peripheral.
     # A URL rendered several times keeps its strongest placement.
     #
@@ -30,7 +30,7 @@ module Html2rss
       SPARSE_MAX_CONTENT_LINKS = 2
 
       ##
-      # @param document [SST::Document, nil] page SST; nil when there is no rendered page
+      # @param document [Html::SST::Document, nil] page SST; nil when there is no rendered page
       # @param link_resolver [Scoring::LinkResolver, nil] page resolver (shared memo with heuristics);
       #   required when +document+ is present
       # @return [PageLinks]
@@ -39,7 +39,7 @@ module Html2rss
       end
       private_class_method :new
 
-      # @param document [SST::Document, nil]
+      # @param document [Html::SST::Document, nil]
       # @param link_resolver [Scoring::LinkResolver, nil]
       def initialize(document, link_resolver)
         @document = document
@@ -131,7 +131,7 @@ module Html2rss
       # Strongest placement and content anchor URL per article identity, from one walk that
       # resolves every SST anchor.
       class Placements
-        # @param document [SST::Document, nil]
+        # @param document [Html::SST::Document, nil]
         # @param link_resolver [Scoring::LinkResolver, nil]
         def initialize(document, link_resolver)
           @index = document&.index

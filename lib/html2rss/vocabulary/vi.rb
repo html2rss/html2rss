@@ -5,7 +5,8 @@ module Html2rss
     # Vietnamese. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +vi+, and nowhere else.
     # Vietnamese writes one syllable per word, so a label is a short phrase of ordinary words ("tìm kiếm", "chia sẻ",
     # "liên hệ") that also open headlines. No term is read as a prefix or a substring: each label is listed whole and
-    # read as a whole text only (no trailing word, no headline opener, see {LinkDestination::TextClassifier}). Terms
+    # read as a whole text only (no trailing word, no headline opener, see
+    # {AutoSource::LinkDestination::TextClassifier}). Terms
     # are written in NFC, the form the classifier normalizes to, so decomposed input matches and upper case
     # ("ĐĂNG NHẬP") folds. Only the concepts read through a {Scope} are listed (label words, the call to action,
     # read-more, recommended and the new-window notice); the others stay +NONE+ until their readers take the page

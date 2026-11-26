@@ -21,7 +21,7 @@ module Html2rss
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
-        # @param document [SST::Document, nil] shared document built once per page
+        # @param document [Html2rss::Html::SST::Document, nil] shared document built once per page
         # @param link_resolver [Scoring::LinkResolver, nil] shared link resolver
         # @param time_zone [String, nil] channel time zone for naive leftover dates
         def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, time_zone: nil)
@@ -40,7 +40,8 @@ module Html2rss
         end
 
         def document
-          @document ||= @provided_document || SST::Normalizer.call(parsed_body, vocabulary: link_resolver.vocabulary)
+          @document ||= @provided_document || Html2rss::Html::SST::Normalizer.call(parsed_body,
+                                                                                   vocabulary: link_resolver.vocabulary)
         end
       end
     end

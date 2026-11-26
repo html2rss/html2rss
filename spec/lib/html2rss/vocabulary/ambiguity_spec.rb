@@ -24,11 +24,11 @@ RSpec.describe Html2rss::Vocabulary do
       path_article: { 'entrada' => %i[es pt] }
     }
   end
-  let(:text) { ->(lang) { Html2rss::LinkDestination::TextClassifier.new(vocabulary: described_class[lang]) } }
+  let(:text) { ->(lang) { Html2rss::AutoSource::LinkDestination::TextClassifier.new(vocabulary: described_class[lang]) } }
   let(:path) do
     lambda do |lang, term|
-      Html2rss::LinkDestination::PathClassifier.new([term, 'harbor-ferry-schedule'],
-                                                    vocabulary: described_class[lang])
+      Html2rss::AutoSource::LinkDestination::PathClassifier.new([term, 'harbor-ferry-schedule'],
+                                                                vocabulary: described_class[lang])
     end
   end
   # Each way of reading a concept: a classifier call on the term alone.

@@ -43,31 +43,12 @@ RSpec.describe Html2rss::PageRecon do
   end
 
   it 'assess shares surface and cheap article facts with call', :aggregate_failures do
-    assessment = described_class.assess(response:, url: 'https://example.com/blog')
+    assessment = Html2rss::AutoSource::Assessment.call(response:)
     result = described_class.call(response:, url: 'https://example.com/blog')
 
     expect(assessment.surface_category).to eq(result.surface_category)
     expect(assessment.articles_count).to eq(result.articles_count)
     expect(assessment.admission_drops).to eq(result.admission_drops)
-  end
-
-  it 'surface_category_for matches assess without a second extract job' do
-    expect(described_class.surface_category_for(response:, url: 'https://example.com/blog')).to eq(
-      described_class.assess(response:, url: 'https://example.com/blog').surface_category
-    )
-  end
-
-  it 'marks feed responses as unsupported_surface via surface_category_for' do
-    feed = Html2rss::RequestService::Response.new(
-      body: '<rss version="2.0"><channel></channel></rss>',
-      url: Html2rss::Url.from_absolute('https://example.com/feed.xml'),
-      headers: { 'content-type' => 'application/rss+xml' },
-      status: 200
-    )
-
-    expect(described_class.surface_category_for(response: feed, url: feed.url.to_s)).to eq(
-      :unsupported_surface
-    )
   end
 
   it 'maps FeedLink alternates without path guessing' do
@@ -112,7 +93,7 @@ RSpec.describe Html2rss::PageRecon do
       end
       "<!DOCTYPE html><html><body><main><ul>#{items.join}</ul></main></body></html>"
     end
-    let(:sst) { Html2rss::SST::Normalizer.call(topics, vocabulary: all_scope) }
+    let(:sst) { Html2rss::Html::SST::Normalizer.call(topics, vocabulary: all_scope) }
 
     it 'discovers segments in the scope it is given', :aggregate_failures do
       found = ->(lang) { described_class.discover_segments(sst, 'https://example.com/', vocabulary: Html2rss::Vocabulary[lang]) }
@@ -128,25 +109,13 @@ RSpec.describe Html2rss::PageRecon do
       body: list_response.body.sub('<html', '<html lang="sv"'), url: list_response.url,
       headers: { 'content-type' => 'text/html' }, status: 200
     )
-    allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_call_original
+    allow(Html2rss::AutoSource::Scoring::LinkResolver).to receive(:new).and_call_original
     allow(Html2rss::Channel).to receive(:language_for).and_call_original
     described_class.call(response: swedish, url: 'https://example.com/blog')
 
     expect(Html2rss::Channel).to have_received(:language_for).once
-    expect(Html2rss::Scoring::LinkResolver).to have_received(:new)
+    expect(Html2rss::AutoSource::Scoring::LinkResolver).to have_received(:new)
       .with(anything, vocabulary: be(Html2rss::Vocabulary[:sv])).at_least(:once)
-  end
-
-  it 'resolves the page language from the channel override over the page declaration', :aggregate_failures do
-    english = Html2rss::RequestService::Response.new(
-      body: list_response.body.sub('<html', '<html lang="en"'), url: list_response.url,
-      headers: { 'content-type' => 'text/html' }, status: 200
-    )
-    allow(Html2rss::Vocabulary).to receive(:[]).and_call_original
-    described_class.assess(response: english, url: 'https://example.com/blog', channel: { language: 'sv' })
-
-    expect(Html2rss::Vocabulary).to have_received(:[]).with('sv').at_least(:once)
-    expect(Html2rss::Vocabulary).not_to have_received(:[]).with('en')
   end
 
   it 'omits sst and segment stats when the body normalizes to no document', :aggregate_failures do
@@ -160,30 +129,6 @@ RSpec.describe Html2rss::PageRecon do
 
     expect(result.sst).to be_nil
     expect(result.segment_stats).to be_nil
-  end
-
-  context 'with more list items than the cheap article limit' do
-    let(:item_count) { 12 }
-
-    it 'caps the cheap article count at the fixed AutoSource limit', :aggregate_failures do
-      assessment = described_class.assess(response: list_response, url: 'https://example.com/blog')
-
-      expect(assessment.articles_count).to eq(10)
-      expect(assessment.html_response).to be(true)
-    end
-  end
-
-  it 'reports no cheap articles or drops for a non-HTML, non-feed body', :aggregate_failures do
-    plain = Html2rss::RequestService::Response.new(
-      body: 'plain text body',
-      url: Html2rss::Url.from_absolute('https://example.com/blog'),
-      headers: { 'content-type' => 'text/plain' },
-      status: 200
-    )
-    assessment = described_class.assess(response: plain, url: 'https://example.com/blog')
-
-    expect(assessment.articles_count).to eq(0)
-    expect(assessment.admission_drops).to eq({})
   end
 
   it 'reports found zero when the page has no list segments' do

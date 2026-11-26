@@ -72,11 +72,11 @@ module Html2rss
 
         # Records the diagnostic and marks the tournament as run for this chain.
         #
-        # @param result [Html2rss::FeedResolution::Result]
+        # @param result [Html2rss::AutoSource::EntryResolution::Result]
         # @return [void]
         def remember_entry_resolution(result)
           @resolution_tried = true
-          @entry_resolution = FeedResolution::Diag.from_result(result)
+          @entry_resolution = AutoSource::EntryResolution::Diag.from_result(result)
         end
 
         # @param strategy [Symbol] strategy that raised
@@ -132,7 +132,7 @@ module Html2rss
           end
 
           response = @last_response
-          surface_category = PageRecon.surface_category_for(response:, url: response.url) if response
+          surface_category = AutoSource::Assessment.surface_category_for(response:) if response
           raise FeedPipeline.empty_feed_error(attempts:, surface_category:)
         end
 
@@ -262,8 +262,10 @@ module Html2rss
       end
 
       def run_tournament(hop, response, extraction)
-        FeedResolution.call(response:, session: hop.request_session, config:, articles: extraction.articles,
-                            slots: budget.remaining_requests)
+        AutoSource::EntryResolution.call(
+          response:, session: hop.request_session, config:, articles: extraction.articles,
+          slots: budget.remaining_requests
+        )
       end
 
       # Extracts the winner's already fetched response; the target turns sticky only when it yields items.
@@ -284,8 +286,8 @@ module Html2rss
       end
 
       def log_resolution_failure(event, summary, error_class: nil)
-        fields = { host: Url.from_absolute(config.url).host, error_class:, message: "FeedResolution: #{summary}" }
-        Log.event(:warn, "feed_resolution.#{event}", **fields.compact)
+        fields = { host: Url.from_absolute(config.url).host, error_class:, message: "EntryResolution: #{summary}" }
+        Log.event(:warn, "entry_resolution.#{event}", **fields.compact)
       end
 
       def record_success(hop, response, extraction, scrape_target: self.scrape_target)

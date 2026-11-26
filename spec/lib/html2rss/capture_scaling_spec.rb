@@ -14,7 +14,7 @@ RSpec.describe Html2rss::Capture, 'scaling' do # rubocop:disable RSpec/DescribeM
         }
         File.write(path, "<html><body><main>#{Array.new(cards, &card).join}</main></body></html>")
         steps = 0
-        allow_any_instance_of(Html2rss::SST::Index).to receive(:parent_of).and_wrap_original do |orig, *args| # rubocop:disable RSpec/AnyInstance
+        allow_any_instance_of(Html2rss::Html::SST::Index).to receive(:parent_of).and_wrap_original do |orig, *args| # rubocop:disable RSpec/AnyInstance
           steps += 1
           orig.call(*args)
         end

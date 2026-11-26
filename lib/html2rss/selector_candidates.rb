@@ -28,7 +28,7 @@ module Html2rss
     private_constant :DEFAULT_MIN_MATCHES
 
     # Class token that identifies a non-heading title node. Owned by the extractor so both match the same nodes.
-    TITLE_CLASS_PATTERN = Html::SstArticleExtractor::TITLE_CLASS_PATTERN
+    TITLE_CLASS_PATTERN = AutoSource::ArticleExtractor::TITLE_CLASS_PATTERN
     private_constant :TITLE_CLASS_PATTERN
 
     class << self
@@ -113,7 +113,7 @@ module Html2rss
     end
 
     def field_bucket(roots, field)
-      usable = roots.grep(SST::Node)
+      usable = roots.grep(Html::SST::Node)
       return [] if usable.size < @min_matches
 
       rank_field_tallies(count_field_selectors(usable, field))

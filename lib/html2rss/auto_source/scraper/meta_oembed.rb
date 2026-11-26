@@ -182,7 +182,7 @@ module Html2rss
             type = meta_data[:"#{kind}_type"]
             next if type && !type.start_with?("#{kind}/")
 
-            Html2rss::Html::ArticleRules::Enclosure.from_media(meta_data[kind], type, url)
+            Html2rss::AutoSource::ArticleRules::Enclosure.from_media(meta_data[kind], type, url)
           end
           found unless found.empty?
         end

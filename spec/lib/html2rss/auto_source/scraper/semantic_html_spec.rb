@@ -81,7 +81,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
           <p>Useful context paragraph for readers this week.</p></article></body></html>
         HTML
       end
-      let(:provided_document) { Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(story_html), vocabulary: all_scope) }
+      let(:provided_document) { Html2rss::Html::SST::Normalizer.call(Nokogiri::HTML.parse(story_html), vocabulary: all_scope) }
 
       it 'resolves relative links against the given url' do
         articles = described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.net/').to_a
@@ -96,7 +96,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
 
       it 'uses a provided link resolver' do
-        resolver = Html2rss::Scoring::LinkResolver.new('https://example.com')
+        resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com')
         allow(resolver).to receive(:destination_facts).and_call_original
 
         described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.com', link_resolver: resolver).to_a
@@ -108,7 +108,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe '#document' do
     let(:provided_document) do
-      Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(<<~HTML), vocabulary: all_scope)
+      Html2rss::Html::SST::Normalizer.call(Nokogiri::HTML.parse(<<~HTML), vocabulary: all_scope)
         <html><body><article><h2><a href="/news/provided">Provided story</a></h2>
         <p>Useful context paragraph for readers this week.</p></article></body></html>
       HTML

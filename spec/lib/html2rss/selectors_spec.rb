@@ -610,11 +610,11 @@ RSpec.describe Html2rss::Selectors do
       end
 
       it 'does not read the item and keeps the baseline', :aggregate_failures do
-        allow(Html2rss::Html::SstArticleExtractor::Item).to receive(:call)
+        allow(Html2rss::AutoSource::ArticleExtractor::Item).to receive(:call)
 
         _baseline, enhanced, = instance.each_enhance_pair.first
 
-        expect(Html2rss::Html::SstArticleExtractor::Item).not_to have_received(:call)
+        expect(Html2rss::AutoSource::ArticleExtractor::Item).not_to have_received(:call)
         expect(enhanced).to include(:title, :url, :description)
       end
     end

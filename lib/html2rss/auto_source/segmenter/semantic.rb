@@ -51,7 +51,7 @@ module Html2rss
         private_class_method :headline_links?
 
         def self.payload_count(node)
-          node.each_node.count { |n| Html::ArticleRules::Image.carrier?(n) || n.name == :video || n.attrs.datetime }
+          node.each_node.count { |n| AutoSource::ArticleRules::Image.carrier?(n) || n.name == :video || n.attrs.datetime }
         end
         private_class_method :payload_count
 
@@ -90,7 +90,7 @@ module Html2rss
         end
         private_class_method :card_path
 
-        # @return [Array<Array(SST::Node, SST::Node, Boolean, Integer)>] container, its primary link, container roots
+        # @return [Array<Array(Html::SST::Node, Html::SST::Node, Boolean, Integer)>] container, primary link, roots
         #   the card (the link sits inside it and it is not a run of cards), container's document position;
         #   deepest container first
         def self.linked_containers(segmenter)

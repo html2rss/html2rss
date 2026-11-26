@@ -29,8 +29,8 @@ module Html2rss
       # Flat ordered list (request slot accounting, detection helpers).
       SCRAPERS = (DOCUMENT_SCRAPERS + SCRAPER_TIERS.flatten).freeze
 
-      # Heuristic scrapers that share one memoized SST::Document per page. The only titles composed
-      # (+Kicker: Headline+, noise stripped): their cards are read by Html::SstArticleExtractor. Every
+      # Heuristic scrapers that share one memoized Html2rss::Html::SST::Document per page. The only titles composed
+      # (+Kicker: Headline+, noise stripped): their cards are read by AutoSource::ArticleExtractor. Every
       # other scraper yields publisher-declared or structured headlines, kept verbatim (collapse only).
       HEURISTIC_SCRAPERS = Set[SemanticHtml, Html].freeze
       # In-page structured scrapers whose items {Corroboration} checks against the rendered page.
@@ -52,7 +52,7 @@ module Html2rss
         def initialize(message = nil, category: :unsupported_surface)
           validate_category!(category)
           @category = category
-          super(message || "No scrapers found: #{Html2rss::SurfaceCategory::MESSAGES.fetch(@category)}")
+          super(message || "No scrapers found: #{Html2rss::AutoSource::SurfaceCategory::MESSAGES.fetch(@category)}")
         end
 
         attr_reader :category
@@ -60,9 +60,9 @@ module Html2rss
         private
 
         def validate_category!(category)
-          return if Html2rss::SurfaceCategory::MESSAGES.key?(category)
+          return if Html2rss::AutoSource::SurfaceCategory::MESSAGES.key?(category)
 
-          valid_categories = Html2rss::SurfaceCategory::MESSAGES.keys.join(', ')
+          valid_categories = Html2rss::AutoSource::SurfaceCategory::MESSAGES.keys.join(', ')
           raise InvalidOption, "Unknown category: #{category.inspect}. Valid categories are: #{valid_categories}"
         end
       end
@@ -120,7 +120,7 @@ module Html2rss
       # @param body [String, nil] raw response body (preferred for blocked-surface checks)
       # @return [NoScraperFound]
       def self.no_scraper_found_for(parsed_body, body: nil)
-        NoScraperFound.new(category: Html2rss::SurfaceCategory.classify(parsed_body, body:))
+        NoScraperFound.new(category: Html2rss::AutoSource::SurfaceCategory.classify(parsed_body, body:))
       end
 
       def self.construction_kwargs(scraper, context)

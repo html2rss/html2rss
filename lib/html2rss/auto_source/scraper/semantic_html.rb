@@ -4,7 +4,7 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Scrapes semantic containers via SST: Normalizer → Segmenter → Scoring → SstArticleExtractor.
+      # Scrapes semantic containers via SST: Normalizer → Segmenter → Scoring → ArticleExtractor.
       class SemanticHtml < PageCards
         # Maximum articles materialized after ranking.
         TOP_K = Scoring::Engine::TOP_K

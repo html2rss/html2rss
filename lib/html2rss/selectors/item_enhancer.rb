@@ -5,7 +5,7 @@ module Html2rss
     ##
     # Reads the fields of the items a feed config selected, for +selectors.items.enhance+. It normalizes the
     # part of the page the items need into an SST document once, maps each selected node onto it, and reads the
-    # item with {Html::SstArticleExtractor::Item}.
+    # item with {AutoSource::ArticleExtractor::Item}.
     #
     # That part is the lowest element holding every item and the parent card each may walk to: an item reads
     # nothing above its parent card, and the chrome scope the region's ancestors give is seeded at its root, so
@@ -44,14 +44,14 @@ module Html2rss
 
         segment = AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :list,
                                             position: 0)
-        Html::SstArticleExtractor::Item.call(segment, base_url: @base_url, time_zone: @time_zone, link_resolver:)
+        AutoSource::ArticleExtractor::Item.call(segment, base_url: @base_url, time_zone: @time_zone, link_resolver:)
       end
 
       private
 
       # The region's one resolver: it owns the language's label reader, so a label is normalized once.
       def link_resolver
-        @link_resolver ||= Scoring::LinkResolver.new(@base_url, vocabulary: @vocabulary)
+        @link_resolver ||= AutoSource::Scoring::LinkResolver.new(@base_url, vocabulary: @vocabulary)
       end
 
       # The SST document of the region, normalized for items.
@@ -63,7 +63,7 @@ module Html2rss
       end
 
       def normalize(root)
-        SST::Normalizer.call(root, vocabulary: @vocabulary, items: true, within: scope_above(root))
+        Html::SST::Normalizer.call(root, vocabulary: @vocabulary, items: true, within: scope_above(root))
       end
 
       def scope_above(node) = node.parent ? Html::Navigator.nokogiri_chrome_scope(node.parent, @vocabulary) : :page
@@ -81,7 +81,7 @@ module Html2rss
 
       # How far up the card walk can read from +item+: its nearest ancestor that is a usable card and holds
       # more than the item's own branch ({Html::CardWalk.thin_wrapper?}), else the topmost element. Both
-      # decisions read the same facts as the walk in {Html::SstArticleExtractor}.
+      # decisions read the same facts as the walk in {AutoSource::ArticleExtractor}.
       def walk_end(item)
         branch = item
         while (parent = branch.parent)&.element?
@@ -97,7 +97,7 @@ module Html2rss
           parent.element_children.any? { |child| child != branch && kept?(child) }
       end
 
-      def kept?(element) = SST::Normalizer.kept_tag?(Html::Probe.tag(element), items: true)
+      def kept?(element) = Html::SST::Normalizer.kept_tag?(Html::Probe.tag(element), items: true)
 
       # The SST root of +item+ normalized by itself, kept alive with the rest, or +nil+ for an item that is no
       # SST node at all (a +script+, +style+, +svg+ or +iframe+ element).

@@ -2,33 +2,12 @@
 
 module Html2rss
   ##
-  # Shared page recon for MCP Inspect, curation Recon, and FeedResolution probes.
+  # Shared page recon for MCP Inspect, curation Recon, and EntryResolution probes.
   #
   # Owns surface class, native feed hints, segment stats, and a cheap AutoSource
   # article count. Diagnostic fetch for Inspect/Recon lives on {.probe} — not twin
   # fetch helpers in those callers.
   class PageRecon # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
-    Assessment = Data.define(:surface_category, :articles_count, :admission_drops, :html_response)
-
-    ##
-    # Cheap surface + admission facts shared by AutoFallback gates and FeedResolution probes.
-    class Assessment
-      ##
-      # @return [Html2rss::SurfaceCategory]
-      def category = SurfaceCategory[surface_category]
-
-      ##
-      # @return [Boolean]
-      def weak? = category.weak?
-
-      ##
-      # @return [Boolean]
-      def blocked? = category.blocked?
-
-      ##
-      # @return [Boolean]
-      def listing_bonus? = category.listing_bonus?
-    end
     Result = Data.define(
       :requested_url,
       :final_url,
@@ -46,7 +25,7 @@ module Html2rss
     )
 
     ##
-    # Recon facts used by Inspect and FeedResolution.
+    # Recon facts used by Inspect and EntryResolution.
     class Result
       ##
       # @return [Hash{Symbol => Object}]
@@ -127,67 +106,21 @@ module Html2rss
     private_class_method :build_probe_session
 
     ##
-    # Cheap page assessment for policy gates and probe scoring (fixed AutoSource limit).
-    #
-    # @param response [Html2rss::RequestService::Response]
-    # @param url [String, Html2rss::Url]
-    # @param channel [Hash{Symbol => Object}] channel overrides; an explicit +:language+ wins over the page's
-    # @return [Assessment]
-    def self.assess(response:, url:, channel: {})
-      new(response:, url:, channel:).assess
-    end
-
-    ##
-    # Surface class only — no AutoSource extract (for empty-extract error labels).
-    #
-    # @param response [Html2rss::RequestService::Response]
-    # @param url [String, Html2rss::Url]
-    # @return [Symbol]
-    def self.surface_category_for(response:, url:)
-      new(response:, url:).surface_category_for
-    end
-
-    ##
-    # @param sst [Html2rss::SST::Document]
+    # @param sst [Html2rss::Html::SST::Document]
     # @param url [String, Html2rss::Url]
     # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope
     # @return [Array]
     def self.discover_segments(sst, url, vocabulary:)
-      link_resolver = Scoring::LinkResolver.new(url, vocabulary:)
+      link_resolver = AutoSource::Scoring::LinkResolver.new(url, vocabulary:)
       AutoSource::Segmenter.call(sst, base_url: url, strategy: :list, link_resolver:)
     end
 
     ##
     # @param response [Html2rss::RequestService::Response]
     # @param url [String, Html2rss::Url]
-    # @param channel [Hash{Symbol => Object}] channel overrides (+:language+)
-    def initialize(response:, url:, channel: {})
+    def initialize(response:, url:)
       @response = response
       @url = url
-      @channel = channel
-    end
-
-    ##
-    # @return [Assessment]
-    def assess
-      return feed_assessment if response.feed_response?
-
-      parsed = html_parsed_body
-      articles_count, admission_drops = cheap_articles
-      Assessment.new(
-        surface_category: surface_category(parsed),
-        articles_count:,
-        admission_drops:,
-        html_response: true
-      )
-    end
-
-    ##
-    # @return [Symbol]
-    def surface_category_for
-      return :unsupported_surface if response.feed_response?
-
-      surface_category(html_parsed_body)
     end
 
     ##
@@ -195,9 +128,10 @@ module Html2rss
     def call # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- assemble recon Result
       requested = Url.from_absolute(url)
       final = response.url
-      parsed = html_parsed_body
-      assessment = assess
-      sst_payload, segment_stats = sst_payload_and_segments(requested)
+      parsed = response.parsed_body if response.html_response?
+      vocabulary = Vocabulary[Channel.language_for(response)] if response.html_response?
+      assessment = AutoSource::Assessment.call(response:, vocabulary:)
+      sst_payload, segment_stats = sst_payload_and_segments(requested, vocabulary)
 
       Result.new(
         requested_url: requested.to_s,
@@ -218,59 +152,22 @@ module Html2rss
 
     private
 
-    attr_reader :response, :url, :channel
+    attr_reader :response, :url
 
-    def feed_assessment
-      Assessment.new(
-        surface_category: :unsupported_surface,
-        articles_count: 0,
-        admission_drops: {},
-        html_response: false
-      )
-    end
-
-    def html_parsed_body
-      return unless response.html_response?
-
-      response.parsed_body
-    rescue RequestService::UnsupportedResponseContentType
-      nil
-    end
-
-    def surface_category(parsed)
-      return :unsupported_surface unless parsed
-
-      SurfaceCategory.classify(parsed, body: response.body)
-    end
-
-    def cheap_articles
-      return [0, {}] unless response.html_response?
-
-      source = AutoSource.new(response, AutoSource::DEFAULT_CONFIG.merge(limit: 10), vocabulary:)
-      [source.articles.size, source.admission_drops]
-    end
-
-    def sst_payload_and_segments(requested)
+    def sst_payload_and_segments(requested, vocabulary)
       return [nil, nil] unless response.html_response?
 
-      sst = sst_document
+      sst = Html::SST::Normalizer.call(response.body, vocabulary:)
       return [nil, nil] unless sst
 
-      stats = segment_stats(sst, requested)
+      stats = segment_stats(sst, requested, vocabulary)
       [
         { node_count: sst.node_count, degraded: sst.degraded, segment_stats: stats },
         stats
       ]
     end
 
-    # The page language's scope, resolved once per recon and shared by every classifier it runs.
-    def vocabulary = @vocabulary ||= Vocabulary[Channel.language_for(response, channel)]
-
-    def sst_document
-      Html2rss::SST::Normalizer.call(response.body, vocabulary:)
-    end
-
-    def segment_stats(sst, page_url)
+    def segment_stats(sst, page_url, vocabulary)
       segments = self.class.discover_segments(sst, page_url, vocabulary:)
       return { found: 0 } if segments.empty?
 

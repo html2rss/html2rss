@@ -7,10 +7,10 @@
 RSpec.describe Html2rss::Vocabulary do
   let(:path) do
     lambda do |lang, segments|
-      Html2rss::LinkDestination::PathClassifier.new(segments, vocabulary: described_class[lang])
+      Html2rss::AutoSource::LinkDestination::PathClassifier.new(segments, vocabulary: described_class[lang])
     end
   end
-  let(:text) { ->(lang) { Html2rss::LinkDestination::TextClassifier.new(vocabulary: described_class[lang]) } }
+  let(:text) { ->(lang) { Html2rss::AutoSource::LinkDestination::TextClassifier.new(vocabulary: described_class[lang]) } }
   # Each way of reading a word concept: a classifier call on the term inside a short path.
   let(:path_readers) do
     {
@@ -73,7 +73,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads sponsorship labels and a section label', :aggregate_failures do
-      kind = ->(text) { Html2rss::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
+      kind = ->(text) { Html2rss::AutoSource::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
 
       expect(kind.call('Conteúdo patrocinado por Marca')).to eq(:paid_label)
       expect(kind.call('Publieditorial')).to eq(:paid_label)
@@ -153,7 +153,7 @@ RSpec.describe Html2rss::Vocabulary do
     end
 
     it 'reads sponsorship labels with the ё and е spellings, and an ad word as a whole text', :aggregate_failures do
-      kind = ->(text) { Html2rss::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
+      kind = ->(text) { Html2rss::AutoSource::LinkDestination::Sponsorship::LabelText.kind(text, vocabulary: described_class[:all]) }
 
       ['На правах рекламы', 'Партнёрский материал', 'ПАРТНЕРСКИЙ МАТЕРИАЛ', 'Партнёрские материалы',
        'Материал партнера', 'Материал партнёра', 'Спонсорский материал', 'Рекламный материал'].each do |label|
@@ -188,8 +188,8 @@ RSpec.describe Html2rss::Vocabulary do
 
     it 'reads Cyrillic path words, percent-encoded or not', :aggregate_failures do
       encoded = Html2rss::Url.from_absolute('https://example.com/%D0%B2%D0%B8%D0%B4%D0%B5%D0%BE/harbor-ferry-schedule')
-      classifier = Html2rss::LinkDestination::PathClassifier.new(encoded.decoded_path_segments,
-                                                                 vocabulary: described_class[:ru])
+      classifier = Html2rss::AutoSource::LinkDestination::PathClassifier.new(encoded.decoded_path_segments,
+                                                                             vocabulary: described_class[:ru])
 
       expect(classifier.media_path?).to be(true)
       expect(path.call(:ru, %w[Видео harbor-ferry-schedule]).media_path?).to be(true)
@@ -1746,7 +1746,7 @@ RSpec.describe Html2rss::Vocabulary do
     let(:pager) do
       lambda do |label|
         element = Nokogiri::HTML("<html><body><nav aria-label=\"#{label}\"></nav></body></html>").at('nav')
-        Html2rss::SST::Tags.chrome_scope(element, :sectioned, all_scope) == :chrome
+        Html2rss::Html::SST::Tags.chrome_scope(element, :sectioned, all_scope) == :chrome
       end
     end
 
@@ -1770,7 +1770,7 @@ RSpec.describe Html2rss::Vocabulary do
       }.each do |label, chrome|
         link = %(<a href="/a">#{label}</a>)
         markup = %(<html><body><main><ul class="pagination"><li>#{link}</li></ul></main></body></html>)
-        doc = Html2rss::SST::Normalizer.call(markup, vocabulary: all_scope)
+        doc = Html2rss::Html::SST::Normalizer.call(markup, vocabulary: all_scope)
 
         expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :main }.children.first)).to be(chrome), label
       end

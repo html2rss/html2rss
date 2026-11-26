@@ -369,7 +369,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter::List do
         card = ->(i) { %(<article><h3><a href="/p/#{i}">Post #{i} headline</a></h3></article>) }
         html = "<html><body><main>#{Array.new(cards, &card).join}</main></body></html>"
         calls = 0
-        policy = Html2rss::LinkDestination::NoisePolicy
+        policy = Html2rss::AutoSource::LinkDestination::NoisePolicy
         allow_any_instance_of(policy).to receive(:noise_anchor?).and_wrap_original do |orig, *args, **kwargs| # rubocop:disable RSpec/AnyInstance
           calls += 1
           orig.call(*args, **kwargs)

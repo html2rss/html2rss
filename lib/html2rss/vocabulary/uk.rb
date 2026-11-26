@@ -6,7 +6,8 @@ module Html2rss
     # +:all+, +ru+ and every other language read exactly what they read without it. Ukrainian is inflected and a
     # headline may open with a label noun ("Пошук зниклих триває", "Реєстрація виборців завершилась"), so no term is
     # read as a prefix: each label form is listed whole and read as a whole text only (no trailing word, no headline
-    # opener, see {LinkDestination::TextClassifier}). A label with an apostrophe lists its three spellings (+'+, +’+,
+    # opener, see {AutoSource::LinkDestination::TextClassifier}). A label with an apostrophe lists its three spellings
+    # (+'+, +’+,
     # +ʼ+). Only the concepts read through a {Scope} are listed (label words, the call to action, read-more and the
     # new-window notice); the others stay +NONE+ until their readers take the page scope. It lists no type marker
     # (stripping a short kicker could leave a headline below the title floor), no section name and no bare

@@ -1,0 +1,45 @@
+# frozen_string_literal: true
+
+module Html2rss
+  class AutoSource
+    module EntryResolution
+      ##
+      # Decides whether an entry URL tournament should run after a weak extract.
+      module Policy
+        # Minimum admitted articles before the entry URL is considered strong enough.
+        ARTICLE_FLOOR = 3
+
+        class << self
+          ##
+          # @param config [Html2rss::Config]
+          # @param articles [Array<Html2rss::Article>] typed extract results (count derived)
+          # @param surface_category [Html2rss::AutoSource::SurfaceCategory, Symbol]
+          # @return [Boolean]
+          def resolve?(config:, articles:, surface_category:)
+            raise InvalidError, 'articles must be an Array' unless articles.is_a?(Array)
+            return false unless eligible_config?(config)
+
+            category = SurfaceCategory[surface_category]
+            return false if category.blocked?
+
+            articles.size < ARTICLE_FLOOR || category.weak? || native_feed_majority?(articles)
+          end
+
+          private
+
+          def eligible_config?(config)
+            return false unless config.auto_source
+            return false if config.selectors
+
+            Options.from_auto_source(config.auto_source).enabled?
+          end
+
+          def native_feed_majority?(articles)
+            native = articles.count { |article| article.scraper == AutoSource::Scraper::NativeFeed }
+            native * 2 >= articles.size
+          end
+        end
+      end
+    end
+  end
+end

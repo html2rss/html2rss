@@ -82,10 +82,10 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
     it 'classifies the last response on an empty failure', :aggregate_failures do
       response = instance_double(Html2rss::RequestService::Response, url: :listing)
       state.remember_response(response)
-      allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:app_shell)
+      allow(Html2rss::AutoSource::Assessment).to receive(:surface_category_for).and_return(:app_shell)
 
       expect { state.raise_failure! }.to raise_error(have_attributes(surface_category: :app_shell))
-      expect(Html2rss::PageRecon).to have_received(:surface_category_for).with(response:, url: :listing)
+      expect(Html2rss::AutoSource::Assessment).to have_received(:surface_category_for).with(response:)
     end
 
     it 'starts with no attempts, result, or resolution state', :aggregate_failures do
@@ -104,16 +104,16 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
 
     it 'stores the diagnostic built from the entry resolution result and marks the tournament run',
        :aggregate_failures do
-      diag = instance_double(Html2rss::FeedResolution::Diag)
-      allow(Html2rss::FeedResolution::Diag).to receive(:from_result).with(:resolution).and_return(diag)
+      diag = instance_double(Html2rss::AutoSource::EntryResolution::Diag)
+      allow(Html2rss::AutoSource::EntryResolution::Diag).to receive(:from_result).with(:resolution).and_return(diag)
 
       expect { state.remember_entry_resolution(:resolution) }.to change(state, :resolution_tried?).from(false).to(true)
       expect(state.entry_resolution).to be(diag)
     end
 
     it 'succeeds with the extraction, the attempts and the entry resolution diagnostic', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      diag = instance_double(Html2rss::FeedResolution::Diag)
-      allow(Html2rss::FeedResolution::Diag).to receive(:from_result).and_return(diag)
+      diag = instance_double(Html2rss::AutoSource::EntryResolution::Diag)
+      allow(Html2rss::AutoSource::EntryResolution::Diag).to receive(:from_result).and_return(diag)
       extraction = Html2rss::FeedPipeline::Extraction.new(articles: [], dedup_dropped: 2, admission_drops: {},
                                                           feed_channel: nil)
       state.remember_entry_resolution(:resolution)
@@ -341,12 +341,12 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       end
 
       # rubocop:disable-next RSpec/ExampleLength -- resolution kwargs stay in one example
-      it 'asks feed resolution with the hop inputs and the slots left after a later strategy', :aggregate_failures do
-        allow(Html2rss::FeedResolution).to receive(:call).and_call_original
+      it 'asks entry resolution with the hop inputs and the slots left after a later strategy', :aggregate_failures do
+        allow(Html2rss::AutoSource::EntryResolution).to receive(:call).and_call_original
 
         expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted)
         # 3 requests: default leaves 2, one reserved for botasaurus; botasaurus is last and keeps its 1.
-        expect(Html2rss::FeedResolution).to have_received(:call).with(
+        expect(Html2rss::AutoSource::EntryResolution).to have_received(:call).with(
           response: kind_of(Html2rss::RequestService::Response), session: kind_of(Html2rss::RequestSession),
           config: kind_of(Html2rss::Config), articles: kind_of(Array), slots: 1
         ).twice

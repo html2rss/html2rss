@@ -540,7 +540,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter::Semantic do
           </main></body></html>
         HTML
       end
-      let(:options) { { link_resolver: instance_double(Html2rss::Scoring::LinkResolver, destination_facts: nil) } }
+      let(:options) { { link_resolver: instance_double(Html2rss::AutoSource::Scoring::LinkResolver, destination_facts: nil) } }
 
       before do
         primary = instance_double(Html2rss::AutoSource::Segmenter::PrimaryLink)

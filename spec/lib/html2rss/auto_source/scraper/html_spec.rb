@@ -369,7 +369,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
   describe '#document' do
     it 'uses a provided SST document without a parsed body' do
-      document = Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(html), vocabulary: all_scope)
+      document = Html2rss::Html::SST::Normalizer.call(Nokogiri::HTML.parse(html), vocabulary: all_scope)
 
       articles = described_class.new(nil, url: 'http://example.com', document:).to_a
 
@@ -385,7 +385,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
   describe '#link_resolver' do
     it 'uses a provided link resolver' do
-      resolver = Html2rss::Scoring::LinkResolver.new('http://example.com')
+      resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('http://example.com')
       allow(resolver).to receive(:destination_facts).and_call_original
 
       described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com', link_resolver: resolver).to_a

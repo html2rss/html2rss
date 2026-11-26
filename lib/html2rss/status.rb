@@ -38,7 +38,7 @@ module Html2rss
       # @param scrape_target [Html2rss::FeedPipeline::ScrapeTarget, nil] domain URL pair (mapped to wire strings)
       # @param entry_url [String, nil] original channel URL when entry resolution ran
       # @param scrape_url [String, nil] effective scrape URL after resolution
-      # @param entry_resolution [Html2rss::FeedResolution::Diag, Hash, nil] resolution diagnostics
+      # @param entry_resolution [Html2rss::AutoSource::EntryResolution::Diag, Hash, nil] resolution diagnostics
       # @param enrichment [Hash{Symbol => Integer}] {FeedPipeline::Enrichment} tally (empty when off)
       # @return [Html2rss::Status]
       # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- Status kwargs stay co-located
@@ -79,7 +79,7 @@ module Html2rss
     # @param admission_drops [Hash{String => Integer}]
     # @param entry_url [String, nil]
     # @param scrape_url [String, nil]
-    # @param entry_resolution [Html2rss::FeedResolution::Diag, Hash, nil]
+    # @param entry_resolution [Html2rss::AutoSource::EntryResolution::Diag, Hash, nil]
     # @param enriched [Integer] items that gained a field from their article page
     # @param enrich_failed [Integer] article fetches that failed or were blocked
     # @param enrich_skipped_cross_origin [Integer] fetches skipped by the same-origin policy (subset of enrich_failed)
@@ -175,9 +175,9 @@ module Html2rss
       return if value.nil?
 
       case value
-      when Hash, FeedResolution::Diag then value.to_h
+      when Hash, AutoSource::EntryResolution::Diag then value.to_h
       else
-        raise InvalidError, "entry_resolution must be a Hash or FeedResolution::Diag, got #{value.class}"
+        raise InvalidError, "entry_resolution must be a Hash or AutoSource::EntryResolution::Diag, got #{value.class}"
       end.transform_keys(&:to_sym).freeze
     end
 

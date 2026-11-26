@@ -6,8 +6,8 @@ module Html2rss
     # +:all+ and every other language read exactly what they read without it. Danish is written in Latin script and
     # its label words are ordinary words (+søg+ is "search", +kontakt+ "contact", +læs+ "read"), so no term is read
     # as a prefix or a substring: each label is listed whole and read as a whole text only (no trailing word, no
-    # headline opener, see {LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are listed
-    # (label words, the call to action, read-more, recommended and the new-window notice); the others stay +NONE+
+    # headline opener, see {AutoSource::LinkDestination::TextClassifier}). Only the concepts read through a {Scope} are
+    # listed (label words, the call to action, read-more, recommended and the new-window notice); the others stay +NONE+
     # until their readers take the page scope. It lists no type marker (stripping a short kicker could leave a
     # headline below the title floor), no section name (+udland+, +kultur+, +debat+ and +erhverv+ are topics a feed
     # may carry), no pager label, no path word, and not the bare labels judged too likely to be a headline (+del+ is

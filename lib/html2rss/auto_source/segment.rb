@@ -14,8 +14,8 @@ module Html2rss
       STRATEGIES = Set[:semantic, :list, :cluster].freeze
 
       ##
-      # @param root_node [SST::Node]
-      # @param primary_link [SST::Node, nil]
+      # @param root_node [Html::SST::Node]
+      # @param primary_link [Html::SST::Node, nil]
       # @param strategy [Symbol]
       # @param position [Integer]
       # @param group_size [Integer] how many segments of the run share this one's structural path
@@ -23,8 +23,8 @@ module Html2rss
       # @return [Segment]
       # @raise [InvalidError] on invalid construction
       def self.build(root_node:, strategy:, position:, primary_link: nil, group_size: 1)
-        raise InvalidError, 'root_node must be SST::Node' unless root_node.is_a?(SST::Node)
-        unless primary_link.nil? || primary_link.is_a?(SST::Node)
+        raise InvalidError, 'root_node must be SST::Node' unless root_node.is_a?(Html::SST::Node)
+        unless primary_link.nil? || primary_link.is_a?(Html::SST::Node)
           raise InvalidError, 'primary_link must be SST::Node or nil'
         end
 

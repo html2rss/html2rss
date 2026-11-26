@@ -7,8 +7,8 @@ RSpec.describe 'Html2rss::AutoSource::PageLinks::CardUnits' do
   let(:units_of) do
     lambda do |html, skip: nil|
       vocabulary = Html2rss::Vocabulary[:all]
-      document = Html2rss::SST::Normalizer.call("<html><body><div>#{html}</div></body></html>", vocabulary:)
-      resolver = Html2rss::Scoring::LinkResolver.new('https://example.com/news/')
+      document = Html2rss::Html::SST::Normalizer.call("<html><body><div>#{html}</div></body></html>", vocabulary:)
+      resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com/news/')
       claims = Html2rss::AutoSource::PageLinks.const_get(:AnchorClaims).new(resolver, :path.to_proc)
       root = document.root.find { _1.name == :div }
       Html2rss::AutoSource::PageLinks.const_get(:CardUnits).new(root, skip: skip&.call(root), claims:)

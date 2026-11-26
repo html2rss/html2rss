@@ -48,7 +48,9 @@ module Html2rss
     # @param surface_category [Symbol, nil] Scraper surface classification
     # @return [NoFeedItemsExtracted]
     def self.empty_feed_error(attempts:, surface_category: nil)
-      surface = SurfaceCategory::MESSAGES.fetch(surface_category) if SURFACE_HINT_CATEGORIES.include?(surface_category)
+      if SURFACE_HINT_CATEGORIES.include?(surface_category)
+        surface = AutoSource::SurfaceCategory::MESSAGES.fetch(surface_category)
+      end
       guidance = [surface, botasaurus_hint(attempts, surface)].compact.join(' ')
       NoFeedItemsExtracted.new(attempts:, surface_category:, guidance: guidance.empty? ? nil : guidance)
     end
@@ -150,7 +152,7 @@ module Html2rss
       articles.map do |article|
         next article if article.published_at
 
-        date = Html::ArticleRules::UrlDate.call(article.url, time_zone:)
+        date = AutoSource::ArticleRules::UrlDate.call(article.url, time_zone:)
         date ? article.with_published_at(date) : article
       end
     end
@@ -185,7 +187,7 @@ module Html2rss
     end
 
     def empty_auto_source_surface(response)
-      PageRecon.surface_category_for(response:, url: response.url)
+      AutoSource::Assessment.surface_category_for(response:)
     end
 
     def run_auto_pipeline(config, resources:)

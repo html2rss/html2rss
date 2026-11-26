@@ -36,9 +36,9 @@ module Html2rss
           def article_for(entry)
             @article_cache.fetch(entry) do
               @article_cache[entry] =
-                ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: @scraper,
-                                                                  time_zone: @time_zone,
-                                                                  link_resolver: @link_resolver)
+                ::Html2rss::AutoSource::ArticleExtractor.call(entry, base_url: @url, scraper: @scraper,
+                                                                     time_zone: @time_zone,
+                                                                     link_resolver: @link_resolver)
             end
           end
 
@@ -75,8 +75,10 @@ module Html2rss
           # @return [Integer] 1 when +left+ is the tighter card, -1 for the reverse, else 0
           def nesting_delta(left, right)
             return 0 if left.root_node.equal?(right.root_node)
-            return tighter(left, right) if SST::Index.descendant_or_self?(left.root_node, right.root_node)
-            return -tighter(right, left) if SST::Index.descendant_or_self?(right.root_node, left.root_node)
+            return tighter(left, right) if Html2rss::Html::SST::Index.descendant_or_self?(left.root_node,
+                                                                                          right.root_node)
+            return -tighter(right, left) if Html2rss::Html::SST::Index.descendant_or_self?(right.root_node,
+                                                                                           left.root_node)
 
             0
           end

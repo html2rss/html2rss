@@ -1,0 +1,156 @@
+# frozen_string_literal: true
+
+module Html2rss
+  module Html
+    module SST
+      ##
+      # Parent/depth indices for an SST tree. Built once by the Normalizer so
+      # Scoring/Segmenter never need Nokogiri ancestor walks.
+      class Index
+        # Raised when an SST node has no live index: its {Document} was collected, or it never had one.
+        class InvalidError < Html2rss::ContractError; end
+
+        # Weak node→index bindings so +Node#visible_text+ can memoize without call-site churn.
+        NODE_BINDINGS = ObjectSpace::WeakMap.new
+
+        ##
+        # @param node [Node]
+        # @return [Index, nil]
+        def self.for_node(node) = NODE_BINDINGS[node]
+
+        ##
+        # @param node [Node]
+        # @return [Index]
+        # @raise [InvalidError] when +node+ has no live index. The index lives only as long as its {Document}, so
+        #   a caller that reads relationships keeps the document strongly referenced.
+        def self.for_node!(node)
+          for_node(node) || raise(InvalidError, "no live index for <#{node.name}>: its SST document was collected")
+        end
+
+        ##
+        # Whether +node+ is +ancestor+ or inside it: parent pointers when +node+ is indexed, else a
+        # scan of +ancestor+'s subtree.
+        #
+        # @param node [Node]
+        # @param ancestor [Node]
+        # @return [Boolean]
+        def self.descendant_or_self?(node, ancestor)
+          return true if node.equal?(ancestor)
+
+          index = for_node(node)
+          index ? index.descendant_of?(node, ancestor) : !ancestor.find { _1.equal?(node) }.nil?
+        end
+
+        ##
+        # @param root [Node]
+        # @param parents [Hash{Node => Node, nil}]
+        # @param depths [Hash{Node => Integer}]
+        # @param scopes [Hash{Node => Symbol}] {Tags.chrome_scope} of each node
+        # @param sources [Hash{Nokogiri::XML::Node => Node}, nil] SST node of each parsed node, +nil+ when not tracked
+        def initialize(root:, parents:, depths:, scopes:, sources: nil)
+          @root = root
+          @parents = parents
+          @depths = depths
+          @scopes = scopes
+          @sources = sources
+          @visible_text = {}.compare_by_identity
+          @run_count = {}.compare_by_identity
+          bind_tree(root)
+        end
+
+        attr_reader :root
+
+        ##
+        # @param node [Node]
+        # @return [Node, nil]
+        def parent_of(node) = @parents[node]
+
+        ##
+        # The SST node built from +source+, when the {Normalizer} ran with +sources: true+.
+        #
+        # @param source [Nokogiri::XML::Node]
+        # @return [Node, nil] +nil+ for a node the tree dropped (script, template, ...) or when not tracked
+        def node_for(source) = @sources&.[](source)
+
+        ##
+        # @param node [Node]
+        # @return [Integer]
+        def depth_of(node) = @depths.fetch(node, 0)
+
+        ##
+        # @param node [Node]
+        # @return [Boolean]
+        def ignored_chrome?(node) = @scopes[node] == :chrome
+
+        ##
+        # Inside a utility landmark that is not chrome (aside, in-content nav, sectioned footer).
+        #
+        # @param node [Node]
+        # @return [Boolean]
+        def peripheral?(node) = @scopes[node] == :peripheral
+
+        ##
+        # Memoized default visible text (separator space, no excludes).
+        #
+        # @param node [Node]
+        # @return [String, nil]
+        def memo_visible_text(node)
+          return @visible_text[node] if @visible_text.key?(node)
+
+          @visible_text[node] = Text.extract(node)
+        end
+
+        ##
+        # @param node [Node]
+        # @return [Integer] memoized letter/digit runs of the default visible text ({WordCount.runs})
+        def memo_run_count(node)
+          return @run_count[node] if @run_count.key?(node)
+
+          @run_count[node] = WordCount.runs(memo_visible_text(node))
+        end
+
+        ##
+        # @param child [Node]
+        # @param ancestor [Node]
+        # @return [Boolean]
+        def descendant_of?(child, ancestor)
+          curr = parent_of(child)
+          while curr
+            return true if curr.equal?(ancestor)
+
+            curr = parent_of(curr)
+          end
+          false
+        end
+
+        ##
+        # @param node [Node]
+        # @param condition [#call]
+        # @return [Node, nil]
+        def parent_until(node, condition)
+          curr = node
+          while curr && curr.name != :html
+            return curr if condition.call(curr)
+
+            curr = parent_of(curr)
+          end
+          nil
+        end
+
+        ##
+        # @yieldparam node [Node]
+        # @return [Enumerator]
+        def each_node(&)
+          root.each_node(&)
+        end
+
+        private
+
+        def bind_tree(node)
+          NODE_BINDINGS[node] = self
+          node.children.each { bind_tree(_1) }
+        end
+      end
+    end
+  end
+end

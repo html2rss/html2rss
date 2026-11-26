@@ -128,11 +128,11 @@ RSpec.describe Html2rss::Capture do
     let(:default_selector) { Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR }
 
     it 'classifies links in the page language, as the scrape does', :aggregate_failures do
-      allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_call_original
+      allow(Html2rss::AutoSource::Scoring::LinkResolver).to receive(:new).and_call_original
       html = %(<html lang="es-MX"><body>#{(1..3).map { card.call(_1) }.join}</body></html>)
       derive.call(html, articles_for.call(3))
 
-      expect(Html2rss::Scoring::LinkResolver).to have_received(:new)
+      expect(Html2rss::AutoSource::Scoring::LinkResolver).to have_received(:new)
         .with(anything, vocabulary: be(Html2rss::Vocabulary[:es])).at_least(:once)
     end
 
@@ -808,7 +808,7 @@ RSpec.describe Html2rss::Capture do
         end
         allow(Html2rss::AutoSource::Segmenter).to receive(:call).and_return(segments)
 
-        expect { selector }.to raise_error(Html2rss::SST::Index::InvalidError)
+        expect { selector }.to raise_error(Html2rss::Html::SST::Index::InvalidError)
       end
 
       it 'stops at a wrapper holding several roots' do
@@ -886,7 +886,7 @@ RSpec.describe Html2rss::Capture do
       before do
         response = html_response('<html><body></body></html>')
         stub_outcome(response, articles:)
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_return(nil)
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_return(nil)
       end
 
       # rubocop:disable-next RSpec/ExampleLength -- default selector plus test next_step
@@ -1113,8 +1113,10 @@ RSpec.describe Html2rss::Capture do
       ]
       stub_outcome(response, articles:)
 
-      link_a = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/a'))
-      link_b = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/b'))
+      link_a = instance_double(Html2rss::Html::SST::Node,
+                               attrs: instance_double(Html2rss::Html::SST::Attrs, href: '/a'))
+      link_b = instance_double(Html2rss::Html::SST::Node,
+                               attrs: instance_double(Html2rss::Html::SST::Attrs, href: '/b'))
 
       allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |sst, strategy:, **|
         cluster_root = sst.index.each_node.find { _1.name.to_s == 'div' }
@@ -1165,7 +1167,7 @@ RSpec.describe Html2rss::Capture do
     end
   end
 
-  context 'when FeedResolution rewrites the scrape URL' do
+  context 'when EntryResolution rewrites the scrape URL' do
     it 'surfaces suggested_channel_url without mutating channel.url', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response(
         File.read('spec/fixtures/local_feed_test.html'),

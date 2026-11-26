@@ -260,7 +260,7 @@ module Html2rss
       return [*default_selectors, SelectorCandidates.empty] if articles.empty?
 
       vocabulary = Vocabulary[Channel.language_for(response)]
-      sst = SST::Normalizer.call(response.body, vocabulary:)
+      sst = Html::SST::Normalizer.call(response.body, vocabulary:)
       return [*default_selectors, SelectorCandidates.empty] unless sst
 
       select_enhance_selectors(sst, articles, vocabulary)
@@ -286,7 +286,7 @@ module Html2rss
     end
 
     def collect_items_evidence(sst, articles, vocabulary)
-      link_resolver = Scoring::LinkResolver.new(@url, vocabulary:)
+      link_resolver = AutoSource::Scoring::LinkResolver.new(@url, vocabulary:)
       enhance = resolve_enhance
 
       SEGMENT_STRATEGIES.flat_map do |strategy|
@@ -347,7 +347,7 @@ module Html2rss
     def lift_heading_link_root(root, enclosed, vocabulary)
       return root unless heading_or_inner_title_link?(root)
 
-      walk_usable_card(root, SST::Index.for_node!(root), enclosed, vocabulary)
+      walk_usable_card(root, Html::SST::Index.for_node!(root), enclosed, vocabulary)
     end
 
     def walk_usable_card(root, index, enclosed, vocabulary)
@@ -374,7 +374,7 @@ module Html2rss
     end
 
     def count_enclosing_ancestors(root, tally)
-      index = SST::Index.for_node!(root)
+      index = Html::SST::Index.for_node!(root)
       ancestor = index.parent_of(root)
       while ancestor
         tally[ancestor] += 1

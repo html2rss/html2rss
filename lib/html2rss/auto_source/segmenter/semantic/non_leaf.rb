@@ -12,16 +12,16 @@ module Html2rss
           private_constant :TAG_MASKS
 
           ##
-          # @param root [SST::Node]
-          # @return [Set<SST::Node>] marked nodes, compared by identity
+          # @param root [Html::SST::Node]
+          # @return [Set<Html::SST::Node>] marked nodes, compared by identity
           def self.call(root) = new.call(root)
 
           def initialize
             @marked = Set.new.compare_by_identity
           end
 
-          # @param root [SST::Node]
-          # @return [Set<SST::Node>]
+          # @param root [Html::SST::Node]
+          # @return [Set<Html::SST::Node>]
           def call(root)
             visit(root)
             @marked

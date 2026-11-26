@@ -64,6 +64,6 @@ Follow golden-path `next_step` from MCP envelopes; do not call recon when inspec
 | Concern                             | Owner                                                                |
 | ----------------------------------- | -------------------------------------------------------------------- |
 | Diagnostic fetch + assess           | `PageRecon::Diagnostics` → `PageRecon.probe`                         |
-| Surface class + cheap article count | `PageRecon::Assessment`                                              |
+| Surface class + cheap article count | `AutoSource::Assessment`                                             |
 | Redirect follow + terminal retry    | `RequestService::HttpxStrategy`                                      |
 | Outbound header normalization       | `Config::RequestHeaders` (no default `Host`; explicit override only) |

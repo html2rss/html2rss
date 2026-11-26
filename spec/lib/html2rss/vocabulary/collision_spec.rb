@@ -56,8 +56,8 @@ RSpec.describe Html2rss::Vocabulary do
   # The [language, term, page language] triples at which an unambiguous term of a language reads as a label in a
   # link text of a page in another language.
   let(:collisions) do
-    matcher = Html2rss::LinkDestination::TextClassifier.method(:matcher)
-    readings = Html2rss::LinkDestination::TextClassifier::READINGS
+    matcher = Html2rss::AutoSource::LinkDestination::TextClassifier.method(:matcher)
+    readings = Html2rss::AutoSource::LinkDestination::TextClassifier::READINGS
     none = described_class::NONE
     lambda do |languages, texts|
       languages.flat_map do |language|

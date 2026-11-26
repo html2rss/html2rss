@@ -216,10 +216,10 @@ RSpec.describe Html2rss::Article do
 
   describe '#description' do
     it 'returns the raw extracted description without DescriptionBuilder', :aggregate_failures do
-      allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new)
+      allow(Html2rss::FeedBuilder::Rendering::DescriptionBuilder).to receive(:new)
 
       expect(instance.description).to eq('By John Doe')
-      expect(Html2rss::Html::Rendering::DescriptionBuilder).not_to have_received(:new)
+      expect(Html2rss::FeedBuilder::Rendering::DescriptionBuilder).not_to have_received(:new)
     end
 
     it 'returns nil for a blank description' do

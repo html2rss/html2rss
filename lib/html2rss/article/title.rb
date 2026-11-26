@@ -14,16 +14,16 @@ module Html2rss
     # ({SEPARATOR_MARK}). Only the kicker is noise-stripped by text: a leading clock time set off by a
     # separator (+10:00 | Topic+), screen-reader field labels (+Section:+) and type labels with their
     # marker (+Article type: Video+). The label and marker sets are small, closed and multilingual
-    # ({Vocabulary::LANGUAGES}), matching {LinkDestination::TextClassifier}.
+    # ({Vocabulary::LANGUAGES}), matching {AutoSource::LinkDestination::TextClassifier}.
     #
     # A Japanese headline may open with a bracket label (+【速報】+, +＜動画＞+): one naming a content type
     # ({TYPE_MARKERS}) is removed, any other leading bracket text becomes the kicker ({LEADING_BRACKET}).
     #
-    # Pieces and kickers are matched without bidi marks ({LinkDestination::TextClassifier.strip_bidi}); the
+    # Pieces and kickers are matched without bidi marks ({StringUtil.strip_bidi}); the
     # title keeps its text.
     #
     # Headline text is never noise-stripped: +20:15 Uhr: Neuer Krimi+ or +9:41 is the time+ is a real
-    # headline. Teaser noise in a headline is told apart by structure instead ({Html::TitlePieces}):
+    # headline. Teaser noise in a headline is told apart by structure instead ({AutoSource::ArticleExtractor::TitlePieces}):
     # date and time elements leave wherever they sit outside running text, elements that are only a
     # clock or a label ({.headline_noise_piece?}) only before the first headline word, and kicker
     # pieces are judged with {.noise_piece?}.
@@ -168,12 +168,13 @@ module Html2rss
 
         ##
         # Whether a piece of text is only a calendar date or a date with a clock time (+11月12日 16:42+).
-        # {Html::TitlePieces} drops such elements at either edge of the headline.
+        # {AutoSource::ArticleExtractor::TitlePieces} drops such elements at either edge of the headline.
         #
         # @param text [String, nil] visible text of one headline descendant element
         # @param vocabulary [Vocabulary::Scope] the page language's scope
         # @param date_element [Boolean] whether the element is a standalone date chip (a date or time element set
-        #   apart from the headline words, {Html::TitlePieces::Nodes#dropped_date?}): only there an own date term
+        #   apart from the headline words,
+        #   {AutoSource::ArticleExtractor::TitlePieces::Nodes#dropped_date?}): only there an own date term
         #   of a page-only language counts
         # @return [Boolean]
         def date_piece?(text, vocabulary:, date_element:)
@@ -183,8 +184,8 @@ module Html2rss
 
         ##
         # Whether one element inside a headline is teaser noise on its own: only a clock time or only a
-        # label (+Section:+, +Article type: Video+). {Html::TitlePieces} drops such elements when they open
-        # the headline; the headline text itself is never noise-stripped.
+        # label (+Section:+, +Article type: Video+). {AutoSource::ArticleExtractor::TitlePieces} drops such elements
+        # when they open the headline; the headline text itself is never noise-stripped.
         #
         # @param text [String, nil] visible text of one headline descendant element
         # @param vocabulary [Vocabulary::Scope] the page language's scope
@@ -217,7 +218,8 @@ module Html2rss
         ##
         # Whether one child element of a kicker is noise on its own: blank, a clock time, a closed field
         # label (+Thema:+, +Section:+) or a type marker. Any other piece ending in a colon is kicker text
-        # (+Conflict:+); {.compose} trims that colon. {Html::TitlePieces} drops noise kicker pieces.
+        # (+Conflict:+); {.compose} trims that colon.
+        # {AutoSource::ArticleExtractor::TitlePieces} drops noise kicker pieces.
         #
         # @param text [String, nil] visible text of one kicker child element
         # @param vocabulary [Vocabulary::Scope] the page language's scope (see {.compose})
@@ -249,7 +251,7 @@ module Html2rss
 
         # The text as matching reads it: bidi marks gone first, so marks set off by spaces collapse away too
         # ({.collapse} keeps them in a title). A marks-only text reads as blank.
-        def read(text) = collapse(LinkDestination::TextClassifier.strip_bidi(text.to_s))
+        def read(text) = collapse(StringUtil.strip_bidi(text.to_s))
 
         def trim(text, prefix)
           return unless (collapsed = collapse(text))

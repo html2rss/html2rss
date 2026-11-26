@@ -93,4 +93,11 @@ RSpec.describe Html2rss::Html::Probe do
       expect(links.map { |node| node['href'] }).to contain_exactly('/oembed.json', '/feed.xml')
     end
   end
+
+  describe '.file_link?' do
+    it 'accepts document, archive and media file paths only', :aggregate_failures do
+      expect(%w[/a.pdf /a.ZIP /a.tgz /a.mp3 /a.WEBM?x=1].map { described_class.file_link?(_1) }).to all(be(true))
+      expect(['/a', '/a.html', '/a.jpg', '/?a.mp3', '', nil].map { described_class.file_link?(_1) }).to all(be(false))
+    end
+  end
 end

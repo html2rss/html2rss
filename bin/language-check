@@ -371,7 +371,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
 
     def classify(texts, code)
       scope = Html2rss::Vocabulary[code.to_sym]
-      classifier = Html2rss::LinkDestination::TextClassifier.new(vocabulary: scope)
+      classifier = Html2rss::AutoSource::LinkDestination::TextClassifier.new(vocabulary: scope)
       junk = junk_reader(scope)
       texts.to_h do |text|
         [text, [classifier.utility?(text), classifier.utility_chrome?(text), classifier.recommended?(text),
@@ -400,11 +400,11 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
 
     # Per term of a loose-label concept: the matchers (readings) that read it and the texts they hit.
     def label_evidence(language, concept, texts)
-      readings = Html2rss::LinkDestination::TextClassifier::READINGS.select do |_, concepts|
+      readings = Html2rss::AutoSource::LinkDestination::TextClassifier::READINGS.select do |_, concepts|
         concepts.include?(concept)
       end.keys
       language.terms.fetch(concept).map do |term|
-        matchers = readings.to_h { [_1, Html2rss::LinkDestination::TextClassifier.matcher(_1, [Html2rss::Vocabulary.compile([term])])] }
+        matchers = readings.to_h { [_1, Html2rss::AutoSource::LinkDestination::TextClassifier.matcher(_1, [Html2rss::Vocabulary.compile([term])])] }
         label_row(concept, term, texts, matchers)
       end
     end
@@ -427,7 +427,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
 
     # Per term of a path concept: the pages' anchors whose path holds it, and the segment sets that read it.
     def path_evidence(language, concept, segment_counts)
-      sets = Html2rss::LinkDestination::PathClassifier::SEGMENT_SETS_BY_SCOPE.fetch(:all)
+      sets = Html2rss::AutoSource::LinkDestination::PathClassifier::SEGMENT_SETS_BY_SCOPE.fetch(:all)
       terms = language.terms.fetch(concept).map do |term|
         { 'term' => term, 'hits' => segment_counts.fetch(term.downcase, 0),
           'readers' => sets.filter_map { |name, set| name.to_s if set.include?(term) } }

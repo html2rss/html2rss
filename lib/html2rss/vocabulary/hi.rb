@@ -5,7 +5,7 @@ module Html2rss
     # Hindi in Devanagari. It is {PAGE_ONLY}: its terms apply on a page whose language resolves to +hi+,
     # and nowhere else. Hindi attaches postpositions and verbs to nouns ("लॉगिन समस्या से यूजर परेशान",
     # "सदस्यता अभियान शुरू"), so no term is read as a prefix: each label form is listed whole and read as
-    # a whole text only (no trailing word, no headline opener, see {LinkDestination::TextClassifier}).
+    # a whole text only (no trailing word, no headline opener, see {AutoSource::LinkDestination::TextClassifier}).
     # Terms are written in NFC, the form the classifier normalizes a link text to: a precomposed nukta
     # letter (U+095C, U+095D, U+095B ...) is a composition exclusion, so +ड़+ is +ड+ and a nukta sign, and
     # the spec rejects a term that is not NFC. Variant spellings of one label ("लॉग इन", "लॉगिन") are

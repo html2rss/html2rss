@@ -5,8 +5,8 @@ module SstTestHelpers
   def all_scope = Html2rss::Vocabulary[:all]
 
   def build_node(name: :div, href: nil, class_names: nil, text: '', children: [])
-    attrs = Html2rss::SST::Attrs.build(href:, class_names:)
-    Html2rss::SST::Node.build(name:, attrs:, own_text: text, children:)
+    attrs = Html2rss::Html::SST::Attrs.build(href:, class_names:)
+    Html2rss::Html::SST::Node.build(name:, attrs:, own_text: text, children:)
   end
 
   def build_segment(root:, link: nil, position: 0)
@@ -35,7 +35,7 @@ module SstTestHelpers
 
   # The page's link resolver, as AutoSource builds it once per page.
   def page_resolver(base_url = 'https://example.com', vocabulary: Html2rss::Vocabulary[nil])
-    Html2rss::Scoring::LinkResolver.new(base_url, vocabulary:)
+    Html2rss::AutoSource::Scoring::LinkResolver.new(base_url, vocabulary:)
   end
 
   # The fields of the +item+ (CSS selector) in +html+, read the way +selectors.items.enhance+ reads a selected item:
@@ -43,12 +43,12 @@ module SstTestHelpers
   def item_fields_for(html, item: 'article', nth: 0, base_url: 'https://example.com', time_zone: 'UTC', # rubocop:disable Metrics/ParameterLists
                       vocabulary: all_scope)
     parsed = Nokogiri::HTML(html)
-    document = Html2rss::SST::Normalizer.call(parsed, vocabulary:, items: true)
+    document = Html2rss::Html::SST::Normalizer.call(parsed, vocabulary:, items: true)
     root = document.index.node_for(parsed.css(item)[nth])
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?),
                                                   strategy: :list, position: 0)
     resolver = page_resolver(base_url, vocabulary:)
-    [Html2rss::Html::SstArticleExtractor::Item.call(segment, base_url:, time_zone:, link_resolver: resolver),
+    [Html2rss::AutoSource::ArticleExtractor::Item.call(segment, base_url:, time_zone:, link_resolver: resolver),
      document].first
   end
 
@@ -66,13 +66,13 @@ module SstTestHelpers
   def hold_document(doc) = doc.tap { (@sst_documents ||= []) << _1 }
 
   def document_for(html)
-    Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)
+    Html2rss::Html::SST::Normalizer.call(html, vocabulary: all_scope)
   end
 
   # The segment's SST document is held by the example, as production holds it, so its index stays live.
   # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity -- test segment fixture builder
   def segment_for(html, href: '/news/story')
-    doc = Html2rss::SST::Normalizer.call(html, vocabulary: all_scope)
+    doc = Html2rss::Html::SST::Normalizer.call(html, vocabulary: all_scope)
     hold_document(doc)
     root = doc.root.find { |n| n.name == :article } || doc.root.find { |n| n.name == :div }
     link = root.find { |n| n.link? && n.attrs.href == href } || root.find(&:link?)

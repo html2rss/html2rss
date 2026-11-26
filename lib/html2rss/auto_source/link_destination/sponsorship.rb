@@ -1,0 +1,196 @@
+# frozen_string_literal: true
+
+module Html2rss
+  class AutoSource
+    module LinkDestination
+      ##
+      # Explicit sponsorship markers on SST nodes, in three kinds:
+      #
+      # - +:container+: a +rel+ containing +sponsored+, a truthy +data-sponsored+ or
+      #   +data-advertorial+, a sponsored, advertorial or native-advertising class token (BEM variants
+      #   included), or an ARIA label that is an ad label. The publisher states that the element is paid content.
+      # - +:label+: an ad-label class token (+ad-label+, +ad-badge__item+), or a standalone element whose whole
+      #   text is an ad word ({LabelText} ad words: "Anzeige", "Publicité", "Promoted", "Reklama", "広告", or
+      #   "PR" as an uppercase element text). An ad word also names something editorial (the advertising trade,
+      #   a promotion), so it counts only on a plain element: never on a heading or a topic chip (category, tag
+      #   or kicker class), and it never heads a section.
+      # - +:paid_label+: a standalone element whose whole text states paid content ({LabelText} paid
+      #   phrases: "Sponsored", "Contenus partenaires", "Materiał partnera", "タイアップ"; paid attribution may
+      #   name the sponsor in up to five words). It also counts on a heading or a topic chip, and
+      #   {AutoSource::PageLinks} lets it head a section.
+      #
+      # Both text vocabularies are one closed multilingual set ({Vocabulary::LANGUAGES}).
+      # Attribution alone ("Presented by", "In Kooperation mit", "proposé par", "In collaborazione con", "提供")
+      # states no payment and is no label, nor is "Partners" (an editorial word).
+      #
+      # A class or text label counts only on a rendered element: neither it nor an ancestor inside its
+      # card ({CARD_NAMES}) is unrendered ({Html::Visibility.unrendered?}). +aria-hidden="true"+ and
+      # screen-reader-only classes still count: one is a visual label, the other a spoken one. A class
+      # marker also needs content (an empty template slot is not a label). A text label never counts
+      # inside running text: anchor text is never read, nor are words inside a heading or an inline element
+      # of text-bearing prose (or of an inline topic chip, for an ad word). A label inside an anchor counts
+      # (a linked label); a headline about advertising is not a marker.
+      #
+      # Markers only; {AutoSource::PageLinks} scopes a marker to the card that holds it.
+      module Sponsorship
+        # +rel+ token a publisher sets on paid links.
+        REL_TOKEN = 'sponsored'
+        # Attribute names that mark a sponsored element when set to a value in {ON_VALUES}.
+        ATTRIBUTE_NAMES = %w[data-sponsored data-advertorial].freeze
+        # Attribute values (case-insensitive) that switch a marker attribute on. Anything else is
+        # off: an empty value (template output or a bare attribute; HTML parsing cannot tell them
+        # apart), +no+, +null+, +false+, +0+, +off+.
+        ON_VALUES = Set['true', '1', 'yes'].freeze
+        # Sponsored class token: whole, behind a BEM block (+card--sponsored+, +teaser__advertorial+)
+        # or an +is-+ state prefix, with an optional content suffix (+sponsored-content+).
+        # +unsponsored+, +non-sponsored+ and +has-sponsored+ (a wrapper that contains one) do not match.
+        SPONSORED_CLASS = /
+          \A(?:[a-z0-9_-]*(?:--|__))?(?:is-)?(?:sponsored|advertorial)
+          (?:[-_](?:content|post|story|article|card|item|teaser))?\z
+        /x
+        # Native-advertising class token: a whole +native+, behind a BEM block (+teaser--native+,
+        # +card__native+), or a native-ad block (+native-ad+, +adv-native+, +ad-native+) with optional suffix
+        # words (+adv-native-strip+). +native-input+, +nativeApp+, +native-teaser+, +bt-langnative+ and a
+        # blockless +--native+ modifier do not match.
+        NATIVE_AD_CLASS = /
+          \A(?:[a-z0-9][a-z0-9_-]*?(?:--|__))?
+          (?:native|(?:native-ads?|adv-native|ad-native)(?:-[a-z0-9]+)*)\z
+        /x
+        # Ad-label class token family, with an optional BEM element or modifier: +ad-label+,
+        # +ad-labels__item+, +ad-badge+, +ad-marker--small+. Ad slots (+ad-container+) are not labels.
+        AD_LABEL_CLASS = /\Aad-(?:labels?|badge|marker)(?:(?:__|--)[a-z0-9-]+)?\z/
+        # ARIA attributes read as labels.
+        ARIA_NAMES = %w[aria-label aria-roledescription].freeze
+        # Elements that delimit one card (+main+ is a page region, never a card). A hidden ancestor hides
+        # a marker only inside its card: a hidden tab panel or responsive wrapper around whole cards
+        # hides none of their labels.
+        CARD_NAMES = Set[:article, :section, :aside, :li].freeze
+        # Class-token words (split on +-+/+_+) of topic chips, whose text names a topic, not a sale.
+        CHIP_WORDS = Set['category', 'categories', 'tag', 'tags', 'kicker', 'topic', 'topics', 'rubric', 'rubrik',
+                         'eyebrow'].freeze
+        # Inline elements: a label inside one belongs to the surrounding text.
+        PHRASING_NAMES = Set[:span, :em, :strong, :b, :i, :q, :small, :mark, :u, :s, :cite, :abbr, :time, :sup,
+                             :sub, :label, :font].freeze
+        class << self
+          ##
+          # @param node [Html::SST::Node]
+          # @param ancestors [Array<Html::SST::Node>] +node+'s ancestors, root first
+          # @param vocabulary [Vocabulary::Scope] the page language's scope, read for the label text
+          # @return [Symbol, nil] +:container+, +:label+ or +:paid_label+ when +node+ itself carries an
+          #   explicit sponsorship marker, else nil
+          def marker(node, ancestors, vocabulary:)
+            return :container if raw_marker?(node.attrs.raw, vocabulary)
+
+            kind = class_marker(node.attrs.class_names)
+            return (kind if visible?(node, ancestors)) if kind
+
+            text_label(node, ancestors, vocabulary)
+          end
+
+          ##
+          # Whether +text+, as a whole, states paid content ({LabelText}). For readers
+          # of plain text such as title pieces; an ad word is left out, as it also names a topic.
+          #
+          # @param text [String, nil]
+          # @param vocabulary [Vocabulary::Scope] the page language's scope
+          # @return [Boolean]
+          def paid_text?(text, vocabulary:) = LabelText.kind(text, vocabulary:) == :paid_label
+
+          ##
+          # Whether +text+ is a paid label only through a term of a page-only language ({LabelText.own_paid?}).
+          #
+          # @param text [String, nil]
+          # @param vocabulary [Vocabulary::Scope] the page language's scope
+          # @return [Boolean]
+          def own_paid_text?(text, vocabulary:) = LabelText.own_paid?(text, vocabulary:)
+
+          private
+
+          # Runs on every node of the page: literal checks gate each regex.
+          def class_marker(class_names)
+            kind = nil
+            class_names.each do |token|
+              return :container if sponsored_class?(token) || native_ad_class?(token)
+
+              kind ||= :label if token.start_with?('ad-') && token.match?(AD_LABEL_CLASS)
+            end
+            kind
+          end
+
+          def sponsored_class?(token)
+            (token.include?('sponsored') || token.include?('advertorial')) && token.match?(SPONSORED_CLASS)
+          end
+
+          def native_ad_class?(token) = token.include?('native') && token.match?(NATIVE_AD_CLASS)
+
+          def visible?(node, ancestors)
+            (node.children.any? || node.own_text.match?(/\S/)) && !unrendered?(node, ancestors)
+          end
+
+          # Whether +node+, or an ancestor up to and including its card, is hidden.
+          def unrendered?(node, ancestors)
+            return true if hidden?(node)
+
+            ancestors.reverse_each do |ancestor|
+              return true if hidden?(ancestor)
+              return false if CARD_NAMES.include?(ancestor.name)
+            end
+            false
+          end
+
+          def hidden?(node)
+            attrs = node.attrs
+            Html::Visibility.unrendered?(attrs.class_names, style: attrs.style, hidden: attrs.raw.key?('hidden'))
+          end
+
+          # Most nodes carry no raw attributes, so the empty check skips every lookup.
+          def raw_marker?(raw, vocabulary)
+            return false if raw.empty?
+
+            sponsored_rel?(raw['rel']) ||
+              ATTRIBUTE_NAMES.any? { ON_VALUES.include?(raw[_1]&.strip&.downcase) } ||
+              ARIA_NAMES.any? { LabelText.attribute_kind(raw[_1], vocabulary:) }
+          end
+
+          def sponsored_rel?(rel)
+            return false unless rel
+
+            rel.downcase.split.include?(REL_TOKEN)
+          end
+
+          # The own-text check runs first: it is the cheap filter for every node of the page.
+          def text_label(node, ancestors, vocabulary)
+            return unless LabelText.candidate?(node.own_text, vocabulary:)
+
+            kind = LabelText.kind(node.visible_text, vocabulary:)
+            kind if kind && readable?(node, ancestors, paid: kind == :paid_label)
+          end
+
+          # Anchor text is never read; an ad word is read only on a plain element.
+          def readable?(node, ancestors, paid:)
+            node.name != :a && (paid || plain?(node)) && ancestors.none?(&:heading?) &&
+              !in_running_text?(ancestors, paid:) && !unrendered?(node, ancestors)
+          end
+
+          def plain?(node) = !node.heading? && !chip?(node)
+
+          def chip?(node)
+            node.attrs.class_names.any? { |token| token.downcase.split(/[-_]+/).any? { CHIP_WORDS.include?(_1) } }
+          end
+
+          # Climbs inline ancestors up to the first block one: prose in any of them, or (for an ad word) a
+          # chip class on an inline one, makes the label part of the surrounding text. Block classes are not
+          # read (post classes such as +category-news+ sit on whole cards).
+          def in_running_text?(ancestors, paid:)
+            ancestors.reverse_each do |ancestor|
+              return true if ancestor.own_text.match?(/\p{Alnum}/)
+              return false unless PHRASING_NAMES.include?(ancestor.name)
+              return true if !paid && chip?(ancestor)
+            end
+            false
+          end
+        end
+      end
+    end
+  end
+end

@@ -449,11 +449,11 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       before do
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_wrap_original do |method, *args, **kwargs|
+        allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_wrap_original do |method, *args, **kwargs|
           counts[:sst] += 1
           method.call(*args, **kwargs)
         end
-        allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_wrap_original do |method, *args, **kwargs|
+        allow(described_class::Scoring::LinkResolver).to receive(:new).and_wrap_original do |method, *args, **kwargs|
           counts[:resolver] += 1
           method.call(*args, **kwargs)
         end
@@ -1165,7 +1165,7 @@ RSpec.describe Html2rss::AutoSource do
     let(:swedish) { Html2rss::Vocabulary[:sv] }
 
     before do
-      allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_call_original
+      allow(described_class::Scoring::LinkResolver).to receive(:new).and_call_original
       allow(described_class::Cleanup).to receive(:call).and_call_original
       allow(described_class::Corroboration).to receive(:new).and_call_original
     end
@@ -1173,7 +1173,7 @@ RSpec.describe Html2rss::AutoSource do
     it 'hands the one scope its caller resolved to every classifier', :aggregate_failures do
       described_class.new(response, config, request_session:, vocabulary: swedish).articles
 
-      expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(swedish))
+      expect(described_class::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(swedish))
       expect(described_class::Cleanup).to have_received(:call).at_least(:once)
                                                               .with(anything, hash_including(vocabulary: be(swedish)))
       expect(described_class::Corroboration).to have_received(:new).once.with(be(swedish), facts: anything)
@@ -1183,7 +1183,7 @@ RSpec.describe Html2rss::AutoSource do
       german = Html2rss::Vocabulary[:de]
       described_class.new(response, config, request_session:, vocabulary: german).articles
 
-      expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(german))
+      expect(described_class::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(german))
       expect(described_class::Corroboration).to have_received(:new).once.with(be(german), facts: anything)
     end
 
@@ -1219,7 +1219,7 @@ RSpec.describe Html2rss::AutoSource do
                                                                  headers: { 'content-type' => 'text/html' }, url:),
                           config, request_session:, vocabulary: Html2rss::Vocabulary[nil]).articles
 
-      expect(Html2rss::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(Html2rss::Vocabulary[nil]))
+      expect(described_class::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(Html2rss::Vocabulary[nil]))
     end
   end
 

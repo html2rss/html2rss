@@ -548,9 +548,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'dedupe comparator precedence' do
     let(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com') }
 
-    let(:root_node) { Html2rss::SST::Node.build(name: :article) }
+    let(:root_node) { Html2rss::Html::SST::Node.build(name: :article) }
     let(:primary_link) do
-      Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '/news/story'))
+      Html2rss::Html::SST::Node.build(name: :a, attrs: Html2rss::Html::SST::Attrs.build(href: '/news/story'))
     end
     let(:base_article) do
       Html2rss::Article.new(
@@ -572,13 +572,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
           strategy: :semantic,
           position:
         )
-        ranked = Html2rss::Scoring::RankedSegment.new(
+        ranked = Html2rss::AutoSource::Scoring::RankedSegment.new(
           segment:,
-          score: Html2rss::Scoring::Score.new(
+          score: Html2rss::AutoSource::Scoring::Score.new(
             composite: final_score.to_f,
             quality: quality_score.to_f,
             junk: junk_score.to_f,
-            breakdown: Html2rss::Scoring::Score::EMPTY_BREAKDOWN
+            breakdown: Html2rss::AutoSource::Scoring::Score::EMPTY_BREAKDOWN
           )
         )
         allow(deduplicator).to receive(:article_for).with(ranked).and_return(article)
@@ -726,10 +726,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     let(:entries) do
       Array.new(4) do |index|
-        root = Html2rss::SST::Node.build(name: :article, attrs: Html2rss::SST::Attrs.build(id: "s#{index}"))
-        link = Html2rss::SST::Node.build(
+        root = Html2rss::Html::SST::Node.build(name: :article, attrs: Html2rss::Html::SST::Attrs.build(id: "s#{index}"))
+        link = Html2rss::Html::SST::Node.build(
           name: :a,
-          attrs: Html2rss::SST::Attrs.build(href: "/news/story-#{index}"),
+          attrs: Html2rss::Html::SST::Attrs.build(href: "/news/story-#{index}"),
           own_text: "Story #{index}"
         )
         segment = Html2rss::AutoSource::Segment.build(
@@ -738,13 +738,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
           strategy: :semantic,
           position: index
         )
-        Html2rss::Scoring::RankedSegment.new(
+        Html2rss::AutoSource::Scoring::RankedSegment.new(
           segment:,
-          score: Html2rss::Scoring::Score.new(
+          score: Html2rss::AutoSource::Scoring::Score.new(
             composite: 60.0,
             quality: 70.0,
             junk: 10.0,
-            breakdown: Html2rss::Scoring::Score::EMPTY_BREAKDOWN
+            breakdown: Html2rss::AutoSource::Scoring::Score::EMPTY_BREAKDOWN
           )
         )
       end
@@ -780,7 +780,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     # rubocop:disable-next RSpec/ExampleLength
-    it 'only calls Html::SstArticleExtractor on the final winners', :aggregate_failures do
+    it 'only calls AutoSource::ArticleExtractor on the final winners', :aggregate_failures do
       article = Html2rss::Article.new(
         title: 'Story A',
         url: Html2rss::Url.from_relative('/news/story-a', 'https://example.com'),
@@ -792,13 +792,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         enclosures: [],
         scraper: described_class
       )
-      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
+      allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
       scraper = described_class.new(parsed_body, url: 'https://example.com')
       results = scraper.each.to_a
 
       expect(results.size).to eq(1)
-      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).once
+      expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call).once
     end
   end
 

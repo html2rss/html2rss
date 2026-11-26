@@ -23,7 +23,7 @@ module Html2rss
         def size = @anchors.size
 
         ##
-        # @param anchor [SST::Node]
+        # @param anchor [Html::SST::Node]
         # @param in_heading [Boolean] whether the anchor sits inside a heading
         # @return [Integer] the anchor's index
         def record(anchor, in_heading:)
@@ -36,7 +36,7 @@ module Html2rss
         # @return [Array, nil] article identity of the anchor's destination
         def key_at(index) = key_of(@anchors.fetch(index))
 
-        # @param anchor [SST::Node]
+        # @param anchor [Html::SST::Node]
         # @return [Array, nil] article identity of the anchor's destination
         def key_of(anchor)
           url = @link_resolver.destination_facts(anchor)&.url
