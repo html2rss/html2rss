@@ -3,12 +3,12 @@
 module Html2rss
   module Curation
     ##
-    # Shared page recon for MCP Inspect, curation Recon, and EntryResolution probes.
+    # Shared page fetch and assessment for inspect and recon.
     #
     # Owns surface class, native feed hints, segment stats, and a cheap AutoSource
     # article count. Diagnostic fetch for Inspect/Recon lives on {.probe} — not twin
     # fetch helpers in those callers.
-    class PageProbe # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
+    class PageProbe # rubocop:disable Metrics/ClassLength -- one co-located fetch and assessment
       Result = Data.define(
         :requested_url,
         :final_url,

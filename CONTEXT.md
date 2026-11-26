@@ -2,6 +2,20 @@
 
 Contributor map for request, AutoSource, and selectors seams.
 
+## Layer map
+
+References point left/down only; `Html` and `Article` never reference `AutoSource` in code (comments may link).
+
+| Layer         | Namespaces                                                                          |
+| ------------- | ----------------------------------------------------------------------------------- |
+| kernel        | `Error`, `ContractError`, `ErrorKind`, `Url`, `StringUtil`, `HashUtil`, `WordCount`, `Vocabulary`, `Log`, `Option`, `Defaults` |
+| fetch         | `RequestService`, `RequestSession`                                                  |
+| DOM           | `Html` (incl. `Html::SST`)                                                          |
+| extract       | `Selectors`, `AutoSource`, `Syndication`                                            |
+| values/build  | `Article`, `Channel`, `FeedPipeline`, `FeedBuilder`, `FeedResult`, `Status`, `Config` |
+| curate        | `Curation`                                                                          |
+| renderers     | `CLI`, `MCP`                                                                        |
+
 ## Native feed preference
 
 RSS/Atom/RDF preference for curation gates (Capture defer/`--force`, Recon `:defer`) and the NativeFeed scraper.
@@ -16,15 +30,15 @@ Parallel curation work shares this vocabulary. User/agent surfaces (CLI, MCP, `n
 
 ### User-facing verb table
 
-| Verb     | Job                   | Domain                   | CLI      | MCP      | Facade                             |
-| -------- | --------------------- | ------------------------ | -------- | -------- | ---------------------------------- |
+| Verb     | Job                   | Domain              | CLI      | MCP      | Facade                             |
+| -------- | --------------------- | ------------------- | -------- | -------- | ---------------------------------- |
 | inspect  | Diagnostics           | `Curation::Inspect` | inspect  | inspect  | `Html2rss.inspect`                 |
-| recon    | Verdict + native_feed | `Curation::Recon`         | recon    | recon    | `Html2rss.recon`, `.batch_recon`   |
-| capture  | YAML draft            | `Curation::Capture`       | capture  | capture  | `Html2rss.capture`                 |
-| validate | Schema only           | `Config`                 | validate | validate | `Html2rss.validate`                |
-| test     | Schema + live         | `Curation::Test`          | test     | test     | `Html2rss.test`                    |
-| apply    | Ship RSS              | `Curation::Apply`         | apply    | apply    | `Html2rss.apply`                   |
-| scrape   | Articles now          | `Html2rss.scrape`        | scrape   | scrape   | `Html2rss.scrape`, `.batch_scrape` |
+| recon    | Verdict + native_feed | `Curation::Recon`   | recon    | recon    | `Html2rss.recon`, `.batch_recon`   |
+| capture  | YAML draft            | `Curation::Capture` | capture  | capture  | `Html2rss.capture`                 |
+| validate | Schema only           | `Config`            | validate | validate | `Html2rss.validate`                |
+| test     | Schema + live         | `Curation::Test`    | test     | test     | `Html2rss.test`                    |
+| apply    | Ship RSS              | `Curation::Apply`   | apply    | apply    | `Html2rss.apply`                   |
+| scrape   | Articles now          | `Html2rss.scrape`   | scrape   | scrape   | `Html2rss.scrape`, `.batch_scrape` |
 
 Batch variants: `batch_inspect`, `batch_recon`, `batch_scrape` (CLI/MCP/facade — same bare prefix, no `_urls` suffix).
 

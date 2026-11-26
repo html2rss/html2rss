@@ -6,7 +6,7 @@ MCP exposes the same seven user-facing verbs as the CLI and gem facades. Full co
 
 | Verb     | MCP tool   | Job                                                          |
 | -------- | ---------- | ------------------------------------------------------------ |
-| inspect  | `inspect`  | Diagnostics (final URL, status, alternates, surface)         |
+| inspect  | `inspect`  | `Curation::Inspect` (final URL, status, alternates, surface)         |
 | recon    | `recon`    | Verdict + native_feed preference                             |
 | capture  | `capture`  | YAML draft config                                            |
 | validate | `validate` | Schema only                                                  |
