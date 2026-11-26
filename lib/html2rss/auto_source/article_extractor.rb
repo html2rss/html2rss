@@ -7,6 +7,9 @@ module Html2rss
     # {Item} reads a card a selector config picked.
     # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated
     class ArticleExtractor
+      # Raised when the extractor is built without the segment it extracts from.
+      class InvalidError < Html2rss::ContractError; end
+
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
       # {Html2rss::SelectorCandidates}, which owns no copy of it.
       TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
@@ -36,7 +39,7 @@ module Html2rss
       # @param link_resolver [Scoring::LinkResolver] see {.call}
       def initialize(ranked_or_segment, base_url:, scraper:, time_zone:, link_resolver:)
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
-        raise Html::InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
+        raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
         @root = segment.root_node
         @selected_anchor = segment.primary_link

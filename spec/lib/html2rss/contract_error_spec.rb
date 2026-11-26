@@ -6,7 +6,7 @@ RSpec.describe Html2rss::ContractError do
       Html2rss::Status::InvalidError, Html2rss::FeedResult::InvalidError, Html2rss::Html::SST::InvalidError,
       Html2rss::MCP::Outcome::InvalidError, Html2rss::Article::Enclosure::InvalidError,
       Html2rss::Article::Deduplicator::InvalidError, Html2rss::AutoSource::Segment::InvalidError,
-      Html2rss::AutoSource::ScraperContractError, Html2rss::Html::InvalidError,
+      Html2rss::AutoSource::ScraperContractError, Html2rss::AutoSource::ArticleExtractor::InvalidError,
       Html2rss::RequestService::Context::InvalidError, Html2rss::AutoSource::EntryResolution::InvalidError
     ]
   end
