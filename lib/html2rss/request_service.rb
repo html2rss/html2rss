@@ -35,6 +35,7 @@ module Html2rss
       # @param response [Response] the entry response
       # @return [void]
       # @raise [DeterministicHttpStatus] when the response status is in {STATUSES}
+      # @note Call {RequestService.check_entry_status!}, which also gates {BlockedSurfaceDetected::STATUSES}.
       def self.check!(response)
         return unless STATUSES.member?(response.status)
 
@@ -96,8 +97,25 @@ module Html2rss
 
     # Raised when blocked content surfaces are detected.
     class BlockedSurfaceDetected < Html2rss::Error
+      # Entry statuses that mean the site refused us (auth wall, forbidden, rate limit): the body is never content.
+      STATUSES = Set[401, 403, 429].freeze
+
+      # @return [Integer, nil] the HTTP status of the entry response, when the block came from the status
+      attr_reader :status
+
+      ##
+      # @param message [String]
+      # @param status [Integer, nil]
+      def initialize(message, status: nil)
+        @status = status
+        super(message)
+      end
+
       # @return [Symbol]
       def kind = :blocked
+
+      # @return [Hash{Symbol => Object}] sparse diagnostics including the HTTP +status+
+      def diagnostics = { **super, status: }.compact
     end
 
     # Raised when the target connection fails before a response document exists.
@@ -172,6 +190,21 @@ module Html2rss
     DEFAULT_USER_AGENT = "html2rss/#{Html2rss::VERSION}".freeze
 
     class << self
+      ##
+      # The one gate for "the entry status decides the outcome": a permanent status raises
+      # {DeterministicHttpStatus}, a refusal status raises {BlockedSurfaceDetected}. Runs on the entry
+      # response before any extraction or entry resolution.
+      #
+      # @param response [Response] the entry response
+      # @return [void]
+      # @raise [DeterministicHttpStatus, BlockedSurfaceDetected]
+      def check_entry_status!(response)
+        DeterministicHttpStatus.check!(response)
+        return unless BlockedSurfaceDetected::STATUSES.member?(response.status)
+
+        raise BlockedSurfaceDetected.new("HTTP #{response.status} for #{response.url}", status: response.status)
+      end
+
       # @return [Boolean] whether +BOTASAURUS_SCRAPER_URL+ carries a value in this process
       def botasaurus_configured?
         !ENV['BOTASAURUS_SCRAPER_URL'].to_s.strip.empty?

@@ -27,6 +27,42 @@ RSpec.describe Html2rss::RequestService do
     end
   end
 
+  describe '.check_entry_status!' do
+    let(:entry) do
+      lambda do |status|
+        described_class::Response.new(
+          body: '<html></html>', url: Html2rss::Url.from_absolute('https://example.com/'),
+          headers: { 'content-type' => 'text/html' }, status:
+        )
+      end
+    end
+
+    it 'raises DeterministicHttpStatus for permanent statuses', :aggregate_failures do
+      [400, 404, 410, 422, 451].each do |status|
+        expect { described_class.check_entry_status!(entry.call(status)) }
+          .to raise_error(described_class::DeterministicHttpStatus)
+      end
+    end
+
+    it 'raises BlockedSurfaceDetected carrying the status for refusal statuses', :aggregate_failures do
+      [401, 403, 429].each do |status|
+        expect { described_class.check_entry_status!(entry.call(status)) }
+          .to raise_error(described_class::BlockedSurfaceDetected, "HTTP #{status} for https://example.com/")
+      end
+    end
+
+    it 'carries the refusal status on the error', :aggregate_failures do
+      expect { described_class.check_entry_status!(entry.call(429)) }
+        .to raise_error(described_class::BlockedSurfaceDetected) { |error| expect(error.status).to eq(429) }
+    end
+
+    it 'passes every other status', :aggregate_failures do
+      [200, 204, 301, 304, 402, 500, 503].each do |status|
+        expect { described_class.check_entry_status!(entry.call(status)) }.not_to raise_error
+      end
+    end
+  end
+
   describe 'RequestTimedOut' do
     it 'exposes optional timeout_phase', :aggregate_failures do
       timed_out = described_class::RequestTimedOut.new('timed out', timeout_phase: 'work')

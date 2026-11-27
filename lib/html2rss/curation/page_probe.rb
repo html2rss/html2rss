@@ -140,7 +140,7 @@ module Html2rss
           scheme_downgrade: scheme_downgrade?(requested, final),
           alternate_feeds: alternate_feeds_from(parsed),
           surface_category: assessment.surface_category,
-          articles_count: assessment.articles_count,
+          articles_count: refused? ? 0 : assessment.articles_count,
           admission_drops: assessment.admission_drops,
           segment_stats:,
           html_response: response.html_response?,
@@ -153,6 +153,9 @@ module Html2rss
       private
 
       attr_reader :response, :url
+
+      # A refused entry (401/403/429) never counts items: its body is a block page, not content.
+      def refused? = RequestService::BlockedSurfaceDetected::STATUSES.member?(response.status)
 
       def sst_payload_and_segments(requested, vocabulary)
         return [nil, nil] unless response.html_response?
