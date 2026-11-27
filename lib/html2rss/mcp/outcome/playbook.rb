@@ -49,14 +49,14 @@ module Html2rss
         }.freeze
 
         # Error envelopes carry class, message, the input url and sparse error diagnostics only.
-        ERROR_INSPECT_GUIDANCE = 'The call failed and may succeed on retry. Call inspect on payload.url ' \
-                                 '(when present) for diagnostics; this error payload carries only ' \
-                                 'class, message, url and sparse transport diagnostics.'
+        ERROR_DIAGNOSTICS_HINT = 'Call inspect on payload.url (when present) for diagnostics; this error payload ' \
+                                 'carries only class, message, url and sparse transport diagnostics.'
+        # Guidance for an error whose next_step is inspect.
+        ERROR_INSPECT_GUIDANCE = "The call failed and may succeed on retry. #{ERROR_DIAGNOSTICS_HINT}".freeze
 
         # Replaces {ERROR_INSPECT_GUIDANCE} when every attempted strategy timed out: the same request keeps failing.
-        ERROR_TIMEOUT_GUIDANCE = 'Every attempted strategy timed out, so a retry is unlikely to help. Call ' \
-                                 'inspect on payload.url (when present) for diagnostics; this error payload ' \
-                                 'carries only class, message, url and sparse transport diagnostics.'
+        ERROR_TIMEOUT_GUIDANCE = 'Every attempted strategy timed out, so a retry is unlikely to help. ' \
+                                 "#{ERROR_DIAGNOSTICS_HINT}".freeze
 
         # Appended to the stop guidance of a redirect downgraded from https to http.
         ERROR_RETRY_URL_GUIDANCE = 'Retry once with payload.retry_url, the https form of the redirect target.'

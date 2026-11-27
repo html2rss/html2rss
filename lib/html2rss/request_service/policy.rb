@@ -173,9 +173,8 @@ module Html2rss
       # @raise [PrivateNetworkDenied] if the hop resolves to a private address
       def validate_redirect!(from_url:, to_url:, origin_url:, relation:, advertisement: nil)
         if from_url.scheme == 'https' && to_url.scheme == 'http'
-          raise UnsupportedUrlScheme.new(
-            "Redirect downgraded from #{from_url} to #{to_url}", retry_url: to_url.with_scheme('https')
-          )
+          raise UnsupportedUrlScheme.new("Redirect downgraded from #{from_url} to #{to_url}",
+                                         retry_url: to_url.with_scheme('https'))
         end
 
         enforce_same_origin!(to_url, origin_url, relation) do
@@ -211,7 +210,8 @@ module Html2rss
       def enforce_follow_up_scheme!(url, origin_url)
         return unless origin_url.scheme == 'https' && url.scheme == 'http'
 
-        raise UnsupportedUrlScheme, "Follow-up downgraded from https to http for #{url}"
+        raise UnsupportedUrlScheme.new("Follow-up downgraded from https to http for #{url}",
+                                       retry_url: url.with_scheme('https'))
       end
     end
   end
