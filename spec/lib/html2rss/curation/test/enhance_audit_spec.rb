@@ -71,6 +71,21 @@ RSpec.describe Html2rss::Curation::Test::EnhanceAudit do
         end
       end
 
+      context 'when enhance adds only blank values or a title-equal description' do
+        let(:pairs) do
+          [[{ title: 'Same' },
+            { title: 'Same', description: ' Same ', categories: [], image: '  ', author: [''], enclosures: [{}] },
+            plain_item],
+           [{}, { title: 'T', description: "  \n", categories: [nil] }, plain_item]]
+        end
+
+        it 'counts none of them', :aggregate_failures do
+          expect(slice.enhance_gains.keys_added.values.sum).to eq(1)
+          expect(slice.enhance_gains).to have_attributes(descriptions_added: 0)
+          expect(slice.enhance_gains.keys_added).to include(title: 1, description: 0, categories: 0, image: 0)
+        end
+      end
+
       context 'when only non-curator keys are added' do
         let(:pairs) { [[{}, { categories: %w[c], author: 'x' }, plain_item]] }
 
@@ -248,8 +263,29 @@ RSpec.describe Html2rss::Curation::Test::EnhanceAudit do
 
       expect(off[:enhance_off]).to eq(item_count: 2, descriptions_filled: 0)
       expect(off[:enhance_on]).to eq(item_count: 2, descriptions_filled: probed.descriptions_added)
-      expect(off[:delta]).to eq(descriptions_gained: probed.descriptions_added, keys_added: probed.keys_added,
-                                no_op: probed.no_op)
+      expect(off[:delta]).to include(descriptions_gained: probed.descriptions_added, keys_added: probed.keys_added,
+                                     no_op: probed.no_op)
+    end
+
+    it 'reports guids changed and items added between enhance off and on', :aggregate_failures do
+      response = enhance_audit_response('rich_card.html')
+      off_articles = Html2rss::Selectors.new(response, selectors:, time_zone:, vocabulary:).articles
+      extra = Html2rss::Article.new(url: 'https://example.com/new', title: 'N')
+      on_articles = [off_articles.first, extra, extra]
+      allow(described_class).to receive(:extracted_articles).and_return(off_articles, on_articles)
+      result = described_class.compare(response:, selectors:, time_zone:, vocabulary:)
+
+      expect(result[:delta]).to include(guids_changed: 2, items_added: on_articles.size - off_articles.size)
+    end
+
+    it 'does not count a description equal to the title as filled' do
+      article = Struct.new(:title, :description, :guid)
+      same = [article.new('A', ' A ', 'g1'), article.new('B', '', 'g2'), article.new('C', 'About C', 'g3')]
+      allow(described_class).to receive(:extracted_articles).and_return([], same)
+      result = described_class.compare(response: enhance_audit_response('rich_card.html'), selectors:, time_zone:,
+                                       vocabulary:)
+
+      expect(result[:enhance_on][:descriptions_filled]).to eq(1)
     end
 
     it 'does not mutate the caller selectors' do

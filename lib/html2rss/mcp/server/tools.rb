@@ -135,7 +135,9 @@ module Html2rss
                          'Call after capture or validate; on success next_step is apply. ' \
                          'Returns test summary in payload with sample items, timing, failure_kind, ' \
                          'and quality_report (warnings for duplicate URLs, junk titles, native feed). ' \
-                         'Set strict_quality to fail on duplicate URLs, >50% junk titles, or short titles.',
+                         'Set strict_quality to fail on duplicate URLs, >50% junk titles, or short titles. ' \
+                         'compare_enhance reports enhance on vs off: non-empty keys added, real descriptions ' \
+                         '(not blank or equal to the title), guids_changed and items_added.',
             input_schema: Contract::TEST_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |config: nil, yaml: nil, min_items: 1, strict_quality: false,
