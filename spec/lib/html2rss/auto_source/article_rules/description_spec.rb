@@ -178,5 +178,15 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
       text = "- Solar\n- Buses replace the line."
       expect(describe_text(text)).to eq(text)
     end
+
+    it 'reads nil and blank text as no description', :aggregate_failures do
+      expect(described_class.lines_from("  \n\n \u00A0 \nkept")).to eq(%w[kept])
+      expect(described_class.from_lines(nil, vocabulary:)).to be_nil
+    end
+
+    it 'keeps separate prose lines separate', :aggregate_failures do
+      expect(described_class.lines_from("Alpha beta\nGamma delta")).to eq(['Alpha beta', 'Gamma delta'])
+      expect(describe_text("#{dek}\nSecond fragment\nThird fragment")).to eq("#{dek}\nSecond fragment\nThird fragment")
+    end
   end
 end
