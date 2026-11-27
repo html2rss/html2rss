@@ -34,6 +34,11 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
       expect(described_class.junk?('Topic', title: nil)).to be(false)
     end
 
+    it 'handles a very long run of spaces', :aggregate_failures do
+      expect(described_class.junk?("#{' ' * 50_000}x")).to be(false)
+      expect(described_class.junk?("x#{' ' * 50_000}-")).to be(false)
+    end
+
     it 'matches the title prefix only before a colon, ignoring case and spacing', :aggregate_failures do
       expect(described_class.junk?('Topic', title: 'Topic')).to be(false)
       expect(described_class.junk?('topic', title: ' Topic : rest')).to be(true)

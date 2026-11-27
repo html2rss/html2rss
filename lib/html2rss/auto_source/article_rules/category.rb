@@ -22,7 +22,8 @@ module Html2rss
         FILE_SIZE = /\d(?:[.,]\d+)?\s*(?:[KMGT]i?B|bytes?)\b/i
 
         # A separator that sets a piece apart inside one category value ("Topic // 2026-11-26").
-        PIECE_SEPARATOR = %r{\s+(?://?|[|·•–—-])\s+}
+        # Lookarounds keep the whitespace out of the match, so a long space run splits in linear time.
+        PIECE_SEPARATOR = %r{(?<=\s)(?://?|[|·•–—-])(?=\s)}
 
         # Fewest items for which a shared value is a feed-wide label; with two, it may be a real topic.
         MIN_ITEMS_FOR_SHARED = 3
