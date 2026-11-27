@@ -6,11 +6,16 @@ module Html2rss
     # Diagnostic inspect path (not Capture or Recon ownership). Fetches via {.probe},
     # then adds scraper/XHR diagnostics for curation inspect surfaces.
     module Inspect # rubocop:disable Metrics/ModuleLength -- diagnostic wire fields stay co-located
-      Report = Data.define(:data)
+      Report = Data.define(:data, :failure)
 
       ##
-      # Typed diagnostic report for inspect wire payloads and Outcome policy.
+      # Typed diagnostic report for inspect wire payloads and Outcome policy. +failure+ is the exception behind
+      # an error report (never on the wire), so callers can classify it.
       class Report
+        # @param data [Hash{Symbol => Object}] wire fields
+        # @param failure [Html2rss::Error, nil] the exception an error report stands for
+        def initialize(data:, failure: nil) = super
+
         ##
         # @return [Boolean]
         def alternate_feeds?
@@ -179,7 +184,8 @@ module Html2rss
               content_type: nil,
               strategy: nil,
               scraper_eligibility: { error: "#{error.class} - #{error.message}" }
-            }
+            },
+            failure: error
           )
         end
       end

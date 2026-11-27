@@ -113,7 +113,7 @@ module Html2rss
           results = reports.map(&:to_wire_h)
           successful = reports.count { |report| diagnostic_success?(report) }
 
-          BatchResult.new(total: results.size, successful:, results:)
+          BatchResult.new(total: results.size, successful:, results:, errors: reports.map(&:failure))
         end
 
         ##
@@ -129,7 +129,8 @@ module Html2rss
           results = Recon.batch(Option.list(:urls, urls), strategy: FeedPipeline::StrategyPlan.coerce(strategy),
                                                           max_threads: concurrency, **)
           successful = results.count { |result| http_success?(result.status) }
-          BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
+          BatchResult.new(total: results.size, successful:, results: results.map(&:to_h),
+                          errors: results.map(&:failure))
         end
 
         private

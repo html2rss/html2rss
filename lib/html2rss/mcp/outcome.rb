@@ -119,14 +119,16 @@ module Html2rss
         ##
         # @param batch_result [Html2rss::Curation::Batch::BatchResult]
         # @return [Outcome]
-        def batch_scrape(batch_result) = batch(batch_result, NextStep[:scrape]) { |row, error| scrape_row(row, error) }
+        def batch_scrape(batch_result) = batch(batch_result, NextStep[:scrape]) { |row, error| failed_row(row, error) }
 
         ##
         # @param batch_result [Html2rss::Curation::Batch::BatchResult]
         # @param botasaurus_configured [Boolean]
         # @return [Outcome]
         def batch_inspect(batch_result, botasaurus_configured:)
-          batch(batch_result, NextStep[:inspect]) do |row, _error|
+          batch(batch_result, NextStep[:inspect]) do |row, error|
+            next failed_row(row, error, tool: 'inspect') if error
+
             report = Curation::Inspect::Report.new(data: row)
             row.merge(next_step: inspect_decision(report, botasaurus_configured).first.name.to_s)
           end
@@ -136,7 +138,9 @@ module Html2rss
         # @param batch_result [Html2rss::Curation::Batch::BatchResult]
         # @return [Outcome]
         def batch_recon(batch_result)
-          batch(batch_result, NextStep[:recon]) do |row, _error|
+          batch(batch_result, NextStep[:recon]) do |row, error|
+            next failed_row(row, error) if error
+
             row.merge(next_step: recon_next_step(Curation::Recon::Verdict[row.fetch(:verdict)]).name.to_s)
           end
         end
@@ -184,11 +188,12 @@ module Html2rss
           "#{step.guidance} #{failed} of #{batch_result.total} URLs failed: read each failed row's next_step."
         end
 
-        # A failed scrape row is the single-URL error envelope, flattened: same fields, same next_step.
-        def scrape_row(row, error)
+        # A failed row is the single-URL error envelope, flattened: same fields, same next_step as a single call
+        # to +tool+ that raised it.
+        def failed_row(row, error, tool: nil)
           return row unless error
 
-          failure = from_error(error)
+          failure = from_error(error, tool:)
           row.merge(failure.payload, next_step: failure.next_step.name.to_s)
         end
 
