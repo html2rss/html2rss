@@ -182,7 +182,7 @@ module Html2rss
 
     # The one admission rule of {#each} and {#each_enhance_pair}: a linked article, and a URL that enhance
     # supplied (the config gave the item none) may not repeat one already admitted.
-    def admitted?(own_url, article, seen) = article.linked? && [seen.add?(article.url.to_s), own_url].any?
+    def admitted?(own_url, article, seen) = article.linked? && [seen.add?(article.url), own_url].any?
 
     def enhance_article_hash(article_hash, article_tag)
       return article_hash if enhanceable_fields_present?(article_hash)
