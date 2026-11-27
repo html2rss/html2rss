@@ -86,6 +86,16 @@ RSpec.describe Html2rss::Curation::Test::EnhanceAudit do
         end
       end
 
+      context 'when the baseline holds blank values that enhance fills' do
+        let(:pairs) do
+          [[{ description: ' ', categories: [], image: nil }, { description: 'Prose', categories: %w[a] }, plain_item]]
+        end
+
+        it 'counts the fills', :aggregate_failures do
+          expect(slice.enhance_gains.keys_added).to include(description: 1, categories: 1, image: 0)
+        end
+      end
+
       context 'when only non-curator keys are added' do
         let(:pairs) { [[{}, { categories: %w[c], author: 'x' }, plain_item]] }
 
