@@ -26,10 +26,11 @@ module Html2rss
         end
 
         ##
-        # The ship gate: true when the feed has no items.
+        # The ship gate: true when the rendered RSS has no items. Extracted articles with nothing to show are
+        # left out of the RSS, so this checks {#item_count}, not the raw article list.
         #
         # @return [Boolean]
-        def empty? = feed_result.empty?
+        def empty? = item_count.zero?
 
         ##
         # @return [RSS::Rss] the RSS document (built once)
