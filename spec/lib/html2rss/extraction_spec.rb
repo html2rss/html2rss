@@ -34,6 +34,16 @@ RSpec.describe Html2rss::Extraction do
       expect(JSON.parse(JSON.generate(result.articles), symbolize_names: true)).to eq(result.articles)
     end
 
+    it 'lets an explicit channel language win over the page language' do
+      allow(Html2rss::Vocabulary).to receive(:[]).and_call_original
+      response = Html2rss::RequestService::Response.local_html(body: html.sub('<html', '<html lang="de"'), url:)
+
+      described_class.run(response:, auto_source: Html2rss::AutoSource::DEFAULT_CONFIG, clock: clock_for(nil),
+                          responses: {}, channel: { language: 'fr' })
+
+      expect(Html2rss::Vocabulary).to have_received(:[]).with('fr')
+    end
+
     it 'reads the page language for the heuristics' do
       allow(Html2rss::Vocabulary).to receive(:[]).and_call_original
 
@@ -107,7 +117,7 @@ RSpec.describe Html2rss::Extraction do
     end
 
     it 'raises on a now that is not an ISO 8601 time' do
-      expect { described_class.call(page:, now: 'yesterday') }.to raise_error(Html2rss::InvalidOption)
+      expect { described_class.call(page:, now: 'yesterday') }.to raise_error(Html2rss::InvalidOption, /yesterday/)
     end
 
     context 'with a page that advertises a native feed' do
@@ -139,6 +149,14 @@ RSpec.describe Html2rss::Extraction do
         calls = Array.new(2) { described_class.call(page:, now: NOW_ISO, responses: recorded) }
 
         expect(calls.uniq.size).to eq(1)
+      end
+
+      it 'carries the channel facts of the feed it read' do
+        response = Html2rss::RequestService::Response.local_html(body: page[:body], url: page[:url])
+        config = Html2rss::AutoSource::DEFAULT_CONFIG
+        outcome = described_class.run(response:, auto_source: config, clock: clock_for(nil), responses: recorded)
+
+        expect(outcome.feed_channel).to be_a(Html2rss::Syndication::ChannelFacts)
       end
 
       it 'reads a failed request as no feed, and the page items remain', :aggregate_failures do

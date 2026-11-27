@@ -10,7 +10,7 @@ module Html2rss
       class PageCards < Base
         # Absolute base URL used when probe-time detection needs to normalize relative hrefs.
         DETECTION_BASE_URL = 'https://example.com'
-        # The clock of that probe, which reads no dates.
+        # The probe reads no dates.
         DETECTION_CLOCK = AutoSource::Clock.new(now: Time.at(0).utc, time_zone: nil)
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document

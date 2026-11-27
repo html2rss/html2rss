@@ -3,11 +3,10 @@
 module Html2rss
   module Extraction
     ##
-    # The follow-ups of one pass, as the scrapers see them: the object they call {#follow_up} on in place of a
-    # request session. It does no I/O: an answered request is replayed from +responses+, any other is recorded as
-    # wanted and ends that scraper's pass, for the host to fetch and call the kernel again.
+    # What the scrapers call {#follow_up} on in place of a request session. No I/O: an answered request is replayed
+    # from +responses+, any other is recorded as wanted and ends that scraper's pass.
     class Exchange
-      # A failed request the host reported as +{error_kind:}+.
+      # A failed request the host reported with an +:error_kind+.
       class RequestFailed < Html2rss::Error
         # @param kind [Symbol] the {ErrorKind} name
         def initialize(kind)
@@ -22,24 +21,13 @@ module Html2rss
       # One wanted follow-up; +id+ (+"<relation> <url>"+) keys its answer in +responses+.
       Request = Data.define(:id, :url, :relation, :origin_url)
 
-      # Ends a pass; private, so no other +catch+ can intercept a pending request.
+      # Private, so no other +catch+ can intercept a pending request.
       PENDING = Object.new.freeze
       private_constant :PENDING
 
       ##
-      # @param response [Html2rss::RequestService::Response]
-      # @return [Hash{Symbol => Object}] its entry in +responses+
-      def self.answer(response)
-        { url: response.url.to_s, status: response.status, headers: response.headers, body: response.body }
-      end
-
-      ##
-      # @param error [Html2rss::Error] a failed follow-up
-      # @return [Hash{Symbol => Object}] its entry in +responses+
-      def self.failure(error) = { error_kind: error.kind }
-
-      ##
-      # @param entry [Hash{Symbol => Object}] an {.answer}, or a page: +:url+, +:body+, optional +:headers+
+      # @param entry [Hash{Symbol => Object}] an answer in +responses+ (or a page): +:url+, +:body+, and
+      #   optionally +:headers+ and +:status+; a failed request is a lone +:error_kind+ instead
       # @return [Html2rss::RequestService::Response]
       def self.response(entry)
         RequestService::Response.new(body: entry.fetch(:body), url: Url.from_absolute(entry.fetch(:url)),
@@ -63,7 +51,7 @@ module Html2rss
       def guard(&) = catch(PENDING, &)
 
       ##
-      # The call of {Html2rss::RequestSession#follow_up}, answered from +responses+.
+      # {Html2rss::RequestSession#follow_up}, answered from +responses+.
       #
       # @param url [String, Html2rss::Url]
       # @param relation [Symbol]
@@ -74,11 +62,10 @@ module Html2rss
       def follow_up(url:, relation:, origin_url:, **)
         url = Url.from_absolute(url)
         request = Request.new(id: "#{relation} #{url}", url: url.to_s, relation:,
-                              origin_url: Url.from_absolute(origin_url).to_s)
+                              origin_url: origin_url.to_s)
         entry = @responses[request.id] || wish(request)
-        return self.class.response(entry) unless entry.key?(:error_kind)
-
-        raise_failure(ErrorKind[entry[:error_kind]].to_sym)
+        kind = entry[:error_kind]
+        kind ? raise_failure(ErrorKind[kind].to_sym) : self.class.response(entry)
       end
 
       private

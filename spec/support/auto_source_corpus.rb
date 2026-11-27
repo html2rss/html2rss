@@ -78,7 +78,7 @@ module AutoSourceCorpus # rubocop:disable Metrics/ModuleLength -- one cohesive c
     # @return [Html2rss::Extraction::Outcome] +articles+ and +admission_drops+ of the run
     def extraction(path:, url: BASE_URL, request_session: nil)
       Html2rss::FeedPipeline.drive(
-        response: response(path:, url:), options: Html2rss::AutoSource::DEFAULT_CONFIG,
+        response: response(path:, url:), auto_source: Html2rss::AutoSource::DEFAULT_CONFIG,
         clock: Html2rss::AutoSource::Clock.new(now: NOW, time_zone: nil), session: request_session || Offline
       )
     end

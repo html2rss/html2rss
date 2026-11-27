@@ -13,8 +13,6 @@ module Html2rss
       EMPTY_CAPTURED_RESPONSES = [].freeze
       # Default when a strategy returns no cookies.
       EMPTY_COOKIES = {}.freeze
-      # The headers of a page in hand ({.local_html}).
-      HTML_HEADERS = { 'content-type' => 'text/html; charset=utf-8' }.freeze
 
       # Bodies that look like HTML even when Content-Type is missing, empty, or wrong.
       HTML_BODY_SNIFF = /\A\s*(?:<!DOCTYPE\s+html|<html)/i
@@ -64,7 +62,7 @@ module Html2rss
       # @param url [String, Html2rss::Url] the page's absolute URL
       # @return [Response]
       def self.local_html(body:, url:)
-        new(body:, url: Url.from_absolute(url), headers: HTML_HEADERS, status: 200)
+        new(body:, url: Url.from_absolute(url), headers: { 'content-type' => 'text/html; charset=utf-8' }, status: 200)
       end
 
       ##

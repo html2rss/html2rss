@@ -52,7 +52,7 @@ RSpec.describe Html2rss::Extraction::Result do
       error = Html2rss::RequestService::RequestTimedOut.new('slow')
 
       expect(described_class.failure(error))
-        .to have_attributes(status: :error, articles: [], error_kind: Html2rss::ErrorKind[:timeout])
+        .to have_attributes(status: :error, articles: [], error_kind: Html2rss::ErrorKind[:timeout], requests: [])
     end
   end
 end

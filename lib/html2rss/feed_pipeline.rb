@@ -72,15 +72,15 @@ module Html2rss
     #
     # @api private
     # @param response [Html2rss::RequestService::Response] the page
-    # @param options [Hash] validated auto-source options
+    # @param auto_source [Hash] validated auto-source options
     # @param clock [AutoSource::Clock]
     # @param session [#follow_up] a {RequestSession}
     # @param channel [Hash{Symbol => Object}] channel overrides
-    # @return [Extraction::Outcome] the last pass
-    def self.drive(response:, options:, clock:, session:, channel: {})
+    # @return [Extraction::Outcome]
+    def self.drive(response:, auto_source:, clock:, session:, channel: {})
       responses = {}
       loop do
-        outcome = Extraction.run(response:, options:, clock:, responses:, channel:)
+        outcome = Extraction.run(response:, auto_source:, clock:, responses:, channel:)
         return outcome if outcome.requests.empty?
 
         outcome.requests.each { responses[_1.id] = fetch(_1, response, session) }
@@ -94,11 +94,11 @@ module Html2rss
                       end
       response = session.follow_up(url: request.url, relation: request.relation, origin_url: request.origin_url,
                                    advertisement:)
-      Extraction::Exchange.answer(response)
+      { url: response.url.to_s, status: response.status, headers: response.headers, body: response.body }
     rescue Html2rss::ContractError
       raise
     rescue Html2rss::Error => error
-      Extraction::Exchange.failure(error)
+      { error_kind: error.kind }
     end
     private_class_method :fetch
 
@@ -273,7 +273,7 @@ module Html2rss
       return [[], {}, nil] unless (auto_source = config.auto_source)
       return syndication_articles(response) if response.feed_response?
 
-      outcome = self.class.drive(response:, options: auto_source, clock:, session: request_session,
+      outcome = self.class.drive(response:, auto_source:, clock:, session: request_session,
                                  channel: config.channel)
       [outcome.articles, outcome.admission_drops, outcome.feed_channel]
     end

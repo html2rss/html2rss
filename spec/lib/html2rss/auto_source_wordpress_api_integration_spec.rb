@@ -3,7 +3,7 @@
 RSpec.describe Html2rss::AutoSource do
   describe '#articles' do
     subject(:articles) do
-      Html2rss::FeedPipeline.drive(response:, options: config, clock: clock_for(nil),
+      Html2rss::FeedPipeline.drive(response:, auto_source: config, clock: clock_for(nil),
                                    session: request_session).articles
     end
 
@@ -62,7 +62,7 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'with date_gmt under a non-UTC channel time zone' do
       subject(:articles) do
-        Html2rss::FeedPipeline.drive(response:, options: config, clock: clock_for('Europe/Berlin'),
+        Html2rss::FeedPipeline.drive(response:, auto_source: config, clock: clock_for('Europe/Berlin'),
                                      session: request_session).articles
       end
 

@@ -1210,7 +1210,7 @@ RSpec.describe Html2rss::FeedPipeline do
 
   describe 'the extraction driver' do
     subject(:drive) do
-      described_class.drive(response: page, options: Html2rss::AutoSource::DEFAULT_CONFIG, clock: clock_for(nil),
+      described_class.drive(response: page, auto_source: Html2rss::AutoSource::DEFAULT_CONFIG, clock: clock_for(nil),
                             session:)
     end
 

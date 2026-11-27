@@ -28,7 +28,8 @@ def news_case(root)
   response = response_for(body, 'text/html')
   response.instance_variable_set(:@parsed_body, Nokogiri::HTML(body))
   vocabulary = Html2rss::Vocabulary[Html2rss::Channel.language_for(response)]
-  [response, Html2rss::AutoSource.new(response, vocabulary:).articles, nil]
+  clock = Html2rss::AutoSource::Clock.new(now: Time.now, time_zone: nil)
+  [response, Html2rss::AutoSource.new(response, vocabulary:, clock:).articles, nil]
 end
 
 def podcast_case(root)

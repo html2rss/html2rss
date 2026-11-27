@@ -20,12 +20,14 @@ FIXTURES = [
 ].freeze
 
 BASE_URL = 'https://example.com/'
+CLOCK = Html2rss::AutoSource::Clock.new(now: Time.now, time_zone: nil)
 
 def run_heuristics(parsed_body)
-  semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(parsed_body, url: BASE_URL)
+  semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(parsed_body, url: BASE_URL, clock: CLOCK)
   html = Html2rss::AutoSource::Scraper::Html.new(
     parsed_body,
     url: BASE_URL,
+    clock: CLOCK,
     minimum_selector_frequency: 2,
     use_top_selectors: 5
   )
@@ -40,7 +42,8 @@ def run_auto_source(parsed_body, body)
     url:
   )
   response.instance_variable_set(:@parsed_body, parsed_body)
-  Html2rss::AutoSource.new(response, vocabulary: Html2rss::Vocabulary[Html2rss::Channel.language_for(response)]).articles.size
+  Html2rss::AutoSource.new(response, vocabulary: Html2rss::Vocabulary[Html2rss::Channel.language_for(response)],
+                                     clock: CLOCK).articles.size
 end
 
 root = File.expand_path('..', __dir__)
