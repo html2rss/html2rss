@@ -133,7 +133,7 @@ RSpec.describe Html2rss::MCP::Server do
         expect(result.dig(:result, :isError)).to be(false)
       end
 
-      it 'points an empty scrape at read_runtime when Botasaurus is unset', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
+      it 'points an empty scrape at inspect when Botasaurus is unset', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
         feed_result = instance_double(
           Html2rss::FeedResult,
           to_json_feed: { title: 'Channel', items: [] },
@@ -146,7 +146,7 @@ RSpec.describe Html2rss::MCP::Server do
           envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
           expect(result.dig(:result, :isError)).to be(false)
-          expect(envelope[:next_step]).to eq('read_runtime')
+          expect(envelope[:next_step]).to eq('inspect')
         end
       end
     end
@@ -352,7 +352,7 @@ RSpec.describe Html2rss::MCP::Server do
         )
       end
 
-      it 'routes quality failure next_step to capture', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'routes quality failure next_step to stop', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         quality_report = Html2rss::Curation::Test::QualityReport.new(
           warnings: [:duplicate_urls],
           metrics: { item_count: 2, unique_url_count: 1, junk_title_count: 0, short_title_count: 0,
@@ -373,7 +373,7 @@ RSpec.describe Html2rss::MCP::Server do
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(true)
-        expect(envelope).to include(ok: false, next_step: 'capture')
+        expect(envelope).to include(ok: false, next_step: 'stop')
         expect(envelope[:payload]).to include(failure_kind: 'quality')
         expect(envelope[:guidance]).to include('quality_report')
       end

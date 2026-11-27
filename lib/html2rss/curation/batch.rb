@@ -11,8 +11,25 @@ module Html2rss
       # Default worker threads for batch operations.
       DEFAULT_CONCURRENCY = 5
 
-      # Outcome of a batch operation; +to_h+ is provided by Data.
-      BatchResult = Data.define(:total, :successful, :results)
+      BatchResult = Data.define(:total, :successful, :results, :errors)
+
+      ##
+      # Outcome of a batch operation. +errors+ holds the exception behind each failed row (nil elsewhere, same
+      # order as +results+) for callers that classify failures; it is not part of the wire +to_h+.
+      class BatchResult
+        # @param total [Integer]
+        # @param successful [Integer]
+        # @param results [Array<Object>] rows; a row's +:failure+ exception moves into +errors+
+        # @param errors [Array<Exception, nil>] defaults to the rows' +:failure+ values
+        def initialize(total:, successful:, results:, errors: results.map { |row| row[:failure] if row.is_a?(Hash) })
+          super(total:, successful:, errors:,
+                results: results.map { |row| row.is_a?(Hash) ? row.except(:failure) : row })
+        end
+
+        ##
+        # @return [Hash{Symbol => Object}] +:total+, +:successful+, +:results+
+        def to_h(&) = super.except(:errors)
+      end
 
       class << self
         ##
@@ -145,7 +162,7 @@ module Html2rss
         rescue Html2rss::ContractError
           raise
         rescue Html2rss::Error => error
-          { url: url.to_s, ok: false, error: error.message }
+          { url: url.to_s, ok: false, error: error.message, failure: error }
         end
 
         def process_queue(items, worker_count, &)
