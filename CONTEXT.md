@@ -24,7 +24,7 @@ Experimental: `Html2rss::Extraction.call(html:, url:, limit:, keep_different_dom
 - **Scope today (T1):** one auto-source pass over the given page. A scraper that needs a follow-up fetch (native feed, WordPress API, sitemap, entry resolution) finds nothing. Selectors, `items_selector`, `resolution_scope` and `local_file_path` stay with `FeedPipeline`.
 - **Kernel proposes, host disposes:** the kernel will name the follow-up requests it wants; the host keeps request policy (budget, SSRF guard, strategy) and fetches them.
 - **One owner per rule:** `AutoSource.options` owns the option defaults, `Extraction.unique` and `Extraction.with_url_dates` own dedup, `limit` and the URL date fallback for every path; `Response.local_html` owns the in-memory page (`LocalFileStrategy` reads a file into it).
-- **Load isolation:** `require 'html2rss'` no longer eager-loads, so an extraction loads no transport, MCP, CLI or server code (`spec/lib/html2rss/extraction_spec.rb` runs a fresh process). `Url` still pulls `socket` through `ipaddr`.
+- **Load isolation:** `require 'html2rss'` no longer eager-loads, so an extraction loads no transport, MCP, CLI or server code (`spec/lib/html2rss/extraction_spec.rb` runs a fresh process).
 - **Two-tier gate:** host parity is byte-identical per kernel build (the same HTML gives the same result in the gem and in wasm); implementation changes are judged by the corpus ratchet (`spec/fixtures/auto_source/corpus/baseline.yml`).
 - **Nokogiri is not kernel identity:** the contract is data in, data out; a different parser may replace it later.
 - **Planned:**

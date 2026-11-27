@@ -8,10 +8,6 @@ module Html2rss
   # (native feed, WordPress API, sitemap, entry resolution) finds nothing here; the host owns every request.
   # See CONTEXT.md § Extraction kernel.
   module Extraction
-    # Channel time zone the URL-path date fallback reads, as {Config.default_config} sets it.
-    TIME_ZONE = 'UTC'
-    private_constant :TIME_ZONE
-
     ##
     # @param html [String] the page body
     # @param url [String, Html2rss::Url] the page's absolute URL
@@ -36,9 +32,9 @@ module Html2rss
     # auto-source and syndication articles are capped together).
     #
     # @param articles [Array<Html2rss::Article>]
-    # @param limit [Integer, nil] max articles to keep (nil keeps all)
+    # @param limit [Integer, nil] max articles to keep (nil keeps all; {AutoSource} already caps its own)
     # @return [Array<Html2rss::Article>]
-    def self.unique(articles, limit:)
+    def self.unique(articles, limit: nil)
       unique = Article::Deduplicator.new(articles).call
       limit ? unique.first(limit) : unique
     end
@@ -77,7 +73,7 @@ module Html2rss
     # merge and dedup, so no earlier stage (card walk, merge, scoring) ever sees a URL date.
     #
     # @param articles [Array<Html2rss::Article>]
-    # @param time_zone [String] channel time zone
+    # @param time_zone [String, nil] channel time zone (nil reads as UTC)
     # @return [Array<Html2rss::Article>] +articles+, each undated one dated by its URL path when it names one
     def self.with_url_dates(articles, time_zone)
       articles.map do |article|
@@ -92,8 +88,8 @@ module Html2rss
     def self.extract(response, auto_source)
       vocabulary = Vocabulary[Channel.language_for(response)]
       articles = AutoSource.new(response, auto_source, vocabulary:).articles
-      kept = without_shared_categories(without_tracking(unique(articles, limit: auto_source[:limit])))
-      with_url_dates(kept, TIME_ZONE)
+      kept = without_shared_categories(without_tracking(unique(articles)))
+      with_url_dates(kept, nil)
     end
     private_class_method :extract
   end

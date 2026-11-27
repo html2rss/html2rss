@@ -24,6 +24,40 @@ RSpec.describe Html2rss::Extraction do
       expect(JSON.parse(JSON.generate(result.articles), symbolize_names: true)).to eq(result.articles)
     end
 
+    it 'reads the page language for the heuristics' do
+      allow(Html2rss::Vocabulary).to receive(:[]).and_call_original
+
+      described_class.call(html: html.sub('<html', '<html lang="de"'), url:)
+
+      expect(Html2rss::Vocabulary).to have_received(:[]).with('de')
+    end
+
+    it 'dates an undated article from its URL path' do
+      page = '<html><body><article><h2><a href="/news/2024/05/12/harbor-library-plans-summer">Harbor library ' \
+             'plans a summer reading room</a></h2><p>Residents will read.</p></article></body></html>'
+
+      expect(described_class.call(html: page, url:).articles.filter_map { _1[:published_at] })
+        .to all(start_with('2024-05-12'))
+    end
+
+    it 'passes the options to the auto-source run' do
+      allow(Html2rss::AutoSource).to receive(:new).and_call_original
+
+      described_class.call(html:, url:, limit: 3, keep_sponsored: true, keep_different_domain: true)
+      cleanup = { keep_sponsored: true, keep_different_domain: true }
+
+      expect(Html2rss::AutoSource)
+        .to have_received(:new).with(anything, hash_including(limit: 3, cleanup:), vocabulary: anything)
+    end
+
+    it 'deduplicates the articles the scrapers return' do
+      article = Html2rss::Article.new(url: 'https://example.com/a', title: 'A')
+      allow(Html2rss::AutoSource).to receive(:new).and_return(instance_double(Html2rss::AutoSource,
+                                                                              articles: [article, article]))
+
+      expect(described_class.call(html:, url:).articles.size).to eq(1)
+    end
+
     it 'keeps the requested limit' do
       expect(described_class.call(html:, url:, limit: 3).articles.size).to eq(3)
     end
@@ -41,6 +75,41 @@ RSpec.describe Html2rss::Extraction do
 
     it 'raises on an invalid option' do
       expect { described_class.call(html:, url:, limit: 0) }.to raise_error(Html2rss::InvalidOption)
+    end
+  end
+
+  describe '.unique' do
+    let(:articles) do
+      [Html2rss::Article.new(url: 'https://example.com/a', title: 'A'),
+       Html2rss::Article.new(url: 'https://example.com/a', title: 'A again'),
+       Html2rss::Article.new(url: 'https://example.com/b', title: 'B'),
+       Html2rss::Article.new(url: 'https://example.com/c', title: 'C')]
+    end
+
+    it 'drops duplicates and keeps the first limit articles', :aggregate_failures do
+      expect(described_class.unique(articles, limit: nil).map(&:title)).to eq(%w[A B C])
+      expect(described_class.unique(articles, limit: 2).map(&:title)).to eq(%w[A B])
+      expect(described_class.unique(articles).map(&:title)).to eq(%w[A B C])
+    end
+  end
+
+  describe '.with_url_dates' do
+    let(:dated) { Html2rss::Article.new(url: 'https://example.com/2024/05/12/a', published_at: '2020-01-01T00:00:00+00:00') }
+    let(:undated) { Html2rss::Article.new(url: 'https://example.com/2024/05/13/b') }
+    let(:no_date_in_url) { Html2rss::Article.new(url: 'https://example.com/c') }
+
+    it 'dates only the articles without a date whose URL names one', :aggregate_failures do
+      result = described_class.with_url_dates([dated, undated, no_date_in_url], 'UTC')
+
+      expect(result.map { _1.published_at&.iso8601 })
+        .to eq(['2020-01-01T00:00:00+00:00', '2024-05-13T00:00:00+00:00', nil])
+      expect([result.first, result.last]).to eq([dated, no_date_in_url])
+      expect(result.last).to equal(no_date_in_url)
+    end
+
+    it 'reads the URL date in the given time zone' do
+      expect(described_class.with_url_dates([undated], 'Asia/Tokyo').first.published_at.iso8601)
+        .to eq('2024-05-13T00:00:00+09:00')
     end
   end
 
@@ -63,14 +132,10 @@ RSpec.describe Html2rss::Extraction do
     it 'runs one extraction without loading the network or server stack' do
       forbidden = Regexp.union(
         %r{/(?:httpx|mcp|thor|rack|rackup|webrick|brotli)-[\d.]+/lib/},
-        %r{(?:^|/)(?:openssl|io/wait)\.(?:rb|so|bundle)$}, %r{/openssl/}
+        %r{(?:^|/)(?:socket|openssl|io/wait)\.(?:rb|so|bundle)$}, %r{/openssl/}
       )
 
       expect(features.grep(forbidden)).to eq([])
-    end
-
-    it 'loads no socket', pending: 'Url requires ipaddr, which loads socket' do
-      expect(features.grep(%r{(?:^|/)socket\.(?:rb|so|bundle)$})).to eq([])
     end
   end
 end
