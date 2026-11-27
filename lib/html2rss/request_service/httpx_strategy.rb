@@ -187,7 +187,6 @@ module Html2rss
           timeout: session_timeouts(remaining),
           max_redirects: ctx.policy.max_redirects,
           follow_insecure_redirects: false,
-          max_response_body_size: ctx.policy.max_stream_bytes,
           resolver_class: :system,
           redirect_on: redirect_callback,
           **RETRY_OPTIONS.merge(max_retries: 0)
@@ -253,10 +252,6 @@ module Html2rss
 
       def ssrf_error?(error)
         error.is_a?(HTTPX::ServerSideRequestForgeryError) || super
-      end
-
-      def response_too_large_error?(error)
-        (error.is_a?(HTTPX::Error) && error.message.include?('maximum response body size exceeded')) || super
       end
 
       def connection_error?(error)

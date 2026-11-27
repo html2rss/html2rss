@@ -118,7 +118,7 @@ module Html2rss
       # @param error [StandardError]
       # @return [void]
       # @raise [StandardError]
-      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- error translation dispatch
+      # rubocop:disable-next Metrics/MethodLength -- error translation dispatch
       def handle_error(error)
         if timeout_error?(error)
           log_timeout!(reason: 'transport')
@@ -126,8 +126,6 @@ module Html2rss
           raise RequestTimedOut, error.message
         elsif ssrf_error?(error)
           raise PrivateNetworkDenied, error.message
-        elsif response_too_large_error?(error)
-          raise ResponseTooLarge, "Response exceeded #{ctx.policy.max_stream_bytes} bytes"
         elsif connection_error?(error)
           translate_connection_error(error)
         else
@@ -172,12 +170,6 @@ module Html2rss
       # @param _error [StandardError]
       # @return [Boolean]
       def ssrf_error?(_error)
-        false
-      end
-
-      # @param _error [StandardError]
-      # @return [Boolean]
-      def response_too_large_error?(_error)
         false
       end
 

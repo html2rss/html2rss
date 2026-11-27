@@ -341,6 +341,25 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       expect(session).to have_received(:get).exactly(3).times
       expect(session).to have_received(:with).with(hash_including(max_retries: 0)).at_least(:once)
     end
+
+    # rubocop:disable-next RSpec/ExampleLength -- a stream that times out after its first chunk, then a clean one
+    it 'retries a timeout raised mid-body as one budgeted request', :aggregate_failures do
+      session = instance_double(HTTPX::Session)
+      timeout = HTTPX::TimeoutError.new({ read_timeout: 5 }, 'timed out')
+      # rubocop:disable-next RSpec/VerifiedDoubles -- StreamResponse delegates via method_missing
+      streams = Array.new(2) do
+        double('stream', status: 200, uri: URI('https://example.com'),
+                         headers: instance_double(HTTPX::Headers, to_h: { 'content-type' => 'text/html' }))
+      end
+      allow(streams.first).to receive(:each).and_yield('<html>par').and_raise(timeout)
+      allow(streams.last).to receive(:each).and_yield('<html>ok</html>')
+      allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
+      allow(session).to receive(:with).and_return(session)
+      allow(session).to receive(:get).and_return(*streams)
+
+      expect(execute.body).to eq('<html>ok</html>')
+      expect(budget).to have_received(:consume!).once
+    end
   end
 
   describe 'budget slot per request' do
