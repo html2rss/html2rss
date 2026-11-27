@@ -263,6 +263,23 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when the page is a sitemap' do
+      let(:body) do
+        <<~XML
+          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+            <url><loc>https://example.com/a</loc><news:news><news:title>Sitemap Story Title</news:title></news:news></url>
+          </urlset>
+        XML
+      end
+      let(:response) { Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/html' }, url:) }
+
+      it 'keeps sitemap entries through Cleanup', :aggregate_failures do
+        articles = described_class.new(response, described_class::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+        expect(articles.map(&:scraper)).to eq([Html2rss::AutoSource::Scraper::Sitemap])
+        expect(articles.map(&:id)).to eq(['https://example.com/a'])
+      end
+    end
+
     context 'when structured scrapers already yield enough articles' do
       let(:schema_items) do
         Array.new(6) do |index|
