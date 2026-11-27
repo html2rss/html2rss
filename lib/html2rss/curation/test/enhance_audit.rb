@@ -148,7 +148,7 @@ module Html2rss
             next if present_value?(baseline[key])
             next if key == :description && !real_description?(value, enhanced[:title])
 
-            counts[key] = (counts[key] || 0) + 1
+            counts[key] = 1
           end
         end
         private_class_method :keys_added
