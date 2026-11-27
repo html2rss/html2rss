@@ -30,8 +30,8 @@ module Html2rss
         CREDIT_HOST = /\A\p{L}[\p{L}\d-]{0,30}(?:\.[\p{L}\d-]{1,30}){0,3}\.\p{L}{2,12}\z/
         # Longest line that counts as a credit or a label rather than prose.
         MAX_LABEL_CHARS = 60
-        # One to four words, as a leading label holds ("Category SDK Published").
-        LABEL_SHAPE = /\A\S+(?:\s\S+){0,3}\z/
+        # One to four words within {MAX_LABEL_CHARS}, as a leading label holds ("Category SDK Published").
+        LABEL_SHAPE = /\A(?=.{1,#{MAX_LABEL_CHARS}}\z)\S+(?:\s\S+){0,3}\z/
         # A line must be at least this long to count as the paragraph a leading label belongs to.
         MIN_PARAGRAPH_CHARS = 40
         # List markup prefix the text reader puts on list items.
@@ -129,7 +129,7 @@ module Html2rss
           # A short unpunctuated first line is a label ("Category SDK Published") once a paragraph follows it.
           def drop_leading_label(lines)
             first, *rest = lines
-            return lines unless first && fragment?(first) && first.length <= MAX_LABEL_CHARS && first.match?(LABEL_SHAPE)
+            return lines unless first && fragment?(first) && first.match?(LABEL_SHAPE)
             return lines unless rest.any? { |line| line.length >= MIN_PARAGRAPH_CHARS }
 
             rest
