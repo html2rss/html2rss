@@ -132,6 +132,33 @@ RSpec.describe Html2rss::AutoSource::EntryResolution::CandidateGenerator do
     expect(urls.grep(/javascript:|mailto:/)).to be_empty
   end
 
+  context 'with a section entry that advertises a site-wide feed' do
+    let(:entry_url) { 'https://example.com/politik/' }
+    let(:html) do
+      <<~HTML
+        <html><head><link rel="alternate" type="application/rss+xml" href="/feed.xml"></head><body>
+        <header><a href="/politik/news/">News</a><a href="/blog">Blog</a></header></body></html>
+      HTML
+    end
+
+    it 'keeps only in-scope candidates and counts the skipped ones', :aggregate_failures do
+      generator = described_class.new(entry_url:, response:, vocabulary:, max: 5)
+      urls = generator.call.map(&:to_s)
+
+      expect(urls).to include('https://example.com/politik/news/', 'https://example.com/politik/feed')
+      expect(urls).to all(start_with('https://example.com/politik/'))
+      expect(generator.out_of_scope_count).to eq(15)
+    end
+
+    it 'lets the site scope take the site feed and the nav pages', :aggregate_failures do
+      scope = Html2rss::AutoSource::EntryResolution::Scope['site']
+      generator = described_class.new(entry_url:, response:, vocabulary:, max: 5, scope:)
+
+      expect(generator.call.map(&:to_s)).to include('https://example.com/feed.xml', 'https://example.com/blog')
+      expect(generator.out_of_scope_count).to eq(0)
+    end
+  end
+
   context 'when the response is not HTML' do
     let(:response) do
       Html2rss::RequestService::Response.new(

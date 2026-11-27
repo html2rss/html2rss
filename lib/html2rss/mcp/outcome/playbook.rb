@@ -18,7 +18,9 @@ module Html2rss
           apply: 'Call apply next. Confirm payload.item_count before shipping.',
           scrape: 'Call scrape for articles now. strategy auto already runs default (HTTPX) then Botasaurus ' \
                   'and promotes native RSS/Atom when present. Compare payload.scrape_url to the requested URL; ' \
-                  'when payload.entry_resolution is present the items come from that page.',
+                  'when payload.entry_resolution is present the items come from that page unless its reason is ' \
+                  'no_in_scope_winner (every better page lay outside the requested section; retry with ' \
+                  'resolution_scope site or use recon).',
           capture: 'Call capture for a reusable YAML draft, then follow next_step.',
           read_runtime: 'Read html2rss://runtime. Compare mcp_contract_version and catalog_fingerprint ' \
                         'to your cached tools/list before retrying unknown tools. ' \

@@ -15,13 +15,15 @@ module Html2rss
       # Default entry-resolution options merged into AutoSource::DEFAULT_CONFIG.
       DEFAULT_CONFIG = {
         enabled: true,
-        max_probes: 5
+        max_probes: 5,
+        scope: 'section'
       }.freeze
 
       ##
       # Tournament outcome for one entry-resolution attempt. +response+ is the winner's already fetched
       # response (nil unless applied), so the caller extracts it without fetching the winner again.
-      Result = Data.define(:entry_url, :scrape_url, :applied, :reason, :probe_count, :winner_score, :response)
+      Result = Data.define(:entry_url, :scrape_url, :applied, :reason, :probe_count, :winner_score, :response,
+                           :out_of_scope)
 
       ##
       # @param auto_source [Hash, nil]
@@ -64,16 +66,10 @@ module Html2rss
 
         ##
         # @return [Result, nil] nil when the entry page does not warrant a tournament
-        # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- eligibility → candidates → probe → select
         def call
           return unless eligible?
 
-          candidates = CandidateGenerator.call(
-            entry_url:,
-            response:,
-            vocabulary: Vocabulary[Channel.language_for(response, config.channel)],
-            max: max_probes
-          )
+          candidates = generator.call
           return skip(:no_candidates) if candidates.empty?
 
           scored = probe_candidates(candidates)
@@ -86,6 +82,13 @@ module Html2rss
         private
 
         attr_reader :entry_url, :response, :session, :config, :articles, :slots
+
+        def generator
+          @generator ||= CandidateGenerator.new(
+            entry_url:, response:, max: max_probes, scope: Options.from_auto_source(config.auto_source).scope,
+            vocabulary: Vocabulary[Channel.language_for(response, config.channel)]
+          )
+        end
 
         def eligible?
           return false if response.feed_response? || max_probes < 1
@@ -107,14 +110,17 @@ module Html2rss
         def apply(winner, probe_count:)
           log(Result.new(
                 entry_url: entry_url.to_s, scrape_url: winner.url.to_s, applied: true, reason: :winner,
-                probe_count:, winner_score: winner.score, response: winner.response
+                probe_count:, winner_score: winner.score, response: winner.response, out_of_scope: 0
               ))
         end
 
+        # An entry that kept its own items because every better page lay outside the scope says so.
         def skip(reason, probe_count: 0)
+          out_of_scope = generator.out_of_scope_count
+          reason = :no_in_scope_winner if out_of_scope.positive?
           log(Result.new(
                 entry_url: entry_url.to_s, scrape_url: entry_url.to_s, applied: false, reason:,
-                probe_count:, winner_score: nil, response: nil
+                probe_count:, winner_score: nil, response: nil, out_of_scope:
               ))
         end
 

@@ -165,7 +165,7 @@ RSpec.describe Html2rss::Status do
 
     it 'freezes EntryResolution::Diag entry_resolution as a symbol-key hash', :aggregate_failures do
       diag = Html2rss::AutoSource::EntryResolution::Diag.new(applied: true, probe_count: 2, reason: :winner,
-                                                             winner_score: 4)
+                                                             winner_score: 4, out_of_scope: 0)
       status = described_class.build(articles: [], dedup_dropped: 0, entry_resolution: diag)
 
       expect(status.entry_resolution).to eq(applied: true, probe_count: 2, reason: :winner, winner_score: 4)

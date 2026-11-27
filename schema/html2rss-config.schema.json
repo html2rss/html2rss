@@ -179,6 +179,14 @@
                 "type": "null"
               },
               "exclusiveMinimum": 0
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "enum": [
+                "section",
+                "site"
+              ]
             }
           },
           "required": []
@@ -404,7 +412,8 @@
         "limit": 50,
         "entry_resolution": {
           "enabled": true,
-          "max_probes": 5
+          "max_probes": 5,
+          "scope": "section"
         },
         "scraper": {
           "native_feed": {

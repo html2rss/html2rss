@@ -49,11 +49,13 @@ module Html2rss
         # @param strategy [Symbol, String]
         # @param limit [Integer]
         # @param items_selector [String, nil]
+        # @param resolution_scope [String, Symbol, nil] +section+ or +site+
         # @return [Hash{Symbol => Object}] +:strategy+, +:items+, +:channel_title+, +:admission_drops+,
-        #   +:scrape_url+ and, only when entry resolution was applied, +:entry_resolution+
-        def scrape_wire(url:, strategy:, limit:, items_selector: nil)
+        #   +:scrape_url+ and, only when entry resolution was applied or kept the entry for lack of an in-scope
+        #   winner, +:entry_resolution+
+        def scrape_wire(url:, strategy:, limit:, items_selector: nil, resolution_scope: nil)
           plan = FeedPipeline::StrategyPlan.coerce(strategy)
-          feed_result = Html2rss.scrape(url, strategy: plan, limit:, **{ items_selector: }.compact)
+          feed_result = Html2rss.scrape(url, strategy: plan, limit:, **{ items_selector:, resolution_scope: }.compact)
           feed = feed_result.to_json_feed
           {
             strategy: plan,
@@ -71,11 +73,14 @@ module Html2rss
         # @param strategy [Symbol, String] request strategy (+:auto+, +:default+, +:botasaurus+)
         # @param limit [Integer] max articles to extract per URL
         # @param concurrency [Integer] number of worker threads (default 5, max 10)
+        # @param resolution_scope [String, Symbol, nil] +section+ or +site+
         # @return [BatchResult]
-        def batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: DEFAULT_CONCURRENCY)
+        def batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: DEFAULT_CONCURRENCY, resolution_scope: nil)
           strategy = FeedPipeline::StrategyPlan.coerce(strategy)
           Option.integer(:limit, limit, min: 1)
-          run(Option.list(:urls, urls), concurrency:) { |url| scrape_single_url(url:, strategy:, limit:) }
+          run(Option.list(:urls, urls), concurrency:) do |url|
+            scrape_single_url(url:, strategy:, limit:, resolution_scope:)
+          end
         end
 
         ##
@@ -120,16 +125,18 @@ module Html2rss
           !status.nil? && status < 400
         end
 
-        # The page the items came from: entry resolution may swap the requested URL for a better page or feed.
+        # The page the items came from: entry resolution may swap the requested URL for a better page or feed,
+        # or keep it when every better page lay outside the requested section.
         def page_wire(status, requested_url)
           wire = { scrape_url: status.scrape_url || requested_url.to_s }
           resolution = status.entry_resolution
-          wire[:entry_resolution] = resolution if resolution&.[](:applied)
+          kept = resolution&.[](:reason) == :no_in_scope_winner
+          wire[:entry_resolution] = resolution if resolution&.[](:applied) || kept
           wire
         end
 
-        def scrape_single_url(url:, strategy:, limit:)
-          wire = scrape_wire(url:, strategy:, limit:)
+        def scrape_single_url(url:, strategy:, limit:, resolution_scope: nil)
+          wire = scrape_wire(url:, strategy:, limit:, resolution_scope:)
           {
             url: url.to_s, ok: true, items_count: wire.fetch(:items).size,
             items: wire.fetch(:items), channel_title: wire.fetch(:channel_title),

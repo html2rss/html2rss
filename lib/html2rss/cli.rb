@@ -208,6 +208,8 @@ module Html2rss
                                                 'supplied by the source (no affiliation/safety check)'
     method_option :keep_sponsored, type: :boolean, default: false,
                                    desc: 'Keep items the page marks as sponsored (rel="sponsored" or ad labels)'
+    method_option :resolution_scope, type: :string, enum: %w[section site],
+                                     desc: 'How far entry resolution may leave the requested URL (default: section)'
     # @param url [String, nil]
     # @return [void]
     def scrape(url = nil)
@@ -422,7 +424,7 @@ module Html2rss
         max_requests: options[:max_requests],
         local_file_path:,
         limit: options[:limit],
-        **cleanup_overrides
+        **scrape_overrides
       )
     end
 
@@ -434,8 +436,9 @@ module Html2rss
       }
     end
 
-    def cleanup_overrides
-      { keep_different_domain: options[:keep_different_domain], keep_sponsored: options[:keep_sponsored] }
+    def scrape_overrides
+      { keep_different_domain: options[:keep_different_domain], keep_sponsored: options[:keep_sponsored],
+        resolution_scope: options[:resolution_scope] }
     end
 
     def explain_json!(payload)

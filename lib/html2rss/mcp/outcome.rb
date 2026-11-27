@@ -52,7 +52,8 @@ module Html2rss
         # @param botasaurus_configured [Boolean]
         # @option wire [String] :scrape_url required; the page the items were extracted from
         # @option wire [Hash] :admission_drops Cleanup reason counts
-        # @option wire [Hash] :entry_resolution diagnostics, only when entry resolution was applied
+        # @option wire [Hash] :entry_resolution diagnostics, when entry resolution was applied
+        #   or kept the entry (+no_in_scope_winner+)
         # @return [Outcome]
         def scrape(items:, requested_strategy:, channel_title:, botasaurus_configured:, **wire)
           next_step = scrape_next_step(items.empty?, botasaurus_configured:)

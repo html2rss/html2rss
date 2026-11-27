@@ -76,6 +76,26 @@ RSpec.describe Html2rss::AutoSource::EntryResolution do
     expect(session).to have_received(:follow_up).at_most(2).times
   end
 
+  context 'with a section entry whose better pages lie outside the section' do
+    let(:entry_url) { 'https://example.com/politik/' }
+
+    it 'keeps the entry and reports the out-of-scope skip', :aggregate_failures do
+      allow(session).to receive(:follow_up).and_return(response)
+
+      expect(resolution).to have_attributes(applied: false, reason: :no_in_scope_winner,
+                                            scrape_url: entry_url, out_of_scope: be >= 1)
+      expect(session).to have_received(:follow_up).with(hash_including(url: Html2rss::Url.from_absolute("#{entry_url}feed"))).once
+    end
+
+    it 'probes the outside page under scope site', :aggregate_failures do
+      allow(session).to receive(:follow_up).and_return(listing)
+      allow(config).to receive(:auto_source).and_return(entry_resolution: { max_probes: 2, scope: 'site' })
+
+      expect(resolution).to have_attributes(applied: true, scrape_url: 'https://example.com/news')
+      expect(session).to have_received(:follow_up).with(hash_including(url: Html2rss::Url.from_absolute('https://example.com/news')))
+    end
+  end
+
   it 'runs no tournament without a request slot', :aggregate_failures do
     allow(session).to receive(:follow_up)
 
@@ -147,7 +167,9 @@ RSpec.describe Html2rss::AutoSource::EntryResolution do
   end
 
   it 'skips when the entry page leaves no candidate to probe', :aggregate_failures do
-    allow(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to receive(:call).and_return([])
+    allow(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to receive(:new)
+      .and_return(instance_double(Html2rss::AutoSource::EntryResolution::CandidateGenerator,
+                                  call: [], out_of_scope_count: 0))
     allow(session).to receive(:follow_up)
 
     expect(resolution).to have_attributes(applied: false, reason: :no_candidates, probe_count: 0, scrape_url: entry_url)
@@ -157,13 +179,13 @@ RSpec.describe Html2rss::AutoSource::EntryResolution do
   it 'reads the vocabulary and the probes from the channel language', :aggregate_failures do
     finnish = instance_double(Html2rss::Config, url: entry_url, auto_source: { entry_resolution: { max_probes: 1 } },
                                                 selectors: nil, channel: { language: 'fi' })
-    allow(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to receive(:call).and_call_original
+    allow(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to receive(:new).and_call_original
     allow(Html2rss::AutoSource::EntryResolution::Probe).to receive(:new).and_call_original
     allow(session).to receive(:follow_up).and_return(listing)
 
     described_class.call(response:, session:, config: finnish, articles: [], slots: 5)
 
-    expect(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to have_received(:call)
+    expect(Html2rss::AutoSource::EntryResolution::CandidateGenerator).to have_received(:new)
       .with(hash_including(vocabulary: Html2rss::Vocabulary['fi'], max: 1))
     expect(Html2rss::AutoSource::EntryResolution::Probe).to have_received(:new)
       .with(request_session: session, origin_url: Html2rss::Url.from_absolute(entry_url), channel: { language: 'fi' })

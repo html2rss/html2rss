@@ -21,19 +21,29 @@ RSpec.describe Html2rss::AutoSource::EntryResolution::Options do
 
       expect(options).to have_attributes(enabled: false, max_probes: 1)
     end
+
+    it 'defaults to section and reads the configured scope', :aggregate_failures do
+      expect(described_class.from_auto_source(nil).scope).to be(Html2rss::AutoSource::EntryResolution::Scope::DEFAULT)
+      expect(described_class.from_auto_source(entry_resolution: { scope: 'site' }).scope.name).to eq(:site)
+    end
+
+    it 'rejects an unknown scope' do
+      expect { described_class.from_auto_source(entry_resolution: { scope: 'galaxy' }) }
+        .to raise_error(Html2rss::InvalidOption)
+    end
   end
 
   describe '#request_slots' do
     it 'reserves one slot per probe when enabled' do
-      expect(described_class.new(enabled: true, max_probes: 5).request_slots).to eq(5)
+      expect(described_class.new(enabled: true, max_probes: 5, scope: nil).request_slots).to eq(5)
     end
 
     it 'returns zero when disabled' do
-      expect(described_class.new(enabled: false, max_probes: 5).request_slots).to eq(0)
+      expect(described_class.new(enabled: false, max_probes: 5, scope: nil).request_slots).to eq(0)
     end
 
     it 'reserves nothing when there are no probes' do
-      expect(described_class.new(enabled: true, max_probes: 0).request_slots).to eq(0)
+      expect(described_class.new(enabled: true, max_probes: 0, scope: nil).request_slots).to eq(0)
     end
   end
 end

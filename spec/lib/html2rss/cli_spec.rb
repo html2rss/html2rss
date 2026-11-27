@@ -749,6 +749,17 @@ RSpec.describe Html2rss::CLI do
         .to raise_error(Thor::Error, /limit must be an Integer in 1\.\., got 2\.5/)
     end
 
+    it 'maps --resolution-scope into the entry-resolution config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss).to receive(:scrape).and_call_original
+      allow(Html2rss).to receive(:feed_result) do |config|
+        expect(config.dig(:auto_source, :entry_resolution, :scope)).to eq('site')
+        feed_res
+      end
+
+      expect { cli.invoke(:scrape, ['https://example.com/news'], { resolution_scope: 'site' }) }
+        .to output("#{rss_xml}\n").to_stdout
+    end
+
     it 'defaults --keep-different-domain to false and documents the trust tradeoff', :aggregate_failures do
       option = described_class.commands['scrape'].options[:keep_different_domain]
 

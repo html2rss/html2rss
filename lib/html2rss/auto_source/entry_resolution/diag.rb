@@ -3,7 +3,7 @@
 module Html2rss
   class AutoSource
     module EntryResolution
-      Diag = Data.define(:applied, :probe_count, :reason, :winner_score)
+      Diag = Data.define(:applied, :probe_count, :reason, :winner_score, :out_of_scope)
 
       ##
       # Wire-safe diagnostics for one entry-resolution attempt (Status / Marshal edge).
@@ -16,7 +16,8 @@ module Html2rss
             applied: result.applied,
             probe_count: result.probe_count,
             reason: result.reason,
-            winner_score: result.winner_score
+            winner_score: result.winner_score,
+            out_of_scope: result.out_of_scope
           )
         end
 
@@ -27,7 +28,8 @@ module Html2rss
             applied:,
             probe_count:,
             reason:,
-            **(winner_score.nil? ? {} : { winner_score: })
+            **(winner_score.nil? ? {} : { winner_score: }),
+            **(out_of_scope.positive? ? { out_of_scope_skipped: out_of_scope } : {})
           }
         end
       end

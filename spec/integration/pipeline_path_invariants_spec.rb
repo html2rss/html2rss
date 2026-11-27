@@ -53,6 +53,17 @@ RSpec.describe 'Pipeline path invariants' do
       </head><body><header><nav>#{nav}</nav></header><main><h1>Welcome</h1></main></body></html>
     HTML
   end
+  let(:section_page) do
+    lambda do |nav|
+      articles = (1..2).map do |i|
+        "<article><h2><a href='#{origin}/politik/story-#{i}-about-something-long'>Story #{i} about something long " \
+          "enough</a></h2><p>Summary text number #{i} that is reasonably long to look like an excerpt.</p></article>"
+      end
+      "<html><head><title>Politik</title><link rel='alternate' type='application/rss+xml' href='#{origin}/feed.xml'>" \
+        "</head><body><header><nav><a href='/blog/'>blog</a><a href='/news/'>news</a>#{nav}</nav></header>" \
+        "<main>#{articles.join}</main></body></html>"
+    end
+  end
   let(:empty_urlset) { '<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>' }
   let(:xml_headers) { { 'content-type' => 'application/xml' } }
 
@@ -79,6 +90,23 @@ RSpec.describe 'Pipeline path invariants' do
         entry: "#{origin}/", strategies: %i[auto], resolved: true,
         pages: { "#{origin}/" => [home_html, html_headers], "#{origin}/news/" => [listing_html, html_headers],
                  "#{origin}/feed.xml" => [empty_urlset, xml_headers] }
+      },
+      'a section resolved to its in-scope listing' => {
+        entry: "#{origin}/politik/", strategies: %i[auto], resolved: true, landing: "#{origin}/politik/news/",
+        pages: { "#{origin}/politik/" => [section_page.call("<a href='/politik/news/'>latest</a>"), html_headers],
+                 "#{origin}/politik/news/" => [listing_html, html_headers],
+                 "#{origin}/feed.xml" => [rss_body, { 'content-type' => 'application/rss+xml' }] }
+      },
+      'a section kept for lack of an in-scope winner' => {
+        entry: "#{origin}/politik/", strategies: %i[auto], resolved: false, kept: true,
+        pages: { "#{origin}/politik/" => [section_page.call(''), html_headers],
+                 "#{origin}/feed.xml" => [rss_body, { 'content-type' => 'application/rss+xml' }] }
+      },
+      'a section resolved site-wide under scope site' => {
+        entry: "#{origin}/politik/", strategies: %i[auto], resolved: true, landing: "#{origin}/feed.xml",
+        options: { resolution_scope: 'site' },
+        pages: { "#{origin}/politik/" => [section_page.call(''), html_headers],
+                 "#{origin}/feed.xml" => [rss_body, { 'content-type' => 'application/rss+xml' }] }
       }
     }
   end
@@ -103,7 +131,10 @@ RSpec.describe 'Pipeline path invariants' do
     ['an HTML page with an items selector', :default], ['an HTML page with an items selector', :auto],
     ['a direct RSS feed', :default], ['a direct RSS feed', :auto],
     ['a direct Atom feed', :default], ['a direct Atom feed', :auto],
-    ['an HTML page resolved to its listing', :auto]
+    ['an HTML page resolved to its listing', :auto],
+    ['a section resolved to its in-scope listing', :auto],
+    ['a section kept for lack of an in-scope winner', :auto],
+    ['a section resolved site-wide under scope site', :auto]
   ].each do |path_name, strategy|
     context "with #{path_name} under strategy #{strategy}" do
       let(:path) { paths.fetch(path_name) }
@@ -121,7 +152,15 @@ RSpec.describe 'Pipeline path invariants' do
       it 'reports the effective scrape URL and flags an applied resolution', :aggregate_failures do
         expect(result.status.scrape_url).not_to be_nil
         expect(result.status.entry_resolution).to include(applied: true) if path.fetch(:resolved)
-        expect(result.status.scrape_url).to eq("#{origin}/news/") if path.fetch(:resolved)
+        expect(result.status.scrape_url).to eq(path.fetch(:landing, "#{origin}/news/")) if path.fetch(:resolved)
+      end
+
+      it 'keeps the entry and says why when no in-scope page won', :aggregate_failures do
+        next unless path[:kept]
+
+        expect(result.status.scrape_url).to eq(entry)
+        expect(result.status.entry_resolution)
+          .to include(applied: false, reason: :no_in_scope_winner, out_of_scope_skipped: be >= 1)
       end
 
       it 'does not leak CDATA markers into item text', :aggregate_failures do
@@ -131,9 +170,10 @@ RSpec.describe 'Pipeline path invariants' do
         expect(wire.fetch(:items).join).not_to include('<![CDATA[', ']]>')
       end
 
-      it 'carries scrape_url and entry_resolution on the batch wire only when applied', :aggregate_failures do
+      it 'carries scrape_url and entry_resolution on the batch wire only when applied or kept', :aggregate_failures do
         expect(wire).to include(scrape_url: result.status.scrape_url)
-        expect(wire.key?(:entry_resolution)).to eq(path.fetch(:resolved))
+        kept = result.status.entry_resolution&.fetch(:reason) == :no_in_scope_winner
+        expect(wire.key?(:entry_resolution)).to eq(path.fetch(:resolved) || kept)
       end
 
       permanent_statuses.each do |code|
