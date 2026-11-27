@@ -141,11 +141,12 @@ module Html2rss
 
         ##
         # @param error [Exception]
+        # @param url [String, nil] the single input URL of the failed tool call, when it took one
         # @return [Outcome]
-        def from_error(error)
+        def from_error(error, url: nil)
           next_step = next_step_for_error(error)
-          new(ok: false, next_step:, guidance: next_step.guidance,
-              payload: { class: error.class.name, message: error.message })
+          new(ok: false, next_step:, guidance: error_guidance(next_step),
+              payload: error_payload(error, url))
         end
 
         private
@@ -235,11 +236,30 @@ module Html2rss
           }.compact
         end
 
+        def error_payload(error, url)
+          payload = { class: error.class.name, message: error.message }
+          payload[:url] = url if url
+          payload.merge!(error.diagnostics) if error.is_a?(Error)
+          payload
+        end
+
+        def error_guidance(next_step)
+          next_step.name == :inspect ? Playbook::ERROR_INSPECT_GUIDANCE : next_step.guidance
+        end
+
+        # Terminal: an internal bug, a rejected caller option, or a deterministic request policy rejection
+        # that inspect would hit again.
+        def terminal_error?(error)
+          return true unless error.is_a?(Error)
+
+          [InvalidOption, *FeedPipeline::AutoFallback::NON_FALLBACK_ERRORS].any? { |klass| error.is_a?(klass) }
+        end
+
         def next_step_for_error(error)
           case error
           when RequestService::BotasaurusConfigurationError then NextStep[:read_runtime]
           when Contract::UnpublishedRequestError, ConfigArgument::ExclusiveInputError then NextStep[:validate]
-          else NextStep[:inspect]
+          else terminal_error?(error) ? NextStep[:stop] : NextStep[:inspect]
           end
         end
       end

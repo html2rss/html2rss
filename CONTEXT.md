@@ -76,7 +76,7 @@ Curation::Inspect.call(url:, strategy:) → Report
 Curation::Inspect.batch(urls:, ...) → [Report]
 Curation::Batch.batch_inspect / batch_recon / batch_scrape
 Html2rss.inspect / .apply / .scrape / .batch_scrape / .batch_inspect / .batch_recon
-Outcome::Playbook.instructions, Outcome factories typed, Tool.title on MCP::Server::Tools::Tool, NextStep::ALL / Playbook::GUIDANCE keys == verbs
+Outcome::Playbook.instructions, Outcome factories typed, Tool.title on MCP::Server::Tools::Tool, NextStep::ALL / Playbook::GUIDANCE keys == verbs plus `done` / `read_runtime` / `stop` (`stop` = terminal error, do not retry; `mcp_contract_version` 5)
 ```
 
 Instruction prose SSOT: `Outcome::Playbook`. Module guide: `lib/html2rss/mcp/README.md`.

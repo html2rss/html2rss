@@ -7,7 +7,7 @@ RSpec.describe Html2rss::MCP::Outcome do
     it 'exposes the closed set of wire names from Playbook guidance' do
       expect(described_class::ALL.keys.map(&:to_s)).to contain_exactly(
         'done', 'inspect', 'recon', 'validate', 'apply',
-        'scrape', 'capture', 'read_runtime', 'test'
+        'scrape', 'capture', 'read_runtime', 'test', 'stop'
       )
     end
 
@@ -469,23 +469,74 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.next_step.name).to eq(:validate)
     end
 
-    it 'maps another InvalidOption to inspect' do
+    it 'maps another InvalidOption to stop' do
       outcome = described_class.from_error(Html2rss::InvalidOption.new('Provide exactly one of config or yaml'))
 
-      expect(outcome.next_step.name).to eq(:inspect)
+      expect(outcome.next_step.name).to eq(:stop)
     end
 
-    it 'maps InvalidOption from the MCP edge to the default inspect step', :aggregate_failures do
+    it 'maps InvalidOption from the MCP edge to stop', :aggregate_failures do
       outcome = described_class.from_error(Html2rss::InvalidOption.new('config must be a Hash, got String'))
 
-      expect(outcome.next_step.name).to eq(:inspect)
+      expect(outcome.next_step.name).to eq(:stop)
       expect(outcome.payload).to eq(class: 'Html2rss::InvalidOption', message: 'config must be a Hash, got String')
     end
 
-    it 'maps other exceptions to inspect' do
+    it 'maps other exceptions to stop' do
       outcome = described_class.from_error(StandardError.new('boom'))
 
-      expect(outcome.next_step.name).to eq(:inspect)
+      expect(outcome.next_step.name).to eq(:stop)
+    end
+
+    it 'maps an internal bug class to stop' do
+      expect(described_class.from_error(Encoding::CompatibilityError.new('x')).next_step.name).to eq(:stop)
+    end
+
+    it 'maps each deterministic rejection to stop', :aggregate_failures do
+      Html2rss::FeedPipeline::AutoFallback::NON_FALLBACK_ERRORS.each do |klass|
+        expect(described_class.from_error(klass.new('no')).next_step.name).to eq(:stop)
+      end
+    end
+
+    it 'maps a subclass of a deterministic rejection to stop' do
+      subclass = Class.new(Html2rss::RequestService::InvalidUrl)
+
+      expect(described_class.from_error(subclass.new('no')).next_step.name).to eq(:stop)
+    end
+
+    it 'keeps transient transport errors on inspect', :aggregate_failures do
+      Html2rss::FeedPipeline::AutoFallback::TERMINAL_TRANSPORT_ERRORS.each do |klass|
+        expect(described_class.from_error(klass.new('later')).next_step.name).to eq(:inspect)
+      end
+    end
+
+    it 'adds the input url to the payload when given', :aggregate_failures do
+      outcome = described_class.from_error(StandardError.new('boom'), url: 'https://example.com/a')
+
+      expect(outcome.payload).to eq(class: 'StandardError', message: 'boom', url: 'https://example.com/a')
+      expect(described_class.from_error(StandardError.new('boom')).payload).not_to have_key(:url)
+    end
+
+    it 'merges the diagnostics an Html2rss::Error carries', :aggregate_failures do
+      error = Html2rss::RequestService::RequestTimedOut.new('slow')
+      error.transport_meta = { 'request_id' => 'r1' }
+      outcome = described_class.from_error(error, url: 'https://example.com')
+
+      expect(outcome.payload).to include(request_id: 'r1', url: 'https://example.com')
+    end
+
+    it 'does not promise final_url or status in inspect error guidance', :aggregate_failures do
+      outcome = described_class.from_error(Html2rss::RequestService::RequestTimedOut.new('slow'))
+
+      expect(outcome.guidance).to eq(Html2rss::MCP::Outcome::Playbook::ERROR_INSPECT_GUIDANCE)
+      expect(outcome.guidance).not_to match(/final_url|status/)
+    end
+
+    it 'tells the agent not to inspect on stop', :aggregate_failures do
+      outcome = described_class.from_error(StandardError.new('boom'))
+
+      expect(outcome.guidance).to eq(described_class::NextStep[:stop].guidance)
+      expect(outcome.guidance).to include('do not call inspect')
     end
   end
 

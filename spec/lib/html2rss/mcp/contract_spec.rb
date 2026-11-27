@@ -92,7 +92,7 @@ RSpec.describe Html2rss::MCP::Contract do
   describe 'MCP_CONTRACT_VERSION' do
     it 'is independent of the gem version constant', :aggregate_failures do
       expect(described_class::MCP_CONTRACT_VERSION).to be_a(Integer)
-      expect(described_class::MCP_CONTRACT_VERSION).to eq(4)
+      expect(described_class::MCP_CONTRACT_VERSION).to eq(5)
     end
   end
 
