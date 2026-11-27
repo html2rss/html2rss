@@ -5,7 +5,10 @@
 require_relative '../../support/saved_responses'
 
 RSpec.describe Html2rss::AutoSource do
-  subject(:auto_source) { described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil]) }
+  subject(:auto_source) do
+    Html2rss::Extraction.drive(response:, options: config, clock: clock_for(nil),
+                               session: request_session || AutoSourceCorpus::Offline)
+  end
 
   let(:config) { described_class::DEFAULT_CONFIG }
   let(:url) { Html2rss::Url.from_absolute('https://example.com') }
@@ -154,8 +157,7 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'with a channel time zone' do
       subject(:auto_source) do
-        described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil],
-                                              time_zone: 'Europe/Berlin')
+        described_class.new(response, config, vocabulary: Html2rss::Vocabulary[nil], clock: clock_for('Europe/Berlin'))
       end
 
       let(:body) do
@@ -170,7 +172,7 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'with a structured datePublished' do
       subject(:auto_source) do
-        described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil], time_zone:)
+        described_class.new(response, config, vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(time_zone))
       end
 
       let(:time_zone) { 'Europe/Berlin' }
@@ -199,7 +201,7 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       it 'reads a naive value as UTC without a time zone' do
-        zoneless = described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil])
+        zoneless = described_class.new(response, config, vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil))
         expect(zoneless.articles.first.published_at.iso8601).to eq('2024-07-12T09:00:00+00:00')
       end
     end
@@ -337,7 +339,8 @@ RSpec.describe Html2rss::AutoSource do
       it 'never builds the heuristic tier, also when the items exactly fill the limit', :aggregate_failures do
         allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new).and_call_original
         articles
-        described_class.new(response, config.merge(limit: schema_items.size), vocabulary: Html2rss::Vocabulary[nil]).articles
+        described_class.new(response, config.merge(limit: schema_items.size), vocabulary: Html2rss::Vocabulary[nil],
+                                                                              clock: clock_for(nil)).articles
         expect(Html2rss::AutoSource::Scraper::SemanticHtml).not_to have_received(:new)
       end
 
@@ -457,7 +460,7 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'admits the sponsored items when cleanup keeps them', :aggregate_failures do
         kept = described_class.new(response, described_class::DEFAULT_CONFIG.merge(cleanup: { keep_sponsored: true }),
-                                   vocabulary: Html2rss::Vocabulary[nil])
+                                   vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil))
 
         expect(kept.articles.map { _1.url.path }).to include(*sponsored_paths)
         expect(kept.admission_drops).not_to have_key('sponsored')
@@ -502,7 +505,8 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'builds the SST once to check a native feed that fills the limit for sponsorship', :aggregate_failures do
         allow(Html2rss::AutoSource::Scraper::NativeFeed).to receive(:new).and_return(native_feed)
-        limited = described_class.new(response, described_class::DEFAULT_CONFIG.merge(limit: 1), vocabulary: Html2rss::Vocabulary[nil]).articles
+        limited = described_class.new(response, described_class::DEFAULT_CONFIG.merge(limit: 1),
+                                      vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
 
         expect(limited.map { _1.url.path }).to eq(['/news/feed-1'])
         expect(counts[:sst]).to eq(1)
@@ -641,8 +645,6 @@ RSpec.describe Html2rss::AutoSource do
       let(:feed_items) { articles.select { _1.scraper == Html2rss::AutoSource::Scraper::NativeFeed } }
 
       it 'keeps what the followed feed states about its channel', :aggregate_failures do
-        expect(auto_source.feed_channel).to be_nil
-        auto_source.articles
         expect(auto_source.feed_channel).to eq(Html2rss::Syndication::ChannelFacts.new)
       end
 
@@ -735,7 +737,7 @@ RSpec.describe Html2rss::AutoSource do
         it 'composes the kicker with the page language scope', :aggregate_failures do
           headline = '港口今天重新开放并恢复全部航线服务'
           items.replace([{ title: headline, kicker: '独自', url: 'https://example.com/a', id: 'a' }])
-          read = ->(lang) { described_class.new(response, config, vocabulary: Html2rss::Vocabulary[lang]).articles }
+          read = ->(lang) { described_class.new(response, config, vocabulary: Html2rss::Vocabulary[lang], clock: clock_for(nil)).articles }
 
           expect(read.call('zh').find { _1.scraper == klass }.title).to eq("独自: #{headline}")
           expect(read.call(nil).find { _1.scraper == klass }.title).to eq(headline)
@@ -1206,7 +1208,7 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     it 'hands the one scope its caller resolved to every classifier', :aggregate_failures do
-      described_class.new(response, config, request_session:, vocabulary: swedish).articles
+      described_class.new(response, config, vocabulary: swedish, clock: clock_for(nil)).articles
 
       expect(described_class::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(swedish))
       expect(described_class::Cleanup).to have_received(:call).at_least(:once)
@@ -1216,7 +1218,7 @@ RSpec.describe Html2rss::AutoSource do
 
     it 'takes the scope its caller resolved, such as one from a channel override', :aggregate_failures do
       german = Html2rss::Vocabulary[:de]
-      described_class.new(response, config, request_session:, vocabulary: german).articles
+      described_class.new(response, config, vocabulary: german, clock: clock_for(nil)).articles
 
       expect(described_class::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(german))
       expect(described_class::Corroboration).to have_received(:new).once.with(be(german), facts: anything)
@@ -1233,7 +1235,7 @@ RSpec.describe Html2rss::AutoSource do
           headers = { 'content-type' => 'text/html' }
           response = Html2rss::RequestService::Response.new(body: page, headers:, url:)
           vocabulary = options.fetch(:vocabulary) { Html2rss::Vocabulary[Html2rss::Channel.language_for(response)] }
-          described_class.new(response, config, request_session:, vocabulary:).articles.map(&:title)
+          described_class.new(response, config, vocabulary:, clock: clock_for(nil)).articles.map(&:title)
         end
       end
 
@@ -1252,7 +1254,7 @@ RSpec.describe Html2rss::AutoSource do
     it 'reads every ambiguous term when the page states no language', :aggregate_failures do
       described_class.new(Html2rss::RequestService::Response.new(body: '<html><body><main></main></body></html>',
                                                                  headers: { 'content-type' => 'text/html' }, url:),
-                          config, request_session:, vocabulary: Html2rss::Vocabulary[nil]).articles
+                          config, vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
 
       expect(described_class::Scoring::LinkResolver).to have_received(:new).once.with(anything, vocabulary: be(Html2rss::Vocabulary[nil]))
     end

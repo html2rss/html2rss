@@ -132,7 +132,7 @@ module Html2rss
 
       def self.construction_kwargs(scraper, context)
         if HEURISTIC_SCRAPERS.include?(scraper)
-          context.to_h.slice(:document, :link_resolver, :time_zone).compact
+          context.to_h.slice(:document, :link_resolver, :clock).compact
         else
           {}.tap do |kwargs|
             kwargs[:request_session] = context.request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)

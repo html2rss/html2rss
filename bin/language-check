@@ -299,7 +299,7 @@ module LanguageCheck # rubocop:disable Metrics/ModuleLength -- measure, compare 
       response = AutoSourceCorpus.response(path: File.join(dir, page.file), url: page.url)
       vocabulary = Html2rss::Vocabulary[Html2rss::Channel.language_for(response)]
       Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG.merge(limit: UNCAPPED),
-                               vocabulary:).articles
+                               vocabulary:, clock: Html2rss::AutoSource::Clock.new(now: Time.now, time_zone: nil)).articles
     end
 
     # A first pass for the items, then a warm second pass: objects allocated per page and, when tracing, per

@@ -724,8 +724,8 @@ RSpec.describe Html2rss::FeedPipeline do
                                         request_session: session)
 
         expect(Html2rss::AutoSource).to have_received(:new)
-          .with(anything, anything, request_session: session, vocabulary: be(Html2rss::Vocabulary[:sv]),
-                                    time_zone: 'Europe/Berlin')
+          .with(anything, anything, exchange: anything, vocabulary: be(Html2rss::Vocabulary[:sv]),
+                                    clock: have_attributes(time_zone: 'Europe/Berlin'))
       end
 
       it 'builds the selectors with the configured time zone' do

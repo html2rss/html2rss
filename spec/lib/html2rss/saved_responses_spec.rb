@@ -10,7 +10,7 @@ RSpec.describe SavedResponses do
   let(:session) { described_class.new(dir) }
 
   def article_urls(request_session: nil)
-    AutoSourceCorpus.auto_source(path: page, url: page_url, request_session:).articles.map { _1.url.to_s }
+    AutoSourceCorpus.extraction(path: page, url: page_url, request_session:).articles.map { _1.url.to_s }
   end
 
   it 'yields only HTML tier items without a request session' do

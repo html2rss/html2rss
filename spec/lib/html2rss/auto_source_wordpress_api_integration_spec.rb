@@ -2,7 +2,9 @@
 
 RSpec.describe Html2rss::AutoSource do
   describe '#articles' do
-    subject(:articles) { described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil]).articles }
+    subject(:articles) do
+      Html2rss::Extraction.drive(response:, options: config, clock: clock_for(nil), session: request_session).articles
+    end
 
     let(:url) { Html2rss::Url.from_absolute('https://example.com/blog') }
     let(:request_session) { instance_double(Html2rss::RequestSession) }
@@ -46,12 +48,10 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     # Attribute mapping lives in wordpress_api_spec + feed spec; keep session/ids smoke here.
-    it 'routes the follow-up request through the shared request session' do # rubocop:disable RSpec/ExampleLength
+    it 'routes the follow-up request through the shared request session' do
       articles
       expect(request_session).to have_received(:follow_up).with(
-        url: api_response.url,
-        relation: :auto_source,
-        origin_url: url
+        url: api_response.url.to_s, relation: :auto_source, origin_url: url.to_s, advertisement: nil
       )
     end
 
@@ -61,8 +61,8 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'with date_gmt under a non-UTC channel time zone' do
       subject(:articles) do
-        described_class.new(response, config, request_session:, vocabulary: Html2rss::Vocabulary[nil],
-                                              time_zone: 'Europe/Berlin').articles
+        Html2rss::Extraction.drive(response:, options: config, clock: clock_for('Europe/Berlin'),
+                                   session: request_session).articles
       end
 
       let(:api_response) do

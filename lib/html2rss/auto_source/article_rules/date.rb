@@ -21,11 +21,12 @@ module Html2rss
           # @param datetime_strings [Array<String, nil>] raw datetime attribute values
           # @param leftover_lines [Array<String>] leftover visible lines (already split)
           # @param time_zone [String] channel time zone for naive values
+          # @param now [Time] the current time, which gives a date without a year its year
           # @return [DateTime, nil] earliest successfully parsed instant
-          def earliest(datetime_strings, leftover_lines: [], time_zone: 'UTC')
-            values = Array(datetime_strings).filter_map { |value| parse_attr(value, time_zone:) }
+          def earliest(datetime_strings, now:, leftover_lines: [], time_zone: 'UTC')
+            values = Array(datetime_strings).filter_map { |value| parse_attr(value, time_zone:, now:) }
             date_runs(leftover_lines).each do |run|
-              parsed = parse_line(run.join(' '), time_zone:)
+              parsed = parse_line(run.join(' '), time_zone:, now:)
               values << parsed if parsed
             end
             values.min
@@ -42,8 +43,9 @@ module Html2rss
 
           ##
           # @param time_zone [String] channel time zone
+          # @param now [Time] the current time
           # @return [::Date] today's calendar day in +time_zone+
-          def local_today(time_zone:) = timezone_for(time_zone).now.to_date
+          def local_today(time_zone:, now:) = timezone_for(time_zone).to_local(now).to_date
 
           ##
           # @param date [::Date] calendar day
@@ -54,9 +56,11 @@ module Html2rss
           ##
           # @param string [String] raw datetime text
           # @param time_zone [String, nil] channel time zone for a naive value (nil reads as UTC)
+          # @param now [Time] the current time: a date without a year is read in its year
           # @return [DateTime, nil] parsed instant; naive values are read in +time_zone+
-          def parse_datetime(string, time_zone:)
-            parsed = DateTime.parse(string, limit: MAX_DATE_CHARS)
+          def parse_datetime(string, time_zone:, now:)
+            return unless (parsed = parse(string, now))
+
             naive?(string) ? localize(parsed, time_zone) : parsed
           rescue ArgumentError, TypeError
             nil
@@ -78,14 +82,29 @@ module Html2rss
             runs
           end
 
-          def parse_attr(value, time_zone:)
-            parse_datetime(value.to_s.strip, time_zone:)
+          # Ruby completes a missing year from the system date, so a year-less date is built from +now+ instead.
+          def parse(string, now)
+            fields = DateTime._parse(string, limit: MAX_DATE_CHARS)
+            fields.key?(:year) ? DateTime.parse(string, limit: MAX_DATE_CHARS) : year_less(fields, now)
           end
 
-          def parse_line(line, time_zone:)
+          # @return [DateTime, nil] nil when the string names no month and day
+          def year_less(fields, now)
+            mon, mday, hour, min, sec = fields.values_at(:mon, :mday, :hour, :min, :sec)
+            return unless mon && mday
+
+            DateTime.new(now.year, mon, mday, hour.to_i, min.to_i, sec.to_i + fields.fetch(:sec_fraction, 0),
+                         Rational(fields[:offset].to_i, 86_400))
+          end
+
+          def parse_attr(value, time_zone:, now:)
+            parse_datetime(value.to_s.strip, time_zone:, now:)
+          end
+
+          def parse_line(line, time_zone:, now:)
             return unless Description.date_shaped?(line)
 
-            parse_datetime(Description.date_core(line), time_zone:)
+            parse_datetime(Description.date_core(line), time_zone:, now:)
           end
 
           # Naive unless the parser resolved a real offset: unknown words ("Uhr", "ET") leave it nil, and a

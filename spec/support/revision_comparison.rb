@@ -132,7 +132,7 @@ module RevisionComparison # rubocop:disable Metrics/ModuleLength -- run, diff an
 
     def extract(page, dir, responses)
       merged = install_merge_probe
-      source = AutoSourceCorpus.auto_source(path: File.join(dir, page.file), url: page.url, request_session: responses)
+      source = AutoSourceCorpus.extraction(path: File.join(dir, page.file), url: page.url, request_session: responses)
       articles = source.articles
       [articles.to_h { [_1.url.to_s, _1.title.to_s] }, source.admission_drops, feed_split(articles, merged)]
     end

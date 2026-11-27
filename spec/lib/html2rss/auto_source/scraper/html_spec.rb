@@ -84,7 +84,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
   end
 
   describe '#each' do
-    subject(:articles) { described_class.new(parsed_body, url: 'http://example.com') }
+    subject(:articles) { described_class.new(parsed_body, url: 'http://example.com', clock: clock_for) }
 
     let(:first_article) do
       { title: 'Article 1 Headline',
@@ -335,21 +335,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
   describe '#extractable?' do
     it 'is true for repeated linked cards', :aggregate_failures do
-      expect(described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com')).to be_extractable
+      expect(described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com',
+                                                             clock: clock_for)).to be_extractable
     end
 
     it 'is false for anchorless cards' do
-      expect(described_class.new(anchorless_html, url: 'https://example.com')).not_to be_extractable
+      expect(described_class.new(anchorless_html, url: 'https://example.com', clock: clock_for)).not_to be_extractable
     end
   end
 
   describe '#initialize' do
     it 'emits no page-fragment items for anchorless cards' do
-      expect(described_class.new(anchorless_html, url: 'https://example.com').to_a).to eq([])
+      expect(described_class.new(anchorless_html, url: 'https://example.com', clock: clock_for).to_a).to eq([])
     end
 
     it 'resolves relative article links against the given url' do
-      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'https://example.net/').to_a
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'https://example.net/', clock: clock_for).to_a
 
       expect(articles.map { _1.url.to_s }).to include('https://example.net/article1/')
     end
@@ -360,7 +361,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
       dated = Nokogiri::HTML("<html><body>#{cards.join}</body></html>")
       zones = [nil, 'Europe/Berlin'].map do |zone|
-        described_class.new(dated, url: 'https://example.com', time_zone: zone).to_a.first.published_at.zone
+        described_class.new(dated, url: 'https://example.com', clock: clock_for(zone)).to_a.first.published_at.zone
       end
 
       expect(zones).to eq(['+00:00', '+02:00'])
@@ -371,13 +372,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     it 'uses a provided SST document without a parsed body' do
       document = Html2rss::Html::SST::Normalizer.call(Nokogiri::HTML.parse(html), vocabulary: all_scope)
 
-      articles = described_class.new(nil, url: 'http://example.com', document:).to_a
+      articles = described_class.new(nil, url: 'http://example.com', document:, clock: clock_for).to_a
 
       expect(articles.map(&:title)).to include('Article 1 Headline')
     end
 
     it 'normalizes the parsed body when no document is provided' do
-      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com').to_a
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com', clock: clock_for).to_a
 
       expect(articles.map(&:title)).to include('Article 1 Headline')
     end
@@ -388,7 +389,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('http://example.com')
       allow(resolver).to receive(:destination_facts).and_call_original
 
-      described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com', link_resolver: resolver).to_a
+      described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com', link_resolver: resolver,
+                                                      clock: clock_for).to_a
 
       expect(resolver).to have_received(:destination_facts).at_least(:once)
     end
@@ -396,7 +398,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
   describe '#articles' do
     it 'stamps extracted articles with the html scraper class', :aggregate_failures do
-      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com').to_a
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com', clock: clock_for).to_a
 
       expect(articles).not_to be_empty
       expect(articles.map(&:scraper).uniq).to eq([described_class])
@@ -406,7 +408,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
   describe '#minimum_selector_frequency' do
     it 'drops selectors that occur less often than the configured floor' do
       articles = described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com',
-                                                                 minimum_selector_frequency: 3).to_a
+                                                                 minimum_selector_frequency: 3, clock: clock_for).to_a
 
       expect(articles).to be_empty
     end

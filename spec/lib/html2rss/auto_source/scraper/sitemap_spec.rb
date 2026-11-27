@@ -86,7 +86,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
   describe '#initialize' do
     it 'applies a 0.3 minimum priority by default, keeping the boundary value' do
       xml = SITEMAP_SPEC_MIXED_PRIORITY_XML
-      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml).to_a
+      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc).to_a
       expect(articles.map { _1[:url] }).to eq(['https://example.com/edge', 'https://example.com/high'])
     end
 
@@ -97,13 +97,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
           <url><loc>https://example.com/old</loc><lastmod>#{stale}</lastmod></url>
         </urlset>
       XML
-      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml).to_a
+      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc).to_a
       expect(articles.map { _1[:url] }).to eq(['https://example.com/fresh'])
     end
 
     it 'forwards min_priority to the parser' do
       xml = SITEMAP_SPEC_LEAF_XML
-      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml, min_priority: 0.9).to_a).to be_empty
+      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc,
+                                                      min_priority: 0.9).to_a).to be_empty
     end
 
     it 'forwards max_age_days to the parser' do
@@ -112,7 +113,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
           <url><loc>https://example.com/old</loc><lastmod>#{stale}</lastmod></url>
         </urlset>
       XML
-      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml, max_age_days: 60).to_a
+      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc, max_age_days: 60).to_a
       expect(articles.map { _1[:url] }).to eq(['https://example.com/old'])
     end
   end
@@ -130,7 +131,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
   describe '#each' do
     it 'returns an enumerator when no block is given' do
       xml = SITEMAP_SPEC_LEAF_XML
-      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml).each).to be_a(Enumerator)
+      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc).each).to be_a(Enumerator)
     end
 
     it 'yields id, url, title and published_at for each entry', :aggregate_failures do
@@ -139,7 +140,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
           <url><loc>https://example.com/a</loc><news:news><news:publication_date>#{recent}</news:publication_date><news:title>Title A</news:title></news:news></url>
         </urlset>
       XML
-      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml).to_a
+      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc).to_a
       published_at = Time.parse(recent).utc.iso8601
       expect(articles.first[:id]).to be_a(String)
       expect(articles).to eq([{ id: 'https://example.com/a', url: 'https://example.com/a', title: 'Title A',
@@ -148,13 +149,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
 
     it 'omits title and published_at keys when the entry lacks them' do
       xml = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/bare</loc></url></urlset>'
-      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml).to_a
+      articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc).to_a
       expect(articles).to eq([{ id: 'https://example.com/bare', url: 'https://example.com/bare' }])
     end
 
     it 'yields nothing for an empty urlset' do
       xml = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'
-      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml).to_a).to eq([])
+      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc).to_a).to eq([])
     end
   end
 
@@ -162,14 +163,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'parses a direct sitemap body without requesting anything' do
       xml = SITEMAP_SPEC_LEAF_XML
       session = instance_double(Html2rss::RequestSession)
-      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml, request_session: session).to_a.size).to eq(1)
+      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc, request_session: session,
+                                                      now: Time.now.utc).to_a.size).to eq(1)
     end
 
     it 'stops and logs when the initial fetch exhausts the request budget', :aggregate_failures do
       session = instance_double(Html2rss::RequestSession)
       allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::RequestBudgetExceeded)
 
-      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a
+      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                             now: Time.now.utc).to_a
       expect(articles).to eq([])
       expect(logged).to eq([{ 'event_name' => 'sitemap.budget_exhausted', 'host' => 'example.com',
                               'message' => "#{described_class}: sitemap fetch stopped — request budget exhausted" }])
@@ -182,7 +185,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'yields nothing when the fetched sitemap has no entries' do
       session = instance_double(Html2rss::RequestSession)
       allow(session).to receive(:follow_up).and_return(mock_sitemap_response('<urlset/>'))
-      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a).to eq([])
+      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                         now: Time.now.utc).to_a).to eq([])
     end
   end
 
@@ -190,14 +194,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'yields nothing when the follow-up response is missing' do
       session = instance_double(Html2rss::RequestSession)
       allow(session).to receive(:follow_up).and_return(nil)
-      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a).to eq([])
+      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                         now: Time.now.utc).to_a).to eq([])
     end
 
     it 'logs and yields nothing when the fetch raises an Html2rss error', :aggregate_failures do
       session = instance_double(Html2rss::RequestSession)
       allow(session).to receive(:follow_up).and_raise(Html2rss::Error, 'boom')
 
-      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a
+      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                             now: Time.now.utc).to_a
       expect(articles).to eq([])
       expect(logged).to eq([{ 'event_name' => 'sitemap.fetch_failed', 'host' => 'example.com',
                               'error_class' => 'Html2rss::Error',
@@ -207,7 +213,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'propagates contract errors raised by the fetch' do
       session = instance_double(Html2rss::RequestSession)
       allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::Context::InvalidError)
-      scraper = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session)
+      scraper = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                            now: Time.now.utc)
 
       expect { scraper.to_a }.to raise_error(Html2rss::ContractError)
     end
@@ -216,7 +223,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
   describe '#target_sitemap_url' do
     it 'defaults to /sitemap.xml on the page origin when no link tag exists' do
       session = mock_session(SITEMAP_SPEC_LEAF_XML)
-      described_class.new(Nokogiri::HTML('<html><body></body></html>'), url:, request_session: session).to_a
+      described_class.new(Nokogiri::HTML('<html><body></body></html>'), url:, request_session: session,
+                                                                        now: Time.now.utc).to_a
       expect(session).to have_received(:follow_up)
         .with(hash_including(url: an_object_having_attributes(to_s: 'https://example.com/sitemap.xml')))
     end
@@ -224,7 +232,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'uses the href of the sitemap link tag' do
       session = mock_session(SITEMAP_SPEC_LEAF_XML)
       html = '<link rel="sitemap" href="/news/sitemap.xml">'
-      described_class.new(Nokogiri::HTML(html), url:, request_session: session).to_a
+      described_class.new(Nokogiri::HTML(html), url:, request_session: session, now: Time.now.utc).to_a
       expect(session).to have_received(:follow_up)
         .with(hash_including(url: an_object_having_attributes(to_s: 'https://example.com/news/sitemap.xml')))
     end
@@ -232,7 +240,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'resolves a relative link href against the page url' do
       session = mock_session(SITEMAP_SPEC_LEAF_XML)
       html = '<link rel="sitemap" href="sitemaps/posts.xml">'
-      described_class.new(Nokogiri::HTML(html), url:, request_session: session).to_a
+      described_class.new(Nokogiri::HTML(html), url:, request_session: session, now: Time.now.utc).to_a
       expect(session).to have_received(:follow_up)
         .with(hash_including(url: an_object_having_attributes(to_s: 'https://example.com/sitemaps/posts.xml')))
     end
@@ -240,7 +248,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'keeps an absolute link href as-is' do
       session = mock_session(SITEMAP_SPEC_LEAF_XML)
       html = '<link rel="sitemap" href="https://cdn.example.com/map.xml">'
-      described_class.new(Nokogiri::HTML(html), url:, request_session: session).to_a
+      described_class.new(Nokogiri::HTML(html), url:, request_session: session, now: Time.now.utc).to_a
       expect(session).to have_received(:follow_up)
         .with(hash_including(url: an_object_having_attributes(to_s: 'https://cdn.example.com/map.xml')))
     end
@@ -250,13 +258,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'does not parse a body that is not a sitemap document' do
       session = mock_session(SITEMAP_SPEC_LEAF_XML)
       articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, body: '<p>not a sitemap</p>',
-                                                                             request_session: session).to_a
+                                                                             request_session: session, now: Time.now.utc).to_a
       expect(articles.map { _1[:url] }).to eq(['https://example.com/post-1'])
     end
 
     it 'requests the sitemap when no body is given, even if the page is itself a sitemap' do
       session = mock_session(SITEMAP_SPEC_LEAF_XML)
-      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LEAF_XML), url:, request_session: session).to_a
+      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LEAF_XML), url:, request_session: session,
+                                                                            now: Time.now.utc).to_a
       expect(articles.map { _1[:url] }).to eq(['https://example.com/post-1'])
     end
   end
@@ -264,7 +273,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
   describe '#parse_sitemap_xml' do
     it 'fans out when the fetched document is a sitemapindex' do
       session = mock_session(SITEMAP_SPEC_INDEX_XML, SITEMAP_SPEC_LEAF_XML, SITEMAP_SPEC_LEAF_XML)
-      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a
+      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                             now: Time.now.utc).to_a
       expect(articles.size).to eq(2)
     end
   end
@@ -273,13 +283,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'fetches at most MAX_SUB_SITEMAPS sub-sitemaps' do
       session = mock_session(SITEMAP_SPEC_FIVE_SUB_INDEX_XML, SITEMAP_SPEC_LEAF_XML, SITEMAP_SPEC_LEAF_XML,
                              SITEMAP_SPEC_LEAF_XML)
-      described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a
+      described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                  now: Time.now.utc).to_a
       expect(session).to have_received(:follow_up).exactly(4).times
     end
 
     it 'keeps fanning out after a sub-sitemap yields no body' do
       session = mock_session(SITEMAP_SPEC_INDEX_XML, nil, SITEMAP_SPEC_LEAF_XML)
-      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a
+      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                             now: Time.now.utc).to_a
       expect(articles.size).to eq(1)
     end
 
@@ -292,14 +304,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
         mock_sitemap_response(requested.size == 1 ? SITEMAP_SPEC_FIVE_SUB_INDEX_XML : SITEMAP_SPEC_LEAF_XML)
       end
 
-      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a
+      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                             now: Time.now.utc).to_a
       expect(articles.size).to eq(1)
       expect(requested.size).to eq(3)
     end
 
     it 'forwards the constructor min_priority to sub-sitemap parsing' do
       session = mock_session(SITEMAP_SPEC_INDEX_XML, SITEMAP_SPEC_LEAF_XML, SITEMAP_SPEC_LEAF_XML)
-      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session, now: Time.now.utc,
                                                                              min_priority: 0.9).to_a
       expect(articles).to be_empty
     end
@@ -308,14 +321,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
       low_xml = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' \
                 '<url><loc>https://example.com/x</loc><priority>0.1</priority></url></urlset>'
       session = mock_session(SITEMAP_SPEC_INDEX_XML, low_xml, low_xml)
-      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a).to eq([])
+      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                         now: Time.now.utc).to_a).to eq([])
     end
 
     it 'applies the max_age_days filter to sub-sitemap entries' do
       stale_xml = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' \
                   "<url><loc>https://example.com/old</loc><lastmod>#{stale}</lastmod></url></urlset>"
       session = mock_session(SITEMAP_SPEC_INDEX_XML, stale_xml, stale_xml)
-      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a).to eq([])
+      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                         now: Time.now.utc).to_a).to eq([])
     end
   end
 
@@ -329,7 +344,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
         mock_sitemap_response(SITEMAP_SPEC_INDEX_XML)
       end
 
-      described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session).to_a
+      described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                  now: Time.now.utc).to_a
       expect(logged).to eq([{ 'event_name' => 'sitemap.fanout_budget_exhausted', 'host' => 'example.com',
                               'message' => "#{described_class}: sitemap fan-out stopped — request budget exhausted" }])
     end

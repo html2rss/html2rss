@@ -343,7 +343,8 @@ RSpec.describe Html2rss::Curation::Capture do
 
     it 'asks Syndication::Discovery for native feed preference with a session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response(File.read('spec/fixtures/local_feed_test.html'))
-      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                          vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
       stub_outcome(response, articles:)
       feed = Html2rss::Url.from_absolute('https://example.com/feed.xml')
       allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(feed)
@@ -607,7 +608,8 @@ RSpec.describe Html2rss::Curation::Capture do
     context 'with a list fixture that shares an item class' do
       subject(:result) do
         response = html_response(File.read('spec/fixtures/local_feed_test.html'))
-        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                            vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
         stub_outcome(response, articles:)
         described_class.new(url).build
       end
@@ -644,7 +646,8 @@ RSpec.describe Html2rss::Curation::Capture do
       subject(:result) do
         response = html_response(File.read('spec/fixtures/local_feed_test.html'),
                                  content_type: 'application/octet-stream')
-        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                            vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
         stub_outcome(response, articles:)
         described_class.new(url).build
       end
@@ -692,7 +695,8 @@ RSpec.describe Html2rss::Curation::Capture do
       # rubocop:disable-next RSpec/ExampleLength -- AutoSource + stub + selector assert
       it "trims items path: #{label}" do
         response = html_response(html)
-        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                            vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
         stub_outcome(response, articles:)
 
         expect(described_class.new(url).build.config.dig(:selectors, :items)).to eq(
@@ -715,7 +719,8 @@ RSpec.describe Html2rss::Curation::Capture do
         </body></html>
       HTML
       response = html_response(html)
-      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                          vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
       stub_outcome(response, articles:)
 
       items = described_class.new(url).build.config.dig(:selectors, :items)
@@ -737,7 +742,8 @@ RSpec.describe Html2rss::Curation::Capture do
         </body></html>
       HTML
       response = html_response(html)
-      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                          vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
       stub_outcome(response, articles:)
 
       allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |sst, strategy:, **|
@@ -766,7 +772,8 @@ RSpec.describe Html2rss::Curation::Capture do
       let(:second_card) { card.gsub('/pub/1', '/pub/2').gsub('first', 'second') }
       let(:articles) do
         response = html_response("<html><body>#{card}#{second_card}</body></html>")
-        Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+        Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil],
+                                                                                 clock: clock_for(nil)).articles
       end
       let(:stub_roots) do
         lambda do |body, extra_tag = nil, duplicate: false|
@@ -855,7 +862,8 @@ RSpec.describe Html2rss::Curation::Capture do
         </body></html>
       HTML
       response = html_response(html)
-      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                          vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
       stub_outcome(response, articles:)
 
       items = described_class.new(url).build.config.dig(:selectors, :items)
@@ -952,7 +960,8 @@ RSpec.describe Html2rss::Curation::Capture do
 
     it 'stamps selected_strategy into config when AutoFallback chose a concrete strategy' do
       response = html_response(File.read('spec/fixtures/local_feed_test.html'))
-      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                          vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
       stub_outcome(response, articles:, selected_strategy: :botasaurus)
 
       expect(described_class.new(url).build.config[:strategy]).to eq(:botasaurus)
@@ -1036,7 +1045,8 @@ RSpec.describe Html2rss::Curation::Capture do
         </body></html>
       HTML
       response = html_response(html)
-      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                          vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
       stub_outcome(response, articles:)
 
       result = described_class.new(url).build
@@ -1134,7 +1144,8 @@ RSpec.describe Html2rss::Curation::Capture do
         File.read('spec/fixtures/local_feed_test.html'),
         page_url: 'https://example.com/blog/list'
       )
-      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG,
+                                          vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
       target = Html2rss::FeedPipeline::ScrapeTarget.new(
         entry_url: url,
         effective_url: 'https://example.com/blog/list'

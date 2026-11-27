@@ -23,7 +23,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::PageCards do
         allow(Html2rss::AutoSource::Scoring::LinkResolver).to receive(:new).and_call_original
         allow(Html2rss::Html::SST::Normalizer).to receive(:call).and_call_original
 
-        expect(scraper_class.new(parsed_body, url: 'https://example.org/')).to be_extractable
+        expect(scraper_class.new(parsed_body, url: 'https://example.org/', clock: clock_for)).to be_extractable
         expect(Html2rss::AutoSource::Scoring::LinkResolver).to have_received(:new).with('https://example.org/')
         expect(Html2rss::Html::SST::Normalizer).to have_received(:call).with(parsed_body, vocabulary: anything)
       end
@@ -33,13 +33,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::PageCards do
           %(<article><h2><a href="/news/#{slug}">Story #{slug} out now</a></h2><p>12 March 2024</p></article>)
         end
         dated = Nokogiri::HTML("<html><body><main>#{cards.join}</main></body></html>")
-        scraper = scraper_class.new(dated, url: 'https://example.org/', time_zone: 'Europe/Berlin')
+        scraper = scraper_class.new(dated, url: 'https://example.org/', clock: clock_for('Europe/Berlin'))
 
         expect(scraper.to_a.first.published_at.zone).to eq('+01:00')
       end
 
       it 'can be built for a url alone' do
-        expect { scraper_class.new(url: 'https://example.org/') }.not_to raise_error
+        expect { scraper_class.new(url: 'https://example.org/', clock: clock_for) }.not_to raise_error
       end
 
       it 'reuses a provided document and link resolver', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -48,7 +48,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::PageCards do
         allow(Html2rss::Html::SST::Normalizer).to receive(:call)
         allow(Html2rss::AutoSource::Scoring::LinkResolver).to receive(:new)
 
-        scraper = scraper_class.new(nil, url: 'https://example.org/', document:, link_resolver: resolver)
+        scraper = scraper_class.new(nil, url: 'https://example.org/', document:, link_resolver: resolver,
+                                         clock: clock_for)
 
         expect(scraper).to be_extractable
         expect(Html2rss::Html::SST::Normalizer).not_to have_received(:call)

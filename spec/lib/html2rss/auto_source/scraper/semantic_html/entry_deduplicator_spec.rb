@@ -3,7 +3,7 @@
 # rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
 
 RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
-  subject(:deduplicator) { described_class.new('https://example.com', scraper: scraper_class) }
+  subject(:deduplicator) { described_class.new('https://example.com', scraper: scraper_class, clock: clock_for) }
 
   let(:scraper_class) { Html2rss::AutoSource::Scraper::SemanticHtml }
   let(:root_node) { Html2rss::Html::SST::Node.build(name: :article) }
@@ -257,7 +257,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
       expect(deduplicator.article_for(ranked)).to be(article)
       expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call).with(
-        ranked, base_url: 'https://example.com', time_zone: nil, scraper: scraper_class,
+        ranked, base_url: 'https://example.com', clock: clock_for, scraper: scraper_class,
                 link_resolver: be_a(Html2rss::AutoSource::Scoring::LinkResolver)
       )
     end
@@ -266,11 +266,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       ranked = build_ranked.call
       allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
-      described_class.new('https://example.com', scraper: scraper_class, time_zone: 'Europe/Berlin')
+      described_class.new('https://example.com', scraper: scraper_class, clock: clock_for('Europe/Berlin'))
                      .article_for(ranked)
 
       expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call)
-        .with(ranked, hash_including(time_zone: 'Europe/Berlin'))
+        .with(ranked, hash_including(clock: clock_for('Europe/Berlin')))
     end
 
     it 'extracts with the page resolver, which carries the page language', :aggregate_failures do
@@ -278,10 +278,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       ranked = build_ranked.call
       allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
-      described_class.new('https://example.com', scraper: scraper_class, link_resolver: resolver).article_for(ranked)
+      described_class.new('https://example.com', scraper: scraper_class, link_resolver: resolver,
+                                                 clock: clock_for).article_for(ranked)
 
       expect(Html2rss::AutoSource::ArticleExtractor).to have_received(:call).with(
-        ranked, base_url: 'https://example.com', time_zone: nil, scraper: scraper_class, link_resolver: resolver
+        ranked, base_url: 'https://example.com', clock: clock_for, scraper: scraper_class, link_resolver: resolver
       )
     end
 

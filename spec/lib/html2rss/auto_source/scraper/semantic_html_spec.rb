@@ -39,7 +39,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     it 'is not extractable and yields no articles', :aggregate_failures do
       expect(described_class.articles?(parsed_body)).to be false
-      expect(described_class.new(parsed_body, url: 'https://example.com').to_a).to eq([])
+      expect(described_class.new(parsed_body, url: 'https://example.com', clock: clock_for).to_a).to eq([])
     end
   end
 
@@ -51,7 +51,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     it 'is constructible without raising' do
-      expect { described_class.new(parsed_body, url: 'https://example.com') }.not_to raise_error
+      expect { described_class.new(parsed_body, url: 'https://example.com', clock: clock_for) }.not_to raise_error
     end
 
     it 'reads a naive leftover date in the channel time zone', :aggregate_failures do
@@ -60,7 +60,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         <p>12 July 2024</p></article></body></html>
       HTML
       zones = [nil, 'Europe/Berlin'].map do |zone|
-        described_class.new(dated, url: 'https://example.com', time_zone: zone).to_a.first.published_at.zone
+        described_class.new(dated, url: 'https://example.com', clock: clock_for(zone)).to_a.first.published_at.zone
       end
 
       expect(zones).to eq(['+00:00', '+02:00'])
@@ -71,7 +71,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         <html><body><article><h2>No Link Article</h2><p>Description text</p></article></body></html>
       HTML
 
-      expect(described_class.new(anchorless, url: 'https://example.com').to_a).to eq([])
+      expect(described_class.new(anchorless, url: 'https://example.com', clock: clock_for).to_a).to eq([])
     end
 
     context 'with a relative story link and a provided document or link resolver' do
@@ -84,13 +84,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       let(:provided_document) { Html2rss::Html::SST::Normalizer.call(Nokogiri::HTML.parse(story_html), vocabulary: all_scope) }
 
       it 'resolves relative links against the given url' do
-        articles = described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.net/').to_a
+        articles = described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.net/',
+                                                                         clock: clock_for).to_a
 
         expect(articles.map { _1.url.to_s }).to eq(['https://example.net/news/relative'])
       end
 
       it 'uses a provided SST document even without a parsed body' do
-        articles = described_class.new(nil, url: 'https://example.com', document: provided_document).to_a
+        articles = described_class.new(nil, url: 'https://example.com', document: provided_document,
+                                            clock: clock_for).to_a
 
         expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/relative'])
       end
@@ -99,7 +101,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         resolver = Html2rss::AutoSource::Scoring::LinkResolver.new('https://example.com')
         allow(resolver).to receive(:destination_facts).and_call_original
 
-        described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.com', link_resolver: resolver).to_a
+        described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.com', link_resolver: resolver,
+                                                              clock: clock_for).to_a
 
         expect(resolver).to have_received(:destination_facts).at_least(:once)
       end
@@ -115,7 +118,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     it 'uses the provided SST document instead of normalizing the body' do
-      articles = described_class.new(nil, url: 'https://example.com', document: provided_document).to_a
+      articles = described_class.new(nil, url: 'https://example.com', document: provided_document,
+                                          clock: clock_for).to_a
 
       expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/provided'])
     end
@@ -126,7 +130,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         <p>Useful context paragraph for readers this week.</p></article></body></html>
       HTML
 
-      articles = described_class.new(parsed_body, url: 'https://example.com').to_a
+      articles = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for).to_a
 
       expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/parsed'])
     end
@@ -141,7 +145,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     it 'stamps each article with the semantic scraper class', :aggregate_failures do
-      articles = described_class.new(parsed_body, url: 'https://example.com').to_a
+      articles = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for).to_a
 
       expect(articles).not_to be_empty
       expect(articles.map(&:scraper).uniq).to eq([described_class])
@@ -155,7 +159,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         </body></html>
       HTML
 
-      articles = described_class.new(duplicated, url: 'https://example.com').to_a
+      articles = described_class.new(duplicated, url: 'https://example.com', clock: clock_for).to_a
 
       expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/dup'])
     end
@@ -175,7 +179,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         </body></html>
       HTML
 
-      articles = described_class.new(episodes, url: 'https://example.com').to_a
+      articles = described_class.new(episodes, url: 'https://example.com', clock: clock_for).to_a
 
       expect(articles.to_h { [_1.url.to_s, _1.enclosures.map { |e| [e.url.to_s, e.type] }] }).to eq(
         'https://example.com/podcasts/one' => [%w[https://example.com/audio/one.MP3?src=list audio/mpeg]],
@@ -185,7 +189,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe '#each' do
-    subject(:new) { described_class.new(Nokogiri::HTML.parse(html), url: 'https://example.com') }
+    subject(:new) { described_class.new(Nokogiri::HTML.parse(html), url: 'https://example.com', clock: clock_for) }
 
     let(:html) do
       cards = (1..60).map do |n|

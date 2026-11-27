@@ -23,7 +23,7 @@ RSpec.describe Html2rss::Extraction::Result do
     it 'holds one plain hash per article', :aggregate_failures do
       result = described_class.ok([full])
 
-      expect(result).to have_attributes(status: :ok, error_kind: nil)
+      expect(result).to have_attributes(status: :ok, error_kind: nil, requests: [])
       expect(result.articles).to eq([full_data])
     end
 
@@ -35,6 +35,18 @@ RSpec.describe Html2rss::Extraction::Result do
 
     it 'is empty without articles' do
       expect(described_class.ok([])).to have_attributes(status: :empty, articles: [], error_kind: nil)
+    end
+  end
+
+  describe '.needs_requests' do
+    it 'holds the wanted requests as plain hashes, without articles' do
+      request = Html2rss::Extraction::Exchange::Request.new(
+        id: 'auto_source https://example.com/feed', url: 'https://example.com/feed', relation: :auto_source,
+        origin_url: 'https://example.com/'
+      )
+
+      expect(described_class.needs_requests([request]))
+        .to have_attributes(status: :needs_requests, articles: [], error_kind: nil, requests: [request.to_h])
     end
   end
 

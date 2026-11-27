@@ -3,7 +3,7 @@
 RSpec.describe Html2rss::AutoSource do
   subject(:articles) do
     described_class.new(response, described_class::DEFAULT_CONFIG,
-                        request_session: nil, vocabulary: Html2rss::Vocabulary[nil]).articles
+                        vocabulary: Html2rss::Vocabulary[nil], clock: clock_for(nil)).articles
   end
 
   let(:response) do
