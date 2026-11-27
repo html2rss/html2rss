@@ -11,12 +11,18 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
     it 'flags file-size labels, dates, cut-off text and the title prefix', :aggregate_failures do
       expect(described_class.junk?('PDF 265 KB')).to be(true)
       expect(described_class.junk?('Forschung // 26.11.2026')).to be(true)
+      expect(described_class.junk?('12 March 2024')).to be(true)
+      expect(described_class.junk?('Ausgabe | 2026-11-26')).to be(true)
       expect(described_class.junk?('Forschung und Entwick...')).to be(true)
       expect(described_class.junk?('Topic', title: 'Topic: rest of title')).to be(true)
     end
 
     it 'keeps ordinary labels', :aggregate_failures do
       expect(described_class.junk?('Forschung')).to be(false)
+      expect(described_class.junk?('Python 3.12')).to be(false)
+      expect(described_class.junk?('v2.10')).to be(false)
+      expect(described_class.junk?('Python 3.12.10')).to be(false)
+      expect(described_class.junk?('Release v2.10.15')).to be(false)
       expect(described_class.junk?('Topic', title: 'Another title: Topic')).to be(false)
       expect(described_class.junk?('Topic', title: 'No colon')).to be(false)
       expect(described_class.junk?('Topic', title: nil)).to be(false)

@@ -21,8 +21,8 @@ module Html2rss
         # A file-size label ("PDF 265 KB").
         FILE_SIZE = /\d(?:[.,]\d+)?\s*(?:[KMGT]i?B|bytes?)\b/i
 
-        # A numeric date ("26.11.2026", "2026-11-26").
-        NUMERIC_DATE = %r{\b\d{1,2}[./]\d{1,2}[./]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b}
+        # A separator that sets a piece apart inside one category value ("Topic // 2026-11-26").
+        PIECE_SEPARATOR = %r{\s+(?://?|[|·•–—-])\s+}
 
         # Fewest items for which a shared value is a feed-wide label; with two, it may be a real topic.
         MIN_ITEMS_FOR_SHARED = 3
@@ -37,8 +37,8 @@ module Html2rss
           # @return [Boolean] whether the value is a file-size label, holds a date, is cut off, or is the
           #   title's own prefix before a colon ("Topic: rest of title")
           def junk?(value, title: nil)
-            [FILE_SIZE, NUMERIC_DATE, CUT_OFF].any? { |pattern| value.match?(pattern) } ||
-              title_prefix?(value, title)
+            [FILE_SIZE, CUT_OFF].any? { |pattern| value.match?(pattern) } ||
+              dated?(value) || title_prefix?(value, title)
           end
 
           ##
@@ -70,6 +70,11 @@ module Html2rss
           end
 
           private
+
+          # The value, or one of its separator-set pieces ("Topic // 26.11.2026"), is a date by the one date-shape owner ({Description.date_shaped?}).
+          def dated?(value)
+            Description.date_shaped?(value) || value.split(PIECE_SEPARATOR).any? { |piece| Description.date_shaped?(piece) }
+          end
 
           def title_prefix?(value, title)
             prefix, rest = title.to_s.split(':', 2)
