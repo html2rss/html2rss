@@ -707,6 +707,46 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.guidance).not_to match(/final_url|status/)
     end
 
+    context 'when every attempted strategy timed out' do
+      let(:timeout) { Html2rss::RequestService::RequestTimedOut }
+      let(:error) { timeout.new('slow').tap { _1.attempts = [{ error_class: timeout.name }] * 2 } }
+
+      it 'says a retry is unlikely to help' do
+        expect(described_class.from_error(error).guidance).to eq(described_class::Playbook::ERROR_TIMEOUT_GUIDANCE)
+      end
+    end
+
+    context 'when another strategy failed differently before the timeout' do
+      let(:timeout) { Html2rss::RequestService::RequestTimedOut }
+      let(:error) do
+        classes = ['Html2rss::RequestService::ConnectionFailed', timeout.name]
+        timeout.new('slow').tap { |error| error.attempts = classes.map { |name| { error_class: name } } }
+      end
+
+      it 'keeps the retry guidance' do
+        expect(described_class.from_error(error).guidance).to eq(described_class::Playbook::ERROR_INSPECT_GUIDANCE)
+      end
+    end
+
+    context 'with a redirect downgraded from https to http' do
+      let(:error) do
+        Html2rss::RequestService::UnsupportedUrlScheme.new('downgraded', retry_url: 'https://example.com/a')
+      end
+
+      it 'carries the https target and points guidance at it', :aggregate_failures do
+        outcome = described_class.from_error(error, url: 'https://example.com/')
+
+        expect(outcome.payload).to include(retry_url: 'https://example.com/a')
+        expect(outcome.guidance).to include('payload.retry_url')
+      end
+
+      it 'omits the retry hint without a target' do
+        outcome = described_class.from_error(Html2rss::RequestService::UnsupportedUrlScheme.new('x'))
+
+        expect(outcome.guidance).not_to include('retry_url')
+      end
+    end
+
     it 'tells the agent not to inspect on stop', :aggregate_failures do
       outcome = described_class.from_error(StandardError.new('boom'))
 

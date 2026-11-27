@@ -53,6 +53,14 @@ module Html2rss
                                  '(when present) for diagnostics; this error payload carries only ' \
                                  'class, message, url and sparse transport diagnostics.'
 
+        # Replaces {ERROR_INSPECT_GUIDANCE} when every attempted strategy timed out: the same request keeps failing.
+        ERROR_TIMEOUT_GUIDANCE = 'Every attempted strategy timed out, so a retry is unlikely to help. Call ' \
+                                 'inspect on payload.url (when present) for diagnostics; this error payload ' \
+                                 'carries only class, message, url and sparse transport diagnostics.'
+
+        # Appended to the stop guidance of a redirect downgraded from https to http.
+        ERROR_RETRY_URL_GUIDANCE = 'Retry once with payload.retry_url, the https form of the redirect target.'
+
         # Appended to {GUIDANCE}+[:stop]+ on error envelopes, whose payload always has these fields.
         ERROR_STOP_GUIDANCE = 'Report payload.class and payload.message.'
 

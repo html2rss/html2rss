@@ -21,8 +21,22 @@ module Html2rss
 
     # Raised when a URL uses an unsupported scheme.
     class UnsupportedUrlScheme < Html2rss::Error
+      # @return [String, nil] the https form of a downgraded redirect target, the URL to retry with
+      attr_reader :retry_url
+
+      ##
+      # @param message [String]
+      # @param retry_url [String, Html2rss::Url, nil] https form of the downgraded target
+      def initialize(message, retry_url: nil)
+        @retry_url = retry_url&.to_s
+        super(message)
+      end
+
       # @return [Symbol]
       def kind = :invalid_url
+
+      # @return [Hash{Symbol => Object}] sparse diagnostics including +retry_url+ when known
+      def diagnostics = { **super, retry_url: }.compact
     end
 
     # Raised when the entry response carries a permanent HTTP status (a missing or refused page),
