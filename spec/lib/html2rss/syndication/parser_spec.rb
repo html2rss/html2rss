@@ -84,6 +84,64 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(Nokogiri::HTML.fragment(description).css('img').size).to eq(1)
     end
 
+    it 'unwraps a CDATA section leaked through escaped Atom content' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom"><title>Feed</title>
+          <entry><id>urn:example:1</id><title>Harbor</title><link href="https://example.com/posts/1"/>
+            <content mode="escaped">&lt;![CDATA[ &lt;p&gt;Hello&lt;/p&gt;]]&gt;</content></entry>
+        </feed>
+      XML
+
+      expect(described_class.parse(body).articles.first[:description]).to eq('<p>Hello</p>')
+    end
+
+    it 'keeps a description that only ends like a CDATA section' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0"><channel><title>Channel</title><link>https://example.com/</link><description>D</description>
+          <item><title>Harbor</title><link>https://example.com/posts/1</link><description>a ]]&gt;</description></item>
+        </channel></rss>
+      XML
+
+      expect(described_class.parse(body).articles.first[:description]).to eq('a ]]>')
+    end
+
+    it 'keeps a description that only starts like a CDATA section' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0"><channel><title>Channel</title><link>https://example.com/</link><description>D</description>
+          <item><title>Harbor</title><link>https://example.com/posts/1</link><description>&lt;![CDATA[ a</description></item>
+        </channel></rss>
+      XML
+
+      expect(described_class.parse(body).articles.first[:description]).to eq('<![CDATA[ a')
+    end
+
+    it 'unwraps a leaked CDATA section surrounded by whitespace' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0"><channel><title>Channel</title><link>https://example.com/</link><description>D</description>
+          <item><title>Harbor</title><link>https://example.com/posts/1</link><description>
+            &lt;![CDATA[a]]&gt;
+          </description></item>
+        </channel></rss>
+      XML
+
+      expect(described_class.parse(body).articles.first[:description]).to eq('a')
+    end
+
+    it 'drops a leaked CDATA section with no content' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0"><channel><title>Channel</title><link>https://example.com/</link><description>D</description>
+          <item><title>Harbor</title><link>https://example.com/posts/1</link><description>&lt;![CDATA[ ]]&gt;</description></item>
+        </channel></rss>
+      XML
+
+      expect(described_class.parse(body).articles.first).not_to have_key(:description)
+    end
+
     it 'parses Atom entries into article hashes', :aggregate_failures do
       body = <<~XML
         <?xml version="1.0"?>
