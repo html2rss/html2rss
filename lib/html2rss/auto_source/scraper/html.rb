@@ -27,12 +27,12 @@ module Html2rss
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
         # @param document [Html2rss::Html::SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
-        # @param clock [AutoSource::Clock, nil] the run's time, for naive and year-less leftover dates
+        # @param clock [AutoSource::Clock] the run's time, for naive and year-less leftover dates
         # @param opts [Hash]
         # @option opts [Integer] :minimum_selector_frequency list frequency floor
         # @option opts [Integer] :use_top_selectors list selector budget
         # rubocop:disable-next Metrics/ParameterLists -- the page's inputs stay explicit
-        def initialize(parsed_body = nil, url:, clock: nil, document: nil, link_resolver: nil, **opts)
+        def initialize(parsed_body = nil, url:, clock:, document: nil, link_resolver: nil, **opts)
           super(parsed_body, url:, clock:, document:, link_resolver:)
           @opts = opts
         end

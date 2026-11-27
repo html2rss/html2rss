@@ -218,9 +218,8 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       allow(Html2rss::Html::SST::Normalizer).to receive(:call)
 
       described_class::HEURISTIC_SCRAPERS.each do |klass|
-        instance = described_class.build_instance(klass,
-                                                  described_class::Context.new(parsed_body:, opts:, clock: clock_for, url:,
-                                                                               document: shared_document))
+        context = described_class::Context.new(parsed_body:, opts:, clock: clock_for, url:, document: shared_document)
+        instance = described_class.build_instance(klass, context)
         instance.extractable?
       end
 
@@ -232,9 +231,9 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       allow(Html2rss::AutoSource::Scoring::LinkResolver).to receive(:new)
 
       described_class::HEURISTIC_SCRAPERS.each do |klass|
-        instance = described_class.build_instance(klass,
-                                                  described_class::Context.new(parsed_body:, opts:, clock: clock_for, url:, document:,
-                                                                               link_resolver: shared_resolver))
+        context = described_class::Context.new(parsed_body:, opts:, clock: clock_for, url:, document:,
+                                               link_resolver: shared_resolver)
+        instance = described_class.build_instance(klass, context)
         instance.extractable?
       end
 
@@ -350,8 +349,8 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       opts = { sitemap: { enabled: true } }
 
       described_class.build_instance(described_class::Sitemap,
-                                     described_class::Context.new(parsed_body:, opts:, clock: clock_for, url:, body: '<urlset/>',
-                                                                  request_session: :session))
+                                     described_class::Context.new(parsed_body:, opts:, clock: clock_for, url:,
+                                                                  body: '<urlset/>', request_session: :session))
 
       expect(described_class::Sitemap).to have_received(:new)
         .with(parsed_body, url:, request_session: :session, body: '<urlset/>')

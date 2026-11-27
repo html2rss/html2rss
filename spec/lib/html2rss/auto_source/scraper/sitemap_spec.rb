@@ -163,8 +163,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'parses a direct sitemap body without requesting anything' do
       xml = SITEMAP_SPEC_LEAF_XML
       session = instance_double(Html2rss::RequestSession)
-      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc, request_session: session,
-                                                      now: Time.now.utc).to_a.size).to eq(1)
+      expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml, now: Time.now.utc,
+                                                      request_session: session).to_a.size).to eq(1)
     end
 
     it 'stops and logs when the initial fetch exhausts the request budget', :aggregate_failures do
@@ -258,7 +258,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     it 'does not parse a body that is not a sitemap document' do
       session = mock_session(SITEMAP_SPEC_LEAF_XML)
       articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, body: '<p>not a sitemap</p>',
-                                                                             request_session: session, now: Time.now.utc).to_a
+                                                                             request_session: session,
+                                                                             now: Time.now.utc).to_a
       expect(articles.map { _1[:url] }).to eq(['https://example.com/post-1'])
     end
 
@@ -312,8 +313,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
 
     it 'forwards the constructor min_priority to sub-sitemap parsing' do
       session = mock_session(SITEMAP_SPEC_INDEX_XML, SITEMAP_SPEC_LEAF_XML, SITEMAP_SPEC_LEAF_XML)
-      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session, now: Time.now.utc,
-                                                                             min_priority: 0.9).to_a
+      articles = described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, request_session: session,
+                                                                             now: Time.now.utc, min_priority: 0.9).to_a
       expect(articles).to be_empty
     end
 

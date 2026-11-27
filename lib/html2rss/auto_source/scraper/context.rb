@@ -10,8 +10,7 @@ module Html2rss
       # What one page offers a scraper at construction: the parsed page, the full scraper options map (+opts+)
       # and the shared page state that {Scraper.build_instance} hands only to the scrapers that read it.
       # +document+ is the SST document, set for the heuristic tiers only; +captured_responses+ are
-      # browser-captured JSON XHR/fetch bodies; +clock+ is the run's time (current instant and channel
-      # time zone), the one clock the scrapers read.
+      # browser-captured JSON XHR/fetch bodies; +clock+ is the run's time.
       class Context
         # Optional fields and their defaults.
         PAGE_STATE = { request_session: nil, body: nil, document: nil, link_resolver: nil,

@@ -67,6 +67,42 @@ module Html2rss
     private_class_method :botasaurus_hint
 
     ##
+    # The host side of the {Extraction} protocol: runs a pass, fetches the requests it wants through +session+
+    # (which keeps every network policy) and runs again with every answer so far.
+    #
+    # @api private
+    # @param response [Html2rss::RequestService::Response] the page
+    # @param options [Hash] validated auto-source options
+    # @param clock [AutoSource::Clock]
+    # @param session [#follow_up] a {RequestSession}
+    # @param channel [Hash{Symbol => Object}] channel overrides
+    # @return [Extraction::Outcome] the last pass
+    def self.drive(response:, options:, clock:, session:, channel: {})
+      responses = {}
+      loop do
+        outcome = Extraction.run(response:, options:, clock:, responses:, channel:)
+        return outcome if outcome.requests.empty?
+
+        outcome.requests.each { responses[_1.id] = fetch(_1, response, session) }
+      end
+    end
+
+    # An advertised feed may leave the page origin, so that proof is rebuilt from the page, never from a request.
+    def self.fetch(request, page, session)
+      advertisement = if request.relation == :advertised_feed
+                        RequestService::FeedAdvertisement.from_document(page.parsed_body, page_url: page.url)
+                      end
+      response = session.follow_up(url: request.url, relation: request.relation, origin_url: request.origin_url,
+                                   advertisement:)
+      Extraction::Exchange.answer(response)
+    rescue Html2rss::ContractError
+      raise
+    rescue Html2rss::Error => error
+      Extraction::Exchange.failure(error)
+    end
+    private_class_method :fetch
+
+    ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
       @raw_config = raw_config
@@ -237,7 +273,7 @@ module Html2rss
       return [[], {}, nil] unless (auto_source = config.auto_source)
       return syndication_articles(response) if response.feed_response?
 
-      outcome = Extraction.drive(response:, options: auto_source, clock:, session: request_session,
+      outcome = self.class.drive(response:, options: auto_source, clock:, session: request_session,
                                  channel: config.channel)
       [outcome.articles, outcome.admission_drops, outcome.feed_channel]
     end

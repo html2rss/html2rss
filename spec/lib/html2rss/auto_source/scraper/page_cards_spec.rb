@@ -15,7 +15,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::PageCards do
         allow(scraper_class).to receive(:new).and_call_original
 
         expect(scraper_class.articles?(parsed_body)).to be(true)
-        expect(scraper_class).to have_received(:new).with(parsed_body, url: described_class::DETECTION_BASE_URL)
+        expect(scraper_class).to have_received(:new)
+          .with(parsed_body, url: described_class::DETECTION_BASE_URL, clock: described_class::DETECTION_CLOCK)
         expect(scraper_class.articles?(nil)).to be(false)
       end
 

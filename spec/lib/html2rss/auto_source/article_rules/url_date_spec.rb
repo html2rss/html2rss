@@ -82,14 +82,12 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::UrlDate do
     end
 
     it 'judges the future bound against today in the configured time zone', :aggregate_failures do
-      rules_date = Html2rss::AutoSource::ArticleRules::Date
-      allow(rules_date).to receive(:local_today).with(time_zone: 'Pacific/Kiritimati',
-                                                      now:).and_return(Date.new(2026, 11,
-                                                                                21))
+      zone = 'Pacific/Kiritimati'
+      allow(Html2rss::AutoSource::ArticleRules::Date).to receive(:local_today)
+        .with(time_zone: zone, now:).and_return(Date.new(2026, 11, 21))
 
-      expect(described_class.call('https://e.com/2026/11/22/a', time_zone: 'Pacific/Kiritimati',
-                                                                now:)).not_to be_nil
-      expect(described_class.call('https://e.com/2026/11/23/a', time_zone: 'Pacific/Kiritimati', now:)).to be_nil
+      expect(described_class.call('https://e.com/2026/11/22/a', time_zone: zone, now:)).not_to be_nil
+      expect(described_class.call('https://e.com/2026/11/23/a', time_zone: zone, now:)).to be_nil
     end
 
     it 'returns nil for nil' do

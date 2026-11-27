@@ -10,22 +10,23 @@ module Html2rss
       class PageCards < Base
         # Absolute base URL used when probe-time detection needs to normalize relative hrefs.
         DETECTION_BASE_URL = 'https://example.com'
+        # The clock of that probe, which reads no dates.
+        DETECTION_CLOCK = AutoSource::Clock.new(now: Time.at(0).utc, time_zone: nil)
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
         # @return [Boolean] true when a probe instance finds ranked segments
         def self.articles?(parsed_body)
           return false unless parsed_body
 
-          new(parsed_body, url: DETECTION_BASE_URL).extractable?
+          new(parsed_body, url: DETECTION_BASE_URL, clock: DETECTION_CLOCK).extractable?
         end
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
         # @param document [Html2rss::Html::SST::Document, nil] shared document built once per page
         # @param link_resolver [Scoring::LinkResolver, nil] shared link resolver
-        # @param clock [AutoSource::Clock, nil] the run's time, for naive and year-less leftover dates; only
-        #   detection ({.articles?}), which reads no dates, builds one without
-        def initialize(parsed_body = nil, url:, clock: nil, document: nil, link_resolver: nil)
+        # @param clock [AutoSource::Clock] the run's time, for naive and year-less leftover dates
+        def initialize(parsed_body = nil, url:, clock:, document: nil, link_resolver: nil)
           super(parsed_body, url:)
           @clock = clock
           @provided_document = document

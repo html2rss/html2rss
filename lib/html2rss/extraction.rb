@@ -4,28 +4,18 @@ require 'time'
 
 module Html2rss
   ##
-  # The extraction kernel (experimental): an HTML page and its absolute URL in, plain data out, no I/O.
-  #
-  # Runs the auto-source scrapers over the one page it is given. A scraper that needs a follow-up fetch
-  # (native feed, WordPress API, sitemap, oEmbed) makes the kernel answer +:needs_requests+ with the requests it
-  # wants; the host fetches them under its own policy and calls again with every answer so far. The kernel never
-  # reads a clock or a network: +now+ is an input. See CONTEXT.md § Extraction kernel.
+  # The extraction kernel (experimental): a page in, plain data out, no I/O and no clock.
+  # See CONTEXT.md § Extraction kernel.
   module Extraction
-    ##
-    # What one pass over a page found: the articles as objects, or the follow-ups it still wants.
-    # +articles+ are empty while +requests+ are wanted.
+    # One pass over a page: its articles (none while +requests+ are wanted) and the follow-ups it wants.
     Outcome = Data.define(:articles, :admission_drops, :feed_channel, :requests)
 
     ##
-    # @param page [Hash{Symbol => Object}] the page as an {Exchange.answer} entry: +:url+ (absolute), +:body+ and
-    #   optionally +:headers+ (+content-type+, +content-language+; UTF-8 HTML when absent)
-    # @param now [String] the current time, ISO 8601; the kernel reads no clock
+    # @param page [Hash{Symbol => Object}] +:url+ (absolute), +:body+, optional +:headers+ (UTF-8 HTML when absent)
+    # @param now [String] the current time, ISO 8601
     # @param responses [Hash{String => Hash}] every follow-up answer so far, by request id ({Exchange})
-    # @param options [Hash] the auto-source options ({AutoSource.options})
-    # @option options [Integer, nil] :limit max articles to keep
-    # @option options [Boolean, nil] :keep_different_domain overrides cleanup.keep_different_domain
-    # @option options [Boolean, nil] :keep_sponsored overrides cleanup.keep_sponsored
-    # @return [Result] articles as plain data, the requests still wanted, or the {ErrorKind} of the failure
+    # @param options [Hash] +:limit+, +:keep_different_domain+, +:keep_sponsored+ ({AutoSource.options})
+    # @return [Result]
     # @raise [Html2rss::ContractError] on a programmer error
     # @raise [InvalidOption] when an option is invalid
     def self.call(page:, now:, responses: {}, **)
@@ -42,11 +32,11 @@ module Html2rss
     end
 
     ##
-    # One pass of the auto-source scrapers over +response+, the one path of the gem and of the kernel.
+    # One auto-source pass, the one path of the gem and of the kernel.
     #
     # @param response [Html2rss::RequestService::Response] the page
-    # @param options [Hash] validated auto-source options ({AutoSource.options})
-    # @param clock [AutoSource::Clock] the run's time
+    # @param options [Hash] validated auto-source options
+    # @param clock [AutoSource::Clock]
     # @param responses [Hash{String => Hash}] follow-up answers so far, by request id
     # @param channel [Hash{Symbol => Object}] channel overrides (an explicit +:language+ wins)
     # @return [Outcome]
@@ -56,27 +46,6 @@ module Html2rss
       source = AutoSource.new(response, options, exchange:, vocabulary:, clock:)
       Outcome.new(articles: source.articles, admission_drops: source.admission_drops,
                   feed_channel: source.feed_channel, requests: exchange.requests)
-    end
-
-    ##
-    # The host's loop over {.run}: fetches every request a pass wants through +session+ and runs again with
-    # every answer so far, until nothing is wanted. The one loop of the gem and of the specs; all I/O and every
-    # network policy stay in +session+.
-    #
-    # @param response [Html2rss::RequestService::Response] the page
-    # @param options [Hash] validated auto-source options ({AutoSource.options})
-    # @param clock [AutoSource::Clock] the run's time
-    # @param session [#follow_up] a {Html2rss::RequestSession}, or any object with its +follow_up+
-    # @param channel [Hash{Symbol => Object}] channel overrides (an explicit +:language+ wins)
-    # @return [Outcome] the last pass: its articles, no requests left
-    def self.drive(response:, options:, clock:, session:, channel: {})
-      responses = {}
-      loop do
-        outcome = run(response:, options:, clock:, responses:, channel:)
-        return outcome if outcome.requests.empty?
-
-        outcome.requests.each { responses[_1.id] = Exchange.fetch(_1, response, session) }
-      end
     end
 
     ##

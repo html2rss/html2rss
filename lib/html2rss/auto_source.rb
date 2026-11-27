@@ -126,10 +126,10 @@ module Html2rss
     ##
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
-    # @param exchange [Html2rss::Extraction::Exchange, nil] the follow-up requests of this pass; nil runs no follow-up
+    # @param exchange [Html2rss::Extraction::Exchange, nil] the pass's follow-ups; nil runs none
     # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope, resolved by the caller once and
     #   shared by every classifier of this run
-    # @param clock [Clock] the run's time: dates the page leaves without a year, naive dates, sitemap recency
+    # @param clock [Clock] the run's time
     # @option opts [Integer] :limit max articles to keep; later tiers stop once this many survive Cleanup
     # @option opts [Hash] :scraper scraper configuration map
     # @option opts [Hash] :cleanup cleanup configuration map
@@ -150,8 +150,8 @@ module Html2rss
     ##
     # Extracts articles by running scraper tiers until a sufficient set is found.
     #
-    # Tiers: in-page structured → follow-up IO → SemanticHtml → Html. A follow-up the {Extraction::Exchange}
-    # has no answer for yet ends the pass after its tier with no articles: the exchange holds the wanted requests.
+    # Tiers: in-page structured → follow-up IO → SemanticHtml → Html. A follow-up still unanswered ends the
+    # pass after its tier with no articles; the +exchange+ holds the wanted requests.
     # SST is built at most once, lazily, by the first consumer: a heuristic tier or the
     # {Corroboration} page check of structured-tier items. Later tiers are skipped once
     # +limit+ counting articles with url+title remain after Cleanup ({#counting}); the result
@@ -203,16 +203,16 @@ module Html2rss
 
         matched |= run_tier(tier, articles).any?
       end
-      return [] if exchange&.pending?
+      return [] if pending?
       raise Scraper.no_scraper_found_for(parsed_body, body:) unless matched
 
       finish_articles(articles)
     end
 
-    # Whether the tiers from +tier+ on need not run: a follow-up awaits its answer, or the earlier tiers
-    # already admitted enough.
+    def pending? = exchange&.requests&.any?
+
     def settled?(tier, articles)
-      exchange&.pending? || enough_articles?(articles) || skip_html_padding?(tier, articles)
+      pending? || enough_articles?(articles) || skip_html_padding?(tier, articles)
     end
 
     # Runs every enabled, extractable scraper of +tier+, appending its articles.

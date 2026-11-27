@@ -6,8 +6,8 @@ require_relative '../../support/saved_responses'
 
 RSpec.describe Html2rss::AutoSource do
   subject(:auto_source) do
-    Html2rss::Extraction.drive(response:, options: config, clock: clock_for(nil),
-                               session: request_session || AutoSourceCorpus::Offline)
+    Html2rss::FeedPipeline.drive(response:, options: config, clock: clock_for(nil),
+                                 session: request_session || AutoSourceCorpus::Offline)
   end
 
   let(:config) { described_class::DEFAULT_CONFIG }
