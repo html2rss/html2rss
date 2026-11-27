@@ -254,11 +254,11 @@ RSpec.describe Html2rss::RequestService::Policy do
     context 'when an https origin follows up over plain http' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/feed?page=2') }
 
-      it 'names the downgraded follow-up url', :aggregate_failures do
+      it 'names the downgraded follow-up url and its https form to retry with', :aggregate_failures do
         expect { validate_follow_up! }.to raise_error(
           Html2rss::RequestService::UnsupportedUrlScheme,
           'Follow-up downgraded from https to http for http://example.com/feed?page=2'
-        )
+        ) { |error| expect(error.retry_url).to eq('https://example.com/feed?page=2') }
       end
     end
   end
@@ -654,8 +654,10 @@ RSpec.describe Html2rss::RequestService::Policy do
     context 'when the hop downgrades to http' do
       let(:to_url) { Html2rss::Url.from_absolute('http://cdn.example.net/show.xml') }
 
-      it 'denies the hop' do
-        expect { validate_redirect! }.to raise_error(Html2rss::RequestService::UnsupportedUrlScheme)
+      it 'denies the hop and carries the https form of the target as retry_url', :aggregate_failures do
+        expect { validate_redirect! }.to raise_error(Html2rss::RequestService::UnsupportedUrlScheme) do |error|
+          expect(error.diagnostics).to include(retry_url: 'https://cdn.example.net/show.xml')
+        end
       end
     end
 

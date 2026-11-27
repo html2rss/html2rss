@@ -27,7 +27,8 @@ module Html2rss
     include Comparable
 
     # Closed set of query params that carry campaign or referrer data, never page identity.
-    TRACKING_PARAM = /\A(?:utm_.*|fbclid|gclid|msclkid|mc_cid|mc_eid|ref|ref_src)\z/i
+    # +at_*+ is the AT Internet family (+at_medium+, +at_campaign+, +at_source+, ...), prefix-matched like +utm_*+.
+    TRACKING_PARAM = /\A(?:utm_.*|at_.*|fbclid|gclid|msclkid|mc_cid|mc_eid|ref|ref_src)\z/i
 
     # PublicSuffix's own default reads its bundled list with Encoding.default_external,
     # which is US-ASCII when MCP hosts or cron spawn Ruby without a locale.
@@ -342,10 +343,14 @@ module Html2rss
 
     ##
     # Returns a copy of the URL with {TRACKING_PARAM} query params removed; the remaining
-    # params keep their order.
+    # params keep their order. A fragment shaped +name=value+ with a tracking name (+#ref=rss+) goes too;
+    # a plain anchor (+#section+) stays.
     #
-    # @return [Url] this URL when it carries no tracking param; otherwise a new URL
-    def without_tracking_params = without_query_params { tracking_param?(_1) }
+    # @return [Url] this URL when it carries no tracking param or fragment; otherwise a new URL
+    def without_tracking_params
+      url = without_query_params { tracking_param?(_1) }
+      tracking_fragment? ? url.without_fragment : url
+    end
 
     ##
     # Returns a copy of the URL with the query params named in +names+ removed; the remaining
@@ -478,6 +483,8 @@ module Html2rss
 
     # @return [Array<String>] raw +key=value+ query pairs, in source order
     def query_params = query ? query.split('&') : NO_PARAMS
+
+    def tracking_fragment? = fragment.to_s.include?('=') && tracking_param?(fragment)
 
     def tracking_param?(pair) = TRACKING_PARAM.match?(param_name(pair))
 

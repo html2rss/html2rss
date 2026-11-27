@@ -166,7 +166,8 @@ module Html2rss
         # @return [Outcome]
         def from_error(error, url: nil, tool: nil)
           next_step = next_step_for_error(error, tool)
-          new(ok: false, next_step:, guidance: error_guidance(next_step), payload: error_payload(error, url))
+          payload = error_payload(error, url)
+          new(ok: false, next_step:, guidance: error_guidance(next_step, error, payload), payload:)
         end
 
         private
@@ -308,12 +309,24 @@ module Html2rss
           payload
         end
 
-        def error_guidance(next_step)
+        def error_guidance(next_step, error, payload)
           case next_step.name
-          when :inspect then Playbook::ERROR_INSPECT_GUIDANCE
-          when :stop then "#{next_step.guidance} #{Playbook::ERROR_STOP_GUIDANCE}"
+          when :inspect then inspect_guidance(error)
+          when :stop then stop_guidance(next_step, payload)
           else next_step.guidance
           end
+        end
+
+        def stop_guidance(next_step, payload)
+          retry_url = Playbook::ERROR_RETRY_URL_GUIDANCE if payload.key?(:retry_url)
+          [next_step.guidance, Playbook::ERROR_STOP_GUIDANCE, retry_url].compact.join(' ')
+        end
+
+        # A timeout where every attempted strategy timed out: repeating the request is unlikely to help.
+        def inspect_guidance(error)
+          attempts = error.is_a?(RequestService::RequestTimedOut) ? error.attempts.to_a : []
+          timed_out = attempts.any? && attempts.all? { _1[:error_class] == RequestService::RequestTimedOut.name }
+          timed_out ? Playbook::ERROR_TIMEOUT_GUIDANCE : Playbook::ERROR_INSPECT_GUIDANCE
         end
 
         # Terminal: an internal bug, a rejected caller option, or a deterministic request policy rejection

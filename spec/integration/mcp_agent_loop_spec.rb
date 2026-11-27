@@ -113,9 +113,16 @@ RSpec.describe 'MCP agent loop (next_step terminates, guidance names real fields
   end
 
   # A tool that fails the same way every time it is called.
+  let(:timed_out_everywhere) do
+    request_service::RequestTimedOut.new('slow').tap do |error|
+      error.attempts = [{ strategy: :default, error_class: request_service::RequestTimedOut.name }]
+    end
+  end
   let(:errors) do
     [
       request_service::RequestTimedOut.new('slow'),
+      timed_out_everywhere,
+      request_service::UnsupportedUrlScheme.new('downgraded', retry_url: 'https://example.com/a'),
       request_service::ConnectionFailed.new('refused'),
       request_service::BlockedSurfaceDetected.new('blocked'),
       request_service::BotasaurusConfigurationError.new('unset'),

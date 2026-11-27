@@ -613,6 +613,22 @@ RSpec.describe Html2rss::Url do
         .to eq('https://example.com/a')
     end
 
+    it 'removes AT Internet params and a tracking fragment', :aggregate_failures do
+      urls = %w[https://example.com/a?at_medium=RSS&at_campaign=rss&id=1 https://example.com/a#ref=rss
+                https://example.com/a?utm_source=x#ref=rss].map { described_class.from_absolute(_1) }
+
+      expect(urls.map { _1.without_tracking_params.to_s })
+        .to eq(%w[https://example.com/a?id=1 https://example.com/a https://example.com/a])
+    end
+
+    it 'keeps fragments that are anchors or carry a non-tracking name', :aggregate_failures do
+      %w[#section #page=2 #xat_medium=1 #=ref].each do |fragment|
+        url = described_class.from_absolute("https://example.com/a#{fragment}")
+
+        expect(url.without_tracking_params).to equal(url)
+      end
+    end
+
     it 'returns the same URL when nothing is tracked', :aggregate_failures do
       url = described_class.from_absolute('https://example.com/a?refx=1&id=2')
 
