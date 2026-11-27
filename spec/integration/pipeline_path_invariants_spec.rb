@@ -23,14 +23,15 @@ RSpec.describe 'Pipeline path invariants' do
 
   let(:listing_html) do
     articles = (1..5).map do |i|
-      "<article><h2><a href='#{origin}/news/post-#{i}-about-something-long'>Post #{i} about something long enough" \
+      "<article><h2><a href='#{origin}/news/post-#{i}-about-something-long?at_medium=RSS&at_campaign=rss'>" \
+        "Post #{i} about something long enough" \
         "</a></h2><p>Summary text number #{i} that is reasonably long to look like an excerpt of it.</p></article>"
     end
     "<html><head><title>News</title></head><body><main>#{articles.join}</main></body></html>"
   end
   let(:rss_body) do
     items = (1..5).map do |i|
-      "<item><title>Post #{i}</title><link>#{origin}/p/#{i}</link><guid>#{origin}/p/#{i}</guid>" \
+      "<item><title>Post #{i}</title><link>#{origin}/p/#{i}#ref=rss</link><guid>#{origin}/p/#{i}</guid>" \
         "<description><![CDATA[<![CDATA[Body #{i}]]>]]></description></item>"
     end
     %(<?xml version="1.0"?><rss version="2.0"><channel><title>Feed</title><link>#{origin}/</link>) +
@@ -38,7 +39,7 @@ RSpec.describe 'Pipeline path invariants' do
   end
   let(:atom_body) do
     entries = (1..5).map do |i|
-      "<entry><title>Post #{i}</title><id>#{origin}/p/#{i}</id><link href='#{origin}/p/#{i}'/>" \
+      "<entry><title>Post #{i}</title><id>#{origin}/p/#{i}</id><link href='#{origin}/p/#{i}?utm_source=rss'/>" \
         "<updated>2024-01-0#{i}T00:00:00Z</updated>" \
         "<content type='html'>&lt;![CDATA[Body #{i}]]&gt;</content></entry>"
     end
@@ -56,7 +57,8 @@ RSpec.describe 'Pipeline path invariants' do
   let(:section_page) do
     lambda do |nav|
       articles = (1..2).map do |i|
-        "<article><h2><a href='#{origin}/politik/story-#{i}-about-something-long'>Story #{i} about something long " \
+        "<article><h2><a href='#{origin}/politik/story-#{i}-about-something-long#ref=rss'>" \
+          "Story #{i} about something long " \
           "enough</a></h2><p>Summary text number #{i} that is reasonably long to look like an excerpt.</p></article>"
       end
       "<html><head><title>Politik</title><link rel='alternate' type='application/rss+xml' href='#{origin}/feed.xml'>" \
@@ -161,6 +163,12 @@ RSpec.describe 'Pipeline path invariants' do
         expect(result.status.scrape_url).to eq(entry)
         expect(result.status.entry_resolution)
           .to include(applied: false, reason: :no_in_scope_winner, out_of_scope_skipped: be >= 1)
+      end
+
+      it 'carries no tracking param or tracking fragment on any item URL', :aggregate_failures do
+        urls = result.to_rss.items.map { _1.link.to_s } + wire.fetch(:items).map { _1.fetch(:url).to_s }
+        expect(urls).not_to be_empty
+        expect(urls.join(' ')).not_to match(/at_medium|at_campaign|utm_source|#ref=/)
       end
 
       it 'does not leak CDATA markers into item text', :aggregate_failures do

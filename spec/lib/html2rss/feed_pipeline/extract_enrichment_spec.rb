@@ -60,4 +60,19 @@ RSpec.describe Html2rss::FeedPipeline, '#extract' do
       expect(result.status.to_h).not_to include(:enriched, :enrich_failed)
     end
   end
+
+  context 'when item links carry tracking suffixes' do
+    let(:enrich) { nil }
+    let(:listing) do
+      '<html><body><article><a href="/a?at_medium=RSS&id=1#ref=rss">Tracked</a></article>' \
+        '<article><a href="/b?id=2#section">Clean</a></article></body></html>'
+    end
+
+    it 'strips them from the item URLs and keeps plain anchors and params', :aggregate_failures do
+      outcome, = described_class.new(config).to_outcome_and_result
+      urls = outcome.articles.map { _1.url.to_s }
+
+      expect(urls).to contain_exactly('https://example.com/a?id=1', 'https://example.com/b?id=2#section')
+    end
+  end
 end

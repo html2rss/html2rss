@@ -125,7 +125,7 @@ module Html2rss
     # @return [Extraction] unique articles with their dedup and admission drops and feed channel facts
     def extract(config:, response:, request_session:)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
-      deduped = capped(Article::Deduplicator.new(collected).call, config)
+      deduped = without_tracking(capped(Article::Deduplicator.new(collected).call, config))
       enriched, enrichment = enrich(deduped, config:, request_session:)
       unique = with_url_dates(enriched, config.time_zone)
       Extraction.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,
@@ -140,6 +140,16 @@ module Html2rss
     def capped(articles, config)
       limit = config.auto_source&.dig(:limit)
       limit ? articles.first(limit) : articles
+    end
+
+    # The one owner of tracking-suffix removal on item URLs, for every path (HTML, selectors, feeds).
+    # The guid hashes the url, so an item that carried a suffix gets a new guid once.
+    def without_tracking(articles)
+      articles.map do |article|
+        url = article.url
+        clean = url&.without_tracking_params
+        clean.equal?(url) ? article : article.with_url(clean)
+      end
     end
 
     # Opt-in article-page metadata. Runs before {#with_url_dates} so a real article-page date wins over a URL date.
