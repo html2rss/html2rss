@@ -15,9 +15,8 @@ RSpec.describe Html2rss::Extraction do
       expect(result.articles.size).to eq(50)
     end
 
-    it 'names the scrapers that matched', :aggregate_failures do
-      expect(result.scrapers.values.sum).to eq(50)
-      expect(result.articles.map { |article| article[:scraper] }.uniq).to match_array(result.scrapers.keys)
+    it 'names the scraper that matched each article' do
+      expect(result.articles.map { |article| article[:scraper] }.uniq).to all(start_with('AutoSource::'))
     end
 
     it 'holds plain values only' do
@@ -64,7 +63,7 @@ RSpec.describe Html2rss::Extraction do
 
     it 'reports a page without articles as empty' do
       expect(described_class.call(html: '<html><body><p>nothing</p></body></html>', url:))
-        .to have_attributes(status: :empty, articles: [], scrapers: {})
+        .to have_attributes(status: :empty, articles: [])
     end
 
     it 'returns a failure as an error kind', :aggregate_failures do

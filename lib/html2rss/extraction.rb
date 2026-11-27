@@ -11,16 +11,19 @@ module Html2rss
     ##
     # @param html [String] the page body
     # @param url [String, Html2rss::Url] the page's absolute URL
-    # @option options [Integer, nil] :limit max articles to keep
-    # @option options [Boolean, nil] :keep_different_domain overrides cleanup.keep_different_domain
-    # @option options [Boolean, nil] :keep_sponsored overrides cleanup.keep_sponsored
+    # @param limit [Integer, nil] max articles to keep
+    # @param keep_different_domain [Boolean, nil] overrides cleanup.keep_different_domain
+    # @param keep_sponsored [Boolean, nil] overrides cleanup.keep_sponsored
     # @return [Result] articles as plain data, or the {ErrorKind} of the failure
     # @raise [Html2rss::ContractError] on a programmer error
     # @raise [InvalidOption] when an option is invalid
-    def self.call(html:, url:, **)
-      auto_source = AutoSource.options(**)
+    def self.call(html:, url:, limit: nil, keep_different_domain: nil, keep_sponsored: nil)
+      options = AutoSource.options(limit:, keep_different_domain:, keep_sponsored:)
       response = RequestService::Response.local_html(body: html, url:)
-      Result.ok(extract(response, auto_source))
+      vocabulary = Vocabulary[Channel.language_for(response)]
+      found = AutoSource.new(response, options, vocabulary:).articles
+      articles = without_shared_categories(without_tracking(unique(found)))
+      Result.ok(with_url_dates(articles, nil))
     rescue ContractError, InvalidOption
       raise
     rescue Html2rss::Error => error
@@ -83,14 +86,5 @@ module Html2rss
         date ? article.with_published_at(date) : article
       end
     end
-
-    # @return [Array<Html2rss::Article>]
-    def self.extract(response, auto_source)
-      vocabulary = Vocabulary[Channel.language_for(response)]
-      articles = AutoSource.new(response, auto_source, vocabulary:).articles
-      kept = without_shared_categories(without_tracking(unique(articles)))
-      with_url_dates(kept, nil)
-    end
-    private_class_method :extract
   end
 end

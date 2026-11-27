@@ -757,8 +757,14 @@ RSpec.describe Html2rss::Url do
       expect(described_class.from_absolute('https://1.2.3.4/story').domain).to eq('1.2.3.4')
     end
 
-    it 'uses the bracketed host for an IPv6 literal' do
-      expect(described_class.from_absolute('https://[2001:db8::1]/story').domain).to eq('[2001:db8::1]')
+    it 'has no domain without a host' do
+      expect(described_class.new(Addressable::URI.parse('/a/b')).domain).to be_nil
+    end
+
+    it 'uses the bracketed host for an IPv6 literal, with or without a dotted IPv4 tail', :aggregate_failures do
+      %w[[2001:db8::1] [::ffff:1.2.3.4] [::1.2.3.4]].each do |host|
+        expect(described_class.from_absolute("https://#{host}/story").domain).to eq(host)
+      end
     end
 
     it 'delegates path method' do

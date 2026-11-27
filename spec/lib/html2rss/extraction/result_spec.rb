@@ -23,19 +23,18 @@ RSpec.describe Html2rss::Extraction::Result do
     it 'holds one plain hash per article', :aggregate_failures do
       result = described_class.ok([full])
 
-      expect(result).to have_attributes(status: :ok, scrapers: { 'AutoSource::Schema' => 1 }, error_kind: nil)
+      expect(result).to have_attributes(status: :ok, error_kind: nil)
       expect(result.articles).to eq([full_data])
     end
 
-    it 'leaves absent values nil and tallies scrapers per article', :aggregate_failures do
-      result = described_class.ok([bare, full, bare, Html2rss::Article.new(title: 'No scraper')])
+    it 'leaves absent values nil' do
+      result = described_class.ok([bare])
 
-      expect(result.scrapers).to eq('AutoSource::SemanticHtml' => 2, 'AutoSource::Schema' => 1)
       expect(result.articles.first).to include(url: nil, image: nil, published_at: nil, enclosures: [], media: false)
     end
 
     it 'is empty without articles' do
-      expect(described_class.ok([])).to have_attributes(status: :empty, articles: [], scrapers: {}, error_kind: nil)
+      expect(described_class.ok([])).to have_attributes(status: :empty, articles: [], error_kind: nil)
     end
   end
 
@@ -44,7 +43,7 @@ RSpec.describe Html2rss::Extraction::Result do
       error = Html2rss::RequestService::RequestTimedOut.new('slow')
 
       expect(described_class.failure(error))
-        .to have_attributes(status: :error, articles: [], scrapers: {}, error_kind: Html2rss::ErrorKind[:timeout])
+        .to have_attributes(status: :error, articles: [], error_kind: Html2rss::ErrorKind[:timeout])
     end
   end
 end

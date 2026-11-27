@@ -170,9 +170,17 @@ module Html2rss
     # Raised when Botasaurus responds but the scrape fails (upstream error, bad payload).
     class BotasaurusServiceError < Html2rss::Error; end
 
-    # Names of the supported strategies; {.strategy_class} maps each to its implementation.
-    # @return [Array<Symbol>]
-    STRATEGY_NAMES = %i[default httpx faraday botasaurus browserless local_file].freeze
+    # Supported strategy names, each a lambda returning its implementation: the transports load on first use,
+    # never with this class.
+    # @return [Hash{Symbol => Proc}]
+    STRATEGIES = {
+      default: -> { HttpxStrategy },
+      httpx: -> { HttpxStrategy },
+      faraday: -> { HttpxStrategy },
+      botasaurus: -> { BotasaurusStrategy },
+      browserless: -> { BotasaurusStrategy },
+      local_file: -> { LocalFileStrategy }
+    }.freeze
 
     # Deprecated strategy aliases and the preferred replacement name for warnings.
     # @return [Hash{Symbol => Symbol}]
@@ -232,26 +240,14 @@ module Html2rss
       def default_strategy_name = DEFAULT_STRATEGY_NAME
 
       # @return [Array<String>] the names of the registered strategies
-      def strategy_names = STRATEGY_NAMES.map(&:to_s)
-
-      ##
-      # Maps a strategy name to its implementation; the transports load on first use, never with this class.
-      # @param name [Symbol] a name in {STRATEGY_NAMES}
-      # @return [Class<Strategy>, nil] the strategy class, nil for an unknown name
-      def strategy_class(name)
-        case name
-        when :default, :httpx, :faraday then HttpxStrategy
-        when :botasaurus, :browserless then BotasaurusStrategy
-        when :local_file then LocalFileStrategy
-        end
-      end
+      def strategy_names = STRATEGIES.keys.map(&:to_s)
 
       ##
       # Checks if a strategy is registered.
       # @param name [Symbol, String] the name of the strategy
       # @return [Boolean] true if the strategy is registered, false otherwise.
       def strategy_registered?(name)
-        STRATEGY_NAMES.include?(name.to_sym)
+        STRATEGIES.key?(name.to_sym)
       end
 
       ##
@@ -262,11 +258,12 @@ module Html2rss
       # @raise [UnknownStrategy] if the strategy is not registered.
       def execute(ctx, strategy: default_strategy_name)
         strategy_sym = resolve_strategy_name(strategy, relation: ctx.relation, host: ctx.url.host)
-        klass = strategy_class(strategy_sym) || raise(
-          UnknownStrategy, "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
-        )
+        strategy_class = STRATEGIES.fetch(strategy_sym) do
+          raise UnknownStrategy,
+                "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
+        end
 
-        fetch_initial_through_cache(ctx, strategy_sym) { klass.new(ctx).execute }
+        fetch_initial_through_cache(ctx, strategy_sym) { strategy_class.call.new(ctx).execute }
       end
 
       ##

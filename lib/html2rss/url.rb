@@ -274,12 +274,12 @@ module Html2rss
     def user = @uri.user
 
     # Registrable domain (eTLD+1). Same-site hosts like www.example.com and news.example.com
-    # share `example.com`. An IPv4 literal stays the host so 1.2.3.4 is not treated as `3.4`; an IPv6 literal has
-    # no registrable domain, so it falls back to the host as well.
+    # share `example.com`. An IPv4 or bracketed IPv6 literal stays the host so 1.2.3.4 is not treated as `3.4`
+    # (nor ::ffff:1.2.3.4).
     #
     # @return [String, nil]
     def domain
-      return host if IPV4.match?(host)
+      return host if host&.start_with?('[') || IPV4.match?(host)
 
       PublicSuffix.domain(host, list: PUBLIC_SUFFIX_LIST, ignore_private: true) || host
     end

@@ -125,13 +125,11 @@ module Html2rss
     # @return [Extracted] unique articles with their dedup and admission drops and feed channel facts
     def extract(config:, response:, request_session:)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
-      deduped = Html2rss::Extraction.without_shared_categories(
-        Html2rss::Extraction.without_tracking(
-          Html2rss::Extraction.unique(collected, limit: config.auto_source&.dig(:limit))
-        )
+      deduped = Extraction.without_shared_categories(
+        Extraction.without_tracking(Extraction.unique(collected, limit: config.auto_source&.dig(:limit)))
       )
       enriched, enrichment = enrich(deduped, config:, request_session:)
-      unique = Html2rss::Extraction.with_url_dates(enriched, config.time_zone)
+      unique = Extraction.with_url_dates(enriched, config.time_zone)
       Extracted.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,
                     enrichment:)
     end
@@ -140,7 +138,7 @@ module Html2rss
 
     attr_reader :raw_config
 
-    # Opt-in article-page metadata. Runs before the URL date fallback ({Html2rss::Extraction.with_url_dates}) so a real
+    # Opt-in article-page metadata. Runs before the URL date fallback ({Extraction.with_url_dates}) so a real
     # article-page date wins over a URL date.
     def enrich(articles, config:, request_session:)
       return [articles, {}] unless (options = config.enrich)&.fetch(:article_metadata, false)
