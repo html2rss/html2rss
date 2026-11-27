@@ -75,16 +75,21 @@ module Html2rss
           title: Article::Title.compose(title, kicker: title_pieces.kicker_text, vocabulary: @vocabulary),
           url: extract_url,
           image: extract_image,
-          description: ArticleRules::Description.from_lines(lines,
-                                                            vocabulary: @vocabulary, title:, classifier: @classifier),
+          description: description_from(lines, title),
           id: parse_id_from_dom,
-          published_at:,
+          published_at:, author: ArticleRules::Description::Byline.first_author(lines),
           enclosures: extract_enclosures,
           categories: extract_categories(title, root:)
         }
       end
 
       private
+
+      # Leftover text minus the lines a date already used; bylines are dropped by the description rule itself.
+      def description_from(lines, title)
+        ArticleRules::Description.from_lines(ArticleRules::Date.without_dates(lines),
+                                             vocabulary: @vocabulary, title:, classifier: @classifier)
+      end
 
       def extract_url
         @extract_url ||= @link_resolver.destination_facts(@selected_anchor)&.url

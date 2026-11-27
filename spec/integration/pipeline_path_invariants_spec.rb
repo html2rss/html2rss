@@ -25,7 +25,8 @@ RSpec.describe 'Pipeline path invariants' do
     articles = (1..5).map do |i|
       "<article><h2><a href='#{origin}/news/post-#{i}-about-something-long?at_medium=RSS&at_campaign=rss'>" \
         "Post #{i} about something long enough" \
-        "</a></h2><p>Summary text number #{i} that is reasonably long to look like an excerpt of it.</p></article>"
+        '</a></h2><p>Von Anna Beispiel</p>' \
+        "<p>Summary text number #{i} that is reasonably long to look like an excerpt of it.</p></article>"
     end
     "<html><head><title>News</title></head><body><main>#{articles.join}</main></body></html>"
   end
@@ -176,6 +177,13 @@ RSpec.describe 'Pipeline path invariants' do
         expect(texts.join).to match(/Body|Summary/)
         expect(texts.join).not_to include('<![CDATA[', ']]>')
         expect(wire.fetch(:items).join).not_to include('<![CDATA[', ']]>')
+      end
+
+      it 'keeps a byline out of the item description', :aggregate_failures do
+        descriptions = result.to_rss.items.map { _1.description.to_s }
+        expect(descriptions.join).to match(/Body|Summary/)
+        expect(descriptions.join).not_to include('Anna Beispiel')
+        expect(wire.fetch(:items).map { _1[:description].to_s }.join).not_to include('Anna Beispiel')
       end
 
       it 'carries scrape_url and entry_resolution on the batch wire only when applied or kept', :aggregate_failures do

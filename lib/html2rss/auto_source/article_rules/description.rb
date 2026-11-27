@@ -159,16 +159,49 @@ module Html2rss
               date_shaped?(normalized) || title_echo?(key, title)
           end
 
-          # A read-more label, call to action, share row or reading time: widgets, not prose.
+          # A read-more label, call to action, share row, reading time or byline: widgets, not prose.
           def widget?(normalized, classifier)
             classifier.read_more?(normalized) || classifier.utility_chrome?(normalized) ||
-              normalized.match?(READING_TIME)
+              normalized.match?(READING_TIME) || !Byline.author_of(normalized).nil?
           end
 
           def title_echo?(key, title)
             t = title.to_s.strip.downcase
             !t.empty? && key == t
           end
+        end
+      end
+
+      ##
+      # A byline line ("Von X", "by X", "<date> / by X") feeds author, not description.
+      module Byline
+        # A name word: capitalised, or a lowercase particle ("van", "de").
+        NAME_WORD = /(?:\p{Lu}[\p{L}.'’-]*|van|von|der|de|da|di|del|la|le)/
+        # One short name: a capitalised word followed by up to three name words.
+        PERSON = /\p{Lu}[\p{L}.'’-]*(?:\s+#{NAME_WORD}){0,3}/
+        # "by"/"von" are the only literal tokens (a vocabulary concept would replace them) before one or two
+        # names joined by "and"/"und"/"&"/",".
+        PATTERN = /\A(?i:by|von)\s+(#{PERSON}(?:\s*(?:,|&|and|und)\s+#{PERSON})?)\z/
+        # Separator between a date and a byline on one line ("27 Nov 2026 / by Name").
+        DATE_SEPARATOR = ' / '
+
+        class << self
+          ##
+          # @param line [String, nil]
+          # @return [String, nil] the author name when +line+ is a byline of at most {Description::MAX_LABEL_CHARS}
+          def author_of(line)
+            text = line.to_s.gsub(/[[:space:]]+/, ' ').strip
+            return if text.length > Description::MAX_LABEL_CHARS || text.match?(Description::SENTENCE_END)
+
+            head, sep, tail = text.rpartition(DATE_SEPARATOR)
+            candidate = !sep.empty? && Description.date_shaped?(head) ? tail : text
+            candidate.match(PATTERN)&.captures&.first
+          end
+
+          ##
+          # @param lines [Array<String>]
+          # @return [String, nil] the author of the first byline line
+          def first_author(lines) = lines.filter_map { |line| author_of(line) }.first
         end
       end
     end

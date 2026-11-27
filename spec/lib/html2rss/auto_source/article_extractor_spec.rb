@@ -22,11 +22,41 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
         article = described_class.call(segment, base_url: 'https://example.com', time_zone: extractor_time_zone,
                                                 link_resolver: page_resolver)
         { title: article&.title, description: article&.description, published_at: article&.published_at,
+          author: article&.author,
           categories: article&.categories || [], url: article&.url }
       end
     end
 
     it_behaves_like 'article extractor leftover hygiene'
+
+    context 'with text a card rule already used' do
+      let(:body) { '<p>Real description here that is long enough to matter for readers.</p>' }
+      let(:head) { '<h3><a href="/news/story">Tram depot reopens</a></h3>' }
+
+      it 'keeps a date scattered over fragment lines out of the description', :aggregate_failures do
+        fragments = ['November', '25', ',', '2026', '| 20:15 PM'].map { |text| "<p>#{text}</p>" }.join
+        result = leftover_fields.call("<article>#{head}<div>#{fragments}</div>#{body}</article>")
+
+        expect(result[:published_at].to_s).to start_with('2026-11-25T')
+        expect(result[:description]).to eq('Real description here that is long enough to matter for readers.')
+      end
+
+      it 'feeds a byline to author, not description', :aggregate_failures do
+        ['Von Anna Beispiel', 'by Anna Beispiel', '27 Nov 2026 / by Anna Beispiel'].each do |byline|
+          result = leftover_fields.call("<article>#{head}<p>#{byline}</p>#{body}</article>")
+
+          expect(result[:author]).to eq('Anna Beispiel')
+          expect(result[:description]).to eq('Real description here that is long enough to matter for readers.')
+        end
+      end
+
+      it 'keeps prose that starts with "By" in the description', :aggregate_failures do
+        result = leftover_fields.call("<article>#{head}<p>By the end of the year the depot reopens.</p></article>")
+
+        expect(result[:author]).to be_nil
+        expect(result[:description]).to eq('By the end of the year the depot reopens.')
+      end
+    end
   end
 
   describe 'page language' do

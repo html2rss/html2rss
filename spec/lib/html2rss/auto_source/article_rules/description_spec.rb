@@ -17,6 +17,14 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
   end
 
   describe '.date_shaped?' do
+    it 'reads a byline as an author name only when it is name-shaped', :aggregate_failures do
+      expect(described_class::Byline.author_of('Von Anna Beispiel')).to eq('Anna Beispiel')
+      expect(described_class::Byline.author_of('27 Nov 2026 / by Anna van Beispiel')).to eq('Anna van Beispiel')
+      expect(described_class::Byline.author_of('By the end of the year')).to be_nil
+      expect(described_class::Byline.author_of('Tram news / by Anna Beispiel')).to be_nil
+      expect(described_class::Byline.author_of(nil)).to be_nil
+    end
+
     it 'reads a digitless line without peeling or matching date shapes', :aggregate_failures do
       allow(described_class).to receive(:date_core).and_call_original
 
