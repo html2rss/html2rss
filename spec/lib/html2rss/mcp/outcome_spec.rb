@@ -39,33 +39,15 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(prompt).to include('suggested_channel_url', 'enhance defaults from admission evidence')
     end
 
-    describe '.inspect_guidance' do
-      it 'returns default inspect guidance when articles are present' do
-        populated = Html2rss::Curation::Inspect::Report.new(
-          data: { articles_count: 3, alternate_feeds: [] }
-        )
-
-        expect(described_class.inspect_guidance(populated))
-          .to eq(described_class::GUIDANCE.fetch(:inspect))
+    describe '.guidance' do
+      it 'is the step copy alone without a reason' do
+        expect(described_class.guidance(Html2rss::MCP::Outcome::NextStep[:capture]))
+          .to eq(described_class::GUIDANCE.fetch(:capture))
       end
 
-      it 'guides blocked surfaces toward botasaurus' do
-        expect(described_class.inspect_guidance(report(blocked_surface: true)))
-          .to include('anti-bot interstitial')
-      end
-
-      it 'guides blocked_surface category toward botasaurus' do
-        expect(described_class.inspect_guidance(report(surface_category: 'blocked_surface')))
-          .to include('inspect --deep')
-      end
-
-      it 'guides js shells toward auto or --deep' do
-        expect(described_class.inspect_guidance(report(likely_js_shell: true)))
-          .to include('JS-rendered shell')
-      end
-
-      it 'guides empty static pages toward redirect verification' do
-        expect(described_class.inspect_guidance(report)).to include('redirect_summary.final_url')
+      it 'appends the reason the step was chosen' do
+        expect(described_class.guidance(Html2rss::MCP::Outcome::NextStep[:stop], :not_html))
+          .to eq("#{described_class::GUIDANCE.fetch(:stop)} #{described_class::REASONS.fetch(:not_html)}")
       end
     end
 
@@ -128,22 +110,24 @@ RSpec.describe Html2rss::MCP::Outcome do
       end
     end
 
-    it 'keeps ok true and points at inspect when empty and Botasaurus is configured' do
-      outcome = described_class.scrape(
-        items: [], requested_strategy: :auto, channel_title: 'Channel', scrape_url: 'https://example.com/',
-        botasaurus_configured: true
-      )
+    {
+      'auto with Botasaurus configured' => [:auto, true, :stop, :browser_exhausted],
+      'botasaurus with Botasaurus configured' => [:botasaurus, true, :stop, :browser_exhausted],
+      'default with Botasaurus configured' => [:default, true, :inspect, nil],
+      'auto with Botasaurus unset' => [:auto, false, :inspect, nil],
+      'default with Botasaurus unset' => [:default, false, :inspect, nil]
+    }.each do |label, (strategy, configured, step, reason)|
+      it "keeps ok true and points at #{step} when empty after #{label}", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one envelope
+        outcome = described_class.scrape(
+          items: [], requested_strategy: strategy, channel_title: 'Channel', scrape_url: 'https://example.com/',
+          botasaurus_configured: configured
+        )
 
-      expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :inspect))
-    end
-
-    it 'points at read_runtime when empty and Botasaurus is unset' do
-      outcome = described_class.scrape(
-        items: [], requested_strategy: :auto, channel_title: 'Channel', scrape_url: 'https://example.com/',
-        botasaurus_configured: false
-      )
-
-      expect(outcome.next_step.name).to eq(:read_runtime)
+        expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: step))
+        expect(outcome.guidance).to eq(
+          described_class::Playbook.guidance(described_class::NextStep[step], reason)
+        )
+      end
     end
 
     it 'includes admission_drops only when present' do
@@ -157,24 +141,47 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.inspect_report' do
-    it 'points at recon when alternates are present' do
-      outcome = described_class.inspect_report(
-        report: report(alternate_feeds: [{ href: 'https://example.com/feed.xml' }])
-      )
+    let(:html) { { html_response: true, strategy: :default } }
 
-      expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :recon))
+    {
+      'alternates are present' =>
+        [{ alternate_feeds: [{ href: 'https://example.com/feed.xml' }] }, true, :recon, nil],
+      'extractable articles are present' => [{ articles_count: 3 }, true, :capture, nil],
+      'the response is not HTML' => [{ html_response: false, content_type: 'application/pdf' }, true, :stop, :not_html],
+      'the surface is unsupported' => [{ surface_category: 'unsupported_surface' }, true, :stop, :unreadable_surface],
+      'the surface category is a symbol' => [{ surface_category: :high_entropy_surface }, true, :stop,
+                                             :unreadable_surface],
+      'the surface category says blocked' => [{ surface_category: :blocked_surface }, true, :scrape, :js_shell],
+      'a static page reports false shell facts' =>
+        [{ likely_js_shell: false, blocked_surface: false, surface_category: 'listing' }, true, :capture,
+         :static_empty],
+      'the surface category is missing' => [{}, true, :capture, :static_empty],
+      'the page is a JS shell and Botasaurus is configured' => [{ likely_js_shell: true }, true, :scrape, :js_shell],
+      'the page is blocked and Botasaurus is unset' =>
+        [{ blocked_surface: true }, false, :read_runtime, :browser_missing],
+      'Botasaurus already ran on a JS shell' =>
+        [{ likely_js_shell: true, strategy: :botasaurus }, true, :stop, :browser_exhausted],
+      'the page is static and empty' => [{ surface_category: 'listing' }, true, :capture, :static_empty]
+    }.each do |label, (data, configured, step, reason)|
+      it "points at #{step} when #{label}", :aggregate_failures do
+        outcome = described_class.inspect_report(report: report(**html, **data), botasaurus_configured: configured)
+
+        expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: step))
+        expect(outcome.guidance).to eq(described_class::Playbook.guidance(described_class::NextStep[step], reason))
+      end
     end
 
-    it 'points at capture when extractable articles are present' do
-      outcome = described_class.inspect_report(report: report(articles_count: 3))
-
-      expect(outcome.next_step.name).to eq(:capture)
-    end
-
-    it 'points at scrape when recon is otherwise empty' do
-      outcome = described_class.inspect_report(report: report(articles_count: 0))
+    it 'treats a missing strategy as not Botasaurus' do
+      outcome = described_class.inspect_report(report: report(html_response: true, likely_js_shell: true),
+                                               botasaurus_configured: true)
 
       expect(outcome.next_step.name).to eq(:scrape)
+    end
+
+    it 'reads a missing html_response fact as not HTML' do
+      outcome = described_class.inspect_report(report:, botasaurus_configured: true)
+
+      expect(outcome.next_step.name).to eq(:stop)
     end
   end
 
@@ -225,16 +232,18 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.payload[:native_feed]).to eq('https://example.com/feed.xml')
     end
 
-    it 'points at inspect when articles_count is zero' do
+    it 'stops when articles_count is zero' do
       outcome = capture.call(articles_count: 0)
 
-      expect(outcome.next_step.name).to eq(:inspect)
+      expect(outcome).to have_attributes(next_step: have_attributes(name: :stop),
+                                         guidance: include(described_class::Playbook::REASONS.fetch(:capture_unusable)))
     end
 
-    it 'points at inspect when selectors are missing' do
+    it 'points at scrape when articles exist but selectors are missing', :aggregate_failures do
       outcome = capture.call(has_selectors: false)
 
-      expect(outcome.next_step.name).to eq(:inspect)
+      expect(outcome.next_step.name).to eq(:scrape)
+      expect(outcome.guidance).to include(described_class::Playbook::REASONS.fetch(:capture_scrape_only))
     end
 
     it 'puts YAML inside payload rather than as the whole result' do
@@ -275,30 +284,104 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe 'batch verbs' do
-    {
-      batch_scrape: :scrape, batch_inspect: :inspect, batch_recon: :recon
-    }.each do |verb, failure_step|
-      describe ".#{verb}" do
-        let(:results) { [{ ok: true }, { ok: false }] }
+    let(:batch_result) { Html2rss::Curation::Batch::BatchResult }
+    let(:timed_out) { Html2rss::RequestService::RequestTimedOut.new('slow') }
+    let(:ok_row) { { url: 'https://example.com/a', ok: true, items_count: 1 } }
+    let(:failed_row) { { url: 'https://example.com/b', ok: false, error: 'slow' } }
 
-        it 'points at done and echoes the batch wire payload when any item succeeded', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- wire payload
-          batch = Html2rss::Curation::Batch::BatchResult.new(total: 2, successful: 1, results:)
-          outcome = described_class.public_send(verb, batch)
+    describe '.batch_scrape' do
+      it 'is done with the plain guidance when every URL succeeded', :aggregate_failures do
+        outcome = described_class.batch_scrape(batch_result.new(total: 1, successful: 1, results: [ok_row]))
 
-          expect(outcome.ok).to be(true)
-          expect(outcome.next_step.name).to eq(:done)
-          expect(outcome.guidance).to eq(described_class::NextStep[:done].guidance)
-          expect(outcome.payload).to eq(batch.to_h)
-        end
+        expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :done),
+                                           guidance: described_class::NextStep[:done].guidance)
+        expect(outcome.payload).to eq(total: 1, successful: 1, results: [ok_row])
+      end
 
-        it "points at #{failure_step} when no item succeeded", :aggregate_failures do
-          batch = Html2rss::Curation::Batch::BatchResult.new(total: 2, successful: 0, results:)
-          outcome = described_class.public_send(verb, batch)
+      it 'stays done but counts the failures and sends the agent to each row when some failed', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one envelope
+        outcome = described_class.batch_scrape(
+          batch_result.new(total: 2, successful: 1, results: [ok_row, failed_row], errors: [nil, timed_out])
+        )
 
-          expect(outcome.ok).to be(true)
-          expect(outcome.next_step.name).to eq(failure_step)
-          expect(outcome.guidance).to eq(described_class::NextStep[failure_step].guidance)
-        end
+        expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :done))
+        expect(outcome.guidance).to eq(
+          "#{described_class::NextStep[:done].guidance} 1 of 2 URLs failed: read each failed row's next_step."
+        )
+      end
+
+      it 'gives a failed row the single-URL error fields and next_step', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one row
+        outcome = described_class.batch_scrape(
+          batch_result.new(total: 2, successful: 1, results: [ok_row, failed_row], errors: [nil, timed_out])
+        )
+        single = described_class.from_error(timed_out, url: failed_row[:url])
+
+        expect(outcome.payload[:results].first).to eq(ok_row)
+        expect(outcome.payload[:results].last).to eq(
+          failed_row.merge(single.payload, next_step: single.next_step.name.to_s)
+        )
+        expect(outcome.payload[:results].last).to include(class: 'Html2rss::RequestService::RequestTimedOut',
+                                                          next_step: 'inspect', url: failed_row[:url], error: 'slow')
+        expect(outcome.payload[:results].last).not_to have_key(:guidance)
+      end
+
+      it 'keeps the scrape step when no URL succeeded', :aggregate_failures do
+        outcome = described_class.batch_scrape(
+          batch_result.new(total: 1, successful: 0, results: [failed_row], errors: [timed_out])
+        )
+
+        expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :scrape),
+                                           guidance: described_class::NextStep[:scrape].guidance)
+      end
+    end
+
+    describe '.batch_inspect' do
+      let(:rows) do
+        [{ requested_url: 'https://example.com/a', status: 200, articles_count: 2, html_response: true },
+         { requested_url: 'https://example.com/b', status: 200, articles_count: 0, html_response: false }]
+      end
+
+      it 'gives each row the next_step a single inspect would give', :aggregate_failures do
+        outcome = described_class.batch_inspect(batch_result.new(total: 2, successful: 1, results: rows),
+                                                botasaurus_configured: true)
+
+        expect(outcome.payload[:results].map { |row| row[:next_step] }).to eq(%w[capture stop])
+        expect(outcome.guidance).to include('1 of 2 URLs failed')
+      end
+
+      it 'asks for the runtime when a JS shell row has no Botasaurus to retry with' do
+        row = { requested_url: 'https://example.com/a', status: 200, articles_count: 0, html_response: true,
+                likely_js_shell: true }
+        outcome = described_class.batch_inspect(batch_result.new(total: 1, successful: 1, results: [row]),
+                                                botasaurus_configured: false)
+
+        expect(outcome.payload[:results].first[:next_step]).to eq('read_runtime')
+      end
+
+      it 'keeps the inspect step when no URL succeeded' do
+        outcome = described_class.batch_inspect(batch_result.new(total: 2, successful: 0, results: rows),
+                                                botasaurus_configured: true)
+
+        expect(outcome.next_step.name).to eq(:inspect)
+      end
+    end
+
+    describe '.batch_recon' do
+      let(:rows) do
+        [{ requested_url: 'https://example.com/a', verdict: :build },
+         { requested_url: 'https://example.com/b', verdict: :drop }]
+      end
+
+      it 'gives each row the next_step a single recon would give', :aggregate_failures do
+        outcome = described_class.batch_recon(batch_result.new(total: 2, successful: 1, results: rows))
+
+        expect(outcome.payload[:results].map { |row| row[:next_step] }).to eq(%w[capture scrape])
+        expect(outcome.next_step.name).to eq(:done)
+      end
+
+      it 'keeps the recon step when no URL succeeded' do
+        outcome = described_class.batch_recon(batch_result.new(total: 2, successful: 0, results: rows))
+
+        expect(outcome.next_step.name).to eq(:recon)
       end
     end
   end
@@ -332,21 +415,25 @@ RSpec.describe Html2rss::MCP::Outcome do
                                                  quality_report: report))
 
       expect(outcome.guidance).to eq(
-        'Extracted 0 items (minimum required: 1) Review payload.quality_report warnings: items_without_url. ' \
+        'Extracted 0 items (minimum required: 1) ' \
+        "#{described_class::Playbook.guidance(described_class::NextStep[:stop], :test_failed)} " \
+        'Review payload.quality_report warnings: items_without_url. ' \
         'Items were dropped for having no URL: fix the selectors.url selector (it must match a link on each item).'
       )
     end
 
-    it 'uses the test error message as guidance on failure' do
+    it 'leads with the test error message on failure' do
       outcome = described_class.test(test_result(error_message: 'Feed is empty'))
 
-      expect(outcome.guidance).to eq('Feed is empty')
+      expect(outcome.guidance).to start_with('Feed is empty ')
     end
 
     it 'falls back to the next_step guidance when the failure carries no message' do
       outcome = described_class.test(test_result.with(error_message: nil))
 
-      expect(outcome.guidance).to eq(described_class::NextStep[:capture].guidance)
+      expect(outcome.guidance).to eq(
+        described_class::Playbook.guidance(described_class::NextStep[:stop], :test_failed)
+      )
     end
   end
 
@@ -389,19 +476,19 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(described_class.test(result).next_step.name).to eq(:validate)
     end
 
-    it 'points at capture on execution failure' do
+    it 'stops on execution failure' do
       result = test_result(failure_kind: Html2rss::Curation::Test::FailureKind[:execution])
-      expect(described_class.test(result).next_step.name).to eq(:capture)
+      expect(described_class.test(result).next_step.name).to eq(:stop)
     end
 
-    it 'points at capture on min_items failure' do
+    it 'stops on min_items failure' do
       result = test_result(failure_kind: Html2rss::Curation::Test::FailureKind[:min_items])
-      expect(described_class.test(result).next_step.name).to eq(:capture)
+      expect(described_class.test(result).next_step.name).to eq(:stop)
     end
 
-    it 'points at capture on quality failure' do
+    it 'stops on quality failure' do
       result = test_result(failure_kind: Html2rss::Curation::Test::FailureKind[:quality])
-      expect(described_class.test(result).next_step.name).to eq(:capture)
+      expect(described_class.test(result).next_step.name).to eq(:stop)
     end
   end
 
@@ -411,19 +498,23 @@ RSpec.describe Html2rss::MCP::Outcome do
 
       expect(outcome.ok).to be(true)
       expect(outcome.next_step.name).to eq(:done)
+      expect(outcome.guidance).to eq(described_class::NextStep[:done].guidance)
       expect(outcome.payload).to eq(rss: '<rss/>', item_count: 1)
     end
 
-    it 'is not ok and points at inspect when item_count is zero' do
+    it 'is not ok and stops when item_count is zero' do
       outcome = described_class.apply(rss: '<rss/>', item_count: 0)
 
-      expect(outcome).to have_attributes(ok: false, next_step: have_attributes(name: :inspect))
+      expect(outcome).to have_attributes(
+        ok: false, next_step: have_attributes(name: :stop),
+        guidance: described_class::Playbook.guidance(described_class::NextStep[:stop], :apply_empty)
+      )
     end
 
     it 'is not ok when the ship gate reports empty even with items', :aggregate_failures do
       outcome = described_class.apply(rss: '<rss/>', item_count: 3, empty: true)
 
-      expect(outcome).to have_attributes(ok: false, next_step: have_attributes(name: :inspect))
+      expect(outcome).to have_attributes(ok: false, next_step: have_attributes(name: :stop))
       expect(outcome.payload).to eq(rss: '<rss/>', item_count: 3)
     end
 
@@ -472,11 +563,43 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.payload.keys).to contain_exactly(:class, :message)
     end
 
-    it 'maps NoFeedItemsExtracted to inspect' do
-      error = Html2rss::NoFeedItemsExtracted.new(attempts: [], surface_category: nil)
-      outcome = described_class.from_error(error)
+    {
+      'an unknown surface after the default strategy' => [nil, [:default], :inspect],
+      'an app shell after the default strategy' => [:app_shell, [:default], :inspect],
+      'a blocked surface Botasaurus never tried' => [:blocked_surface, [:default], :inspect],
+      'an app shell Botasaurus also tried' => [:app_shell, %i[default botasaurus], :stop],
+      'an unsupported surface' => [:unsupported_surface, [:default], :stop],
+      'a high-entropy surface' => [:high_entropy_surface, [:default], :stop]
+    }.each do |label, (surface, strategies, step)|
+      it "maps NoFeedItemsExtracted on #{label} to #{step}" do
+        error = Html2rss::NoFeedItemsExtracted.new(attempts: strategies.map do |strategy|
+          { strategy:, items_count: 0 }
+        end,
+                                                   surface_category: surface)
 
-      expect(outcome.next_step.name).to eq(:inspect)
+        expect(described_class.from_error(error).next_step.name).to eq(step)
+      end
+    end
+
+    it 'never sends the agent back to the tool that just failed', :aggregate_failures do
+      error = Html2rss::RequestService::RequestTimedOut.new('slow')
+
+      expect(described_class.from_error(error, tool: 'scrape').next_step.name).to eq(:inspect)
+      expect(described_class.from_error(error, tool: 'inspect').next_step.name).to eq(:stop)
+    end
+
+    it 'lets a failed validate call point at validate again' do
+      error = Html2rss::MCP::Contract::InvalidArgumentsError.new('Missing required arguments: yaml')
+
+      expect(described_class.from_error(error, tool: 'validate')).to have_attributes(
+        next_step: have_attributes(name: :validate), guidance: described_class::NextStep[:validate].guidance
+      )
+    end
+
+    it 'points a failed Botasaurus configuration at the runtime guidance' do
+      error = Html2rss::RequestService::BotasaurusConfigurationError.new('unset')
+
+      expect(described_class.from_error(error).guidance).to eq(described_class::NextStep[:read_runtime].guidance)
     end
 
     it 'maps ExclusiveInputError to validate' do
@@ -567,8 +690,8 @@ RSpec.describe Html2rss::MCP::Outcome do
     it 'tells the agent not to inspect on stop', :aggregate_failures do
       outcome = described_class.from_error(StandardError.new('boom'))
 
-      expect(outcome.guidance).to eq(described_class::NextStep[:stop].guidance)
-      expect(outcome.guidance).to include('do not call inspect')
+      expect(outcome.guidance).to eq("#{described_class::NextStep[:stop].guidance} #{described_class::Playbook::ERROR_STOP_GUIDANCE}")
+      expect(outcome.guidance).to include('Do not call inspect')
     end
   end
 

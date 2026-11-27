@@ -16,11 +16,14 @@ module Html2rss
       ALL_ACCEPTED_STRATEGIES = (STRATEGIES + MIGRATION_STRATEGIES).freeze
 
       # Bump when tool names, required inputs, or envelope semantics change (independent of gem +VERSION+).
-      MCP_CONTRACT_VERSION = 5
+      MCP_CONTRACT_VERSION = 6
       public_constant :MCP_CONTRACT_VERSION
 
       # Raised when apply/validate config uses an unpublished MCP request adapter.
       class UnpublishedRequestError < Html2rss::InvalidOption; end
+
+      # Raised when tool arguments miss a required key or break the published input schema.
+      class InvalidArgumentsError < Html2rss::InvalidOption; end
 
       # JSON Schema property for a source page URL.
       URL_PROPERTY = {

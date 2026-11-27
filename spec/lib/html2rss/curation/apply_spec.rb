@@ -64,5 +64,14 @@ RSpec.describe Html2rss::Curation::Apply do
         expect(result.to_rss.to_s).to include('<channel>')
       end
     end
+
+    context 'when extracted articles have nothing to render' do
+      before { config[:selectors][:title] = { selector: 'h2' } }
+
+      it 'is empty because the rendered RSS has no items', :aggregate_failures do
+        expect(result.item_count).to eq(0)
+        expect(result).to be_empty
+      end
+    end
   end
 end

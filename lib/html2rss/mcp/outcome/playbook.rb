@@ -14,7 +14,7 @@ module Html2rss
           inspect: 'Call inspect next. Read payload for diagnostics (final_url, status, ' \
                    'scheme_downgrade, alternate_feeds, likely_js_shell, redirect_summary).',
           recon: 'Call recon next. Read payload for verdict and native_feed preference.',
-          validate: 'Call validate with payload.yaml or a config hash (XOR, not both).',
+          validate: 'Call validate with yaml or a config hash (XOR, not both).',
           apply: 'Call apply next. Confirm payload.item_count before shipping.',
           scrape: 'Call scrape for articles now. strategy auto already runs default (HTTPX) then Botasaurus ' \
                   'and promotes native RSS/Atom when present. Compare payload.scrape_url to the requested URL; ' \
@@ -23,18 +23,38 @@ module Html2rss
                   'resolution_scope site or use recon).',
           capture: 'Call capture for a reusable YAML draft, then follow next_step.',
           read_runtime: 'Read html2rss://runtime. Compare mcp_contract_version and catalog_fingerprint ' \
-                        'to your cached tools/list before retrying unknown tools. ' \
-                        'Set BOTASAURUS_SCRAPER_URL on the MCP process if botasaurus_configured is false.',
-          stop: 'Not retryable for this input. Report payload.class and payload.message; ' \
-                'do not call inspect for this URL.',
+                        'to your cached tools/list before retrying unknown tools.',
+          stop: 'Stop: no further tool call can change this result for this input. ' \
+                'Do not call inspect for this URL.',
           test: 'Call test next (schema + live extraction). Confirm payload.item_count, ' \
                 'failure_kind, and payload.quality_report warnings before shipping.'
+        }.freeze
+
+        # Why a next step was chosen, appended to the step's guidance. Keyed by the decision, never by tool.
+        REASONS = {
+          not_html: 'The response is not an HTML page, so no strategy can extract articles from it.',
+          unreadable_surface: 'No strategy can read this surface. Target a direct listing, changelog or ' \
+                              'category URL instead.',
+          js_shell: 'The page looks JS-rendered or blocked: retry scrape with strategy botasaurus once.',
+          browser_missing: 'The page looks JS-rendered or blocked and Botasaurus is not configured: ' \
+                           'set BOTASAURUS_SCRAPER_URL on the MCP process.',
+          browser_exhausted: 'Default and Botasaurus already ran and found no articles; do not retry.',
+          static_empty: 'Empty extract on a static page: capture may need selector hints.',
+          capture_unusable: 'Capture found no articles to build selectors from; this page needs ' \
+                            'hand-written selectors or a different URL.',
+          capture_scrape_only: 'Capture drafted no selectors, but auto-source reads the page: scrape it.',
+          test_failed: 'The config does not extract as written: revise it, or capture again from scratch.',
+          apply_empty: 'The config renders zero items; nothing can be shipped. Revise the selectors ' \
+                       '(title or description must match) before applying again.'
         }.freeze
 
         # Error envelopes carry class, message, the input url and sparse error diagnostics only.
         ERROR_INSPECT_GUIDANCE = 'The call failed and may succeed on retry. Call inspect on payload.url ' \
                                  '(when present) for diagnostics; this error payload carries only ' \
                                  'class, message, url and sparse transport diagnostics.'
+
+        # Appended to {GUIDANCE}+[:stop]+ on error envelopes, whose payload always has these fields.
+        ERROR_STOP_GUIDANCE = 'Report payload.class and payload.message.'
 
         class << self
           ##
@@ -47,7 +67,7 @@ module Html2rss
 
               1. Need articles now (no saved config)? → scrape (or batch_scrape for multiple)
                  - strategy "auto" runs default (HTTPX) → Botasaurus AutoFallback. Do not retry with explicit default after auto.
-                 - Empty scrape is still success (articles-now). Follow next_step / guidance (read_runtime if Botasaurus unset).
+                 - Empty scrape is still success (articles-now). Follow next_step / guidance.
                  - Compare payload.scrape_url to the requested URL; when payload.entry_resolution is present the items come from that page.
               2. Need a reusable feed YAML? → capture → test → apply
                  - capture returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Default enhance follows capture evidence (false when admission_drops show chrome); override only when needed.
@@ -91,30 +111,13 @@ module Html2rss
           end
 
           ##
-          # @param report [Curation::Inspect::Report]
+          # The one place guidance is composed: the chosen step's copy plus, optionally, why it was chosen.
+          #
+          # @param next_step [Outcome::NextStep]
+          # @param reason [Symbol, nil] key of {REASONS}
           # @return [String]
-          def inspect_guidance(report)
-            return GUIDANCE.fetch(:inspect) unless report.articles_count.zero?
-
-            empty_extract_guidance(report.data)
-          end
-
-          ##
-          # @param data [Hash{Symbol => Object}]
-          # @return [String]
-          def empty_extract_guidance(data) # rubocop:disable Metrics/MethodLength
-            if data[:blocked_surface] || data[:surface_category].to_s == 'blocked_surface'
-              return 'Blocked or anti-bot interstitial likely. Retry scrape with strategy botasaurus once ' \
-                     '(or CLI inspect --deep when BOTASAURUS_SCRAPER_URL is set). ' \
-                     'Do not retry explicit default after auto.'
-            end
-            if data[:likely_js_shell]
-              return 'JS-rendered shell likely (html_present, zero articles). Use strategy auto or botasaurus; ' \
-                     'CLI inspect --deep for one Botasaurus diagnostic hop.'
-            end
-
-            'Empty extract on a static-looking page. Verify redirect_summary.final_url and surface; ' \
-              'capture may need selector hints.'
+          def guidance(next_step, reason = nil)
+            [next_step.guidance, (REASONS.fetch(reason) if reason)].compact.join(' ')
           end
 
           ##
@@ -122,9 +125,9 @@ module Html2rss
           # @param next_step [Outcome::NextStep]
           # @return [String]
           def recon_guidance(result, next_step)
-            return next_step.guidance unless result.scheme_downgrade
+            return guidance(next_step) unless result.scheme_downgrade
 
-            "#{next_step.guidance} HTTPS→HTTP downgrade detected: try one Botasaurus scrape before DROP."
+            "#{guidance(next_step)} HTTPS→HTTP downgrade detected: try one Botasaurus scrape before DROP."
           end
         end
       end

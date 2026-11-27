@@ -88,6 +88,17 @@ RSpec.describe Html2rss::Curation::Batch do
       expect { described_class.run('ab') { |item| item } }.to raise_error(Html2rss::InvalidOption)
     end
 
+    it 'moves each failed row exception into errors, in row order, and keeps non-hash rows', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one batch
+      boom = Html2rss::Error.new('boom')
+      result = described_class.run([1, 2, 3], concurrency: 1) do |item|
+        { 1 => { ok: true }, 2 => { ok: false, failure: boom }, 3 => 'plain' }.fetch(item)
+      end
+
+      expect(result.errors).to eq([nil, boom, nil])
+      expect(result.results).to eq([{ ok: true }, { ok: false }, 'plain'])
+      expect(result.to_h).to eq(total: 3, successful: 2, results: [{ ok: true }, { ok: false }, 'plain'])
+    end
+
     it 'counts present non-hash results and ignores a false ok flag' do
       special = Class.new(Hash).new
       special[:ok] = false
@@ -140,6 +151,22 @@ RSpec.describe Html2rss::Curation::Batch do
           { url: 'https://example.com/b', ok: false, error: 'Scrape timed out' }
         ]
       )
+    end
+
+    it 'records the URL as a string on a failed row', :aggregate_failures do
+      allow(Html2rss).to receive(:scrape).with(:'https://example.com/c', strategy: :auto, limit: 10)
+                                         .and_raise(Html2rss::Error, 'nope')
+      row = described_class.batch_scrape(urls: [:'https://example.com/c']).results.first
+
+      expect(row).to include(url: 'https://example.com/c', ok: false)
+    end
+
+    it 'keeps the exception behind each failed row out of the wire hash', :aggregate_failures do
+      result = described_class.batch_scrape(urls:, concurrency: 2)
+
+      expect(result.errors.map { |error| error&.message }).to eq([nil, 'Scrape timed out'])
+      expect(result.to_h.keys).to eq(%i[total successful results])
+      expect(result.results.last.keys).to eq(%i[url ok error])
     end
 
     context 'when entry resolution swapped the page' do

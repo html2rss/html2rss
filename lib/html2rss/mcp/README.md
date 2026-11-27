@@ -45,7 +45,34 @@ Every tool result is one JSON object (text body and `structuredContent`):
 
 `Contract.response` builds the wire body; `Outcome` owns `next_step` policy.
 
-Error envelopes (`ok: false`) carry `payload.class`, `payload.message`, `payload.url` (single-URL tools only) and the error's sparse `diagnostics` (`strategy_attempts`, `request_id`, `timeout_phase`, `surface_category`, ...) when present; never `final_url` or `status`. `next_step` is `stop` (do not call `inspect` again) for internal bugs (non-`Html2rss::Error`) rejected caller options (`InvalidOption`) and deterministic rejections (`FeedPipeline::AutoFallback::NON_FALLBACK_ERRORS`); `read_runtime` / `validate` for their config errors; `inspect` for everything else (timeouts, connection failures, blocked surface, empty extraction, other `Html2rss::Error`).
+Error envelopes (`ok: false`) carry `payload.class`, `payload.message`, `payload.url` (single-URL tools only) and the error's sparse `diagnostics` (`strategy_attempts`, `request_id`, `timeout_phase`, `surface_category`, ...) when present; never `final_url` or `status`. `next_step` is `stop` (do not call `inspect` again) for empty extractions no strategy can read (`unsupported_surface`, `high_entropy_surface`) or where Botasaurus already ran, internal bugs (non-`Html2rss::Error`) rejected caller options (`InvalidOption`) and deterministic rejections (`FeedPipeline::AutoFallback::NON_FALLBACK_ERRORS`); `read_runtime` / `validate` for their config errors; `inspect` for everything else, except that an error never names the tool that just failed (that is `stop`) (timeouts, connection failures, blocked surface, empty extraction, other `Html2rss::Error`).
+
+Missing or schema-breaking tool arguments (any tool) come back as the same error envelope with `next_step: validate`, built by `Server::ArgumentGate` before the SDK's plain-text rejection; the published input schemas are unchanged.
+
+### `next_step` decisions
+
+`Outcome` owns every row; guidance is always `Playbook.guidance(next_step, reason)` (the step's copy plus why it was chosen) and names `payload.<field>` only for fields that outcome carries (`spec/integration/mcp_agent_loop_spec.rb`).
+
+| Result                                                                                | `next_step`    |
+| ------------------------------------------------------------------------------------- | -------------- |
+| scrape with items                                                                     | `done`         |
+| scrape empty, auto/botasaurus run with Botasaurus configured                          | `stop`         |
+| scrape empty otherwise                                                                | `inspect`      |
+| inspect with alternates                                                               | `recon`        |
+| inspect with articles                                                                 | `capture`      |
+| inspect, response not HTML (PDF, image) or surface unreadable                         | `stop`         |
+| inspect, JS shell or blocked page, Botasaurus not yet run and configured              | `scrape`       |
+| inspect, JS shell or blocked page, Botasaurus unset                                   | `read_runtime` |
+| inspect, JS shell or blocked page, Botasaurus already ran                             | `stop`         |
+| inspect, static empty page                                                            | `capture`      |
+| capture with native feed                                                              | `done`         |
+| capture with articles and selectors                                                   | `test`         |
+| capture with articles, no selectors                                                   | `scrape`       |
+| capture with no articles                                                              | `stop`         |
+| test success / schema failure / any other failure                                     | `apply` / `validate` / `stop` |
+| apply with rendered items / none                                                      | `done` / `stop` |
+
+Batch rows: a failed `batch_scrape` row carries the single-URL error fields (`class`, `message`, sparse diagnostics) and `next_step`, built by `Outcome.from_error`; `batch_inspect` and `batch_recon` rows carry the `next_step` a single call would give. The top level stays `done` when any URL succeeded (guidance counts the failures), and keeps the verb's own step when none did.
 
 ## Ownership
 

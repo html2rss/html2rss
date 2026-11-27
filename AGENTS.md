@@ -37,6 +37,9 @@ Architecture and seam ownership map: `CONTEXT.md`.
 User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share seven verbs (`inspect`, `recon`, `capture`, `validate`, `test`, `apply`, `scrape`) plus batch variants (`batch_inspect`, `batch_recon`, `batch_scrape`). Canonical contract: `CONTEXT.md` § Frozen contract. Module guide: `lib/html2rss/mcp/README.md`. When verbs change, update `CONTEXT.md` § Frozen contract, this section, `README.md`, and `lib/html2rss/mcp/README.md`.
 
 - **Apply:** `Curation::Apply.call` / `Curation::Apply::Result` is the one result of the apply verb (feed, RSS, lazy `quality_report`, `empty?`); CLI and MCP render it. CLI `apply` exits 1 on zero items, MCP returns `isError`, `Html2rss.apply` returns the empty result without raising.
+- **Item rules:** item-level pipeline invariants live in `spec/integration/pipeline_path_invariants_spec.rb`; add a rule there, not in a per-path spec.
+- **Agent loop:** MCP guidance may only name `payload.<field>` keys its own outcome carries, and `next_step` must reach `done` or `stop` (`spec/integration/mcp_agent_loop_spec.rb`); add a world to that table when adding a next step.
+- **Reporter sites:** never put real reporter sites in specs, fixtures, commits or PR text; use `example.com`.
 - **Enhance audit:** `selectors.items.enhance` enriches matched item nodes via `Selectors::ItemEnhancer` (`AutoSource::ArticleExtractor::Item`). `Curation::Test::EnhanceAudit` owns `quality_report.metrics.enhance_gains` and warn-only enhance warnings; `compare_enhance` on test is diagnostic only. Auto-source-only configs (no selectors) skip `enhance_gains`.
 - **Default items selector:** `Selectors::DEFAULT_ITEMS_SELECTOR` expands to `Html::Navigator::MAIN_ANCHOR_SELECTOR` only for that spelling (or blank), applied by `Config.prepare_defaults` only when `selectors:` is present (`CONTEXT.md` § Default items selector).
 

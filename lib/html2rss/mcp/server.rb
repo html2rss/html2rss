@@ -124,6 +124,7 @@ module Html2rss
             instructions: instructions_text,
             configuration: protocol_configuration
           ).tap do |server|
+            server.extend(ArgumentGate)
             register_tools(server)
             register_resources(server)
             register_prompts(server)
@@ -219,18 +220,18 @@ module Html2rss
           Outcome::Playbook.instructions
         end
 
-        def tool_error_response(error, url)
+        def tool_error_response(error, url, tool)
           Log.error("mcp error #{error.class}: #{error.message}")
-          Contract.response(Outcome.from_error(error, url:))
+          Contract.response(Outcome.from_error(error, url:, tool:))
         end
 
-        def handle_tool_call(url, &)
+        def handle_tool_call(tool, url, &)
           outcome, cache_ages = RequestService.observe_cache_hits(&)
           Contract.response(outcome, cache_ages:)
         rescue Html2rss::ContractError
           raise
         rescue StandardError => error
-          tool_error_response(error, url)
+          tool_error_response(error, url, tool)
         end
 
         def register_tools(server)
@@ -239,7 +240,7 @@ module Html2rss
 
         # rubocop:disable-next Metrics/MethodLength -- listing fields stay together
         def register_envelope_tool(server, tool)
-          invoke = ->(url, &block) { handle_tool_call(url, &block) }
+          invoke = ->(url, &block) { handle_tool_call(tool.name, url, &block) }
           server.define_tool(
             name: tool.name,
             title: tool.title,

@@ -40,7 +40,8 @@ module Html2rss
               Outcome.inspect_report(
                 report: Curation::Inspect.call(
                   url:, strategy: FeedPipeline::StrategyPlan.coerce(strategy), deep: false
-                )
+                ),
+                botasaurus_configured: RequestService.botasaurus_configured?
               )
             }
           ),
@@ -80,7 +81,8 @@ module Html2rss
             call: lambda { |urls:, strategy: 'auto', concurrency: Curation::Batch::DEFAULT_CONCURRENCY, **|
               Outcome.batch_inspect(
                 Curation::Batch.batch_inspect(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy),
-                                              concurrency:)
+                                              concurrency:),
+                botasaurus_configured: RequestService.botasaurus_configured?
               )
             }
           ),

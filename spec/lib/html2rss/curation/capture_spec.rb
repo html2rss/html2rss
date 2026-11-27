@@ -933,7 +933,7 @@ RSpec.describe Html2rss::Curation::Capture do
       expect(result.has_selectors).to be true
     end
 
-    # rubocop:disable-next RSpec/ExampleLength -- empty HTML still gets the default, next_step stays inspect
+    # rubocop:disable-next RSpec/ExampleLength -- empty HTML still gets the default, next_step stops
     it 'emits the default items selector when HTML has no articles', :aggregate_failures do
       stub_outcome(html_response('<html><body></body></html>'), articles: [])
 
@@ -943,7 +943,7 @@ RSpec.describe Html2rss::Curation::Capture do
       )
       expect(result.segment_strategy).to eq(:default)
       expect(result.candidates).to eq(Html2rss::Curation::Capture::SelectorCandidates.empty)
-      expect(Html2rss::MCP::Outcome.capture(result:, requested_strategy: 'auto').next_step.name).to eq(:inspect)
+      expect(Html2rss::MCP::Outcome.capture(result:, requested_strategy: 'auto').next_step.name).to eq(:stop)
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- JSON response must not inherit the HTML default
