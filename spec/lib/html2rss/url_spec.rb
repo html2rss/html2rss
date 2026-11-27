@@ -730,6 +730,24 @@ RSpec.describe Html2rss::Url do
     it 'falls back to the host when there is no registrable domain' do
       expect(described_class.from_absolute('http://localhost/x').domain).to eq('localhost')
     end
+
+    it 'treats private public-suffix entries as ordinary hosts' do
+      expect(described_class.from_absolute('https://user.github.io/x').domain).to eq('github.io')
+    end
+
+    it 'resolves against its UTF-8 read list, not the locale-dependent PublicSuffix default' do
+      allow(PublicSuffix::List).to receive(:default)
+      described_class.from_absolute('https://www.example.com/').domain
+
+      expect(PublicSuffix::List).not_to have_received(:default)
+    end
+
+    it 'resolves the domain without a UTF-8 locale', :slow do
+      script = "require 'html2rss'; print Html2rss::Url.from_absolute('https://www.tagesschau.de/x').domain"
+      stdout, _stderr, _status = Open3.capture3(RbConfig.ruby, '-EUS-ASCII', '-Ilib', '-e', script)
+
+      expect(stdout).to eq('tagesschau.de')
+    end
   end
 
   describe 'comparison' do

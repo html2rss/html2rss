@@ -41,6 +41,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'mcp', '~> 1.2'
   spec.add_dependency 'mime-types', '> 3.0'
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
+  spec.add_dependency 'public_suffix', '>= 4.0', '< 8.0'
   spec.add_dependency 'rack', '~> 3.0'
   spec.add_dependency 'rackup', '~> 2.0'
   spec.add_dependency 'regexp_parser'

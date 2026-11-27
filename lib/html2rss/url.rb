@@ -4,6 +4,7 @@ require 'addressable/uri'
 require 'cgi'
 require 'ipaddr'
 require 'nokogiri'
+require 'public_suffix'
 
 module Html2rss
   ##
@@ -27,6 +28,12 @@ module Html2rss
 
     # Closed set of query params that carry campaign or referrer data, never page identity.
     TRACKING_PARAM = /\A(?:utm_.*|fbclid|gclid|msclkid|mc_cid|mc_eid|ref|ref_src)\z/i
+
+    # PublicSuffix's own default reads its bundled list with Encoding.default_external,
+    # which is US-ASCII when MCP hosts or cron spawn Ruby without a locale.
+    PUBLIC_SUFFIX_LIST = PublicSuffix::List.parse(
+      File.read(PublicSuffix::List::DEFAULT_LIST_PATH, encoding: Encoding::UTF_8)
+    )
 
     NO_PARAMS = [].freeze
     private_constant :NO_PARAMS
@@ -269,7 +276,7 @@ module Html2rss
     def domain
       return host if ip_address_host?
 
-      @uri.domain || host
+      PublicSuffix.domain(host, list: PUBLIC_SUFFIX_LIST, ignore_private: true) || host
     end
 
     # @return [Integer, nil] URI port component
