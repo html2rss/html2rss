@@ -186,6 +186,12 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
       expect(describe_text('Category SDK Published')).to eq('Category SDK Published')
     end
 
+    it 'keeps a long headline-like first line before a paragraph' do
+      line = 'Neue Studie zum Klimawandel und Folgen'
+
+      expect(describe_text("#{line}\n#{dek}")).to eq("#{line}\n#{dek}")
+    end
+
     it 'joins list fragments into prose' do
       expect(describe_text("#{dek}\n- Solar\n- Wind\n- Hydro")).to eq("#{dek}\nSolar, Wind, Hydro")
     end
