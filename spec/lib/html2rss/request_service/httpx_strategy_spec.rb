@@ -17,6 +17,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       read_timeout_seconds: 10,
       max_stream_bytes: 1_048_576,
       max_decompressed_bytes_for: 5_242_880,
+      max_decompressed_bytes: 5_242_880,
       allow_private_networks?: false,
       validate_request!: nil,
       validate_redirect!: nil
@@ -69,6 +70,35 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       Html2rss::RequestService::ResponseTooLarge,
       'Response exceeded 5 bytes'
     )
+  end
+
+  it 'refuses an HTML page from its announced length, before the body is read', :aggregate_failures do
+    allow(policy).to receive(:max_decompressed_bytes).and_return(5)
+    stub_request(:get, 'https://example.com')
+      .to_return(status: 200, body: '1234567890', headers: { 'Content-Type' => 'text/html',
+                                                             'Content-Length' => '10' })
+
+    expect { execute }.to raise_error(Html2rss::RequestService::ResponseTooLarge, 'Response exceeded 5 bytes')
+  end
+
+  it 'keeps the feed allowance for a feed that announces more than the HTML cap' do
+    allow(policy).to receive(:max_decompressed_bytes).and_return(5)
+    stub_request(:get, 'https://example.com')
+      .to_return(status: 200, body: '<rss/>xxxx', headers: { 'Content-Type' => 'application/rss+xml',
+                                                             'Content-Length' => '10' })
+
+    expect(execute.body).to eq('<rss/>xxxx')
+  end
+
+  # rubocop:disable-next RSpec/ExampleLength -- one table of headers the early check must let through
+  it 'leaves a body it cannot judge from headers to the post-read check', :aggregate_failures do
+    allow(policy).to receive(:max_decompressed_bytes).and_return(9)
+    [{ 'Content-Type' => 'text/html', 'Content-Length' => '9' }, { 'Content-Type' => 'text/html' },
+     { 'Content-Type' => 'text/plain', 'Content-Length' => '10' }].each do |headers|
+      stub_request(:get, 'https://example.com').to_return(status: 200, body: '<p>12345</p>', headers:)
+
+      expect(execute.body).to eq('<p>12345</p>'), headers.inspect
+    end
   end
 
   it 'raises blocked-surface classification when response body is an anti-bot interstitial' do # rubocop:disable RSpec/ExampleLength -- challenge detection check
@@ -238,9 +268,10 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     # rubocop:disable-next RSpec/ExampleLength -- slot spend plus per-request retry override
     it 'maps HTTPX retry recursion SystemStackError to ConnectionFailed after one budget slot',
        :aggregate_failures do
-      session = instance_double(HTTPX::Session)
+      session = instance_double(described_class.base_session.class)
       allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
       allow(session).to receive(:with).and_return(session)
+      allow(session).to receive(:on_response_started) { session }
       allow(session).to receive(:get).and_raise(SystemStackError, 'stack level too deep')
 
       expect { execute }.to raise_error(Html2rss::RequestService::ConnectionFailed, /retry recursion/)
@@ -264,7 +295,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
 
     # rubocop:disable-next RSpec/ExampleLength -- deadline-bounded Ruby retries vs plugin
     it 'retries TimeoutError in Ruby without consuming extra budget slots', :aggregate_failures do
-      session = instance_double(HTTPX::Session)
+      session = instance_double(described_class.base_session.class)
       timeout = HTTPX::TimeoutError.new({ request_timeout: 5 }, 'timed out')
       raw_response = instance_double(
         HTTPX::Response,
@@ -276,6 +307,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       outcomes = [timeout, timeout, raw_response]
       allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
       allow(session).to receive(:with).and_return(session)
+      allow(session).to receive(:on_response_started) { session }
       allow(session).to receive(:get) do
         outcome = outcomes.shift
         raise outcome if outcome.is_a?(Exception)
@@ -300,7 +332,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     end
 
     it 'spends one slot across transport retries and a terminal-redirect retry', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario, one pinned count
-      session = instance_double(HTTPX::Session)
+      session = instance_double(described_class.base_session.class)
       timeout = HTTPX::TimeoutError.new({ request_timeout: 5 }, 'timed out')
       redirect = instance_double(HTTPX::Response, status: 301, uri: URI('https://example.com'),
                                                   headers: { 'location' => 'https://example.com/terminal' })
@@ -313,6 +345,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       outcomes = [timeout, timeout, redirect, ok]
       allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
       allow(session).to receive(:with).and_return(session)
+      allow(session).to receive(:on_response_started) { session }
       allow(session).to receive(:get) { (o = outcomes.shift).is_a?(Exception) ? raise(o) : o }
 
       expect(execute.status).to eq(200)
@@ -325,7 +358,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     # Single probe bag keeps this group at the MultipleMemoizedHelpers ceiling.
     let(:deadline_probe) do
       timeouts = {}
-      session = instance_double(HTTPX::Session)
+      session = instance_double(described_class.base_session.class)
       raw_response = instance_double(
         HTTPX::Response,
         status: 200,
@@ -338,6 +371,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
         timeouts.replace(options.fetch(:timeout))
         session
       end
+      allow(session).to receive(:on_response_started) { session }
       allow(session).to receive(:get).and_return(raw_response)
       { timeouts: }
     end
