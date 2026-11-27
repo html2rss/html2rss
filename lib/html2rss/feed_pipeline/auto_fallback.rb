@@ -12,9 +12,6 @@ module Html2rss
       # Ordered list of concrete request strategies attempted by the :auto plan.
       CHAIN = %i[default botasaurus].freeze
 
-      # Deterministic HTTP statuses that indicate permanent failure rather than anti-bot challenges.
-      DETERMINISTIC_HTTP_STATUSES = Set[400, 404, 410, 422, 451].freeze
-
       # Error classes that should abort auto fallback immediately.
       NON_FALLBACK_ERRORS = [
         RequestService::UnknownStrategy,
@@ -24,7 +21,8 @@ module Html2rss
         RequestService::PrivateNetworkDenied,
         RequestService::CrossOriginFollowUpDenied,
         RequestService::ResponseTooLarge,
-        RequestService::RedirectLimitReached
+        RequestService::RedirectLimitReached,
+        RequestService::DeterministicHttpStatus
       ].freeze
 
       # Transport failures preserved across a later hop that extracts zero items.
@@ -198,6 +196,7 @@ module Html2rss
           config, strategy:, resources:, scrape_url: scrape_target.effective_url
         )
         response = request_session.fetch_initial_response
+        RequestService::DeterministicHttpStatus.check!(response)
         # Everything after the entry fetch leaves the next strategy its initial request slot.
         hop = Hop.new(strategy:, next_strategy:, request_session:, state:)
         budget.holding(next_strategy ? 1 : 0) { process_response(hop, response, monotonic_ms - started_ms) }
@@ -211,7 +210,7 @@ module Html2rss
         log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy && request_session
       end
 
-      # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
+      # rubocop:disable-next Metrics/AbcSize -- extract + resolution delegate
       def process_response(hop, response, elapsed_ms)
         extraction = pipeline.extract(config:, response:, request_session: hop.request_session)
         record_extraction(hop, response, extraction, elapsed_ms)
@@ -221,12 +220,6 @@ module Html2rss
 
         return if resolve_entry(hop, response, extraction)
         return record_success(hop, response, extraction) if extraction.articles.any?
-
-        if DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
-          hop.state.abort!
-          Log.debug("#{self.class}: deterministic HTTP #{response.status}; aborting auto fallback")
-          return
-        end
 
         log_info_fallback_zero_items(hop, response) if hop.next_strategy
       end

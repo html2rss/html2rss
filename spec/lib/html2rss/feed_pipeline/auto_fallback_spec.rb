@@ -365,17 +365,9 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         }
       end
 
-      # rubocop:disable-next RSpec/ExampleLength -- abort, status log, and no next hop
-      it 'aborts before the next strategy', :aggregate_failures do
-        expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
-          expect(error.attempts.size).to eq(1)
-          expect(error.attempts.first).to include(transport_meta: { 'error_category' => 'not_found' })
-          expect(error.surface_category).to eq(:unsupported_surface)
-        end
+      it 'raises DeterministicHttpStatus before extraction or the next strategy', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::DeterministicHttpStatus)
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
-        expect(Html2rss::Log).to have_received(:debug).with(
-          a_string_including('Html2rss::FeedPipeline::AutoFallback: deterministic HTTP 404')
-        )
         expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
       end
     end
