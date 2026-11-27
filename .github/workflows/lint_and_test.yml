@@ -26,6 +26,24 @@ jobs:
         run: make test
         env:
           COVERAGE: true
+  # MCP hosts and cron often spawn Ruby without a locale (default_external US-ASCII);
+  # the library must not depend on the process locale.
+  test-no-locale:
+    runs-on: ubuntu-latest
+    name: Ruby 4.0 (no locale)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+      - name: Run tests without a locale
+        run: |
+          ruby -e 'abort "locale is not US-ASCII" unless Encoding.default_external == Encoding::US_ASCII'
+          bundle exec rspec
+        env:
+          LANG: C
+          LC_ALL: C
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -53,6 +53,13 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
       expect(response.url.to_s).to eq('https://example.com/')
     end
 
+    it 'reads the file as UTF-8 whatever the process locale' do
+      allow(File).to receive(:read).and_call_original
+      execute
+
+      expect(File).to have_received(:read).with(file_path, encoding: Encoding::UTF_8)
+    end
+
     it 'skips remote budget and policy preflight for CLI --input', :aggregate_failures do
       allow(Html2rss::RequestService::BlockedSurface).to receive(:interstitial_signature_for).and_call_original
 

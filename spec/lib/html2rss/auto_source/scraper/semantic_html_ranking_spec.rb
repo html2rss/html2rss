@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe '#each' do
     subject(:new) { described_class.new(parsed_body, url: 'https://example.com') }
 
-    let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/multi_link_block.html')) }
+    let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/multi_link_block.html', encoding: Encoding::UTF_8)) }
     let(:articles) { new.each.to_a }
     let(:articles_by_url) do
       articles.to_h { |article| [article.url.to_s, article] }

@@ -45,7 +45,7 @@ RSpec.describe Html2rss::Vocabulary do
     codes = described_class::LANGUAGES.map { _1.code.to_s }
     pages = Dir[File.expand_path('../../../fixtures/auto_source/corpus/*.html', __dir__)]
     pages.each_with_object(Hash.new { |hash, key| hash[key] = Set.new }) do |path, texts|
-      doc = Nokogiri::HTML(File.read(path))
+      doc = Nokogiri::HTML(File.read(path, encoding: Encoding::UTF_8))
       lang = doc.root&.[]('lang').to_s[/\A[a-z]{2,3}/i]&.downcase
       next unless codes.include?(lang)
 
