@@ -20,6 +20,9 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
       expect(described_class.junk?('Topic', title: 'Another title: Topic')).to be(false)
       expect(described_class.junk?('Topic', title: 'No colon')).to be(false)
       expect(described_class.junk?('Topic', title: nil)).to be(false)
+    end
+
+    it 'matches the title prefix only before a colon, ignoring case and spacing', :aggregate_failures do
       expect(described_class.junk?('Topic', title: 'Topic')).to be(false)
       expect(described_class.junk?('topic', title: ' Topic : rest')).to be(true)
     end

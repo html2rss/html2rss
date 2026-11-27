@@ -17,6 +17,9 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Image do
       expect(described_class.image_url?('https://example.com/cdn/image/123')).to be(true)
       expect(described_class.image_url?('https://example.com/files/report.pdf')).to be(false)
       expect(described_class.image_url?('https://example.com/files/report.pdf?dl=1#p')).to be(false)
+    end
+
+    it 'reads only the path, trimmed', :aggregate_failures do
       expect(described_class.image_url?(' https://example.com/files/report.pdf#a.png')).to be(false)
       expect(described_class.image_url?('https://example.com/img?file=a.pdf')).to be(true)
       expect(described_class.image_url?('?a.pdf')).to be(true)
