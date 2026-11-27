@@ -743,10 +743,10 @@ RSpec.describe Html2rss::Url do
     end
 
     it 'resolves the domain without a UTF-8 locale', :slow do
-      script = "require 'html2rss'; print Html2rss::Url.from_absolute('https://www.tagesschau.de/x').domain"
+      script = "require 'html2rss'; print Html2rss::Url.from_absolute('https://www.news.example.co.uk/x').domain"
       stdout, _stderr, _status = Open3.capture3(RbConfig.ruby, '-EUS-ASCII', '-Ilib', '-e', script)
 
-      expect(stdout).to eq('tagesschau.de')
+      expect(stdout).to eq('example.co.uk')
     end
   end
 
