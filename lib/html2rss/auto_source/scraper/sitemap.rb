@@ -150,6 +150,7 @@ module Html2rss
 
         def article_from_entry(entry)
           {
+            id: entry.url,
             url: entry.url,
             title: entry.title,
             published_at: entry.published_at

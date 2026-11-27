@@ -133,7 +133,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
       expect(described_class.new(Nokogiri::HTML(xml), url:, body: xml).each).to be_a(Enumerator)
     end
 
-    it 'yields url, title and published_at for each entry' do
+    it 'yields id, url, title and published_at for each entry', :aggregate_failures do
       xml = <<~XML
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
           <url><loc>https://example.com/a</loc><news:news><news:publication_date>#{recent}</news:publication_date><news:title>Title A</news:title></news:news></url>
@@ -141,13 +141,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
       XML
       articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml).to_a
       published_at = Time.parse(recent).utc.iso8601
-      expect(articles).to eq([{ url: 'https://example.com/a', title: 'Title A', published_at: }])
+      expect(articles.first[:id]).to be_a(String)
+      expect(articles).to eq([{ id: 'https://example.com/a', url: 'https://example.com/a', title: 'Title A',
+                                published_at: }])
     end
 
     it 'omits title and published_at keys when the entry lacks them' do
       xml = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/bare</loc></url></urlset>'
       articles = described_class.new(Nokogiri::HTML(xml), url:, body: xml).to_a
-      expect(articles).to eq([{ url: 'https://example.com/bare' }])
+      expect(articles).to eq([{ id: 'https://example.com/bare', url: 'https://example.com/bare' }])
     end
 
     it 'yields nothing for an empty urlset' do
