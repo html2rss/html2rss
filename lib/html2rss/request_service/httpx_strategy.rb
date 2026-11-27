@@ -179,7 +179,19 @@ module Html2rss
 
       def session_client(deadline)
         session = ctx.policy.allow_private_networks? ? self.class.base_session : self.class.base_ssrf_session
-        session.with(session_options(deadline))
+        session.with(session_options(deadline)).on_response_started do |_request, response|
+          refuse_oversize_html!(response)
+        end
+      end
+
+      # The transport ceiling is the feed allowance, so an HTML page that announces more than its own cap
+      # is refused from its headers instead of after the download. A chunked body announces nothing and
+      # is still caught by {Strategy#guard_body!}.
+      def refuse_oversize_html!(response)
+        limit = ctx.policy.max_decompressed_bytes
+        return unless response.headers['content-length'].to_i > limit && response.content_type.mime_type == 'text/html'
+
+        raise ResponseTooLarge, "Response exceeded #{limit} bytes"
       end
 
       # Plugin retries stay off per request; Ruby owns deadline-bounded TimeoutError retries.
