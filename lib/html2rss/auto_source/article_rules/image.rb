@@ -18,8 +18,13 @@ module Html2rss
         UNIT_BYTES = [119, 104].freeze
         # HTML/CSS whitespace bytes (space, tab, LF, CR, FF) treated as srcset token separators.
         WS_BYTES = [32, 9, 10, 13, 12].freeze
-        # Path extensions that name an image; any other extension (+.pdf+, +.zip+) is a document, not an image.
-        IMAGE_EXTENSIONS = %w[jpg jpeg jfif png gif webp avif apng svg bmp ico tif tiff heic heif].freeze
+        # Path extensions that name a document, archive, audio or video file, never an image. Any other path
+        # (extensionless, +.php+, +.aspx+, a version-like +photo-1.5x+) may serve an image.
+        NON_IMAGE_EXTENSIONS = %w[
+          pdf doc docx xls xlsx ppt pptx odt ods odp txt csv rtf epub
+          zip rar 7z tar gz tgz
+          mp3 wav ogg flac aac m4a mp4 mov webm avi mkv m4v
+        ].freeze
         # ASCII `,`.
         COMMA = 44
         # ASCII `0`.
@@ -40,15 +45,15 @@ module Html2rss
           ##
           # @param src [String, nil] an image URL attribute, e.g. a video +poster+
           # @return [Boolean] whether it names a fetchable image: not blank, not an inline +data:+ URI,
-          #   and its path is extensionless or has an image extension
+          #   and its path is no document, archive, audio or video file
           def remote_src?(src) = src.to_s.match?(/\S/) && !src.start_with?('data:') && image_url?(src)
 
           ##
           # @param url [String] an image candidate
-          # @return [Boolean] whether its path has no extension (CDN image URLs) or an image extension
+          # @return [Boolean] whether its path does not end in a document, archive, audio or video extension
           def image_url?(url)
             extension = File.extname(url.to_s.strip[/\A[^?#]*/]).delete_prefix('.').downcase
-            extension.empty? || IMAGE_EXTENSIONS.include?(extension)
+            !NON_IMAGE_EXTENSIONS.include?(extension)
           end
 
           ##
