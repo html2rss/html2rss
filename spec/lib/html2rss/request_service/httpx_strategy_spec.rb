@@ -58,6 +58,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     expect(result).to be_a(Html2rss::RequestService::Response)
     expect(result.body).to eq('<html>hello</html>')
     expect(result.status).to eq(200)
+    expect(result).not_to be_truncated
   end
 
   it 'raises when streamed bytes exceed the configured limit' do # rubocop:disable RSpec/ExampleLength -- byte streaming check
@@ -94,6 +95,23 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     expect(a_request(:get, 'https://example.com').with(headers: { 'X-Probe' => '1' })).to have_been_made
     expect(result.headers).to include('content-type' => 'text/html')
     expect(policy).to have_received(:max_decompressed_bytes_for).with(an_object_having_attributes(url: ctx.url)).twice
+  end
+
+  context 'with an item limit on a feed' do
+    let(:item) { "<item><title>#{'t' * 300}</title><link>https://example.com/a</link></item>" }
+
+    # rubocop:disable-next RSpec/ExampleLength -- one request, one parse
+    it 'marks the response truncated and leaves it parseable', :aggregate_failures do
+      ctx = Html2rss::RequestService::Context.new(url: 'https://example.com', policy:, budget:, limit: 1)
+      stub_request(:get, 'https://example.com')
+        .to_return(status: 200, body: %(<rss version="2.0"><channel>#{item * 30}<item><title>cut),
+                   headers: { 'Content-Type' => 'application/rss+xml' })
+
+      result = described_class.new(ctx).execute
+
+      expect(result).to be_truncated
+      expect(Html2rss::Syndication::Parser.parse_response(result).articles).not_to be_empty
+    end
   end
 
   context 'with the real per-type byte caps' do

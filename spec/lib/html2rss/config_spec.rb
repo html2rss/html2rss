@@ -943,6 +943,17 @@ RSpec.describe Html2rss::Config do
       end
     end
 
+    describe '#item_limit' do
+      it 'is the auto_source limit, and nil without auto_source', :aggregate_failures do
+        with_limit = described_class.from_hash({ channel: { url: 'http://example.com' }, auto_source: { limit: 4 } })
+        without = described_class.from_hash({ channel: { url: 'http://example.com' }, selectors: {
+                                              items: { selector: 'a' }, title: { selector: 'a' }
+                                            } })
+
+        expect([with_limit.item_limit, without.item_limit]).to eq([4, nil])
+      end
+    end
+
     context 'when the configuration is valid with auto_source' do
       let(:config) do
         {

@@ -138,7 +138,7 @@ module Html2rss
 
     # The one owner of +limit+ across paths: selector, auto-source and syndication articles are capped together.
     def capped(articles, config)
-      limit = config.auto_source&.dig(:limit)
+      limit = config.item_limit
       limit ? articles.first(limit) : articles
     end
 

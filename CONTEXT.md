@@ -165,6 +165,8 @@ Shared wall-clock and HTTP request meters for one feed build. Constructed via `R
 
 `RequestService.response_cache=` is an opt-in seam for initial fetches (`RequestService::ResponseCache`: TTL, bounded, 2xx only; key is a digest incl. `Policy#cache_key`). Only the MCP process installs it (default 300s, `HTML2RSS_RESPONSE_CACHE_TTL`; `0`/`off` disables); hits surface as `Response#cache_age` and the envelope `cache` field (MCP contract v4). The seam lives in `RequestService::ResponseCaching`; the cache is also bounded to 32 entries / 32 MiB.
 
+`HttpxStrategy` streams the body through `RequestService::BodyReader`, which owns the byte count: the cap narrows from `Policy#max_stream_bytes` to the per-type `Policy#max_decompressed_bytes_for` once 1 KiB is buffered, and crossing it aborts the transfer. When `Context#limit` is set (initial request only, from `Config#item_limit`) and the body is a feed, `RequestService::ItemLimit` counts completed `item`/`entry` elements (SAX) and stops the download at twice the limit; the cut body is repaired into well-formed XML and the response is `truncated?`, which `ResponseCache` never stores. Channel metadata placed after the entries (Atom) is lost on an early stop.
+
 Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and curation inspect all call that one predicate. Gzip/brotli inflate stays on `CompressedBody`, called only from the HTTPX adapter.
 
 ## Botasaurus scrape contract

@@ -21,7 +21,8 @@ module Html2rss
       # rubocop:disable-next Metrics/ParameterLists -- scrape_url override stays beside config
       def build(config:, strategy:, budget:, policy:, scrape_url: nil, logger: Html2rss::Log)
         context = RequestService::Context.new(
-          url: scrape_url || config.url, headers: config.headers, request: config.request, policy:, budget:
+          url: scrape_url || config.url, headers: config.headers, request: config.request, policy:, budget:,
+          limit: config.item_limit
         )
         new(context:, strategy:, logger:)
       end

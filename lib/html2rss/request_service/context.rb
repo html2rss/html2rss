@@ -19,6 +19,7 @@ module Html2rss
       # @option request_options [Policy] :policy runtime request policy
       # @option request_options [Budget] :budget shared request budget for the feed build
       # @option request_options [FeedAdvertisement, nil] :advertisement page proof for an +:advertised_feed+ follow-up
+      # @option request_options [Integer, nil] :limit items the caller keeps; lets a feed response stop early
       # @raise [InvalidError] if policy or budget is nil or budget is missing
       def initialize(url:, headers: {}, request: {}, **request_options)
         @url = Html2rss::Url.from_absolute(url)
@@ -51,6 +52,9 @@ module Html2rss
       # @return [FeedAdvertisement, nil] the page's advertised feeds, for an +:advertised_feed+ follow-up
       attr_reader :advertisement
 
+      # @return [Integer, nil] items the caller keeps of a feed response; nil reads the whole body
+      attr_reader :limit
+
       ##
       # Builds a follow-up request context sharing headers, budget, and policy.
       #
@@ -72,6 +76,7 @@ module Html2rss
 
         @origin_url = normalized_origin_url(request_options[:origin_url])
         @advertisement = request_options[:advertisement]
+        @limit = request_options[:limit]
         @budget = request_options.fetch(:budget) { raise InvalidError, 'budget is required' }
         raise InvalidError, 'budget must not be nil' if @budget.nil?
       end

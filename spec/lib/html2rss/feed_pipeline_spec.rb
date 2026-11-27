@@ -941,6 +941,30 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
+    context 'when the feed was cut short after the limit and ends in a half-received item' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) do
+        { strategy: :default, channel: { url: 'https://example.com/feed.xml', title: 'Feed' }, auto_source: { limit: 1 } }
+      end
+      let(:pipeline) { described_class.new(config) }
+      let(:feed_response) do
+        cut = '<?xml version="1.0"?><rss version="2.0"><channel><title>Feed</title>' \
+              '<item><title>First item</title><link>https://example.com/posts/1</link></item>' \
+              '<item><title>Second item</title><link>https://example.com/posts/2</link></item>' \
+              '<item><title>Half an ite'
+        build_response.call(
+          body: Html2rss::RequestService::ItemLimit.repair(cut),
+          url: 'https://example.com/feed.xml',
+          headers: { 'content-type' => 'application/rss+xml' }
+        )
+      end
+
+      before { stub_first_strategy_success.call(feed_response) }
+
+      it 'extracts without raising and drops the partial item with the cap' do
+        expect(pipeline.to_result.to_rss.items.map(&:title)).to eq(['First item'])
+      end
+    end
+
     # A feed's files are untrusted: only an http(s) one becomes an enclosure, player, attachment or item URL.
     feed_entries = { 'a direct feed URL' => 'https://example.com/news/feed.xml',
                      'the page following its native feed' => 'https://example.com/news/' }

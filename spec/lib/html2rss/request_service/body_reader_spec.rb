@@ -73,6 +73,15 @@ RSpec.describe Html2rss::RequestService::BodyReader do
     end
   end
 
+  context 'when the stream yields no chunk' do
+    it 'returns an empty, untruncated body', :aggregate_failures do
+      streamed = reader.read
+
+      expect(streamed.body).to eq('')
+      expect(streamed.truncated).to be(false)
+    end
+  end
+
   context 'when the body is shorter than the sniff window' do
     let(:chunks) { ['a' * 500, 'b' * 500] }
 
@@ -93,6 +102,67 @@ RSpec.describe Html2rss::RequestService::BodyReader do
         .with(an_object_having_attributes(url: Html2rss::Url.from_absolute('https://example.com'))).once
     end
   end
+
+  # rubocop:disable RSpec/MultipleMemoizedHelpers -- one stream fixture shared by every limit example
+  context 'with an item limit' do
+    subject(:reader) do
+      described_class.new(stream, policy:, url: Html2rss::Url.from_absolute('https://example.com'), limit: 1)
+    end
+
+    let(:content_type) { 'application/rss+xml' }
+    let(:item) { "<item><title>#{'t' * 400}</title><link>https://example.com/a</link></item>" }
+    let(:head) { '<?xml version="1.0"?><rss version="2.0"><channel><title>x</title>' }
+    let(:chunks) { [head, item, item, item, item, item, item.sub('</item>', '')] }
+
+    it 'stops pulling once enough items are in and repairs the cut body', :aggregate_failures do
+      streamed = reader.read
+
+      expect(pulled.size).to be < chunks.size
+      expect(streamed.truncated).to be(true)
+      expect(Nokogiri::XML(streamed.body).errors).to be_empty
+      expect(streamed.body).to include('</channel>')
+    end
+
+    it 'keeps counting across chunks that arrive after the sniff window', :aggregate_failures do
+      reader = described_class.new(stream, policy:, url: Html2rss::Url.from_absolute('https://example.com'), limit: 2)
+      reader.read
+
+      expect(pulled.size).to eq(5)
+    end
+
+    it 'reads a feed shorter than the limit to its end untouched', :aggregate_failures do
+      streamed = described_class.new(stream, policy:, url: Html2rss::Url.from_absolute('https://example.com'),
+                                             limit: 50).read
+
+      expect(streamed.truncated).to be(false)
+      expect(streamed.body).to eq(chunks.join)
+    end
+
+    context 'when the body is not a feed' do
+      let(:content_type) { 'text/html' }
+      let(:chunks) { ["<html><body>#{'<item></item>' * 100}</body></html>"] }
+
+      it 'ignores the limit', :aggregate_failures do
+        streamed = reader.read
+
+        expect(streamed.truncated).to be(false)
+        expect(streamed.body).to eq(chunks.join)
+      end
+    end
+
+    context 'when the feed is malformed' do
+      let(:chunks) { [head, '<item></oops>', item, item, item, item, item] }
+
+      it 'falls back to reading the whole body', :aggregate_failures do
+        streamed = reader.read
+
+        expect(streamed.truncated).to be(false)
+        expect(pulled.size).to eq(chunks.size)
+      end
+    end
+  end
+
+  # rubocop:enable RSpec/MultipleMemoizedHelpers
 
   context 'when the transport raises a 4xx status error after the chunks' do
     # rubocop:disable-next RSpec/VerifiedDoubles -- StreamResponse delegates via method_missing

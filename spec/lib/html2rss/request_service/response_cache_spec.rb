@@ -50,6 +50,14 @@ RSpec.describe Html2rss::RequestService::ResponseCache do
       end
     end
 
+    it 'never stores a feed cut short at an item limit' do
+      cut = Html2rss::RequestService::Response.new(body: 'x', url: 'https://example.com/', status: 200,
+                                                   truncated: true)
+      2.times { fetcher.call(:a, cut) }
+
+      expect(calls.size).to eq(2)
+    end
+
     it 'does not store when the block raises', :aggregate_failures do
       expect { cache.fetch(:a) { raise 'boom' } }.to raise_error('boom')
       fetcher.call(:a)

@@ -23,6 +23,16 @@ RSpec.describe Html2rss::RequestService::Context do
       end
     end
 
+    context 'with an item limit' do
+      subject(:instance) { described_class.new(url:, headers:, request:, budget:, limit: 7) }
+
+      it 'keeps the limit on the request but not on follow-ups', :aggregate_failures do
+        follow_up = instance.follow_up(url: 'http://www.example.com/next', relation: :pagination)
+
+        expect([instance.limit, follow_up.limit]).to eq([7, nil])
+      end
+    end
+
     context 'with a valid URL (Html2rss::Url)' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com') }
 

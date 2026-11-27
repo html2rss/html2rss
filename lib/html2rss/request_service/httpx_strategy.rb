@@ -164,7 +164,7 @@ module Html2rss
       def execute_http_request(deadline:)
         validate_request!
         session = session_client(deadline)
-        BodyReader.new(http_get(session), policy: ctx.policy, url: request_url).read
+        BodyReader.new(http_get(session), policy: ctx.policy, url: request_url, limit: ctx.limit).read
       end
 
       # GET only. Overflow here is HTTPX retry recursion; the same error from
@@ -225,7 +225,8 @@ module Html2rss
           body: CompressedBody.decode(response.body, headers:),
           headers:,
           url: response_url(response),
-          status: response.status
+          status: response.status,
+          truncated: response.truncated
         )
       end
 

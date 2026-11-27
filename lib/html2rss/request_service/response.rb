@@ -64,11 +64,14 @@ module Html2rss
       # @param captured_responses [Array<Hash>] JSON XHR/fetch bodies captured during browser scrapes
       # @param cookies [Hash{String => String}] cookies earned during the scrape (session credentials; never log)
       # @param cache_age [Integer, nil] seconds since fetch when served from {ResponseCache}; nil when fetched live
+      # @param truncated [Boolean] whether the body is a feed cut short at the caller's item limit
       # rubocop:disable-next Metrics/ParameterLists -- transport + capture fields stay co-located
       def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META,
-                     captured_responses: EMPTY_CAPTURED_RESPONSES, cookies: EMPTY_COOKIES, cache_age: nil)
+                     captured_responses: EMPTY_CAPTURED_RESPONSES, cookies: EMPTY_COOKIES, cache_age: nil,
+                     truncated: false)
         @body = body
         @cache_age = cache_age
+        @truncated = truncated
 
         @headers = (headers || {}).transform_keys(&:to_s)
         @status = status
@@ -114,11 +117,14 @@ module Html2rss
       # @return [Integer, nil] seconds since fetch when served from {ResponseCache}; nil when fetched live
       attr_reader :cache_age
 
+      # @return [Boolean] whether the body is a feed cut short at the caller's item limit (never cached)
+      def truncated? = @truncated
+
       # @param cache_age [Integer, nil] cache age of the copy (defaults to this response's)
       # @return [Response] an independent copy that shares no parsed document with this one
       def replica(cache_age: @cache_age)
         self.class.new(body: body.dup, url:, headers:, status:, transport_meta:, captured_responses:, cookies:,
-                       cache_age:)
+                       cache_age:, truncated: truncated?)
       end
 
       # @param name [String] header name, lowercase; an exact key wins over a differently cased one

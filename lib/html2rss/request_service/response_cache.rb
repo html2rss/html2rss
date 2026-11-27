@@ -5,7 +5,8 @@ module Html2rss
     ##
     # Bounded, thread-safe TTL cache for initial page fetches; install with
     # {RequestService::ResponseCaching#response_cache=}. Only successful (2xx) responses are stored, so a
-    # block page or rate limit is never replayed. Hits are returned tagged with their
+    # block page or rate limit is never replayed, and a feed cut short at an item limit ({Response#truncated?})
+    # never answers a later call that wants more items. Hits are returned tagged with their
     # {Response#cache_age}; memory is capped in body bytes as well as entries.
     class ResponseCache
       # Default entry ceiling; oldest entries are evicted first.
@@ -103,7 +104,7 @@ module Html2rss
 
       # Real HTTP 2xx only: deliberately not Response#successful?, which also admits an unknown status.
       def cacheable?(response)
-        (200..299).cover?(response.status) && response.body.bytesize <= @max_bytes
+        (200..299).cover?(response.status) && !response.truncated? && response.body.bytesize <= @max_bytes
       end
     end
   end

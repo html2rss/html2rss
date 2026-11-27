@@ -289,6 +289,9 @@ module Html2rss
     # @return [Hash{Symbol => Object, nil}] auto-source configuration
     def auto_source = config[:auto_source]
 
+    # @return [Integer, nil] articles to keep (+auto_source.limit+); nil keeps every article
+    def item_limit = auto_source&.dig(:limit)
+
     private
 
     attr_reader :config

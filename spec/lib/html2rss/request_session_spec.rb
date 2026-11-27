@@ -49,6 +49,18 @@ RSpec.describe Html2rss::RequestSession do
       end
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- one config, one build, one wiring fact
+    it 'passes the config item limit to the initial context' do
+      allow(Html2rss::RequestService::Context).to receive(:new).and_call_original
+      limited = Html2rss::Config.from_hash({ channel: { url: 'https://example.com/feed.xml' },
+                                             auto_source: { limit: 3 } })
+
+      described_class.build(config: limited, strategy: :botasaurus, budget: resources.budget,
+                            policy: resources.policy, logger:)
+
+      expect(Html2rss::RequestService::Context).to have_received(:new).with(hash_including(limit: 3))
+    end
+
     it 'uses the provided budget object for the session context' do
       budget = Html2rss::RequestService::Budget.new(max_requests: 2, total_timeout_seconds: 60)
       allow(Html2rss::RequestService::Context).to receive(:new).and_call_original

@@ -361,6 +361,11 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(response).to have_attributes(body: 'b', url:, status: 204, headers: {})
     end
 
+    it 'is not truncated unless told so', :aggregate_failures do
+      expect(described_class.new(body: 'b', url:).truncated?).to be(false)
+      expect(described_class.new(body: 'b', url:, truncated: true).truncated?).to be(true)
+    end
+
     it 'stringifies header names but keeps header values as given', :aggregate_failures do
       response = described_class.new(body: 'b', url:, headers: { key: 42 })
 
@@ -726,6 +731,12 @@ RSpec.describe Html2rss::RequestService::Response do
       copy = original.replica
 
       expect(fields.map { |field| copy.public_send(field) }).to eq(fields.map { |field| original.public_send(field) })
+    end
+
+    it 'carries the truncated flag', :aggregate_failures do
+      cut = described_class.new(body: '<rss/>', url: original.url, truncated: true)
+
+      expect([original, cut, cut.replica, original.replica].map(&:truncated?)).to eq([false, true, true, false])
     end
 
     it 'carries cache_age unless overridden', :aggregate_failures do
