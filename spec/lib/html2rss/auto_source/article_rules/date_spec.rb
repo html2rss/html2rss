@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
+  it 'reads a date scattered over fragment lines and strips it from the lines', :aggregate_failures do
+    lines = ['November', '25', ',', '2026', '| 20:15 PM', 'Body text stays.']
+
+    expect(described_class.earliest([], leftover_lines: lines).to_s).to start_with('2026-11-25T')
+    expect(described_class.without_dates(lines)).to eq(['Body text stays.'])
+    expect(described_class.without_dates(nil)).to eq([])
+  end
+
   describe '.at_midnight' do
     it 'is local midnight of the day in the time zone' do
       result = described_class.at_midnight(Date.new(2026, 11, 20), time_zone: 'Europe/Berlin')
@@ -10,14 +18,6 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
   end
 
   describe '.local_today' do
-    it 'reads a date scattered over fragment lines and strips it from the lines', :aggregate_failures do
-      lines = ['November', '25', ',', '2026', '| 20:15 PM', 'Body text stays.']
-
-      expect(described_class.earliest([], leftover_lines: lines).to_s).to start_with('2026-11-25T')
-      expect(described_class.without_dates(lines)).to eq(['Body text stays.'])
-      expect(described_class.without_dates(nil)).to eq([])
-    end
-
     it 'is the current calendar day in the zone, UTC when blank or invalid', :aggregate_failures do
       allow(Time).to receive(:now).and_return(Time.utc(2026, 11, 20, 23, 30))
 

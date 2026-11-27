@@ -64,14 +64,14 @@ module Html2rss
 
           private
 
-          # Consecutive line runs (shortest first, at most MAX_RUN_LINES) that read as one date.
+          # Consecutive line runs (longest first, at most MAX_RUN_LINES) that read as one date.
           def date_runs(lines)
             lines = Array(lines)
             runs = []
             index = 0
             while index < lines.length
-              run = (1..MAX_RUN_LINES).lazy.map { |size| lines[index, size] }
-                                      .find { |candidate| Description.date_shaped?(candidate.join(' ')) }
+              run = MAX_RUN_LINES.downto(1).lazy.map { |size| lines[index, size] }
+                                 .find { |candidate| Description.date_shaped?(candidate.join(' ')) }
               runs << run if run
               index += run ? run.length : 1
             end
