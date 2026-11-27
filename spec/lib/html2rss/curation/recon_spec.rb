@@ -277,11 +277,13 @@ RSpec.describe Html2rss::Curation::Recon do
         allow(Html2rss::Curation::PageProbe).to receive(:probe).and_raise(Html2rss::Error.new('connection refused'))
       end
 
-      it 'returns DROP verdict with error note', :aggregate_failures do
+      it 'returns DROP verdict with error note', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one result
         result = described_class.call(url)
         expect(result.drop?).to be(true)
         expect(result.requested_url.to_s).to eq(url)
         expect(result.notes.first).to include('connection refused')
+        expect(result.failure).to have_attributes(class: Html2rss::Error, message: 'connection refused')
+        expect(result.to_h).not_to have_key(:failure)
       end
     end
 

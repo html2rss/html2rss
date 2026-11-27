@@ -389,6 +389,19 @@ RSpec.describe Html2rss::Curation::Batch do
       expect(second[:scraper_eligibility]).to include(error: 'StandardError - Connection failed')
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- one batch with an ok and a failed report
+    it 'moves the exception behind a failed report into errors, off the wire', :aggregate_failures do
+      error = Html2rss::RequestService::RequestTimedOut.new('slow')
+      ok = Html2rss::Curation::Inspect::Report.new(data: { status: 200 })
+      failed = Html2rss::Curation::Inspect::Report.new(data: { status: nil }, failure: error)
+      allow(Html2rss::Curation::Inspect).to receive(:batch).and_return([ok, failed])
+
+      result = described_class.batch_inspect(urls:)
+
+      expect(result.errors).to eq([nil, error])
+      expect(result.results).to eq([{ status: 200 }, { status: nil }])
+    end
+
     # rubocop:disable-next RSpec/ExampleLength -- 399, 400, and a missing status share one count
     it 'counts a status of 399 and rejects 400 or a missing status' do
       allow(Html2rss::Curation::Inspect).to receive(:batch).and_return(
@@ -475,6 +488,19 @@ RSpec.describe Html2rss::Curation::Batch do
       expect(second[:notes]).to eq(['error: StandardError - Connection failed'])
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- a recon result has ten members
+    it 'moves the exception behind a failed recon result into errors' do
+      error = Html2rss::RequestService::RequestTimedOut.new('slow')
+      failed = Html2rss::Curation::Recon::Result.new(
+        requested_url: Html2rss::Url.from_absolute(urls.last), final_url: Html2rss::Url.from_absolute(urls.last),
+        status: nil, verdict: Html2rss::Curation::Recon::Verdict[:drop], native_feed: nil, surface_category: nil,
+        articles_count: 0, scheme_downgrade: false, notes: [], html_bytesize: nil, failure: error
+      )
+      allow(Html2rss::Curation::Recon).to receive(:batch).and_return([failed])
+
+      expect(described_class.batch_recon(urls:).errors).to eq([error])
+    end
+
     # rubocop:disable-next RSpec/ExampleLength
     it 'rejects a concurrency outside 1..MAX_CONCURRENCY and an empty URL list', :aggregate_failures do
       [0, described_class::MAX_CONCURRENCY + 1, '2'].each do |concurrency|
@@ -505,9 +531,9 @@ RSpec.describe Html2rss::Curation::Batch do
     it 'counts a status of 399 and rejects 400 or a missing status' do
       allow(Html2rss::Curation::Recon).to receive(:batch).and_return(
         [
-          instance_double(Html2rss::Curation::Recon::Result, status: 399, to_h: { status: 399 }),
-          instance_double(Html2rss::Curation::Recon::Result, status: 400, to_h: { status: 400 }),
-          instance_double(Html2rss::Curation::Recon::Result, status: nil, to_h: {})
+          instance_double(Html2rss::Curation::Recon::Result, status: 399, to_h: { status: 399 }, failure: nil),
+          instance_double(Html2rss::Curation::Recon::Result, status: 400, to_h: { status: 400 }, failure: nil),
+          instance_double(Html2rss::Curation::Recon::Result, status: nil, to_h: {}, failure: nil)
         ]
       )
       result = described_class.batch_recon(urls:, concurrency: 1)

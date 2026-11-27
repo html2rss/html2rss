@@ -33,10 +33,10 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(prompt).to include('https://example.com', 'strategy auto', 'payload.items')
     end
 
-    it 'embeds evidence-based enhance guidance in capture_feed_config_prompt' do
+    it 'embeds the enhance default in capture_feed_config_prompt' do
       prompt = described_class.capture_feed_config_prompt('https://example.com')
 
-      expect(prompt).to include('suggested_channel_url', 'enhance defaults from admission evidence')
+      expect(prompt).to include('suggested_channel_url', 'enhance defaults to true')
     end
 
     describe '.guidance' do
@@ -357,6 +357,17 @@ RSpec.describe Html2rss::MCP::Outcome do
         expect(outcome.payload[:results].first[:next_step]).to eq('read_runtime')
       end
 
+      it 'gives a failed row the error fields and the step a raising single inspect gives', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one row
+        outcome = described_class.batch_inspect(
+          batch_result.new(total: 2, successful: 1, results: rows, errors: [nil, timed_out]),
+          botasaurus_configured: true
+        )
+
+        expect(outcome.payload[:results].first[:next_step]).to eq('capture')
+        expect(outcome.payload[:results].last).to include(class: 'Html2rss::RequestService::RequestTimedOut',
+                                                          message: 'slow', next_step: 'stop')
+      end
+
       it 'keeps the inspect step when no URL succeeded' do
         outcome = described_class.batch_inspect(batch_result.new(total: 2, successful: 0, results: rows),
                                                 botasaurus_configured: true)
@@ -376,6 +387,15 @@ RSpec.describe Html2rss::MCP::Outcome do
 
         expect(outcome.payload[:results].map { |row| row[:next_step] }).to eq(%w[capture scrape])
         expect(outcome.next_step.name).to eq(:done)
+      end
+
+      it 'gives a failed row the error fields and the step a raising single recon gives', :aggregate_failures do
+        outcome = described_class.batch_recon(
+          batch_result.new(total: 2, successful: 1, results: rows, errors: [nil, timed_out])
+        )
+
+        expect(outcome.payload[:results].map { |row| row[:next_step] }).to eq(%w[capture inspect])
+        expect(outcome.payload[:results].last).to include(class: 'Html2rss::RequestService::RequestTimedOut')
       end
 
       it 'keeps the recon step when no URL succeeded' do

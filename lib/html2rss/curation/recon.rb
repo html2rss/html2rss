@@ -55,12 +55,28 @@ module Html2rss
         :articles_count,
         :scheme_downgrade,
         :notes,
-        :html_bytesize
+        :html_bytesize,
+        :failure
       )
 
       ##
-      # Immutable outcome of a reconnaissance operation.
+      # Immutable outcome of a reconnaissance operation. +failure+ is the exception behind an error result (never
+      # in {#to_h}), so callers can classify it.
       class Result
+        # @param failure [Html2rss::Error, nil] the exception an error result stands for
+        # @param fields [Hash{Symbol => Object}] the other members
+        # @option fields [Html2rss::Url] :requested_url
+        # @option fields [Html2rss::Url] :final_url
+        # @option fields [Integer, nil] :status
+        # @option fields [Verdict] :verdict
+        # @option fields [Html2rss::Url, nil] :native_feed
+        # @option fields [AutoSource::SurfaceCategory, nil] :surface_category
+        # @option fields [Integer] :articles_count
+        # @option fields [Boolean] :scheme_downgrade
+        # @option fields [Array<String>] :notes
+        # @option fields [Integer, nil] :html_bytesize
+        def initialize(failure: nil, **fields) = super
+
         ##
         # @return [Boolean]
         def build? = verdict.build?
@@ -211,7 +227,8 @@ module Html2rss
           articles_count: 0,
           scheme_downgrade: false,
           notes: ["error: #{error.class} - #{error.message}"],
-          html_bytesize: nil
+          html_bytesize: nil,
+          failure: error
         )
       end
       private_class_method :error_result

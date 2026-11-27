@@ -72,7 +72,7 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('default (HTTPX) → Botasaurus AutoFallback')
       expect(protocol_server.instructions).to include('html2rss://runtime', 'catalog_fingerprint')
-      expect(protocol_server.instructions).to include('Default enhance follows capture evidence')
+      expect(protocol_server.instructions).to include('so keep enhance true')
       expect(protocol_server.instructions).to include('payload.item_count')
       expect(protocol_server.instructions).to include('test')
       expect(protocol_server.instructions).not_to include('_meta')
@@ -846,12 +846,12 @@ RSpec.describe Html2rss::MCP::Server do
       expect(text).not_to include('_meta')
     end
 
-    it 'embeds catalog rewrite and evidence-based enhance on capture-feed-config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'embeds catalog rewrite and the enhance default on capture-feed-config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       prompt = protocol_server.prompts['capture-feed-config']
       result = prompt.template({ url: 'https://example.com' }, server_context: nil)
       text = result.to_h.dig(:messages, 0, :content, :text)
 
-      expect(text).to include('enhance defaults from admission evidence').and include('directory.topics')
+      expect(text).to include('enhance defaults to true').and include('directory.topics')
       expect(text).to include('payload.yaml').and include('payload.item_count')
       expect(text).not_to include('_meta')
     end

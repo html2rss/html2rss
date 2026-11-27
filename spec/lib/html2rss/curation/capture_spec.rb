@@ -535,24 +535,14 @@ RSpec.describe Html2rss::Curation::Capture do
     end
 
     describe 'enhance defaulting' do
-      before { stub_outcome(html_response('<html></html>'), articles: [], admission_drops: drops) }
+      before { stub_outcome(html_response('<html></html>'), articles: [], admission_drops: { duplicate_url: 8 }) }
 
-      let(:drops) { { admission: 2 } }
-
-      it 'keeps enhance on below the chrome drop threshold' do
+      it 'keeps enhance on whatever the admission drops, since the YAML has no field selectors' do
         expect(described_class.new(url).build.config.dig(:selectors, :items, :enhance)).to be(true)
       end
 
-      context 'when drops reach the threshold' do
-        let(:drops) { { a: 1, b: 2 } }
-
-        it 'turns enhance off' do
-          expect(described_class.new(url).build.config.dig(:selectors, :items, :enhance)).to be(false)
-        end
-
-        it 'lets an explicit enhance override the drops' do
-          expect(described_class.new(url, enhance: true).build.config.dig(:selectors, :items, :enhance)).to be(true)
-        end
+      it 'turns enhance off only when the caller asks' do
+        expect(described_class.new(url, enhance: false).build.config.dig(:selectors, :items, :enhance)).to be(false)
       end
     end
 
@@ -1135,35 +1125,6 @@ RSpec.describe Html2rss::Curation::Capture do
       expect(result.segment_strategy).to eq(:cluster)
       expect(result.has_selectors).to be true
       expect(result.config.dig(:selectors, :items, :enhance)).to be true
-    end
-  end
-
-  context 'when admission drops indicate chrome-heavy listing' do
-    it 'defaults enhance to false', :aggregate_failures do
-      response = html_response(File.read('spec/fixtures/local_feed_test.html'))
-      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
-      stub_outcome(response, articles:, admission_drops: { junk: 2, credit: 1 })
-
-      result = described_class.new(url).build
-
-      expect(result.config.dig(:selectors, :items, :enhance)).to be(false)
-    end
-
-    # rubocop:disable-next RSpec/ExampleLength -- chrome drops keep enhance off on the default selector
-    it 'keeps enhance off when the default selector covers a chrome-heavy miss', :aggregate_failures do
-      html = <<~HTML
-        <html><body>
-          <article><h2><a href="/only">Only One Article Title</a></h2></article>
-        </body></html>
-      HTML
-      article = Html2rss::Article.new(
-        url: Html2rss::Url.from_absolute("#{url}/only"), title: 'Only One Article Title', id: '1'
-      )
-      stub_outcome(html_response(html), articles: [article], admission_drops: { junk: 2, credit: 1 })
-
-      items = described_class.new(url).build.config.dig(:selectors, :items)
-      expect(items[:selector]).to eq(Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR)
-      expect(items[:enhance]).to be(false)
     end
   end
 

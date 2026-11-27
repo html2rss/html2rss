@@ -72,7 +72,7 @@ Missing or schema-breaking tool arguments (any tool) come back as the same error
 | test success / schema failure / any other failure                                     | `apply` / `validate` / `stop` |
 | apply with rendered items / none                                                      | `done` / `stop` |
 
-Batch rows: a failed `batch_scrape` row carries the single-URL error fields (`class`, `message`, sparse diagnostics) and `next_step`, built by `Outcome.from_error`; `batch_inspect` and `batch_recon` rows carry the `next_step` a single call would give. The top level stays `done` when any URL succeeded (guidance counts the failures), and keeps the verb's own step when none did.
+Batch rows: a row whose URL raised (any batch verb) carries the single-URL error fields (`class`, `message`, sparse diagnostics) and `next_step`, built by `Outcome.from_error` as if a single call to that verb had raised; other `batch_inspect` and `batch_recon` rows carry the `next_step` a single call would give. The top level stays `done` when any URL succeeded (guidance counts the failures), and keeps the verb's own step when none did.
 
 ## Ownership
 

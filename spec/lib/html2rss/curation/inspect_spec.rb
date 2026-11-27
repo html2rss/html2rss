@@ -250,6 +250,8 @@ RSpec.describe Html2rss::Curation::Inspect do
       expect(reports.size).to eq(2)
       expect(reports.first.to_wire_h[:status]).to eq(200)
       expect(reports.last.to_wire_h[:scraper_eligibility]).to include(error: 'Html2rss::Error - Connection failed')
+      expect(reports.map(&:failure))
+        .to match([nil, have_attributes(class: Html2rss::Error, message: 'Connection failed')])
     end
 
     it 'builds the full error report shape for a failed URL', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
