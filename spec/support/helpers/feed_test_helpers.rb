@@ -51,7 +51,7 @@ module FeedTestHelpers
   alias scored scored_probe
 
   def rss_channel_item(title:, url:)
-    instance_double(RSS::Rss::Channel::Item, title:, link: url)
+    instance_double(RSS::Rss::Channel::Item, title:, link: url, description: nil)
   end
   alias rss_item rss_channel_item
 

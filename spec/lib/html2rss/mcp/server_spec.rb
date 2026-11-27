@@ -481,6 +481,7 @@ RSpec.describe Html2rss::MCP::Server do
             RSS::Rss::Channel::Item,
             title: 'Example Article Title',
             link: 'https://example.com/a',
+            description: nil,
             pubDate: nil
           )
         ]
