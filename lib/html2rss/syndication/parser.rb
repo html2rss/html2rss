@@ -106,7 +106,7 @@ module Html2rss
           {
             id: present(id) || url.to_s,
             title: present(title),
-            description: present(description),
+            description: present(unwrap_leaked_cdata(present(description))),
             url:, published_at:,
             author: present(author),
             categories: categories.filter_map { |category| present(category) },
@@ -130,6 +130,14 @@ module Html2rss
           return unless author
 
           present(author.name&.content) || present(author.email&.content)
+        end
+
+        # Double-wrapped feeds (escaped markup around a literal CDATA section) decode to the CDATA markers;
+        # HTML parsing would drop the opener as a bogus comment and keep +]]>+ as text.
+        def unwrap_leaked_cdata(text)
+          return text unless text&.start_with?('<![CDATA[') && text.end_with?(']]>')
+
+          text.delete_prefix('<![CDATA[').delete_suffix(']]>')
         end
 
         def present(value)
