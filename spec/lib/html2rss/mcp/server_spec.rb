@@ -671,8 +671,17 @@ RSpec.describe Html2rss::MCP::Server do
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(true)
-        expect(envelope).to include(ok: false, next_step: 'inspect')
+        expect(envelope).to include(ok: false, next_step: 'stop')
         expect(envelope[:payload]).to include(class: 'StandardError', message: 'scrape boom')
+      end
+
+      it 'puts the input url in the error payload', :aggregate_failures do
+        allow(Html2rss).to receive(:scrape).and_raise(Html2rss::RequestService::RequestTimedOut, 'slow')
+        result = call_tool.call('scrape', { url: 'https://example.com/a' })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(envelope).to include(next_step: 'inspect')
+        expect(envelope[:payload]).to include(url: 'https://example.com/a')
       end
 
       it 'keeps Botasaurus configuration failure envelope and logs free of the env URL value', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- leak contract

@@ -22,9 +22,16 @@ module Html2rss
           read_runtime: 'Read html2rss://runtime. Compare mcp_contract_version and catalog_fingerprint ' \
                         'to your cached tools/list before retrying unknown tools. ' \
                         'Set BOTASAURUS_SCRAPER_URL on the MCP process if botasaurus_configured is false.',
+          stop: 'Not retryable for this input. Report payload.class and payload.message; ' \
+                'do not call inspect for this URL.',
           test: 'Call test next (schema + live extraction). Confirm payload.item_count, ' \
                 'failure_kind, and payload.quality_report warnings before shipping.'
         }.freeze
+
+        # Error envelopes carry class, message, the input url and sparse error diagnostics only.
+        ERROR_INSPECT_GUIDANCE = 'The call failed and may succeed on retry. Call inspect on payload.url ' \
+                                 '(when present) for diagnostics; this error payload carries only ' \
+                                 'class, message, url and sparse transport diagnostics.'
 
         class << self
           ##

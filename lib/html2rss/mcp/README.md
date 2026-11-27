@@ -36,12 +36,14 @@ Every tool result is one JSON object (text body and `structuredContent`):
 | Field       | Role                                                         |
 | ----------- | ------------------------------------------------------------ |
 | `ok`        | Success vs schema/ship failure                               |
-| `next_step` | Bare verb name or `done` / `read_runtime`                    |
+| `next_step` | Bare verb name or `done` / `read_runtime` / `stop`           |
 | `guidance`  | Agent instruction (from `Outcome::Playbook`)                 |
 | `payload`   | Tool-specific data (`yaml`, `rss`, `items`, recon fields, …) |
 | `cache`     | Optional: `{ hits, max_age_seconds }` when cached pages fed the result |
 
 `Contract.response` builds the wire body; `Outcome` owns `next_step` policy.
+
+Error envelopes (`ok: false`) carry `payload.class`, `payload.message`, `payload.url` (single-URL tools only) and the error's sparse `diagnostics` (`strategy_attempts`, `request_id`, `timeout_phase`, `surface_category`, ...) when present; never `final_url` or `status`. `next_step` is `stop` (do not call `inspect` again) for internal bugs (non-`Html2rss::Error`) rejected caller options (`InvalidOption`) and deterministic rejections (`FeedPipeline::AutoFallback::NON_FALLBACK_ERRORS`); `read_runtime` / `validate` for their config errors; `inspect` for everything else (timeouts, connection failures, blocked surface, empty extraction, other `Html2rss::Error`).
 
 ## Ownership
 
