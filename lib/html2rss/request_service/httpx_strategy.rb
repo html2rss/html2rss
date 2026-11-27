@@ -189,7 +189,7 @@ module Html2rss
           timeout: session_timeouts(remaining),
           max_redirects: ctx.policy.max_redirects,
           follow_insecure_redirects: false,
-          max_response_body_size: ctx.policy.max_response_bytes,
+          max_response_body_size: ctx.policy.max_stream_bytes,
           resolver_class: :system,
           redirect_on: redirect_callback,
           **RETRY_OPTIONS.merge(max_retries: 0)

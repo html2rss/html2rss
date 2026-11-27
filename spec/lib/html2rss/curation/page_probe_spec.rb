@@ -42,6 +42,17 @@ RSpec.describe Html2rss::Curation::PageProbe do
     expect(result.sst).to include(:node_count, :segment_stats)
   end
 
+  it 'counts no articles for a refused entry status', :aggregate_failures do
+    [401, 403, 429].each do |status|
+      refused = Html2rss::RequestService::Response.new(
+        body: list_response.body, url: list_response.url, headers: list_response.headers, status:
+      )
+
+      expect(described_class.call(response: refused, url: 'https://example.com/blog').articles_count).to eq(0)
+    end
+    expect(described_class.call(response: list_response, url: 'https://example.com/blog').articles_count).to be_positive
+  end
+
   it 'assess shares surface and cheap article facts with call', :aggregate_failures do
     assessment = Html2rss::AutoSource::Assessment.call(response:)
     result = described_class.call(response:, url: 'https://example.com/blog')

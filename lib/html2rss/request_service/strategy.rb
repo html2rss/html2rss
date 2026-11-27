@@ -81,19 +81,19 @@ module Html2rss
       def postflight!(response)
         return if skip_postflight?
 
-        guard_body!(response.body)
+        guard_body!(response)
       end
 
       ##
       # Rejects bodies above the decompressed limit or matching an anti-bot interstitial signature.
       #
-      # @param body [String, nil] final response body
+      # @param response [Response] final response
       # @return [void]
       # @raise [ResponseTooLarge] if the body exceeds the configured limit
       # @raise [BlockedSurfaceDetected] if the body matches a known interstitial signature
-      def guard_body!(body)
-        body = body.to_s
-        limit = ctx.policy.max_decompressed_bytes
+      def guard_body!(response)
+        body = response.body.to_s
+        limit = ctx.policy.max_decompressed_bytes_for(response)
         raise ResponseTooLarge, "Response exceeded #{limit} bytes" if body.bytesize > limit
 
         signature = BlockedSurface.interstitial_signature_for(body)
@@ -127,7 +127,7 @@ module Html2rss
         elsif ssrf_error?(error)
           raise PrivateNetworkDenied, error.message
         elsif response_too_large_error?(error)
-          raise ResponseTooLarge, "Response exceeded #{ctx.policy.max_response_bytes} bytes"
+          raise ResponseTooLarge, "Response exceeded #{ctx.policy.max_stream_bytes} bytes"
         elsif connection_error?(error)
           translate_connection_error(error)
         else

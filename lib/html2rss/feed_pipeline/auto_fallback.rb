@@ -196,7 +196,7 @@ module Html2rss
           config, strategy:, resources:, scrape_url: scrape_target.effective_url
         )
         response = request_session.fetch_initial_response
-        RequestService::DeterministicHttpStatus.check!(response)
+        RequestService.check_entry_status!(response)
         # Everything after the entry fetch leaves the next strategy its initial request slot.
         hop = Hop.new(strategy:, next_strategy:, request_session:, state:)
         budget.holding(next_strategy ? 1 : 0) { process_response(hop, response, monotonic_ms - started_ms) }

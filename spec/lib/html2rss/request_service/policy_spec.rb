@@ -264,6 +264,14 @@ RSpec.describe Html2rss::RequestService::Policy do
   end
 
   describe '#initialize' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
+    let(:response_with) do
+      lambda do |content_type|
+        Html2rss::RequestService::Response.new(
+          body: '<x/>', url: Html2rss::Url.from_absolute('https://example.com/'),
+          headers: { 'content-type' => content_type }, status: 200
+        )
+      end
+    end
     let(:minimal_limits) do
       {
         connect_timeout_seconds: 1, read_timeout_seconds: 1, total_timeout_seconds: 1, max_redirects: 0,
@@ -289,6 +297,21 @@ RSpec.describe Html2rss::RequestService::Policy do
       )
       expect(policy.allow_private_networks?).to be(false)
       expect(policy.allow_cross_origin_followups?).to be(false)
+    end
+
+    it 'allows feeds the feed ceiling while HTML keeps the default', :aggregate_failures do
+      expect(policy.max_decompressed_bytes_for(response_with.call('application/rss+xml')))
+        .to eq(described_class::MAX_FEED_RESPONSE_BYTES)
+      expect(policy.max_decompressed_bytes_for(response_with.call('text/html')))
+        .to eq(described_class::MAX_RESPONSE_BYTES)
+      expect(policy.max_stream_bytes).to eq(described_class::MAX_FEED_RESPONSE_BYTES)
+    end
+
+    it 'keeps an explicitly configured limit for feeds', :aggregate_failures do
+      limits = described_class.new(resolver:, max_response_bytes: 100, max_decompressed_bytes: 200)
+
+      expect(limits.max_decompressed_bytes_for(response_with.call('application/rss+xml'))).to eq(200)
+      expect(limits.max_stream_bytes).to eq(100)
     end
 
     it 'treats truthy flag values as enabled', :aggregate_failures do

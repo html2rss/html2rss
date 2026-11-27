@@ -46,7 +46,7 @@ module Html2rss
         raise_from_error!(parsed_response) if parsed_response.is_a?(BotasaurusContract::Error)
 
         response = build_response(parsed_response)
-        guard_body!(response.body)
+        guard_body!(response)
         jar.refresh(stored, response.cookies)
         response
       end

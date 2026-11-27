@@ -11,6 +11,7 @@ RSpec.describe 'Pipeline path invariants' do
   let(:origin) { 'https://example.com' }
   let(:limit) { 2 }
   let(:status) { 200 }
+  let(:fallback_reachable) { false }
   let(:html_headers) { { 'content-type' => 'text/html; charset=utf-8' } }
   let(:response_for) do
     lambda do |body, url, headers, code = 200|
@@ -61,6 +62,11 @@ RSpec.describe 'Pipeline path invariants' do
         entry: "#{origin}/news/", strategies: %i[default auto], resolved: false,
         pages: { "#{origin}/news/" => [listing_html, html_headers] }
       },
+      'an HTML page with an items selector' => {
+        entry: "#{origin}/news/", strategies: %i[default auto], resolved: false,
+        options: { items_selector: 'article h2 a' },
+        pages: { "#{origin}/news/" => [listing_html, html_headers] }
+      },
       'a direct RSS feed' => {
         entry: "#{origin}/feed.xml", strategies: %i[default auto], resolved: false,
         pages: { "#{origin}/feed.xml" => [rss_body, { 'content-type' => 'application/rss+xml' }] }
@@ -83,16 +89,18 @@ RSpec.describe 'Pipeline path invariants' do
     allow(Html2rss::Log).to receive(:debug)
     allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
       ctx.budget.consume!
-      raise Html2rss::RequestService::ConnectionFailed, 'no response' unless strategy == :default
+      raise Html2rss::RequestService::ConnectionFailed, 'no response' unless strategy == :default || fallback_reachable
 
       body, headers = page_set.fetch(ctx.url.to_s) { raise Html2rss::RequestService::ConnectionFailed, 'no response' }
       response_for.call(body, ctx.url.to_s, headers, ctx.url.to_s == path.fetch(:entry) ? status : 200)
     end
   end
 
-  entry_statuses = [404, 410]
+  permanent_statuses = [404, 410]
+  refused_statuses = [401, 403, 429]
   [
     ['an HTML page (auto-source)', :default], ['an HTML page (auto-source)', :auto],
+    ['an HTML page with an items selector', :default], ['an HTML page with an items selector', :auto],
     ['a direct RSS feed', :default], ['a direct RSS feed', :auto],
     ['a direct Atom feed', :default], ['a direct Atom feed', :auto],
     ['an HTML page resolved to its listing', :auto]
@@ -101,8 +109,9 @@ RSpec.describe 'Pipeline path invariants' do
       let(:path) { paths.fetch(path_name) }
       let(:page_set) { path.fetch(:pages) }
       let(:entry) { path.fetch(:entry) }
-      let(:result) { Html2rss.scrape(entry, strategy:, limit:) }
-      let(:wire) { Html2rss::Curation::Batch.scrape_wire(url: entry, strategy:, limit:) }
+      let(:options) { path.fetch(:options, {}) }
+      let(:result) { Html2rss.scrape(entry, strategy:, limit:, **options) }
+      let(:wire) { Html2rss::Curation::Batch.scrape_wire(url: entry, strategy:, limit:, **options) }
 
       it 'honours the item limit', :aggregate_failures do
         expect(result.to_rss.items.size).to eq(limit)
@@ -127,12 +136,25 @@ RSpec.describe 'Pipeline path invariants' do
         expect(wire.key?(:entry_resolution)).to eq(path.fetch(:resolved))
       end
 
-      entry_statuses.each do |code|
+      permanent_statuses.each do |code|
         context "when the entry responds #{code}" do
           let(:status) { code }
 
           it 'raises DeterministicHttpStatus and returns no items' do
             expect { result.to_rss }.to raise_error(Html2rss::RequestService::DeterministicHttpStatus)
+          end
+        end
+      end
+
+      refused_statuses.each do |code|
+        context "when the entry responds #{code}" do
+          let(:status) { code }
+          let(:fallback_reachable) { true }
+
+          it 'raises BlockedSurfaceDetected with the status and returns no items', :aggregate_failures do
+            expect { result.to_rss }.to raise_error(Html2rss::RequestService::BlockedSurfaceDetected) do |error|
+              expect(error.diagnostics).to include(status: code)
+            end
           end
         end
       end
