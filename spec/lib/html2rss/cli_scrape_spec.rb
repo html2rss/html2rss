@@ -16,7 +16,7 @@ RSpec.describe Html2rss::CLI, '#scrape' do
     expect(Html2rss).to have_received(:scrape).with(
       'https://a.test', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil,
                         local_file_path: nil, limit: nil, keep_different_domain: false,
-                        keep_sponsored: false
+                        keep_sponsored: false, resolution_scope: nil
     )
   end
 
@@ -25,13 +25,13 @@ RSpec.describe Html2rss::CLI, '#scrape' do
       run_scrape.call(
         ['https://a.test'],
         { strategy: 'default', items_selector: '.x', max_redirects: 2, max_requests: 3, limit: 4,
-          keep_different_domain: true, keep_sponsored: true }
+          keep_different_domain: true, keep_sponsored: true, resolution_scope: 'site' }
       )
     end.to output.to_stdout
     expect(Html2rss).to have_received(:scrape).with(
       'https://a.test', strategy: :default, items_selector: '.x', max_redirects: 2, max_requests: 3,
                         local_file_path: nil, limit: 4, keep_different_domain: true,
-                        keep_sponsored: true
+                        keep_sponsored: true, resolution_scope: 'site'
     )
   end
 

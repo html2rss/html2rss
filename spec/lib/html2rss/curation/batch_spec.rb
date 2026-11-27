@@ -273,6 +273,21 @@ RSpec.describe Html2rss::Curation::Batch do
         expect(wire).to include(scrape_url: 'https://example.com/index~atom.xml', entry_resolution: resolution)
       end
 
+      it 'exposes the resolution when the entry was kept for lack of an in-scope winner', :aggregate_failures do
+        kept = { applied: false, probe_count: 0, reason: :no_in_scope_winner, out_of_scope_skipped: 4 }
+        allow(feed_result).to receive(:status).and_return(Html2rss::Status.build(articles: [], entry_resolution: kept))
+
+        expect(wire).to include(scrape_url: 'https://example.com', entry_resolution: kept)
+      end
+
+      it 'passes the resolution scope to the scrape' do
+        allow(Html2rss).to receive(:scrape).and_return(feed_result)
+
+        described_class.scrape_wire(url: 'https://example.com', strategy: :auto, limit: 1, resolution_scope: 'site')
+
+        expect(Html2rss).to have_received(:scrape).with('https://example.com', hash_including(resolution_scope: 'site'))
+      end
+
       it 'falls back to the requested url and omits an unapplied resolution', :aggregate_failures do
         allow(feed_result).to receive(:status).and_return(
           Html2rss::Status.build(articles: [], entry_resolution: { applied: false, reason: :no_winner })

@@ -114,7 +114,10 @@ RSpec.describe Html2rss::CLI do
                                                   'supplied by the source (no affiliation/safety check)' },
             keep_sponsored: { type: :boolean, default: false, enum: nil, aliases: [],
                               description: 'Keep items the page marks as sponsored ' \
-                                           '(rel="sponsored" or ad labels)' }
+                                           '(rel="sponsored" or ad labels)' },
+            resolution_scope: { type: :string, default: nil, enum: %w[section site], aliases: [],
+                                description: 'How far entry resolution may leave the requested URL ' \
+                                             '(default: section)' }
           }
         },
         'validate' => {

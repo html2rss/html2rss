@@ -97,6 +97,13 @@ module Html2rss
         oneOf: XOR_ONE_OF
       }.freeze
 
+      # Optional entry-resolution reach shared by +scrape+ and +batch_scrape+.
+      RESOLUTION_SCOPE_PROPERTY = {
+        type: 'string', enum: %w[section site],
+        description: 'How far entry resolution may leave the requested URL: section (default) stays at or below ' \
+                     'its path, site allows any page of the same site'
+      }.freeze
+
       # Input schema for +scrape+.
       SCRAPE_INPUT_SCHEMA = {
         type: 'object',
@@ -105,7 +112,8 @@ module Html2rss
           strategy: STRATEGY_PROPERTY,
           limit: { type: 'integer', minimum: 1, default: AutoSource::DEFAULT_LIMIT,
                    description: "Max articles to keep (default #{AutoSource::DEFAULT_LIMIT})" },
-          items_selector: { type: 'string', description: 'Optional CSS selector hint for items' }
+          items_selector: { type: 'string', description: 'Optional CSS selector hint for items' },
+          resolution_scope: RESOLUTION_SCOPE_PROPERTY
         }.freeze,
         required: %w[url]
       }.freeze
@@ -180,7 +188,8 @@ module Html2rss
         urls_description: 'List of page URLs to scrape (1..25)',
         strategy_property: STRATEGY_PROPERTY,
         extra_properties: {
-          limit: { type: 'integer', minimum: 1, description: 'Max articles per URL to keep (default 10)', default: 10 }
+          limit: { type: 'integer', minimum: 1, description: 'Max articles per URL to keep (default 10)', default: 10 },
+          resolution_scope: RESOLUTION_SCOPE_PROPERTY
         }
       ).freeze
 

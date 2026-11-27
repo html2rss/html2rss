@@ -147,7 +147,7 @@ Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::Auto
 
 ## Entry-resolution options
 
-Typed `auto_source.entry_resolution` expansion. Owned by `EntryResolution::Options` (`enabled?`, `max_probes`, `request_slots`). Policy eligibility, the probe cap, and budget slot reservation (`request_slots` = `max_probes`; the winner is not fetched again) consume it. `EntryResolution::DEFAULT_CONFIG` is the one owner of the default; `AutoSource::DEFAULT_CONFIG[:entry_resolution]` is that object.
+Typed `auto_source.entry_resolution` expansion. Owned by `EntryResolution::Options` (`enabled?`, `max_probes`, `scope`, `request_slots`). `EntryResolution::Scope` (`section` default | `site`) owns the reach rule; `CandidateGenerator` filters candidates with it, and a skip that excluded out-of-scope candidates reports `reason: :no_in_scope_winner` (+ `out_of_scope_skipped`) with `applied: false`. Policy eligibility, the probe cap, and budget slot reservation (`request_slots` = `max_probes`; the winner is not fetched again) consume it. `EntryResolution::DEFAULT_CONFIG` is the one owner of the default; `AutoSource::DEFAULT_CONFIG[:entry_resolution]` is that object.
 
 ## Pipeline outcome URLs
 

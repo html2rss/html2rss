@@ -27,7 +27,7 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
    - `validate` failures return `payload.issues` (array of `{ path, code, message, expected, actual }`) — not a nested `errors` hash.
    - `test` schema failures surface the same shape under `payload.validation_issues`.
 
-`scrape` and each successful `batch_scrape` row carry `scrape_url` (the page the items were extracted from) and, only when entry resolution swapped the requested URL for a better page or feed, `entry_resolution` (`applied`, `probe_count`, `reason`, `winner_score`). Compare `scrape_url` to the requested URL.
+`scrape` and each successful `batch_scrape` row carry `scrape_url` (the page the items were extracted from) and, only when entry resolution swapped the requested URL for a better page or feed (or kept it because every better page lay outside the requested section: `reason: no_in_scope_winner`, `out_of_scope_skipped`), `entry_resolution` (`applied`, `probe_count`, `reason`, `winner_score`). Optional `resolution_scope` (`section` default, `site`) on `scrape` and `batch_scrape` widens how far resolution may leave the requested URL. Compare `scrape_url` to the requested URL.
 
 Prefer `capture` for durable configs; `scrape` / `batch_scrape` for one-shot extraction. Follow envelope `next_step` and `guidance`; do not parse scrape text as a raw item array.
 

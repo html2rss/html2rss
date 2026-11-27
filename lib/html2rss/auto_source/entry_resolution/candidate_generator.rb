@@ -21,9 +21,10 @@ module Html2rss
         # @param response [Html2rss::RequestService::Response]
         # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope
         # @param max [Integer]
+        # @param scope [Scope] how far from the entry URL candidates may lie
         # @return [Array<Html2rss::Url>]
-        def self.call(entry_url:, response:, vocabulary:, max: DEFAULT_MAX)
-          new(entry_url:, response:, vocabulary:, max:).call
+        def self.call(entry_url:, response:, vocabulary:, max: DEFAULT_MAX, scope: Scope::DEFAULT)
+          new(entry_url:, response:, vocabulary:, max:, scope:).call
         end
 
         ##
@@ -31,11 +32,13 @@ module Html2rss
         # @param response [Html2rss::RequestService::Response]
         # @param vocabulary [Html2rss::Vocabulary::Scope]
         # @param max [Integer]
-        def initialize(entry_url:, response:, vocabulary:, max: DEFAULT_MAX)
+        # @param scope [Scope]
+        def initialize(entry_url:, response:, vocabulary:, max: DEFAULT_MAX, scope: Scope::DEFAULT)
           @entry_url = Html2rss::Url.from_absolute(entry_url)
           @response = response
           @vocabulary = vocabulary
           @max = max
+          @scope = scope
         end
 
         ##
@@ -44,24 +47,39 @@ module Html2rss
           [feed_slot, *listing_urls.first(listing_cap)].compact.uniq
         end
 
+        ##
+        # @return [Integer] same-domain candidates (feed and listing pool, before the cap) that
+        #   {Scope} excluded; read after {#call}
+        def out_of_scope_count
+          (feed_urls + listing_pool).count { same_domain_other_page?(_1) && !scope.covers?(entry_url, _1) }
+        end
+
         private
 
-        attr_reader :entry_url, :response, :vocabulary, :max
+        attr_reader :entry_url, :response, :vocabulary, :max, :scope
 
         def listing_cap = max > 1 ? max - 1 : 0
 
         # First eligible Discovery candidate: an alternate on another domain (Discovery ranks
         # audio-hinted ones first on a podcast page) must not displace a same-domain feed or path guess.
         def feed_slot
-          return unless parsed_html
+          feed_urls.find { eligible_url?(_1) }
+        end
 
-          Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).find { eligible_url?(_1) }
+        def feed_urls
+          @feed_urls ||= if parsed_html
+                           Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html)
+                         else
+                           []
+                         end
         end
 
         def listing_urls
-          (nav_candidates + segment_seed_urls + listing_path_candidates)
-            .uniq
-            .select { eligible_url?(_1) }
+          listing_pool.select { eligible_url?(_1) }
+        end
+
+        def listing_pool
+          @listing_pool ||= (nav_candidates + segment_seed_urls + listing_path_candidates).uniq
         end
 
         def nav_candidates
@@ -127,6 +145,10 @@ module Html2rss
         end
 
         def eligible_url?(url)
+          same_domain_other_page?(url) && scope.covers?(entry_url, url)
+        end
+
+        def same_domain_other_page?(url)
           !entry_url.same_document?(url) && same_registrable_domain?(url)
         end
 

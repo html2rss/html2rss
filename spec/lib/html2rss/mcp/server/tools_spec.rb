@@ -17,8 +17,14 @@ RSpec.describe Html2rss::MCP::Server::Tools do
       tools_by_name.fetch('batch_scrape').call.call(urls: ['https://example.com/a'])
 
       expect(Html2rss::Curation::Batch).to have_received(:batch_scrape).with(
-        urls: ['https://example.com/a'], strategy: :auto, limit: 10, concurrency: 5
+        urls: ['https://example.com/a'], strategy: :auto, limit: 10, concurrency: 5, resolution_scope: nil
       )
+    end
+
+    it 'forwards the resolution scope to batch_scrape' do
+      tools_by_name.fetch('batch_scrape').call.call(urls: ['https://example.com/a'], resolution_scope: 'site')
+
+      expect(Html2rss::Curation::Batch).to have_received(:batch_scrape).with(hash_including(resolution_scope: 'site'))
     end
 
     it 'forwards batch_inspect default concurrency' do

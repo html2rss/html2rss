@@ -176,7 +176,8 @@ RSpec.describe Html2rss::MCP::Server do
           urls: ['https://example.com/a', 'https://example.com/b'],
           strategy: :auto,
           limit: 10,
-          concurrency: 5
+          concurrency: 5,
+          resolution_scope: nil
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(envelope).to include(ok: true, next_step: 'done')

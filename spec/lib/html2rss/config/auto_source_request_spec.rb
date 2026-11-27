@@ -23,6 +23,13 @@ RSpec.describe Html2rss::Config::AutoSourceRequest do
       expect(config[:selectors]).to eq(items: { selector: '.post', enhance: true })
     end
 
+    it 'writes the resolution scope into the entry-resolution config', :aggregate_failures do
+      config = described_class.new(url: 'https://example.com/blog', resolution_scope: :site).to_config
+
+      expect(config.dig(:auto_source, :entry_resolution)).to include(scope: 'site', max_probes: 5, enabled: true)
+      expect(Html2rss::AutoSource::DEFAULT_CONFIG.dig(:entry_resolution, :scope)).to eq('section')
+    end
+
     it 'leaves optional request overrides unset so runtime config can apply defaults', :aggregate_failures do
       config = described_class.new(url: 'https://example.com/blog').to_config
 

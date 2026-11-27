@@ -119,6 +119,8 @@ module Html2rss
   # @option options [Integer, nil] :limit max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
   # @option options [Boolean, nil] :keep_different_domain when set, overrides cleanup.keep_different_domain
   # @option options [Boolean, nil] :keep_sponsored when set, overrides cleanup.keep_sponsored
+  # @option options [String, Symbol, nil] :resolution_scope +section+ (default) or +site+: how far entry resolution
+  #   may move from the requested URL
   # @return [Html2rss::FeedResult]
   def self.scrape(url, strategy: :auto, **)
     feed_result(Config::AutoSourceRequest.from_shortcut(url, strategy:, **).to_config)

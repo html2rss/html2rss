@@ -3,7 +3,7 @@
 module Html2rss
   class AutoSource
     module EntryResolution
-      Options = Data.define(:enabled, :max_probes)
+      Options = Data.define(:enabled, :max_probes, :scope)
 
       ##
       # Typed +auto_source.entry_resolution+ options (one expansion from config Hash).
@@ -12,8 +12,8 @@ module Html2rss
         # @param auto_source [Hash, nil] validated +auto_source+ config
         # @return [Options]
         def self.from_auto_source(auto_source)
-          raw = auto_source&.dig(:entry_resolution) || {}
-          new(enabled: raw.fetch(:enabled, true), max_probes: raw.fetch(:max_probes, DEFAULT_CONFIG[:max_probes]))
+          raw = DEFAULT_CONFIG.merge(auto_source&.dig(:entry_resolution) || {})
+          new(enabled: raw.fetch(:enabled), max_probes: raw.fetch(:max_probes), scope: Scope[raw.fetch(:scope)])
         end
 
         ##

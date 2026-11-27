@@ -24,8 +24,9 @@ module Html2rss
                          'strategy "auto" triggers fallback chain (default → botasaurus) for JS-rendered sites.',
             input_schema: Contract::SCRAPE_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
-            call: lambda { |url:, strategy: 'auto', limit: AutoSource::DEFAULT_LIMIT, items_selector: nil, **|
-              scrape_outcome(url:, strategy:, limit:, items_selector:)
+            call: lambda { |url:, strategy: 'auto', limit: AutoSource::DEFAULT_LIMIT, items_selector: nil,
+                            resolution_scope: nil, **|
+              scrape_outcome(url:, strategy:, limit:, items_selector:, resolution_scope:)
             }
           ),
           Tool.new(
@@ -61,10 +62,11 @@ module Html2rss
                          'Returns structured JSON Feed items and extraction counts.',
             input_schema: Contract::BATCH_SCRAPE_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
-            call: lambda { |urls:, strategy: 'auto', concurrency: Curation::Batch::DEFAULT_CONCURRENCY, limit: 10, **|
+            call: lambda { |urls:, strategy: 'auto', concurrency: Curation::Batch::DEFAULT_CONCURRENCY, limit: 10,
+                            resolution_scope: nil, **|
               Outcome.batch_scrape(
                 Curation::Batch.batch_scrape(urls:, strategy: FeedPipeline::StrategyPlan.coerce(strategy),
-                                             concurrency:, limit:)
+                                             concurrency:, limit:, resolution_scope:)
               )
             }
           ),
@@ -162,10 +164,12 @@ module Html2rss
           # @param strategy [String, Symbol]
           # @param limit [Integer]
           # @param items_selector [String, nil]
+          # @param resolution_scope [String, nil] +section+ or +site+
           # @return [Outcome]
-          def scrape_outcome(url:, strategy: 'auto', limit: AutoSource::DEFAULT_LIMIT, items_selector: nil)
+          def scrape_outcome(url:, strategy: 'auto', limit: AutoSource::DEFAULT_LIMIT, items_selector: nil,
+                             resolution_scope: nil)
             plan = FeedPipeline::StrategyPlan.coerce(strategy)
-            wire = Curation::Batch.scrape_wire(url:, strategy: plan, limit:, items_selector:)
+            wire = Curation::Batch.scrape_wire(url:, strategy: plan, limit:, items_selector:, resolution_scope:)
             Outcome.scrape(
               items: wire[:items],
               requested_strategy: wire[:strategy],

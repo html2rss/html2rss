@@ -59,6 +59,7 @@ module Html2rss
       optional(:entry_resolution).hash do
         optional(:enabled).filled(:bool)
         optional(:max_probes).filled(:integer, gt?: 0)
+        optional(:scope).filled(:string, included_in?: %w[section site])
       end
 
       optional(:scraper).hash

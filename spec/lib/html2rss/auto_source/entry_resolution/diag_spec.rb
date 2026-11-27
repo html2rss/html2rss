@@ -11,14 +11,15 @@ RSpec.describe Html2rss::AutoSource::EntryResolution::Diag do
       reason: :winner,
       probe_count: 3,
       winner_score: 40,
-      response: nil
+      response: nil,
+      out_of_scope: 0
     )
   end
 
   it 'copies the tournament outcome from a result', :aggregate_failures do
     diag = described_class.from_result(result)
 
-    expect(diag).to have_attributes(applied: true, probe_count: 3, reason: :winner, winner_score: 40)
+    expect(diag).to have_attributes(applied: true, probe_count: 3, reason: :winner, winner_score: 40, out_of_scope: 0)
   end
 
   it 'includes the winner score in its hash when one exists' do
@@ -28,8 +29,16 @@ RSpec.describe Html2rss::AutoSource::EntryResolution::Diag do
   end
 
   it 'omits the winner score from its hash when there is no winner' do
-    diag = described_class.new(applied: false, probe_count: 0, reason: :no_candidates, winner_score: nil)
+    diag = described_class.new(applied: false, probe_count: 0, reason: :no_candidates, winner_score: nil,
+                               out_of_scope: 0)
 
     expect(diag.to_h).to eq(applied: false, probe_count: 0, reason: :no_candidates)
+  end
+
+  it 'reports the skipped out-of-scope count when there is one' do
+    diag = described_class.new(applied: false, probe_count: 0, reason: :no_in_scope_winner, winner_score: nil,
+                               out_of_scope: 3)
+
+    expect(diag.to_h).to eq(applied: false, probe_count: 0, reason: :no_in_scope_winner, out_of_scope_skipped: 3)
   end
 end
