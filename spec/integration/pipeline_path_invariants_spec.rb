@@ -61,6 +61,11 @@ RSpec.describe 'Pipeline path invariants' do
         entry: "#{origin}/news/", strategies: %i[default auto], resolved: false,
         pages: { "#{origin}/news/" => [listing_html, html_headers] }
       },
+      'an HTML page with an items selector' => {
+        entry: "#{origin}/news/", strategies: %i[default auto], resolved: false,
+        options: { items_selector: 'article h2 a' },
+        pages: { "#{origin}/news/" => [listing_html, html_headers] }
+      },
       'a direct RSS feed' => {
         entry: "#{origin}/feed.xml", strategies: %i[default auto], resolved: false,
         pages: { "#{origin}/feed.xml" => [rss_body, { 'content-type' => 'application/rss+xml' }] }
@@ -93,6 +98,7 @@ RSpec.describe 'Pipeline path invariants' do
   entry_statuses = [404, 410]
   [
     ['an HTML page (auto-source)', :default], ['an HTML page (auto-source)', :auto],
+    ['an HTML page with an items selector', :default], ['an HTML page with an items selector', :auto],
     ['a direct RSS feed', :default], ['a direct RSS feed', :auto],
     ['a direct Atom feed', :default], ['a direct Atom feed', :auto],
     ['an HTML page resolved to its listing', :auto]
@@ -101,8 +107,9 @@ RSpec.describe 'Pipeline path invariants' do
       let(:path) { paths.fetch(path_name) }
       let(:page_set) { path.fetch(:pages) }
       let(:entry) { path.fetch(:entry) }
-      let(:result) { Html2rss.scrape(entry, strategy:, limit:) }
-      let(:wire) { Html2rss::Curation::Batch.scrape_wire(url: entry, strategy:, limit:) }
+      let(:options) { path.fetch(:options, {}) }
+      let(:result) { Html2rss.scrape(entry, strategy:, limit:, **options) }
+      let(:wire) { Html2rss::Curation::Batch.scrape_wire(url: entry, strategy:, limit:, **options) }
 
       it 'honours the item limit', :aggregate_failures do
         expect(result.to_rss.items.size).to eq(limit)

@@ -125,7 +125,7 @@ module Html2rss
     # @return [Extraction] unique articles with their dedup and admission drops and feed channel facts
     def extract(config:, response:, request_session:)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
-      deduped = Article::Deduplicator.new(collected).call
+      deduped = capped(Article::Deduplicator.new(collected).call, config)
       enriched, enrichment = enrich(deduped, config:, request_session:)
       unique = with_url_dates(enriched, config.time_zone)
       Extraction.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,
@@ -135,6 +135,12 @@ module Html2rss
     private
 
     attr_reader :raw_config
+
+    # The one owner of +limit+ across paths: selector, auto-source and syndication articles are capped together.
+    def capped(articles, config)
+      limit = config.auto_source&.dig(:limit)
+      limit ? articles.first(limit) : articles
+    end
 
     # Opt-in article-page metadata. Runs before {#with_url_dates} so a real article-page date wins over a URL date.
     def enrich(articles, config:, request_session:)
@@ -242,17 +248,17 @@ module Html2rss
     # @return [Array(Array<Html2rss::Article>, Hash{String => Integer}, Html2rss::Syndication::ChannelFacts)]
     def auto_source_articles(config:, response:, request_session:)
       return [[], {}, nil] unless (auto_source = config.auto_source)
-      return syndication_articles(response, limit: auto_source.fetch(:limit)) if response.feed_response?
+      return syndication_articles(response) if response.feed_response?
 
       vocabulary = Vocabulary[Channel.language_for(response, config.channel)]
       source = AutoSource.new(response, auto_source, request_session:, vocabulary:, time_zone: config.time_zone)
       [source.articles, source.admission_drops, source.feed_channel]
     end
 
-    # A feed response (direct feed URL or entry-resolved feed) skips {AutoSource}, so +limit+ applies here.
-    def syndication_articles(response, limit:)
+    # A feed response (direct feed URL or entry-resolved feed) skips {AutoSource}; {#extract} applies +limit+.
+    def syndication_articles(response)
       feed = Syndication::Parser.parse_response(response)
-      articles = feed.articles.first(limit).map { |hash| Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed) }
+      articles = feed.articles.map { |hash| Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed) }
       [articles, {}, feed.channel]
     end
 
