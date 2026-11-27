@@ -135,10 +135,28 @@ RSpec.describe Html2rss::Curation::Batch do
       expect(described_class.batch_scrape(urls:, concurrency: 2).results).to eq(
         [
           { url: 'https://example.com/a', ok: true, items_count: 1,
-            items: [{ title: 'Item 1', url: 'https://example.com/a/1' }], channel_title: 'Feed A' },
+            items: [{ title: 'Item 1', url: 'https://example.com/a/1' }], channel_title: 'Feed A',
+            scrape_url: 'https://example.com/a' },
           { url: 'https://example.com/b', ok: false, error: 'Scrape timed out' }
         ]
       )
+    end
+
+    context 'when entry resolution swapped the page' do
+      let(:resolution) { { applied: true, probe_count: 2, reason: :winner, winner_score: 9 } }
+      let(:status) do
+        Html2rss::Status.build(articles: [], scrape_url: 'https://example.com/feed.xml', entry_resolution: resolution)
+      end
+
+      before do
+        feed = instance_double(Html2rss::FeedResult, status:, to_json_feed: { items: [] })
+        allow(Html2rss).to receive(:scrape).with('https://example.com/a', strategy: :auto, limit: 10).and_return(feed)
+      end
+
+      it 'carries the effective scrape_url and entry_resolution on the row' do
+        expect(described_class.batch_scrape(urls:, concurrency: 2).results.first)
+          .to include(scrape_url: 'https://example.com/feed.xml', entry_resolution: resolution)
+      end
     end
 
     it 'propagates contract errors instead of recording a per-URL failure' do
@@ -196,7 +214,7 @@ RSpec.describe Html2rss::Curation::Batch do
       result = described_class.batch_scrape(urls: [:'https://example.com/a'])
 
       expect(result.results).to eq([{ url: 'https://example.com/a', ok: true, items_count: 0, items: [],
-                                      channel_title: nil }])
+                                      channel_title: nil, scrape_url: 'https://example.com/a' }])
     end
 
     it 'rejects an unknown strategy before scraping', :aggregate_failures do
@@ -223,7 +241,7 @@ RSpec.describe Html2rss::Curation::Batch do
       result = described_class.scrape_wire(url: 'https://example.com', strategy: 'default', limit: 3)
 
       expect(result).to eq(strategy: :default, items: [{ title: 'Item' }], channel_title: 'Feed',
-                           admission_drops: { 'duplicate' => 2 })
+                           admission_drops: { 'duplicate' => 2 }, scrape_url: 'https://example.com')
       expect(Html2rss).to have_received(:scrape).with('https://example.com', strategy: :default, limit: 3)
     end
 
@@ -240,6 +258,29 @@ RSpec.describe Html2rss::Curation::Batch do
       allow(feed_result).to receive(:to_json_feed).and_return({})
       expect(described_class.scrape_wire(url: 'https://example.com', strategy: :auto, limit: 1))
         .to include(items: [], channel_title: nil)
+    end
+
+    context 'with entry resolution' do
+      let(:resolution) { { applied: true, probe_count: 5, reason: :winner, winner_score: 750 } }
+      let(:wire) { described_class.scrape_wire(url: 'https://example.com', strategy: :auto, limit: 1) }
+
+      it 'reports the effective scrape_url and the applied resolution' do
+        allow(feed_result).to receive(:status).and_return(
+          Html2rss::Status.build(articles: [], scrape_url: 'https://example.com/index~atom.xml',
+                                 entry_resolution: resolution)
+        )
+
+        expect(wire).to include(scrape_url: 'https://example.com/index~atom.xml', entry_resolution: resolution)
+      end
+
+      it 'falls back to the requested url and omits an unapplied resolution', :aggregate_failures do
+        allow(feed_result).to receive(:status).and_return(
+          Html2rss::Status.build(articles: [], entry_resolution: { applied: false, reason: :no_winner })
+        )
+
+        expect(wire).to include(scrape_url: 'https://example.com')
+        expect(wire).not_to have_key(:entry_resolution)
+      end
     end
 
     it 'rejects an unknown strategy' do

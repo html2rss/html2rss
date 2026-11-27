@@ -49,7 +49,8 @@ module Html2rss
         # @param strategy [Symbol, String]
         # @param limit [Integer]
         # @param items_selector [String, nil]
-        # @return [Hash{Symbol => Object}] +:strategy+, +:items+, +:channel_title+, +:admission_drops+
+        # @return [Hash{Symbol => Object}] +:strategy+, +:items+, +:channel_title+, +:admission_drops+,
+        #   +:scrape_url+ and, only when entry resolution was applied, +:entry_resolution+
         def scrape_wire(url:, strategy:, limit:, items_selector: nil)
           plan = FeedPipeline::StrategyPlan.coerce(strategy)
           feed_result = Html2rss.scrape(url, strategy: plan, limit:, **{ items_selector: }.compact)
@@ -58,7 +59,8 @@ module Html2rss
             strategy: plan,
             items: feed[:items] || [],
             channel_title: feed[:title],
-            admission_drops: feed_result.status.admission_drops
+            admission_drops: feed_result.status.admission_drops,
+            **page_wire(feed_result.status, url)
           }
         end
 
@@ -118,11 +120,20 @@ module Html2rss
           !status.nil? && status < 400
         end
 
+        # The page the items came from: entry resolution may swap the requested URL for a better page or feed.
+        def page_wire(status, requested_url)
+          wire = { scrape_url: status.scrape_url || requested_url.to_s }
+          resolution = status.entry_resolution
+          wire[:entry_resolution] = resolution if resolution&.[](:applied)
+          wire
+        end
+
         def scrape_single_url(url:, strategy:, limit:)
           wire = scrape_wire(url:, strategy:, limit:)
           {
-            url: url.to_s, ok: true, items_count: wire[:items].size,
-            items: wire[:items], channel_title: wire[:channel_title]
+            url: url.to_s, ok: true, items_count: wire.fetch(:items).size,
+            items: wire.fetch(:items), channel_title: wire.fetch(:channel_title),
+            **wire.slice(:scrape_url, :entry_resolution)
           }
         rescue Html2rss::ContractError
           raise

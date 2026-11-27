@@ -49,13 +49,15 @@ module Html2rss
         # @param items [Array]
         # @param requested_strategy [String, Symbol]
         # @param channel_title [String, nil]
-        # @param admission_drops [Hash]
         # @param botasaurus_configured [Boolean]
+        # @option wire [String] :scrape_url required; the page the items were extracted from
+        # @option wire [Hash] :admission_drops Cleanup reason counts
+        # @option wire [Hash] :entry_resolution diagnostics, only when entry resolution was applied
         # @return [Outcome]
-        def scrape(items:, requested_strategy:, channel_title:, botasaurus_configured:, admission_drops: {})
+        def scrape(items:, requested_strategy:, channel_title:, botasaurus_configured:, **wire)
           next_step = scrape_next_step(items.empty?, botasaurus_configured:)
           new(ok: true, next_step:, guidance: next_step.guidance,
-              payload: scrape_payload(items:, requested_strategy:, channel_title:, admission_drops:))
+              payload: scrape_payload(items:, requested_strategy:, channel_title:, wire:))
         end
 
         ##
@@ -163,10 +165,11 @@ module Html2rss
           NextStep[:inspect]
         end
 
-        def scrape_payload(items:, requested_strategy:, channel_title:, admission_drops:)
+        def scrape_payload(items:, requested_strategy:, channel_title:, wire:)
           {
             items:, total: items.size, requested_strategy: requested_strategy.to_s, channel_title:,
-            **(admission_drops.any? ? { admission_drops: } : {})
+            scrape_url: wire.fetch(:scrape_url), **wire.slice(:entry_resolution),
+            **wire.slice(:admission_drops).reject { |_, drops| drops.empty? }
           }
         end
 
