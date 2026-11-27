@@ -25,7 +25,8 @@ RSpec.describe 'Pipeline path invariants' do
     articles = (1..5).map do |i|
       "<article><h2><a href='#{origin}/news/post-#{i}-about-something-long?at_medium=RSS&at_campaign=rss'>" \
         "Post #{i} about something long enough" \
-        "</a></h2><p>Summary text number #{i} that is reasonably long to look like an excerpt of it.</p></article>"
+        '</a></h2><p>Von Anna Beispiel</p>' \
+        "<p>Summary text number #{i} that is reasonably long to look like an excerpt of it.</p></article>"
     end
     "<html><head><title>News</title></head><body><main>#{articles.join}</main></body></html>"
   end
@@ -178,6 +179,13 @@ RSpec.describe 'Pipeline path invariants' do
         expect(wire.fetch(:items).join).not_to include('<![CDATA[', ']]>')
       end
 
+      it 'keeps a byline out of the item description', :aggregate_failures do
+        descriptions = result.to_rss.items.map { _1.description.to_s }
+        expect(descriptions.join).to match(/Body|Summary/)
+        expect(descriptions.join).not_to include('Anna Beispiel')
+        expect(wire.fetch(:items).map { _1[:description].to_s }.join).not_to include('Anna Beispiel')
+      end
+
       it 'carries scrape_url and entry_resolution on the batch wire only when applied or kept', :aggregate_failures do
         expect(wire).to include(scrape_url: result.status.scrape_url)
         kept = result.status.entry_resolution&.fetch(:reason) == :no_in_scope_winner
@@ -206,6 +214,52 @@ RSpec.describe 'Pipeline path invariants' do
           end
         end
       end
+    end
+  end
+
+  describe 'selectors.items.enhance with an explicit items selector' do
+    let(:entry) { "#{origin}/news/" }
+    let(:page_set) { { entry => [enhance_page, html_headers] } }
+    let(:path) { { entry:, pages: page_set } }
+    let(:enhance_page) do
+      cards = (1..3).map do |i|
+        "<div class='card'><a class='thumb' href='/news/post-#{i}'><img src='/i/#{i}.jpg' alt=''></a>" \
+          "<h2><a href='/news/post-#{i}'>Post #{i} about something long enough</a></h2>" \
+          "<p>Summary text number #{i} that is reasonably long to look like an excerpt.</p></div>"
+      end
+      "<html><body><header><nav><div class='card'><a href='/about-us'>About us</a></div>" \
+        "<div class='card'><a href='/about-us/governance'>Governance</a></div></nav></header>" \
+        "<main>#{cards.join}</main><footer><div class='card'><a href='/imprint'>Imprint</a></div></footer>" \
+        '</body></html>'
+    end
+    let(:urls) do
+      lambda do |selectors, enhance, items = '.card'|
+        config = { channel: { url: entry, title: 'Feed' }, strategy: :default,
+                   selectors: { items: { selector: items, enhance: }, **selectors } }
+        Html2rss.feed(config).items.map { _1.link.to_s }
+      end
+    end
+
+    it 'adds no item and no URL with an explicit url selector', :aggregate_failures do
+      selectors = { title: { selector: 'h2' }, url: { selector: 'h2 a', extractor: 'href' } }
+      on = urls.call(selectors, true)
+
+      expect(on).to eq(urls.call(selectors, false))
+      expect(on).to eq(%w[post-1 post-2 post-3].map { "#{origin}/news/#{_1}" })
+    end
+
+    it 'keeps enhance-supplied URLs unique and out of page chrome without a url selector', :aggregate_failures do
+      on = urls.call({}, true)
+
+      expect(on).to eq(on.uniq)
+      expect(on).to eq(%w[post-1 post-2 post-3].map { "#{origin}/news/#{_1}" })
+    end
+
+    it 'lists a URL once when a card holds several links to it', :aggregate_failures do
+      on = urls.call({}, true, 'main a')
+
+      expect(on).to eq(on.uniq)
+      expect(on.size).to eq(3)
     end
   end
 end

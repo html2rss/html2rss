@@ -1078,6 +1078,68 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
+    context 'when every card carries the same category' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        cards = [['harbor-ferry-route-returns', 'Harbor ferry route returns'],
+                 ['city-park-opens', 'City park opens today'],
+                 ['library-hours-change', 'Library hours change soon']]
+        items = cards.map do |slug, title|
+          "<li><span class=\"category\">News</span><a href=\"/#{slug}\">#{title}</a></li>"
+        end
+        "<html><body><main><ul>#{items.join}</ul></main></body></html>"
+      end
+
+      it 'drops the shared category from every item' do
+        expect(articles.flat_map(&:categories)).to be_empty
+      end
+    end
+
+    context 'when only two cards carry the same category' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        cards = [['harbor-ferry-route-returns', 'Harbor ferry route returns'],
+                 ['city-park-opens', 'City park opens today']]
+        items = cards.map do |slug, title|
+          "<li><span class=\"category\">News</span><a href=\"/#{slug}\">#{title}</a></li>"
+        end
+        "<html><body><main><ul>#{items.join}</ul></main></body></html>"
+      end
+
+      it 'keeps it' do
+        expect(articles.flat_map(&:categories)).to eq(%w[News News])
+      end
+    end
+
+    context 'when a native feed carries the same category on every item' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        items = %w[one two three].map do |slug|
+          "<item><title>Story #{slug}</title><link>https://example.com/#{slug}</link>" \
+            "<guid>https://example.com/#{slug}</guid><category>News</category></item>"
+        end
+        '<rss version="2.0"><channel><title>Feed</title><link>https://example.com/</link>' \
+          "<description>d</description>#{items.join}</channel></rss>"
+      end
+      let(:articles) do
+        response = build_response.call(body: html, headers: { 'content-type' => 'application/rss+xml' })
+        allow(Html2rss::RequestService).to receive(:execute) { |ctx, **| ctx.budget.consume! && response }
+        described_class.new(config).to_outcome.articles
+      end
+
+      it 'keeps the publisher categories' do
+        expect(articles.flat_map(&:categories)).to eq(%w[News News News])
+      end
+    end
+
+    context 'when a single card carries a category' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        '<html><body><main><ul><li><span class="category">News</span>' \
+          '<a href="/harbor-ferry-route-returns">Harbor ferry route returns</a></li></ul></main></body></html>'
+      end
+
+      it 'keeps it' do
+        expect(articles.flat_map(&:categories)).to eq(['News'])
+      end
+    end
+
     context 'with a markup date and a parent summary (card-walk shape)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:html) do
         '<html><body><main><ul><li><a href="/2024/05/03/some-story">Headline of the story</a>' \

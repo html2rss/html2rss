@@ -552,14 +552,14 @@ RSpec.describe Html2rss::Selectors do
       {
         'inside a template' => '<html><body><template>%<item>s</template></body></html>',
         'after the closing html tag' => '<html><body><p>x</p></body></html>%<item>s',
-        'beside a listed one' => '<html><body>%<item>s<template>%<item>s</template></body></html>'
+        'beside a listed one' => '<html><body>%<item>s<template>%<other>s</template></body></html>'
       }.each do |name, page|
         it "keeps and fills an item #{name}", :aggregate_failures do
-          articles = articles_for.call(format(page, item: '<div class="i"><a href="/a">A</a></div>'))
+          articles = articles_for.call(format(page, item: '<div class="i"><a href="/a">A</a></div>',
+                                                    other: '<div class="i"><a href="/b">B</a></div>'))
 
-          expect(articles.map { _1.url.to_s }).to all(eq('http://example.com/a'))
-          expect(articles.map(&:title)).to all(eq('A'))
-          expect(articles.size).to eq(page.scan('%<item>s').size)
+          expect(articles.map { [_1.title, _1.url.to_s] }).to include(['A', 'http://example.com/a'])
+          expect(articles.size).to eq(page.scan(/%<(?:item|other)>s/).size)
         end
       end
     end
@@ -1041,6 +1041,57 @@ RSpec.describe Html2rss::Selectors do
 
       expect(article.title).to eq('Big Title')
       expect(article.description).to be_nil
+    end
+
+    context 'with a card inside page chrome' do
+      let(:body) do
+        '<html><body><nav><article><h1>About us</h1><a href="/about-us">About</a></article></nav>' \
+          '<main><article><h1>Big Title</h1><a href="/post">Read more</a></article></main></body></html>'
+      end
+
+      before { selectors[:items] = { selector: 'article', enhance: true } }
+
+      it 'does not take its URL from enhance', :aggregate_failures do
+        expect(instance.articles.map { _1.url.to_s }).to eq(['http://example.com/post'])
+        expect(instance.admission_drops).to eq('missing_url' => 1)
+      end
+    end
+
+    context 'when an explicit url selector finds no URL on a card' do
+      let(:body) do
+        '<html><body><main><article><h1>No link here</h1><a href="/elsewhere">x</a></article>' \
+          '<article><h1>Big Title</h1><a class="r" href="/post">Read more</a></article></main></body></html>'
+      end
+
+      before do
+        selectors[:items] = { selector: 'article', enhance: true }
+        selectors[:url] = { selector: 'a.r', extractor: 'href' }
+      end
+
+      it 'leaves the card out instead of filling its URL', :aggregate_failures do
+        expect(instance.articles.map { _1.url.to_s }).to eq(['http://example.com/post'])
+        expect(instance.each_enhance_pair(linked_only: true).count).to eq(1)
+      end
+    end
+
+    context 'when two items share one URL' do
+      let(:body) do
+        '<html><body><main><article><h1>Big Title</h1><a href="/post">Read more</a></article>' \
+          '<article><h1>Big Title again</h1><a href="/post">Read more</a></article></main></body></html>'
+      end
+
+      it 'admits the first only when enhance is on', :aggregate_failures do
+        selectors[:items] = { selector: 'article', enhance: true }
+
+        expect(instance.articles.map(&:title)).to eq(['Big Title'])
+      end
+
+      it 'admits both when enhance is off', :aggregate_failures do
+        selectors[:items] = { selector: 'article', enhance: false }
+        selectors[:url] = { selector: 'a', extractor: 'href' }
+
+        expect(instance.articles.size).to eq(2)
+      end
     end
   end
 

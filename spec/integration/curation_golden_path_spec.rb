@@ -102,12 +102,14 @@ RSpec.describe 'curation golden path (MCP policy)' do
       [
         instance_double(
           RSS::Rss::Channel::Item,
+          description: nil,
           title: 'Story One Title Here',
           link: 'https://example.com/a',
           pubDate: nil
         ),
         instance_double(
           RSS::Rss::Channel::Item,
+          description: nil,
           title: 'Story Two Title Here',
           link: 'https://example.com/b',
           pubDate: nil

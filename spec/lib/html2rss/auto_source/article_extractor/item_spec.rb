@@ -30,8 +30,8 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor::Item do
         </article>
       HTML
 
-      expect(fields.keys).to contain_exactly(:title, :url, :image, :description, :id, :published_at, :enclosures,
-                                             :categories)
+      expect(fields.keys).to contain_exactly(:title, :url, :image, :description, :id, :published_at, :author,
+                                             :enclosures, :categories)
       expect(fields.values_at(:title, :description, :id, :categories))
         .to eq(['Rich Story', 'Rich description text', 'rich', []])
       expect([fields[:url], fields[:image], fields[:published_at]].map(&:to_s))

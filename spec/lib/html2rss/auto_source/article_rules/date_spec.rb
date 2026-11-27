@@ -1,6 +1,22 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
+  it 'reads a date scattered over fragment lines and strips it from the lines', :aggregate_failures do
+    lines = ['November', '25', ',', '2026', '| 20:15 PM', 'Body text stays.']
+
+    expect(described_class.earliest([], leftover_lines: lines).to_s).to start_with('2026-11-25T')
+    expect(described_class.without_dates(lines)).to eq(['Body text stays.'])
+    expect(described_class.without_dates(nil)).to eq([])
+  end
+
+  it 'finds a lone date line wherever it stands among other lines', :aggregate_failures do
+    expect(described_class.without_dates(['2026-11-27', 'Body text stays.'])).to eq(['Body text stays.'])
+    expect(described_class.without_dates(['Intro line.', '2026-11-27', 'Body text stays.']))
+      .to eq(['Intro line.', 'Body text stays.'])
+    expect(described_class.without_dates(['Intro line.', 'Other line.', '2026-11-27']))
+      .to eq(['Intro line.', 'Other line.'])
+  end
+
   describe '.at_midnight' do
     it 'is local midnight of the day in the time zone' do
       result = described_class.at_midnight(Date.new(2026, 11, 20), time_zone: 'Europe/Berlin')

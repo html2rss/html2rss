@@ -26,6 +26,7 @@ module Html2rss
           def add(text)
             value = text.to_s.strip
             return if value.empty?
+            return if Category.junk?(value, title: @title)
             return unless Description.keep?(value, vocabulary: @vocabulary, title: @title, type_chips: false,
                                                    classifier: @classifier)
 

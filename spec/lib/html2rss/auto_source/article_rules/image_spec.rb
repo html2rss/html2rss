@@ -11,6 +11,45 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Image do
     end
   end
 
+  describe '.image_url?' do
+    it 'accepts image or extensionless paths and rejects other extensions', :aggregate_failures do
+      expect(described_class.image_url?('https://example.com/a.JPG?w=2')).to be(true)
+      expect(described_class.image_url?('https://example.com/cdn/image/123')).to be(true)
+      expect(described_class.image_url?('https://example.com/files/report.pdf')).to be(false)
+      expect(described_class.image_url?('https://example.com/files/report.pdf?dl=1#p')).to be(false)
+    end
+
+    it 'reads only the path, trimmed', :aggregate_failures do
+      expect(described_class.image_url?(' https://example.com/files/report.pdf#a.png')).to be(false)
+      expect(described_class.image_url?('https://example.com/img?file=a.pdf')).to be(true)
+      expect(described_class.image_url?('?a.pdf')).to be(true)
+      expect(described_class.image_url?(nil)).to be(true)
+      expect(described_class.image_url?('a.jpg ')).to be(true)
+    end
+
+    it 'accepts other image forms', :aggregate_failures do
+      expect(described_class.image_url?('a.heic')).to be(true)
+    end
+
+    it 'accepts script-served and unknown extensions', :aggregate_failures do
+      %w[/image.php?id=7 /thumb.aspx?w=300 /photo-1.5x /cdn/photo].each do |url|
+        expect(described_class.image_url?("https://example.com#{url}")).to be(true)
+      end
+    end
+
+    it 'rejects document, archive, audio and video types', :aggregate_failures do
+      %w[a.pdf a.docx a.xlsx a.zip a.7z a.mp3 a.mp4 a.webm].each do |name|
+        expect(described_class.image_url?("https://example.com/files/#{name}")).to be(false)
+      end
+    end
+
+    it 'keeps a pdf out of every source', :aggregate_failures do
+      expect(described_class.remote_src?('/files/report.pdf')).to be(false)
+      expect(described_class.largest_from_srcsets(['/files/report.pdf 800w'])).to be_nil
+      expect(described_class.best_from_styles(["background:url('/files/report.pdf')"])).to be_nil
+    end
+  end
+
   describe '.largest_from_srcsets' do
     it 'picks the largest width candidate and skips data URLs' do
       srcsets = [

@@ -12,6 +12,60 @@ module Html2rss
         # Minimum present-title length before short-title warnings.
         MIN_TITLE_LENGTH = 4
 
+        ##
+        # Owner of the navigation-menu signs {Quality} warns about: titles of run-together words and descriptions
+        # that are mostly a bullet list.
+        module Navigation
+          # Lowercase-to-uppercase joins ("VisitOpening HoursReaching") that make a title read as flattened markup;
+          # several are required so brand names like "iPhone" or "McDonald's" never count.
+          MIN_TITLE_JOINS = 3
+
+          # Bullet lines that make a description a list.
+          MIN_LIST_LINES = 3
+
+          # A navigation menu repeats, so a sign warns only when at least this many items show it.
+          MIN_ITEMS = 2
+
+          # A line that opens with a list marker (+<li>+ markers are added by {.list_description?}).
+          BULLET_LINE = /\A[-*•·▪‣]\s/
+
+          ##
+          # @param title [String]
+          # @return [Boolean]
+          def self.run_together_title?(title) = title.scan(/\p{Ll}\p{Lu}/).size >= MIN_TITLE_JOINS
+
+          ##
+          # @param html [String, nil] an item description
+          # @return [Boolean] whether over half its lines (at least {MIN_LIST_LINES}) are list lines
+          def self.list_description?(html)
+            lines = text_lines(html)
+            bullets = lines.count { |line| line.match?(BULLET_LINE) }
+            bullets >= MIN_LIST_LINES && bullets * 2 > lines.size
+          end
+
+          # Non-empty text lines of the description, with each +<li>+ made a marked line of its own.
+          def self.text_lines(html)
+            fragment = Nokogiri::HTML.fragment(html)
+            fragment.css('li').each { |li| li.content = "• #{li.text}\n" }
+            fragment.text.lines.map(&:strip).reject(&:empty?)
+          end
+          private_class_method :text_lines
+
+          ##
+          # @param items [Array<RSS::Rss::Channel::Item>]
+          # @return [Integer] how many items carry a list description
+          def self.list_description_count(items) = items.count { |item| list_description?(item.description) }
+
+          ##
+          # @param metrics [Hash{Symbol => Integer}] audit metrics
+          # @param key [Symbol] the metric counting items that show the sign
+          # @return [Boolean] whether half or more of the items (at least {MIN_ITEMS}) show it
+          def self.share?(metrics, key)
+            count = metrics.fetch(key)
+            count >= MIN_ITEMS && count * 2 >= metrics.fetch(:item_count)
+          end
+        end
+
         # Audit of a feed's items: warnings and metrics (no mutation of the items).
         Audit = Data.define(:warnings, :metrics)
 
@@ -55,7 +109,8 @@ module Html2rss
           metrics = {
             item_count: items.size,
             unique_url_count: items.filter_map { |item| url_identity(item.link) }.uniq.size,
-            **title_metrics(items.map { |item| Article::Title.collapse(item.title).to_s }.reject(&:empty?), vocabulary)
+            **title_metrics(items.map { |item| Article::Title.collapse(item.title).to_s }.reject(&:empty?), vocabulary),
+            list_description_count: Navigation.list_description_count(items)
           }.freeze
           Audit.new(warnings: warnings(metrics), metrics:)
         end
@@ -79,6 +134,8 @@ module Html2rss
           warnings << :generic_titles if metrics.fetch(:junk_title_count).positive?
           warnings << :short_titles if short_titles?(metrics)
           warnings << :low_word_count if metrics.fetch(:low_word_count).positive?
+          warnings << :run_together_titles if Navigation.share?(metrics, :run_together_title_count)
+          warnings << :list_descriptions if Navigation.share?(metrics, :list_description_count)
           warnings.freeze
         end
         private_class_method :warnings
@@ -88,7 +145,8 @@ module Html2rss
           {
             junk_title_count: junk.size,
             short_title_count: titles.count { |title| title.length < MIN_TITLE_LENGTH },
-            low_word_count: plain.count { |title| !WordCount.at_least?(title, AutoSource::Cleanup::MIN_WORDS) }
+            low_word_count: plain.count { |title| !WordCount.at_least?(title, AutoSource::Cleanup::MIN_WORDS) },
+            run_together_title_count: titles.count { |title| Navigation.run_together_title?(title) }
           }
         end
         private_class_method :title_metrics

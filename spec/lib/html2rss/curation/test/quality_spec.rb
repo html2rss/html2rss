@@ -16,7 +16,7 @@ RSpec.describe Html2rss::Curation::Test::Quality do
   end
   let(:fake_rss_items) do
     %w[First Second].each_with_index.map do |name, index|
-      instance_double(RSS::Rss::Channel::Item, title: "#{name} Example Article Title",
+      instance_double(RSS::Rss::Channel::Item, description: nil, title: "#{name} Example Article Title",
                                                link: "https://example.com/news/#{index + 1}", pubDate: nil)
     end
   end
@@ -88,8 +88,52 @@ RSpec.describe Html2rss::Curation::Test::Quality do
 
       expect(audit.warnings).to eq(%i[duplicate_urls short_titles low_word_count])
       expect(audit.metrics).to eq(item_count: 2, unique_url_count: 1, junk_title_count: 0,
-                                  short_title_count: 1, low_word_count: 1)
+                                  short_title_count: 1, low_word_count: 1,
+                                  run_together_title_count: 0, list_description_count: 0)
       expect(audit.metrics).to be_frozen
+    end
+
+    context 'with navigation-menu items' do
+      def described_item(title, description, index)
+        instance_double(RSS::Rss::Channel::Item, title:, description:, link: "https://example.com/n/#{index}")
+      end
+
+      let(:menu_items) do
+        [['VisitOpening HoursReaching usMap', '<ul><li>Hours</li><li>Tickets</li><li>Parking</li></ul>'],
+         ['EventsTicketsGroupsShopDonate', '<ul><li>Events</li><li>Shop</li><li>Donate</li></ul>']]
+          .each_with_index.map { |(title, html), index| described_item(title, html, index) }
+      end
+
+      it 'warns on run-together titles and list descriptions', :aggregate_failures do
+        audit = described_class.audit(menu_items, vocabulary:)
+
+        expect(audit.warnings).to include(:run_together_titles, :list_descriptions)
+        expect(audit.metrics).to include(run_together_title_count: 2, list_description_count: 2)
+      end
+
+      it 'counts bullet-marker text lines as a list description' do
+        text = "Menu\n• Hours\n• Tickets\n- Parking"
+        items = [described_item('First Story Title Here', text, 1), described_item('Second Story Title Here', text, 2)]
+
+        expect(described_class.audit(items, vocabulary:).warnings).to eq([:list_descriptions])
+      end
+
+      it 'stays quiet for camelCase brands and prose descriptions', :aggregate_failures do
+        prose = '<p>The launch drew crowds.</p><ul><li>One</li></ul><p>Sales rose in the third quarter.</p>'
+        items = ['iPhone launch', "McDonald's results"].each_with_index.map do |title, index|
+          described_item(title, prose, index)
+        end
+        audit = described_class.audit(items, vocabulary:)
+
+        expect(audit.warnings).not_to include(:run_together_titles, :list_descriptions)
+        expect(audit.metrics).to include(run_together_title_count: 0, list_description_count: 0)
+      end
+
+      it 'does not warn for a single menu-like item', :aggregate_failures do
+        audit = described_class.audit([menu_items.first], vocabulary:)
+
+        expect(audit.warnings).to be_empty
+      end
     end
 
     it 'does not warn about duplicate URLs for a single item', :aggregate_failures do
@@ -228,7 +272,7 @@ RSpec.describe Html2rss::Curation::Test::Quality do
       end
 
       it 'counts a Chinese read-more item title as junk, as the feed itself reads it', :aggregate_failures do
-        read_more = instance_double(RSS::Rss::Channel::Item, title: '了解更多', link: 'https://example.com/news/3',
+        read_more = instance_double(RSS::Rss::Channel::Item, description: nil, title: '了解更多', link: 'https://example.com/news/3',
                                                              pubDate: nil)
         result = described_class.report_for(
           fake_rss_items + [read_more], channel_url:, config:, feed_result:, pipeline_outcome:,
@@ -456,6 +500,47 @@ RSpec.describe Html2rss::Curation::Test::Quality do
         expect(result.warnings).not_to include(:items_without_url)
         expect(result.metrics).not_to have_key(:items_without_url)
       end
+    end
+  end
+
+  describe 'Navigation' do
+    let(:navigation) { described_class::Navigation }
+
+    it 'needs three lowercase-to-uppercase joins for a run-together title', :aggregate_failures do
+      expect(navigation.run_together_title?('VisitOpening HoursReaching usMap')).to be(true)
+      expect(navigation.run_together_title?('aBcDeF')).to be(true)
+      expect(navigation.run_together_title?('iPhone McDonald')).to be(false)
+      expect(navigation.run_together_title?('ABC DEF GHI')).to be(false)
+      expect(navigation.run_together_title?('')).to be(false)
+    end
+
+    it 'needs three list lines and a majority for a list description', :aggregate_failures do
+      expect(navigation.list_description?('<ul><li>a</li><li>b</li><li>c</li></ul>')).to be(true)
+      expect(navigation.list_description?("- a\n* b\n• c")).to be(true)
+      expect(navigation.list_description?("· a\n▪ b\n‣ c")).to be(true)
+      expect(navigation.list_description?('<ul><li>a</li><li>b</li></ul>')).to be(false)
+      expect(navigation.list_description?("x\ny\nz\n- a\n- b\n- c")).to be(false)
+      expect(navigation.list_description?("x\n- a\n- b\n- c")).to be(true)
+      expect(navigation.list_description?('-a -b -c')).to be(false)
+      expect(navigation.list_description?(nil)).to be(false)
+      expect(navigation.list_description?("  - a\n\n\n  - b\n\n\n  - c")).to be(true)
+      expect(navigation.list_description?("-\n-\n-")).to be(false)
+      expect(navigation.list_description?("- a\n- b\n- c\n- d")).to be(true)
+    end
+
+    it 'counts the items that carry a list description' do
+      list = instance_double(RSS::Rss::Channel::Item, description: '<ul><li>a</li><li>b</li><li>c</li></ul>')
+      prose = instance_double(RSS::Rss::Channel::Item, description: '<p>Prose</p>')
+
+      expect(navigation.list_description_count([list, prose, list])).to eq(2)
+    end
+
+    it 'warns from two items and half the item count', :aggregate_failures do
+      expect(navigation.share?({ item_count: 4, sign: 2 }, :sign)).to be(true)
+      expect(navigation.share?({ item_count: 5, sign: 2 }, :sign)).to be(false)
+      expect(navigation.share?({ item_count: 1, sign: 1 }, :sign)).to be(false)
+      expect(navigation.share?({ item_count: 2, sign: 2 }, :sign)).to be(true)
+      expect(navigation.share?({ item_count: 4, sign: 3 }, :sign)).to be(true)
     end
   end
 end

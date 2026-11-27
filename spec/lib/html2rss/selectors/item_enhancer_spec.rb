@@ -90,6 +90,31 @@ RSpec.describe Html2rss::Selectors::ItemEnhancer do
       expect(enhancer_for.call(page).fields_for(page.at_css('.card'))[:title]).to eq('Plain')
     end
 
+    context 'when filling fields for enhance' do
+      let(:html) do
+        '<html><body><nav><div class="card"><h3><a href="/about">About</a></h3></div></nav>' \
+          '<main><div class="card"><h3><a href="/story">Story</a></h3></div></main>' \
+          '<script class="card">x()</script></body></html>'
+      end
+      let(:cards) { parsed.css('.card') }
+
+      it 'keeps the url of an item in the page body, and drops it where the config selects url', :aggregate_failures do
+        expect(enhancer.fill_fields_for(cards[1], url: true)).to include(url: be_a(Html2rss::Url))
+        expect(enhancer.fill_fields_for(cards[1], url: false)).not_to have_key(:url)
+      end
+
+      it 'drops the url of an item in page chrome but keeps its other fields', :aggregate_failures do
+        fields = enhancer.fill_fields_for(cards[0], url: true)
+
+        expect(fields).not_to have_key(:url)
+        expect(fields).to include(title: 'About')
+      end
+
+      it 'passes an unreadable item through as nil' do
+        expect(enhancer.fill_fields_for(cards[2], url: true)).to be_nil
+      end
+    end
+
     describe 'the region normalized for the items' do
       let(:pages) do
         {

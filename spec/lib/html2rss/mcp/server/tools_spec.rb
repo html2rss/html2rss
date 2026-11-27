@@ -142,7 +142,7 @@ RSpec.describe Html2rss::MCP::Server::Tools do
     let(:feed_result) do
       status = instance_double(Html2rss::Status, entry_url: 'https://example.com/news', scrape_url:)
       item = instance_double(RSS::Rss::Channel::Item, title: 'Harbor reopens', link: 'https://example.com/a',
-                                                      pubDate: nil)
+                                                      pubDate: nil, description: nil)
       instance_double(Html2rss::FeedResult, empty?: false, status:,
                                             to_rss: instance_double(RSS::Rss, to_s: '<rss/>', items: [item]))
     end

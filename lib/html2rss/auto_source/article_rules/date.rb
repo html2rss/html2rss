@@ -13,6 +13,8 @@ module Html2rss
         MAX_DATE_CHARS = Description::MAX_DATE_CHARS
         # Prefer standard time when a local clock time occurs twice (DST fall-back).
         AMBIGUOUS_DST = false
+        # Most consecutive fragment lines read together as one date.
+        MAX_RUN_LINES = 6
 
         class << self
           ##
@@ -22,11 +24,20 @@ module Html2rss
           # @return [DateTime, nil] earliest successfully parsed instant
           def earliest(datetime_strings, leftover_lines: [], time_zone: 'UTC')
             values = Array(datetime_strings).filter_map { |value| parse_attr(value, time_zone:) }
-            Array(leftover_lines).each do |line|
-              parsed = parse_line(line, time_zone:)
+            date_runs(leftover_lines).each do |run|
+              parsed = parse_line(run.join(' '), time_zone:)
               values << parsed if parsed
             end
             values.min
+          end
+
+          ##
+          # @param lines [Array<String>] leftover visible lines
+          # @return [Array<String>] +lines+ without the ones that read as a date, alone or scattered over
+          #   consecutive fragment lines ("November", "25", ",", "2026")
+          def without_dates(lines)
+            used = date_runs(lines).flatten(1).map(&:object_id)
+            Array(lines).reject { |line| used.include?(line.object_id) }
           end
 
           ##
@@ -52,6 +63,20 @@ module Html2rss
           end
 
           private
+
+          # Consecutive line runs (longest first, at most MAX_RUN_LINES) that read as one date.
+          def date_runs(lines)
+            lines = Array(lines)
+            runs = []
+            index = 0
+            while index < lines.length
+              run = MAX_RUN_LINES.downto(1).lazy.map { |size| lines[index, size] }
+                                 .find { |candidate| Description.date_shaped?(candidate.join(' ')) }
+              runs << run if run
+              index += run ? run.length : 1
+            end
+            runs
+          end
 
           def parse_attr(value, time_zone:)
             parse_datetime(value.to_s.strip, time_zone:)

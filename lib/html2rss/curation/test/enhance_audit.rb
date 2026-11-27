@@ -65,23 +65,29 @@ module Html2rss
         # @param time_zone [String]
         # @param vocabulary [Vocabulary::Scope] the page language's scope, as the feed resolves it
         # @return [Hash{Symbol => Object}, nil]
-        def self.compare(response:, selectors:, time_zone:, vocabulary:) # rubocop:disable Metrics/MethodLength -- enhance off/on stats + delta
+        def self.compare(response:, selectors:, time_zone:, vocabulary:)
           return nil unless selectors&.dig(:items, :selector)
 
-          off = extraction_stats(response, selectors, time_zone, vocabulary, enhance: false)
-          on = extraction_stats(response, selectors, time_zone, vocabulary, enhance: true)
+          off = extracted_articles(response, selectors, time_zone, vocabulary, enhance: false)
+          on = extracted_articles(response, selectors, time_zone, vocabulary, enhance: true)
           delta_gains = probe(response:, selectors:, time_zone:, vocabulary:)&.enhance_gains || empty_gains
 
+          off_stats = extraction_stats(off)
+          on_stats = extraction_stats(on)
+
+          { enhance_off: off_stats, enhance_on: on_stats, delta: delta(off, on, off_stats, on_stats, delta_gains) }
+        end
+
+        def self.delta(off, on, off_stats, on_stats, gains)
           {
-            enhance_off: off,
-            enhance_on: on,
-            delta: {
-              descriptions_gained: on[:descriptions_filled] - off[:descriptions_filled],
-              keys_added: delta_gains.keys_added,
-              no_op: delta_gains.no_op
-            }
+            descriptions_gained: on_stats.fetch(:descriptions_filled) - off_stats.fetch(:descriptions_filled),
+            guids_changed: (on.map(&:guid) - off.map(&:guid)).size,
+            items_added: on.size - off.size,
+            keys_added: gains.keys_added,
+            no_op: gains.no_op
           }
         end
+        private_class_method :delta
 
         ##
         # @return [EnhanceGains] zeroed gains for compare fallback
@@ -99,15 +105,37 @@ module Html2rss
         end
         private_class_method :zero_keys_added
 
-        def self.extraction_stats(response, selectors, time_zone, vocabulary, enhance:)
+        def self.extracted_articles(response, selectors, time_zone, vocabulary, enhance:)
           merged = selectors_with_enhance(selectors, enhance:)
-          articles = Selectors.new(response, selectors: merged, time_zone:, vocabulary:).articles
+          Selectors.new(response, selectors: merged, time_zone:, vocabulary:).articles
+        end
+        private_class_method :extracted_articles
+
+        def self.extraction_stats(articles)
           {
             item_count: articles.size,
-            descriptions_filled: articles.count { |article| article.description.to_s.strip != '' }
+            descriptions_filled: articles.count { |article| real_description?(article.description, article.title) }
           }
         end
         private_class_method :extraction_stats
+
+        # A description counts only when it is non-blank and says more than the title.
+        def self.real_description?(description, title)
+          text = description.to_s.strip
+          !text.empty? && text != title.to_s.strip
+        end
+        private_class_method :real_description?
+
+        def self.present_value?(value)
+          case value
+          when nil then false
+          when String then !value.strip.empty?
+          when Array then value.any? { |entry| present_value?(entry) }
+          when Hash then value.values.any? { |entry| present_value?(entry) }
+          else true
+          end
+        end
+        private_class_method :present_value?
 
         def self.selectors_with_enhance(selectors, enhance:)
           merged = HashUtil.deep_dup(selectors)
@@ -118,12 +146,11 @@ module Html2rss
 
         def self.keys_added(baseline, enhanced)
           enhanced.each_with_object({}) do |(key, value), counts|
-            next if value.nil?
+            next unless present_value?(value)
+            next if present_value?(baseline[key])
+            next if key == :description && !real_description?(value, enhanced[:title])
 
-            baseline_value = baseline[key]
-            next if baseline.key?(key) && baseline_value
-
-            counts[key] = (counts[key] || 0) + 1
+            counts[key] = 1
           end
         end
         private_class_method :keys_added

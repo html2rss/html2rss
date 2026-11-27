@@ -219,7 +219,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       )
       expect(articles.first.image.to_s).to eq('https://img.example.net/harbor-story-1.jpg')
       expect(articles.first.description)
-        .to eq("Work on the pier moved ahead this week as crews closed out stage 1 of the repairs.\nBy Sam Writer")
+        .to eq('Work on the pier moved ahead this week as crews closed out stage 1 of the repairs.')
+      expect(articles.first.author).to eq('Sam Writer')
     end
 
     it 'keeps newsletter and author links out of the articles' do
