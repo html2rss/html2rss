@@ -25,6 +25,19 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
       expect(described_class::Byline.author_of(nil)).to be_nil
     end
 
+    it 'keeps prose and function-word lines out of bylines', :aggregate_failures do
+      ['By Land and Sea', 'By The Associated Press', 'By Order of the King', 'Von Die Zeit',
+       'By Anna Maria Beispiel Jones Smith'].each do |line|
+        expect(described_class::Byline.author_of(line)).to be_nil
+      end
+    end
+
+    it 'reads a one-word name, a particle name and two full names', :aggregate_failures do
+      expect(described_class::Byline.author_of('By Beispiel')).to eq('Beispiel')
+      expect(described_class::Byline.author_of('Von Ursula von der Beispiel')).to eq('Ursula von der Beispiel')
+      expect(described_class::Byline.author_of('By Anna Beispiel and Bob Muster')).to eq('Anna Beispiel and Bob Muster')
+    end
+
     it 'reads a digitless line without peeling or matching date shapes', :aggregate_failures do
       allow(described_class).to receive(:date_core).and_call_original
 
