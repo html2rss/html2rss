@@ -8,6 +8,7 @@
   Html2rss::RequestService::InvalidUrl => [:invalid_url, false],
   Html2rss::RequestService::UnsupportedUrlScheme => [:invalid_url, false],
   Html2rss::RequestService::UnsupportedResponseContentType => [:other, false],
+  Html2rss::RequestService::DeterministicHttpStatus => [:other, false],
   Html2rss::RequestService::RequestBudgetExceeded => [:budget, false],
   Html2rss::RequestService::PrivateNetworkDenied => [:blocked, false],
   Html2rss::RequestService::CrossOriginFollowUpDenied => [:blocked, false],
@@ -35,6 +36,6 @@ RSpec.describe Html2rss::RequestService do # rubocop:disable RSpec/SpecFilePathF
   it 'maps every RequestService error class' do
     classes = described_class.constants.map { |name| described_class.const_get(name) }
                              .select { |const| const.is_a?(Class) && const < Html2rss::Error }
-    expect(classes.size).to eq(15)
+    expect(classes.size).to eq(16)
   end
 end

@@ -498,6 +498,14 @@ RSpec.describe Html2rss::MCP::Outcome do
       end
     end
 
+    it 'maps a deterministic HTTP status to stop and shows the status', :aggregate_failures do
+      error = Html2rss::RequestService::DeterministicHttpStatus.new('HTTP 404', status: 404)
+      outcome = described_class.from_error(error)
+
+      expect(outcome.next_step.name).to eq(:stop)
+      expect(outcome.payload).to include(status: 404)
+    end
+
     it 'maps a subclass of a deterministic rejection to stop' do
       subclass = Class.new(Html2rss::RequestService::InvalidUrl)
 

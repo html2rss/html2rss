@@ -31,7 +31,7 @@ These typically hop to the next chain member (among other `StandardError`s `Auto
 - HTTPX connection / timeout errors
 - Empty extraction results when a later chain member may succeed
 
-These abort immediately (`AutoFallback::NON_FALLBACK_ERRORS`): unknown strategy, invalid URL, unsupported scheme, budget exceeded, private network denied, cross-origin follow-up denied, response too large.
+These abort immediately (`AutoFallback::NON_FALLBACK_ERRORS`): unknown strategy, invalid URL, unsupported scheme, budget exceeded, private network denied, cross-origin follow-up denied, response too large, deterministic entry HTTP status (400, 404, 410, 422, 451: raised before extraction and entry resolution, in the single-strategy path too).
 
 Retries share the feed's request/session policy. Pin a concrete strategy when you need a single-hop budget profile.
 

@@ -170,6 +170,7 @@ module Html2rss
     def run_pipeline_for_strategy(config, strategy:, resources:)
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
+      RequestService::DeterministicHttpStatus.check!(response)
       extraction = extract(config:, response:, request_session:)
       raise_empty_auto_source!(strategy:, response:) if config.auto_source && extraction.articles.empty?
 
