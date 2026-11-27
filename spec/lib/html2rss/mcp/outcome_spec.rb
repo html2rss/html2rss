@@ -24,7 +24,7 @@ RSpec.describe Html2rss::MCP::Outcome do
   describe Html2rss::MCP::Outcome::Playbook do
     it 'owns server instructions with bare verb tool names', :aggregate_failures do
       expect(described_class.instructions).to include('→ scrape').and include('→ capture → test → apply')
-      expect(described_class.instructions).not_to include('scrape_url')
+      expect(described_class.instructions).to include('payload.scrape_url', 'payload.entry_resolution')
     end
 
     it 'embeds auto strategy guidance in scrape_webpage_prompt' do
@@ -92,7 +92,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'succeeds with next_step done when articles are present', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- payload keys are one story
       outcome = described_class.scrape(
-        items:, requested_strategy: :auto, channel_title: 'Channel',
+        items:, requested_strategy: :auto, channel_title: 'Channel', scrape_url: 'https://example.com/',
         botasaurus_configured: false
       )
 
@@ -104,9 +104,33 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.payload).not_to have_key(:admission_drops)
     end
 
+    describe 'effective page' do
+      let(:resolution) { { applied: true, probe_count: 5, reason: :winner, winner_score: 750 } }
+      let(:base) { { items:, requested_strategy: :auto, channel_title: 'C', botasaurus_configured: true } }
+
+      it 'always carries scrape_url and omits empty extras by default' do
+        outcome = described_class.scrape(**base, scrape_url: 'https://example.com/', admission_drops: {})
+
+        expect(outcome.payload).to eq(items:, total: 1, requested_strategy: 'auto', channel_title: 'C',
+                                      scrape_url: 'https://example.com/')
+      end
+
+      it 'carries entry_resolution when given' do
+        payload = described_class.scrape(**base, scrape_url: 'https://example.com/index~atom.xml',
+                                                 entry_resolution: resolution).payload
+
+        expect(payload).to include(scrape_url: 'https://example.com/index~atom.xml', entry_resolution: resolution)
+      end
+
+      it 'keeps the done guidance' do
+        expect(described_class.scrape(**base, scrape_url: 'https://example.com/').guidance)
+          .to eq(described_class::Playbook::GUIDANCE.fetch(:done))
+      end
+    end
+
     it 'keeps ok true and points at inspect when empty and Botasaurus is configured' do
       outcome = described_class.scrape(
-        items: [], requested_strategy: :auto, channel_title: 'Channel',
+        items: [], requested_strategy: :auto, channel_title: 'Channel', scrape_url: 'https://example.com/',
         botasaurus_configured: true
       )
 
@@ -115,7 +139,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'points at read_runtime when empty and Botasaurus is unset' do
       outcome = described_class.scrape(
-        items: [], requested_strategy: :auto, channel_title: 'Channel',
+        items: [], requested_strategy: :auto, channel_title: 'Channel', scrape_url: 'https://example.com/',
         botasaurus_configured: false
       )
 
@@ -125,7 +149,7 @@ RSpec.describe Html2rss::MCP::Outcome do
     it 'includes admission_drops only when present' do
       outcome = described_class.scrape(
         items:, requested_strategy: :auto, channel_title: 'Channel',
-        admission_drops: { 'credit' => 1 }, botasaurus_configured: true
+        admission_drops: { 'credit' => 1 }, scrape_url: 'https://example.com/', botasaurus_configured: true
       )
 
       expect(outcome.payload[:admission_drops]).to eq('credit' => 1)

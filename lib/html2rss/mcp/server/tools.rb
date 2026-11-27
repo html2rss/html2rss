@@ -170,7 +170,7 @@ module Html2rss
               items: wire[:items],
               requested_strategy: wire[:strategy],
               channel_title: wire[:channel_title],
-              admission_drops: wire[:admission_drops],
+              **wire.slice(:admission_drops, :scrape_url, :entry_resolution),
               botasaurus_configured: RequestService.botasaurus_configured?
             )
           end
