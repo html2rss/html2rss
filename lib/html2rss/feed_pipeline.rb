@@ -241,16 +241,17 @@ module Html2rss
     # @return [Array(Array<Html2rss::Article>, Hash{String => Integer}, Html2rss::Syndication::ChannelFacts)]
     def auto_source_articles(config:, response:, request_session:)
       return [[], {}, nil] unless (auto_source = config.auto_source)
-      return syndication_articles(response) if response.feed_response?
+      return syndication_articles(response, limit: auto_source.fetch(:limit)) if response.feed_response?
 
       vocabulary = Vocabulary[Channel.language_for(response, config.channel)]
       source = AutoSource.new(response, auto_source, request_session:, vocabulary:, time_zone: config.time_zone)
       [source.articles, source.admission_drops, source.feed_channel]
     end
 
-    def syndication_articles(response)
+    # A feed response (direct feed URL or entry-resolved feed) skips {AutoSource}, so +limit+ applies here.
+    def syndication_articles(response, limit:)
       feed = Syndication::Parser.parse_response(response)
-      articles = feed.articles.map { |hash| Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed) }
+      articles = feed.articles.first(limit).map { |hash| Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed) }
       [articles, {}, feed.channel]
     end
 
