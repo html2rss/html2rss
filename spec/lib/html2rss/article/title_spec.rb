@@ -178,6 +178,22 @@ RSpec.describe Html2rss::Article::Title do
       end
     end
 
+    it 'keeps the space before a colon on a French page and closes it elsewhere', :aggregate_failures do
+      french = Html2rss::Vocabulary[:fr]
+      headline = "Lyon\u00A0: la saison reprend"
+
+      expect(described_class.compose(headline, vocabulary: french)).to eq('Lyon : la saison reprend')
+      expect(described_class.compose(headline, vocabulary: Html2rss::Vocabulary[:en])).to eq('Lyon: la saison reprend')
+    end
+
+    it 'closes a spaced colon inside a kicker off French pages only', :aggregate_failures do
+      en = described_class.compose('Council votes', kicker: 'Big storm : Weather', vocabulary: Html2rss::Vocabulary[:en])
+      fr = described_class.compose('Council votes', kicker: 'Big storm : Weather', vocabulary: Html2rss::Vocabulary[:fr])
+
+      expect(en).to eq('Big storm: Weather: Council votes')
+      expect(fr).to eq('Big storm : Weather: Council votes')
+    end
+
     it 'is idempotent on its own output' do
       title = described_class.compose('– 12:30 | Storm ahead', kicker: 'Rubrik: Weather :', vocabulary: all_scope)
 
@@ -419,6 +435,8 @@ RSpec.describe Html2rss::Article::Title do
     it 'never empties a title: a kicker that is only an own label stays', :aggregate_failures do
       expect(described_class.compose(nil, kicker: 'Rubriek-xx:', vocabulary: xx)).to eq('Rubriek-xx')
       expect(described_class.compose(nil, kicker: 'Rubriek-xx:', vocabulary: all_scope)).to eq('Rubriek-xx')
+      expect(described_class.compose(nil, kicker: 'Soort-xx : Rubriek-xx:', vocabulary: xx))
+        .to eq('Soort-xx: Rubriek-xx')
       expect(described_class.compose(nil, kicker: nil, vocabulary: xx)).to be_nil
     end
   end

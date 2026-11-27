@@ -128,10 +128,13 @@ module Html2rss
       # The inline kicker boundary of +Kicker : Headline+: a whitespace-preceded colon after at most
       # eight words ending in a letter or closing quote/bracket, so a score (+16 : 9+) keeps its colon.
       SPACED_COLON = /\A((?:[^[:space:]]+[[:space:]]+){0,7}?[^[:space:]]*[\p{L}"'“”’»›)\]])[[:space:]]+:[[:space:]]*/
+      # The page language whose typography sets a space before a colon, so its titles keep it.
+      FRENCH = :fr
       # A kicker that already ends a sentence (+Kicker?+) joins its headline with a space, not a colon.
       TERMINAL_PUNCTUATION = /[?!…‽]\z/
       private_constant :MARKER_ALTERNATION, :LEADING_BRACKET, :OWN_NONE,
-                       :LEADING_SEPARATORS, :RULES_BY_SCOPE, :TRAILING_SEPARATORS, :SPACED_COLON, :TERMINAL_PUNCTUATION
+                       :LEADING_SEPARATORS, :RULES_BY_SCOPE, :TRAILING_SEPARATORS, :SPACED_COLON, :TERMINAL_PUNCTUATION,
+                       :FRENCH
 
       class << self
         ##
@@ -154,9 +157,10 @@ module Html2rss
         #   or nil when both are blank
         def compose(headline, vocabulary:, kicker: nil)
           rules = RULES_BY_SCOPE.fetch(vocabulary.code)
-          composed = join(headline, kicker, rules)
+          tidy = vocabulary.code != FRENCH
+          composed = join(headline, kicker, rules, tidy)
           # An own term never empties a title: without it, the kicker text would have stayed.
-          composed.nil? && rules.own? ? join(nil, kicker, rules.bare) : composed
+          composed.nil? && rules.own? ? join(nil, kicker, rules.bare, tidy) : composed
         end
 
         ##
@@ -233,8 +237,9 @@ module Html2rss
 
         private
 
-        def join(headline, kicker, rules)
-          head, top = peel_bracket(trim(headline, LEADING_SEPARATORS), trim(kicker, rules.kicker_noise), rules.markers)
+        def join(headline, kicker, rules, tidy)
+          head, top = peel_bracket(trim(headline, LEADING_SEPARATORS, tidy), trim(kicker, rules.kicker_noise, tidy),
+                                   rules.markers)
           return head if top.nil? || rules.markers.include?(read(top).to_s.downcase)
           return top unless head
           return head if prefixed?(head, top)
@@ -253,10 +258,13 @@ module Html2rss
         # ({.collapse} keeps them in a title). A marks-only text reads as blank.
         def read(text) = collapse(StringUtil.strip_bidi(text.to_s))
 
-        def trim(text, prefix)
+        # +tidy+ closes a spaced colon (+Kicker : Headline+ to +Kicker: Headline+); French sets the space before
+        # a colon, so a French page keeps it.
+        def trim(text, prefix, tidy)
           return unless (collapsed = collapse(text))
 
-          trimmed = collapsed.sub(prefix, '').sub(TRAILING_SEPARATORS, '').sub(SPACED_COLON, "\\1#{SEPARATOR}")
+          trimmed = collapsed.sub(prefix, '').sub(TRAILING_SEPARATORS, '')
+          trimmed = trimmed.sub(SPACED_COLON, "\\1#{SEPARATOR}") if tidy
           trimmed unless trimmed.empty?
         end
 
