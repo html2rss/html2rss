@@ -10,7 +10,7 @@ RSpec.describe Html2rss::Log do # rubocop:disable RSpec/SpecFilePathFormat -- ra
     offenders = Dir[File.expand_path('../../../lib/html2rss/**/*.rb', __dir__)].flat_map do |path|
       next [] if path.match?(excluded)
 
-      File.readlines(path).each_with_index.filter_map do |line, index|
+      File.readlines(path, encoding: Encoding::UTF_8).each_with_index.filter_map do |line, index|
         next unless line.match?(/\b(?:Html2rss::)?Log\.(?:info|warn)\(\s*(?:['"#%]|<<-?)/)
 
         "#{path}:#{index + 1}:#{line.strip}"
