@@ -32,7 +32,7 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
       instance_double(
         Html2rss::RequestService::Policy,
         validate_request!: nil,
-        max_decompressed_bytes: 1_000_000,
+        max_decompressed_bytes_for: 1_000_000,
         total_timeout_seconds: 30
       )
     end

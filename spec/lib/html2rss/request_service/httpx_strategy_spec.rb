@@ -15,8 +15,8 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       total_timeout_seconds: 30,
       connect_timeout_seconds: 5,
       read_timeout_seconds: 10,
-      max_response_bytes: 1_048_576,
-      max_decompressed_bytes: 5_242_880,
+      max_stream_bytes: 1_048_576,
+      max_decompressed_bytes_for: 5_242_880,
       allow_private_networks?: false,
       validate_request!: nil,
       validate_redirect!: nil
@@ -61,7 +61,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
   end
 
   it 'raises when streamed bytes exceed the configured limit' do # rubocop:disable RSpec/ExampleLength -- byte streaming check
-    allow(policy).to receive(:max_response_bytes).and_return(5)
+    allow(policy).to receive(:max_stream_bytes).and_return(5)
     stub_request(:get, 'https://example.com')
       .to_return(status: 200, body: '1234567890', headers: { 'Content-Type' => 'text/html' })
 

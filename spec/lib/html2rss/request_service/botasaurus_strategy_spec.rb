@@ -14,7 +14,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       total_timeout_seconds: 30,
       connect_timeout_seconds: 10,
       read_timeout_seconds: 30,
-      max_decompressed_bytes: 700_000,
+      max_decompressed_bytes_for: 700_000,
       validate_request!: nil,
       validate_redirect!: nil,
       enforce_public_network!: nil

@@ -21,6 +21,10 @@ module Html2rss
       # Default response-size ceiling (10 MiB); owns both streamed and decompressed defaults.
       MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
+      # Decompressed-size allowance for syndication (RSS/Atom/XML feed) responses (32 MiB); HTML keeps
+      # {MAX_RESPONSE_BYTES}. Long podcast feeds routinely exceed the HTML ceiling.
+      MAX_FEED_RESPONSE_BYTES = 32 * 1024 * 1024
+
       # Default policy values used when request controls are not explicitly set.
       DEFAULTS = {
         connect_timeout_seconds: Integer(ENV.fetch('HTML2RSS_CONNECT_TIMEOUT_SECONDS', 5)),
@@ -75,6 +79,20 @@ module Html2rss
                   :max_response_bytes,
                   :max_decompressed_bytes,
                   :max_requests
+
+      ##
+      # Streamed-size ceiling applied before the content type is known: the feed allowance, so the
+      # per-type decompressed check ({#max_decompressed_bytes_for}) decides.
+      #
+      # @return [Integer]
+      def max_stream_bytes = feed_allowance(max_response_bytes)
+
+      ##
+      # @param response [Html2rss::RequestService::Response]
+      # @return [Integer] decompressed-body ceiling for this response: the feed allowance for syndication
+      def max_decompressed_bytes_for(response)
+        response.feed_response? ? feed_allowance(max_decompressed_bytes) : max_decompressed_bytes
+      end
 
       ##
       # @return [Boolean] whether private network targets may be requested
@@ -165,6 +183,9 @@ module Html2rss
       end
 
       private
+
+      # Only the default HTML ceiling widens; an explicitly configured limit is kept as given.
+      def feed_allowance(limit) = limit == MAX_RESPONSE_BYTES ? MAX_FEED_RESPONSE_BYTES : limit
 
       attr_reader :network_guard
 
