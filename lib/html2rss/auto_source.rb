@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'dry-validation'
 require 'json'
 require 'nokogiri'
 
@@ -86,6 +85,25 @@ module Html2rss
     }.freeze
 
     class << self
+      ##
+      # The one owner of the auto-source options a request writes over {DEFAULT_CONFIG}.
+      #
+      # @param limit [Integer, nil] max articles to keep
+      # @param keep_different_domain [Boolean, nil] overrides cleanup.keep_different_domain
+      # @param keep_sponsored [Boolean, nil] overrides cleanup.keep_sponsored
+      # @param resolution_scope [String, Symbol, nil] +section+ or +site+, overrides entry_resolution.scope
+      # @return [Hash{Symbol => Object}] validated auto-source options
+      # @raise [InvalidOption] when +limit+ is not a positive Integer
+      def options(limit: nil, keep_different_domain: nil, keep_sponsored: nil, resolution_scope: nil)
+        base = DEFAULT_CONFIG
+        base = base.merge(limit: Option.integer(:limit, limit, min: 1)) unless limit.nil?
+        if resolution_scope
+          base = base.merge(entry_resolution: base[:entry_resolution].merge(scope: resolution_scope.to_s))
+        end
+        cleanup = { keep_different_domain:, keep_sponsored: }.compact
+        cleanup.empty? ? base : base.merge(cleanup: base[:cleanup].merge(cleanup))
+      end
+
       ##
       # Returns the sum of required request slots for all enabled scrapers in the config.
       #

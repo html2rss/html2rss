@@ -14,7 +14,7 @@ module Html2rss
       :admission_drops, :scrape_target, :entry_resolution, :feed_channel, :enrichment
     )
 
-    Extraction = Data.define(:articles, :dedup_dropped, :admission_drops, :feed_channel, :enrichment)
+    Extracted = Data.define(:articles, :dedup_dropped, :admission_drops, :feed_channel, :enrichment)
 
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
     # selected_strategy: set on :auto success; nil otherwise.
@@ -34,7 +34,7 @@ module Html2rss
     # articles: unique articles. dedup_dropped: articles removed by deduplication.
     # admission_drops: Cleanup drop tallies. feed_channel: the followed native feed's channel facts
     # ({Syndication::ChannelFacts}); nil without one. enrichment: {Enrichment} tally (empty when off).
-    class Extraction
+    class Extracted
       # @param enrichment [Hash{Symbol => Integer}] defaults to an empty tally (enrichment off)
       # @param fields [Hash{Symbol => Object}] the remaining members
       # @option fields [Object] :articles the other members, as named above
@@ -122,48 +122,26 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @param response [Html2rss::RequestService::Response]
     # @param request_session [Html2rss::RequestSession]
-    # @return [Extraction] unique articles with their dedup and admission drops and feed channel facts
+    # @return [Extracted] unique articles with their dedup and admission drops and feed channel facts
     def extract(config:, response:, request_session:)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
-      deduped = without_shared_categories(without_tracking(capped(Article::Deduplicator.new(collected).call, config)))
+      deduped = Html2rss::Extraction.without_shared_categories(
+        Html2rss::Extraction.without_tracking(
+          Html2rss::Extraction.unique(collected, limit: config.auto_source&.dig(:limit))
+        )
+      )
       enriched, enrichment = enrich(deduped, config:, request_session:)
-      unique = with_url_dates(enriched, config.time_zone)
-      Extraction.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,
-                     enrichment:)
+      unique = Html2rss::Extraction.with_url_dates(enriched, config.time_zone)
+      Extracted.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,
+                    enrichment:)
     end
 
     private
 
     attr_reader :raw_config
 
-    # The one owner of +limit+ across paths: selector, auto-source and syndication articles are capped together.
-    def capped(articles, config)
-      limit = config.auto_source&.dig(:limit)
-      limit ? articles.first(limit) : articles
-    end
-
-    # The one owner of tracking-suffix removal on item URLs, for every path (HTML, selectors, feeds).
-    # The guid hashes the url, so an item that carried a suffix gets a new guid once.
-    def without_tracking(articles)
-      articles.map do |article|
-        url = article.url
-        clean = url&.without_tracking_params
-        clean.equal?(url) ? article : article.with_url(clean)
-      end
-    end
-
-    # The one owner of the item-wide category rule for every path: a category all items share is dropped.
-    # A publisher's native feed states its own categories, so its items are left as they are.
-    def without_shared_categories(articles)
-      return articles if articles.any? { |article| article.scraper == AutoSource::Scraper::NativeFeed }
-
-      kept = AutoSource::ArticleRules::Category.drop_shared(articles.map(&:categories))
-      articles.zip(kept).map do |article, categories|
-        categories == article.categories ? article : article.with_categories(categories)
-      end
-    end
-
-    # Opt-in article-page metadata. Runs before {#with_url_dates} so a real article-page date wins over a URL date.
+    # Opt-in article-page metadata. Runs before the URL date fallback ({Html2rss::Extraction.with_url_dates}) so a real
+    # article-page date wins over a URL date.
     def enrich(articles, config:, request_session:)
       return [articles, {}] unless (options = config.enrich)&.fetch(:article_metadata, false)
 
@@ -171,17 +149,6 @@ module Html2rss
         articles, request_session:, max_fetches: options.fetch(:max_fetches, Enrichment::MAX_FETCHES)
       )
       [result.articles, result.tally]
-    end
-
-    # The single owner of the URL-path date fallback: it runs on the final articles, after cross-scraper
-    # merge and dedup, so no earlier stage (card walk, merge, scoring) ever sees a URL date.
-    def with_url_dates(articles, time_zone)
-      articles.map do |article|
-        next article if article.published_at
-
-        date = AutoSource::ArticleRules::UrlDate.call(article.url, time_zone:)
-        date ? article.with_published_at(date) : article
-      end
     end
 
     def pipeline_outcome_for(config)

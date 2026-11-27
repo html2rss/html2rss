@@ -11,10 +11,27 @@ References point left/down only; `Html` and `Article` never reference `AutoSourc
 | kernel        | `Error`, `ContractError`, `ErrorKind`, `Url`, `StringUtil`, `HashUtil`, `WordCount`, `Vocabulary`, `Log`, `Option`, `Defaults` |
 | fetch         | `RequestService`, `RequestSession`                                                  |
 | DOM           | `Html` (incl. `Html::SST`)                                                          |
-| extract       | `Selectors`, `AutoSource`, `Syndication`                                            |
+| extract       | `Selectors`, `AutoSource`, `Extraction`, `Syndication`                                            |
 | values/build  | `Article`, `Channel`, `FeedPipeline`, `FeedBuilder`, `FeedResult`, `Status`, `Config` |
 | curate        | `Curation`                                                                          |
 | renderers     | `CLI`, `MCP`                                                                        |
+
+## Extraction kernel
+
+Experimental: `Html2rss::Extraction.call(html:, url:, limit:, keep_different_domain:, keep_sponsored:)` is not exposed through the CLI, MCP or web yet. The goal is one set of extraction heuristics shared by this gem and a ruby.wasm build.
+
+- **Boundary:** an HTML string and an absolute URL in, `Extraction::Result` (plain hashes, strings, symbols, `ErrorKind`) out, no I/O. `Html2rss::Error` crosses as `status: :error` plus `error_kind`; `ContractError` and `InvalidOption` still raise.
+- **Scope today (T1):** one auto-source pass over the given page. A scraper that needs a follow-up fetch (native feed, WordPress API, sitemap, entry resolution) finds nothing. Selectors, `items_selector`, `resolution_scope` and `local_file_path` stay with `FeedPipeline`.
+- **Kernel proposes, host disposes:** the kernel will name the follow-up requests it wants; the host keeps request policy (budget, SSRF guard, strategy) and fetches them.
+- **One owner per rule:** `AutoSource.options` owns the option defaults, `Extraction.unique` and `Extraction.with_url_dates` own dedup, `limit` and the URL date fallback for every path; `Response.local_html` owns the in-memory page (`LocalFileStrategy` reads a file into it).
+- **Load isolation:** `require 'html2rss'` no longer eager-loads, so an extraction loads no transport, MCP, CLI or server code (`spec/lib/html2rss/extraction_spec.rb` runs a fresh process). `Url` still pulls `socket` through `ipaddr`.
+- **Two-tier gate:** host parity is byte-identical per kernel build (the same HTML gives the same result in the gem and in wasm); implementation changes are judged by the corpus ratchet (`spec/fixtures/auto_source/corpus/baseline.yml`).
+- **Nokogiri is not kernel identity:** the contract is data in, data out; a different parser may replace it later.
+- **Planned:**
+  - T2: follow-up request protocol for native-feed, WordPress, sitemap and entry-resolution fetches.
+  - T3: `now` as an input, so URL date fallback and recency are deterministic.
+  - T4: JSON Schema and a `contract_version` for `Result`.
+  - T5: ruby.wasm build and CI.
 
 ## Native feed preference
 
@@ -274,7 +291,7 @@ Adding a language: write its `vocabulary/<code>.rb` against the concept list, ad
 
 Feed channel metadata (title, description, ttl, language, author, image, last_build_date, categories, explicit) extracted from the response/document with config overrides. Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article.
 
-When the site's own feed is followed (`AutoSource::Scraper::NativeFeed`, or a direct feed URL), what it states about its channel (`Syndication::ChannelFacts`, read by `Syndication::Parser` from the same parse as its items) carries into the generated channel: its author (RSS 2.0 `itunes:author`, else the name part of `managingEditor`: `editor@example.com (Name)` gives `Name`, a bare email address is no name; Atom feed `author` name), its `itunes:category` list (each category with its nested subcategories) and its `itunes:explicit` flag (`true`/`yes`/`explicit` true, `false`/`no`/`clean` false, anything else unstated). The facts travel `NativeFeed#channel` → `AutoSource#feed_channel` → `FeedPipeline::Extraction#feed_channel` (one value per extracted response, with its articles and drops; `FeedPipeline#extract` owns it) → `FeedPipeline::PipelineOutcome#feed_channel` → `Channel.from_response(feed:)`. `Channel` alone decides precedence: the config `channel.author`, else the feed author, else the page `<meta name="author">` (which on a hosting platform names the platform, not the show). Categories and the explicit flag come only from the feed and stay unknown when it does not state them. RSS `managingEditor` carries the channel author only in the RSS 2.0 email form (`editor@example.com` or `editor@example.com (Name)`); a plain name is no managing editor and is omitted.
+When the site's own feed is followed (`AutoSource::Scraper::NativeFeed`, or a direct feed URL), what it states about its channel (`Syndication::ChannelFacts`, read by `Syndication::Parser` from the same parse as its items) carries into the generated channel: its author (RSS 2.0 `itunes:author`, else the name part of `managingEditor`: `editor@example.com (Name)` gives `Name`, a bare email address is no name; Atom feed `author` name), its `itunes:category` list (each category with its nested subcategories) and its `itunes:explicit` flag (`true`/`yes`/`explicit` true, `false`/`no`/`clean` false, anything else unstated). The facts travel `NativeFeed#channel` → `AutoSource#feed_channel` → `FeedPipeline::Extracted#feed_channel` (one value per extracted response, with its articles and drops; `FeedPipeline#extract` owns it) → `FeedPipeline::PipelineOutcome#feed_channel` → `Channel.from_response(feed:)`. `Channel` alone decides precedence: the config `channel.author`, else the feed author, else the page `<meta name="author">` (which on a hosting platform names the platform, not the show). Categories and the explicit flag come only from the feed and stay unknown when it does not state them. RSS `managingEditor` carries the channel author only in the RSS 2.0 email form (`editor@example.com` or `editor@example.com (Name)`); a plain name is no managing editor and is omitted.
 
 ## Media enclosures
 

@@ -114,8 +114,8 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
     it 'succeeds with the extraction, the attempts and the entry resolution diagnostic', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       diag = instance_double(Html2rss::AutoSource::EntryResolution::Diag)
       allow(Html2rss::AutoSource::EntryResolution::Diag).to receive(:from_result).and_return(diag)
-      extraction = Html2rss::FeedPipeline::Extraction.new(articles: [], dedup_dropped: 2, admission_drops: {},
-                                                          feed_channel: nil)
+      extraction = Html2rss::FeedPipeline::Extracted.new(articles: [], dedup_dropped: 2, admission_drops: {},
+                                                         feed_channel: nil)
       state.remember_entry_resolution(:resolution)
       state.record_items(strategy: :default, items_count: 0)
       state.succeed!(response: :response, extraction:, selected_strategy: :default, attempt_count: 1, scrape_target: :t)

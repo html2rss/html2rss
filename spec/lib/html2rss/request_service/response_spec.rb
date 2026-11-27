@@ -712,6 +712,16 @@ RSpec.describe Html2rss::RequestService::Response do
     end
   end
 
+  describe '.local_html' do
+    subject(:response) { described_class.local_html(body: '<p>x</p>', url: 'https://example.com/a') }
+
+    it 'is a status-200 UTF-8 HTML response for the absolute URL', :aggregate_failures do
+      expect(response).to have_attributes(body: '<p>x</p>', status: 200, content_type: 'text/html; charset=utf-8')
+      expect(response.url).to eq(Html2rss::Url.from_absolute('https://example.com/a'))
+      expect(response).to be_html_response
+    end
+  end
+
   describe '#replica' do
     let(:original) do
       described_class.new(

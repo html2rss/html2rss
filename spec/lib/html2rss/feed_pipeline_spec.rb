@@ -797,8 +797,8 @@ RSpec.describe Html2rss::FeedPipeline do
 
       expect(described_class.new({}).extract(config:, response: build_response.call(body: '<html></html>'),
                                              request_session: instance_double(Html2rss::RequestSession)))
-        .to eq(Html2rss::FeedPipeline::Extraction.new(articles: [], dedup_dropped: 0,
-                                                      admission_drops: { 'sponsored' => 1 }, feed_channel: facts))
+        .to eq(Html2rss::FeedPipeline::Extracted.new(articles: [], dedup_dropped: 0,
+                                                     admission_drops: { 'sponsored' => 1 }, feed_channel: facts))
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- inline config + duplicate HTML fixture
