@@ -40,8 +40,12 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
       expect(described_class.drop_shared([%w[News]])).to eq([%w[News]])
     end
 
-    it 'drops a value shared by exactly two items' do
-      expect(described_class.drop_shared([%w[News A], %w[News B]])).to eq([%w[A], %w[B]])
+    it 'keeps a value shared by only two items' do
+      expect(described_class.drop_shared([%w[News A], %w[News B]])).to eq([%w[News A], %w[News B]])
+    end
+
+    it 'drops a value shared by exactly three items' do
+      expect(described_class.drop_shared([%w[News A], %w[News B], %w[News]])).to eq([%w[A], %w[B], []])
     end
   end
 

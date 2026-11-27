@@ -24,6 +24,9 @@ module Html2rss
         # A numeric date ("26.11.2026", "2026-11-26").
         NUMERIC_DATE = %r{\b\d{1,2}[./]\d{1,2}[./]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b}
 
+        # Fewest items for which a shared value is a feed-wide label; with two, it may be a real topic.
+        MIN_ITEMS_FOR_SHARED = 3
+
         # Text cut off by the page ("Forschung und Ent...").
         CUT_OFF = /(?:\.\.\.|…)\z/
 
@@ -44,9 +47,9 @@ module Html2rss
           #
           # @param category_lists [Array<Array<String>>] one category list per item
           # @return [Array<Array<String>>] the lists without values present in all of them; unchanged for fewer
-          #   than two lists
+          #   than {MIN_ITEMS_FOR_SHARED} lists
           def drop_shared(category_lists)
-            return category_lists if category_lists.size < 2
+            return category_lists if category_lists.size < MIN_ITEMS_FOR_SHARED
 
             shared = category_lists.map { |list| list.to_set(&:downcase) }.reduce(:&)
             category_lists.map { |list| list.reject { |value| shared.include?(value.downcase) } }

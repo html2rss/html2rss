@@ -153,7 +153,10 @@ module Html2rss
     end
 
     # The one owner of the item-wide category rule for every path: a category all items share is dropped.
+    # A publisher's native feed states its own categories, so its items are left as they are.
     def without_shared_categories(articles)
+      return articles if articles.any? { |article| article.scraper == AutoSource::Scraper::NativeFeed }
+
       kept = AutoSource::ArticleRules::Category.drop_shared(articles.map(&:categories))
       articles.zip(kept).map do |article, categories|
         categories == article.categories ? article : article.with_categories(categories)
