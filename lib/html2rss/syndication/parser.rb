@@ -89,7 +89,7 @@ module Html2rss
           article(
             atom_link(entry, base_url:), media,
             id: entry.id&.content, title: entry.title&.content, description: atom_text(entry.content, entry.summary),
-            published_at: atom_text(entry.published, entry.updated),
+            published_at: atom_text(entry.published, entry.updated) || entry.dc_date,
             author: atom_author(entry), categories: entry.categories.map(&:term)
           )
         end

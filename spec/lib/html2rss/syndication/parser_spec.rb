@@ -389,6 +389,22 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(article).not_to have_key(:description)
     end
 
+    it 'dates an Atom entry by dc:date only when it has neither published nor updated', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/"><title>F</title>
+          <id>urn:f</id>
+          <entry><title>Only dc</title><id>https://example.com/a</id><link href="https://example.com/a"/>
+            <dc:date>2026-11-27T08:22:38Z</dc:date></entry>
+          <entry><title>Updated wins</title><id>https://example.com/b</id><link href="https://example.com/b"/>
+            <updated>2024-01-02T00:00:00Z</updated><dc:date>2026-11-27T08:22:38Z</dc:date></entry>
+        </feed>
+      XML
+
+      dates = described_class.parse(body).articles.map { Time.parse(_1[:published_at].to_s).utc }
+      expect(dates).to eq([Time.utc(2026, 11, 27, 8, 22, 38), Time.utc(2024, 1, 2)])
+    end
+
     it 'reads published_at from the RSS pubDate' do
       body = <<~XML
         <?xml version="1.0"?>
