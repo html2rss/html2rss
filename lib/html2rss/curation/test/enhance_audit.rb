@@ -72,13 +72,15 @@ module Html2rss
           on = extracted_articles(response, selectors, time_zone, vocabulary, enhance: true)
           delta_gains = probe(response:, selectors:, time_zone:, vocabulary:)&.enhance_gains || empty_gains
 
-          { enhance_off: extraction_stats(off), enhance_on: extraction_stats(on), delta: delta(off, on, delta_gains) }
+          off_stats = extraction_stats(off)
+          on_stats = extraction_stats(on)
+
+          { enhance_off: off_stats, enhance_on: on_stats, delta: delta(off, on, off_stats, on_stats, delta_gains) }
         end
 
-        def self.delta(off, on, gains)
+        def self.delta(off, on, off_stats, on_stats, gains)
           {
-            descriptions_gained: extraction_stats(on).fetch(:descriptions_filled) -
-              extraction_stats(off).fetch(:descriptions_filled),
+            descriptions_gained: on_stats.fetch(:descriptions_filled) - off_stats.fetch(:descriptions_filled),
             guids_changed: (on.map(&:guid) - off.map(&:guid)).size,
             items_added: on.size - off.size,
             keys_added: gains.keys_added,
