@@ -200,6 +200,39 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
+    context 'when strategy is non-auto and the entry response is HTTP 404' do
+      let(:pipeline) { described_class.new(config) }
+      let(:not_found) do
+        Html2rss::RequestService::Response.new(
+          body: '<html><body><article><h1>Home</h1></article></body></html>',
+          url: Html2rss::Url.from_absolute('https://example.com/news'),
+          headers: { 'content-type' => 'text/html' },
+          status: 404
+        )
+      end
+
+      before { allow(Html2rss::RequestService).to receive(:execute).and_return(not_found) }
+
+      context 'with selectors' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:config) { base_config.merge(strategy: :default) }
+
+        it 'raises DeterministicHttpStatus instead of extracting', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::DeterministicHttpStatus) do |error|
+            expect(error.status).to eq(404)
+            expect(error.url.to_s).to eq('https://example.com/news')
+          end
+        end
+      end
+
+      context 'with auto_source' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:config) { { channel: { url: 'https://example.com/news' }, strategy: :default, auto_source: {} } }
+
+        it 'raises DeterministicHttpStatus instead of NoFeedItemsExtracted' do
+          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::DeterministicHttpStatus)
+        end
+      end
+    end
+
     context 'when strategy is non-auto with selector-only yielding zero articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) { base_config.merge(strategy: :default) }
       let(:pipeline) { described_class.new(config) }
@@ -438,11 +471,12 @@ RSpec.describe Html2rss::FeedPipeline do
           }
         end
 
-        # rubocop:disable-next RSpec/ExampleLength
-        it 'aborts auto fallback immediately without attempting Botasaurus', :aggregate_failures do
-          expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
-            expect(error.attempts.size).to eq(1)
-            expect(error.attempts.first[:strategy]).to eq(:default)
+        # rubocop:disable-next RSpec/ExampleLength -- error payload + no next hop
+        it 'raises DeterministicHttpStatus without attempting Botasaurus', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::DeterministicHttpStatus) do |error|
+            expect(error.status).to eq(404)
+            expect(error.diagnostics).to include(status: 404)
+            expect(error.attempts).to include(hash_including(strategy: :default))
           end
           expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
           expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)

@@ -25,6 +25,42 @@ module Html2rss
       def kind = :invalid_url
     end
 
+    # Raised when the entry response carries a permanent HTTP status (a missing or refused page),
+    # so no strategy, extraction or entry resolution can change the outcome.
+    class DeterministicHttpStatus < Html2rss::Error
+      # Statuses that mean the page is permanently unavailable rather than an anti-bot challenge.
+      STATUSES = Set[400, 404, 410, 422, 451].freeze
+
+      ##
+      # @param response [Response] the entry response
+      # @return [void]
+      # @raise [DeterministicHttpStatus] when the response status is in {STATUSES}
+      def self.check!(response)
+        return unless STATUSES.member?(response.status)
+
+        raise new("HTTP #{response.status} for #{response.url}", status: response.status, url: response.url)
+      end
+
+      # @return [Integer, nil] the HTTP status of the entry response
+      attr_reader :status
+
+      # @return [Html2rss::Url, nil] the entry URL
+      attr_reader :url
+
+      ##
+      # @param message [String]
+      # @param status [Integer, nil]
+      # @param url [Html2rss::Url, nil]
+      def initialize(message, status: nil, url: nil)
+        @status = status
+        @url = url
+        super(message)
+      end
+
+      # @return [Hash{Symbol => Object}] sparse diagnostics including the HTTP +status+
+      def diagnostics = { **super, status: }.compact
+    end
+
     # Raised when a response type cannot be parsed.
     class UnsupportedResponseContentType < Html2rss::Error; end
 
