@@ -25,6 +25,9 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Image do
       expect(described_class.image_url?('?a.pdf')).to be(true)
       expect(described_class.image_url?(nil)).to be(true)
       expect(described_class.image_url?('a.jpg ')).to be(true)
+    end
+
+    it 'accepts other image forms', :aggregate_failures do
       expect(described_class.image_url?('a.heic')).to be(true)
     end
 
