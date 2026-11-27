@@ -31,10 +31,13 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Image do
       expect(described_class.image_url?('a.heic')).to be(true)
     end
 
-    it 'accepts script-served and unknown extensions, rejects document types', :aggregate_failures do
+    it 'accepts script-served and unknown extensions', :aggregate_failures do
       %w[/image.php?id=7 /thumb.aspx?w=300 /photo-1.5x /cdn/photo].each do |url|
         expect(described_class.image_url?("https://example.com#{url}")).to be(true)
       end
+    end
+
+    it 'rejects document, archive, audio and video types', :aggregate_failures do
       %w[a.pdf a.docx a.xlsx a.zip a.7z a.mp3 a.mp4 a.webm].each do |name|
         expect(described_class.image_url?("https://example.com/files/#{name}")).to be(false)
       end
