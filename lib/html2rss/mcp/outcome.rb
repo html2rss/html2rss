@@ -336,7 +336,8 @@ module Html2rss
         def classified_error_step(error)
           case error
           when RequestService::BotasaurusConfigurationError then NextStep[:read_runtime]
-          when Contract::UnpublishedRequestError, ConfigArgument::ExclusiveInputError then NextStep[:validate]
+          when Contract::UnpublishedRequestError, Contract::InvalidArgumentsError,
+               ConfigArgument::ExclusiveInputError then NextStep[:validate]
           else terminal_error?(error) ? NextStep[:stop] : NextStep[:inspect]
           end
         end

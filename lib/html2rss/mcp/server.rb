@@ -124,6 +124,7 @@ module Html2rss
             instructions: instructions_text,
             configuration: protocol_configuration
           ).tap do |server|
+            server.extend(ArgumentGate)
             register_tools(server)
             register_resources(server)
             register_prompts(server)

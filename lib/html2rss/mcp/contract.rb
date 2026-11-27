@@ -22,6 +22,9 @@ module Html2rss
       # Raised when apply/validate config uses an unpublished MCP request adapter.
       class UnpublishedRequestError < Html2rss::InvalidOption; end
 
+      # Raised when tool arguments miss a required key or break the published input schema.
+      class InvalidArgumentsError < Html2rss::InvalidOption; end
+
       # JSON Schema property for a source page URL.
       URL_PROPERTY = {
         type: 'string',

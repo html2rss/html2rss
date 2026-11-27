@@ -120,6 +120,28 @@ RSpec.describe Html2rss::MCP::Server do
         )
       end
 
+      %w[scrape inspect recon capture apply batch_scrape batch_inspect batch_recon].each do |tool|
+        it "answers a #{tool} call without its required argument with the validate envelope", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call envelope contract
+          result = call_tool.call(tool, {})
+          envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+          expect(result.dig(:result, :isError)).to be(true)
+          expect(result.dig(:result, :structuredContent)).to eq(envelope)
+          expect(envelope).to include(ok: false, next_step: 'validate')
+          expect(envelope[:payload]).to include(class: 'Html2rss::MCP::Contract::InvalidArgumentsError',
+                                                message: start_with('Missing required arguments'))
+        end
+      end
+
+      it 'answers an argument that breaks the input schema with the validate envelope', :aggregate_failures do
+        result = call_tool.call('scrape', { url: 'https://example.com', limit: 'many' })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(true)
+        expect(envelope).to include(ok: false, next_step: 'validate')
+        expect(envelope[:payload][:message]).to start_with('Invalid arguments')
+      end
+
       it 'does not mark an empty scrape as isError (articles-now is not a ship gate)' do # rubocop:disable RSpec/ExampleLength
         feed_result = instance_double(
           Html2rss::FeedResult,
