@@ -70,7 +70,7 @@ module Html2rss
                  - Empty scrape is still success (articles-now). Follow next_step / guidance.
                  - Compare payload.scrape_url to the requested URL; when payload.entry_resolution is present the items come from that page.
               2. Need a reusable feed YAML? → capture → test → apply
-                 - capture returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Default enhance follows capture evidence (false when admission_drops show chrome); override only when needed.
+                 - capture returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Captured YAML has only an items selector, so keep enhance true; enhance false needs explicit title/url selectors.
                  - test runs schema + live extraction (min items). apply is the ship gate (isError on zero items). Confirm payload.item_count and payload.quality_report warnings (including enhance_gains when selectors.items.enhance is true). Use compare_enhance on test for enhance on/off diagnostics.
                  - validate alone is for schema-only checks; on success next_step is test.
               3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect (or batch_inspect). Read likely_js_shell vs blocked_surface when articles_count is 0. When alternates warrant it, inspect next_step is recon.
@@ -102,7 +102,7 @@ module Html2rss
           def capture_feed_config_prompt(url)
             <<~MSG.strip
               Build a reusable html2rss feed config for #{url}:
-              1) capture — YAML is payload.yaml. Check payload.articles_count, payload.has_selectors, and payload.suggested_channel_url. enhance defaults from admission evidence (false when chrome drops are high). When payload.native_feed is set, follow next_step (done — use the native feed).
+              1) capture — YAML is payload.yaml. Check payload.articles_count, payload.has_selectors, and payload.suggested_channel_url. enhance defaults to true: the YAML has only an items selector, and enhance fills title and url. When payload.native_feed is set, follow next_step (done — use the native feed).
               2) Follow next_step. If weak or you need recon, inspect then recon when alternates warrant it. Auto already hops to Botasaurus; do not retry capture with botasaurus unless default was blocked.
               3) test with yaml (or config hash) — schema + live extraction. On :schema failure, validate; on :execution/:min_items, recapture. Read payload.quality_report.enhance_gains when enhance is on; optional compare_enhance compares enhance off vs on without changing shipped RSS.
               4) apply — isError if zero items. Confirm payload.item_count and payload.quality_report (including enhance_gains) before shipping.

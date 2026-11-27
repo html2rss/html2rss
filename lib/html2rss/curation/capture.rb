@@ -22,10 +22,6 @@ module Html2rss
       # Minimum matched segment/article pairs required to emit an items selector.
       MIN_SELECTOR_MATCHES = 2
 
-      # Admission drops at or above this sum default enhance to false (chrome-heavy listing).
-      CHROME_DROP_THRESHOLD = 3
-      private_constant :CHROME_DROP_THRESHOLD
-
       # Request keys {Capture.build} forwards to {Config::AutoSourceRequest}.
       REQUEST_KEYS = %i[items_selector limit local_file_path max_redirects max_requests total_timeout_seconds].freeze
       private_constant :REQUEST_KEYS
@@ -39,7 +35,7 @@ module Html2rss
         # @param title [String, nil] title override
         # @param summary [String, nil] summary override
         # @param force [Boolean] whether to ignore native feed detection
-        # @param enhance [Boolean, nil] whether to force enhance: true
+        # @param enhance [Boolean, nil] +false+ turns enhance off (default on)
         def initialize(topics: nil, title: nil, summary: nil, force: false, enhance: nil)
           super
         end
@@ -106,7 +102,7 @@ module Html2rss
         # @option options [String, nil] :title optional title override
         # @option options [String, nil] :summary optional summary override
         # @option options [Boolean] :force whether to ignore native feed detection
-        # @option options [Boolean, nil] :enhance whether to force enhance: true
+        # @option options [Boolean, nil] :enhance +false+ turns enhance off (default on)
         # @option options [Integer, nil] :max_redirects optional redirect limit override
         # @option options [Integer, nil] :max_requests optional request budget override
         # @option options [Integer, nil] :total_timeout_seconds optional wall-clock bound (seconds) for the whole
@@ -146,7 +142,6 @@ module Html2rss
       # @return [CaptureResult]
       def build # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         outcome = FeedPipeline.new(raw_config).to_outcome
-        @admission_drops = outcome.admission_drops
         selectors, segment_strategy, candidates = derive_selectors(outcome.response, outcome.articles)
         ch_title = @options.title || channel_title_from(outcome.response)
         topics = @options.topics || infer_topics("#{@url} #{ch_title}")
@@ -268,11 +263,11 @@ module Html2rss
       end
 
       def hint_selectors
-        [{ items: { selector: @request.items_selector, enhance: resolve_enhance } }, :hint]
+        [{ items: { selector: @request.items_selector, enhance: enhance? } }, :hint]
       end
 
       def default_selectors
-        [{ items: { selector: Selectors::DEFAULT_ITEMS_SELECTOR, enhance: resolve_enhance } }, :default]
+        [{ items: { selector: Selectors::DEFAULT_ITEMS_SELECTOR, enhance: enhance? } }, :default]
       end
 
       def select_enhance_selectors(sst, articles, vocabulary)
@@ -288,7 +283,7 @@ module Html2rss
 
       def collect_items_evidence(sst, articles, vocabulary)
         link_resolver = AutoSource::Scoring::LinkResolver.new(@url, vocabulary:)
-        enhance = resolve_enhance
+        enhance = enhance?
 
         SEGMENT_STRATEGIES.flat_map do |strategy|
           segments = AutoSource::Segmenter.call(
@@ -460,12 +455,8 @@ module Html2rss
         nil
       end
 
-      def resolve_enhance
-        return @options.enhance unless @options.enhance.nil?
-
-        drops = (@admission_drops || {}).values.sum
-        drops < CHROME_DROP_THRESHOLD
-      end
+      # Captured YAML carries only an items selector, so enhance is its one way to fill title and url.
+      def enhance? = @options.enhance != false
 
       def suggested_channel_url(outcome)
         entry = outcome.scrape_target.entry_url.to_s

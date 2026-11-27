@@ -33,10 +33,10 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(prompt).to include('https://example.com', 'strategy auto', 'payload.items')
     end
 
-    it 'embeds evidence-based enhance guidance in capture_feed_config_prompt' do
+    it 'embeds the enhance default in capture_feed_config_prompt' do
       prompt = described_class.capture_feed_config_prompt('https://example.com')
 
-      expect(prompt).to include('suggested_channel_url', 'enhance defaults from admission evidence')
+      expect(prompt).to include('suggested_channel_url', 'enhance defaults to true')
     end
 
     describe '.guidance' do

@@ -106,7 +106,8 @@ module Html2rss
                          'Use when the goal is a durable YAML (then test → apply). ' \
                          'Returns YAML inside payload.yaml (same serializer as CLI capture). ' \
                          'Draft only — catalog feeds still need directory.topics and title/url; ' \
-                         'enhance defaults from admission evidence (false when chrome drops are high). ' \
+                         'enhance defaults to true: the YAML has only an items selector, ' \
+                         'and enhance fills title and url. ' \
                          'Full schema options live in resource html2rss://schema.',
             input_schema: Contract::CAPTURE_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
