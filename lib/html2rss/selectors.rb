@@ -81,16 +81,13 @@ module Html2rss
     def each(&)
       return enum_for unless block_given?
 
-      enhance = enhance?
       @unlinked_count = 0
-
+      seen = Set.new
       selected_items.each do |item|
         article_hash = extract_article(item)
-
-        enhance_article_hash(article_hash, item) if enhance
-
+        enhance_article_hash(article_hash, item) if enhance?
         article = build_article(article_hash)
-        article.linked? ? yield(article) : @unlinked_count += 1
+        article.linked? ? (yield article if admitted?(article, seen)) : @unlinked_count += 1
       end
     end
 
@@ -107,10 +104,11 @@ module Html2rss
     def each_enhance_pair(linked_only: false)
       return enum_for(:each_enhance_pair, linked_only:) unless block_given?
 
+      seen = Set.new
       selected_items.each do |item|
         baseline = extract_article(item)
         enhanced = enhance_article_hash(baseline.dup, item)
-        yield baseline, enhanced, item unless linked_only && !build_article(enhanced).linked?
+        yield baseline, enhanced, item unless linked_only && !admitted?(build_article(enhanced), seen)
       end
     end
 
@@ -147,9 +145,7 @@ module Html2rss
 
     def items_selector
       selector = @selectors.dig(ITEMS_SELECTOR_KEY, :selector)
-      return Html::Navigator::MAIN_ANCHOR_SELECTOR if default_items_selector?(selector)
-
-      selector
+      default_items_selector?(selector) ? Html::Navigator::MAIN_ANCHOR_SELECTOR : selector
     end
 
     def default_items_selector?(selector)
@@ -186,10 +182,14 @@ module Html2rss
 
     def extract_article(item) = @item_fields.article_hash(item_env_for(item, @url))
 
+    # The one admission rule of {#each} and {#each_enhance_pair}: a linked article, and with enhance on the
+    # first one carrying its URL.
+    def admitted?(article, seen) = article.linked? && (!enhance? || seen.add?(article.url.to_s))
+
     def enhance_article_hash(article_hash, article_tag)
       return article_hash if enhanceable_fields_present?(article_hash)
 
-      extracted = item_enhancer.fields_for(article_tag)
+      extracted = item_enhancer.fields_for(article_tag, url: !@selectors.key?(:url))
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|

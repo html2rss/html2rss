@@ -37,17 +37,26 @@ module Html2rss
 
       ##
       # @param item [Nokogiri::XML::Node] a node selected from the parsed page
+      # @param url [Boolean] whether the item may supply its +url+; enhance fills fields only, so a +url+ is
+      #   withheld from an item in page chrome (nav, header, footer) and when the config selects +url+ itself
       # @return [Hash{Symbol => Object}, nil] the item's extracted fields, +nil+ when it cannot be read
-      def fields_for(item)
+      def fields_for(item, url: true)
         root = document&.index&.node_for(item) || root_alone(item)
         return skipped(item) unless root
 
         segment = AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :list,
                                             position: 0)
-        AutoSource::ArticleExtractor::Item.call(segment, base_url: @base_url, time_zone: @time_zone, link_resolver:)
+        withhold_url(AutoSource::ArticleExtractor::Item.call(segment, base_url: @base_url, time_zone: @time_zone,
+                                                                      link_resolver:), item, url)
       end
 
       private
+
+      def withhold_url(fields, item, url)
+        url && !chrome?(item) ? fields : fields&.except(:url)
+      end
+
+      def chrome?(item) = Html::Navigator.nokogiri_chrome_scope(item, @vocabulary) == :chrome
 
       # The region's one resolver: it owns the language's label reader, so a label is normalized once.
       def link_resolver
