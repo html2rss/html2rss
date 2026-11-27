@@ -294,7 +294,8 @@ RSpec.describe Html2rss::AutoSource do
       let(:response) { Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/html' }, url:) }
 
       it 'keeps sitemap entries through Cleanup', :aggregate_failures do
-        articles = described_class.new(response, described_class::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil]).articles
+        articles = described_class.new(response, described_class::DEFAULT_CONFIG, vocabulary: Html2rss::Vocabulary[nil],
+                                                                                  clock: clock_for(nil)).articles
         expect(articles.map(&:scraper)).to eq([Html2rss::AutoSource::Scraper::Sitemap])
         expect(articles.map(&:id)).to eq(['https://example.com/a'])
       end

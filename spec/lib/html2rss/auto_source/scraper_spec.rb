@@ -344,16 +344,17 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       expect(described_class::Schema).to have_received(:new).with(parsed_body, url:)
     end
 
-    it 'passes the raw body only to Sitemap', :aggregate_failures do
+    it 'passes the raw body and the run time only to Sitemap' do
       allow(described_class::Sitemap).to receive(:new).and_return(:sitemap)
       opts = { sitemap: { enabled: true } }
+      clock = clock_for
 
       described_class.build_instance(described_class::Sitemap,
-                                     described_class::Context.new(parsed_body:, opts:, clock: clock_for, url:,
+                                     described_class::Context.new(parsed_body:, opts:, clock:, url:,
                                                                   body: '<urlset/>', request_session: :session))
 
       expect(described_class::Sitemap).to have_received(:new)
-        .with(parsed_body, url:, request_session: :session, body: '<urlset/>')
+        .with(parsed_body, url:, request_session: :session, body: '<urlset/>', now: clock.now)
     end
 
     it 'defaults captured_responses to an empty array for XhrArticles' do

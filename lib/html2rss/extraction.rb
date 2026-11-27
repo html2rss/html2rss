@@ -11,24 +11,30 @@ module Html2rss
     Outcome = Data.define(:articles, :admission_drops, :feed_channel, :requests)
 
     ##
-    # @param page [Hash{Symbol => Object}] +:url+ (absolute), +:body+, optional +:headers+
+    # @param page [Hash] +url+ (absolute), +body+, optional +headers+; keys may be strings
     # @param now [String] the current time, ISO 8601
     # @param responses [Hash{String => Hash}] every follow-up answer so far, by request id ({Exchange})
-    # @return [Result]
+    # @return [Result] an unreadable page or answer comes back as {Input::InvalidError} data
     # @raise [Html2rss::ContractError] on a programmer error
     # @raise [InvalidOption] when an option is invalid
     def self.call(page:, now:, responses: {}, **)
       clock = AutoSource::Clock.new(now: parse_now(now), time_zone: nil)
-      response = Exchange.response(page)
-      outcome = run(response:, auto_source: AutoSource.options(**), clock:, responses:)
-      return Result.needs_requests(outcome.requests) if outcome.requests.any?
-
-      Result.ok(with_url_dates(without_shared_categories(without_tracking(unique(outcome.articles))), clock))
+      response = Exchange.response(Input.page(page))
+      outcome = run(response:, auto_source: AutoSource.options(**), clock:, responses: Input.responses(responses))
+      result(outcome, clock)
     rescue ContractError, InvalidOption
       raise
     rescue Html2rss::Error => error
       Result.failure(error)
     end
+
+    # @return [Result]
+    def self.result(outcome, clock)
+      return Result.needs_requests(outcome.requests) if outcome.requests.any?
+
+      Result.ok(with_url_dates(curate(outcome.articles), clock))
+    end
+    private_class_method :result
 
     ##
     # One auto-source pass, the one path of the gem and of the kernel.
@@ -57,6 +63,17 @@ module Html2rss
       raise InvalidOption, "now must be an ISO 8601 time, got #{now}"
     end
     private_class_method :parse_now
+
+    ##
+    # The cleanup every path applies to its collected articles: dedup (and cap), tracking-suffix removal, then the
+    # item-wide category rule.
+    #
+    # @param articles [Array<Html2rss::Article>]
+    # @param limit [Integer, nil] max articles to keep (nil keeps all)
+    # @return [Array<Html2rss::Article>]
+    def self.curate(articles, limit: nil)
+      without_shared_categories(without_tracking(unique(articles, limit:)))
+    end
 
     ##
     # Deduplicates +articles+ and keeps the first +limit+: the one owner of +limit+ across paths (selector,

@@ -57,30 +57,32 @@ module Html2rss
       # @param relation [Symbol]
       # @param origin_url [String, Html2rss::Url]
       # @return [Html2rss::RequestService::Response]
-      # @raise [RequestService::RequestBudgetExceeded] beyond the cap, or when the host reported +:budget+
-      # @raise [RequestFailed] when the host reported the request as failed
+      # @raise [RequestService::RequestBudgetExceeded] beyond the cap, and only then
+      # @raise [RequestFailed] when the host reported the request as failed, whatever its kind
       def follow_up(url:, relation:, origin_url:, **)
         url = Url.from_absolute(url)
         request = Request.new(id: "#{relation} #{url}", url: url.to_s, relation:,
                               origin_url: origin_url.to_s)
         entry = @responses[request.id] || wish(request)
         kind = entry[:error_kind]
-        kind ? raise_failure(ErrorKind[kind].to_sym) : self.class.response(entry)
+        raise RequestFailed, kind if kind
+
+        self.class.response(entry)
       end
 
       private
 
+      # Spends a slot by distinct URL: the host's session answers one URL under two relations from one request.
       def wish(request)
-        raise_failure(:budget) if @responses.size + @wanted.size >= @cap && !@wanted.key?(request.id)
+        raise RequestService::RequestBudgetExceeded, 'Request budget exhausted' if over_cap?(request)
 
         @wanted[request.id] = request
         throw PENDING
       end
 
-      def raise_failure(kind)
-        raise RequestService::RequestBudgetExceeded, 'Request budget exhausted' if kind == :budget
-
-        raise RequestFailed, kind
+      def over_cap?(request)
+        urls = (@responses.keys + @wanted.keys).to_set { _1.split(' ', 2).last }
+        urls.size >= @cap && !urls.include?(request.url)
       end
     end
   end

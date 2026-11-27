@@ -16,6 +16,9 @@ module Html2rss
         # Most consecutive fragment lines read together as one date.
         MAX_RUN_LINES = 6
 
+        # Fields that name the date by themselves, so Ruby needs no reference day to complete them.
+        SELF_DATED = %i[year cwyear].freeze
+
         class << self
           ##
           # @param datetime_strings [Array<String, nil>] raw datetime attribute values
@@ -56,12 +59,13 @@ module Html2rss
           ##
           # @param string [String] raw datetime text
           # @param time_zone [String, nil] channel time zone for a naive value (nil reads as UTC)
-          # @param now [Time] the current time: a date without a year is read in its year
+          # @param now [Time] the current time, which completes a date the text leaves partial
           # @return [DateTime, nil] parsed instant; naive values are read in +time_zone+
           def parse_datetime(string, time_zone:, now:)
-            return unless (parsed = parse(string, now))
+            fields = DateTime._parse(string, limit: MAX_DATE_CHARS)
+            return unless (parsed = parse(fields, string, local_today(time_zone:, now:)))
 
-            naive?(string) ? localize(parsed, time_zone) : parsed
+            naive?(fields) ? localize(parsed, time_zone) : parsed
           rescue ArgumentError, TypeError
             nil
           end
@@ -82,19 +86,28 @@ module Html2rss
             runs
           end
 
-          # Ruby completes a missing year from the system date, so a year-less date is built from +now+ instead.
-          def parse(string, now)
-            fields = DateTime._parse(string, limit: MAX_DATE_CHARS)
-            fields.key?(:year) ? DateTime.parse(string, limit: MAX_DATE_CHARS) : year_less(fields, now)
+          # Ruby completes a partial date from the system date; the same completion is read here from +today+.
+          # Weekday and week-number shapes name no day on their own and read as nil. The caller's +_parse+ holds the
+          # length limit.
+          def parse(fields, string, today)
+            return DateTime.parse(string) if fields.keys.intersect?(SELF_DATED)
+            return unless (day = reference_day(fields, today))
+
+            hour, min, sec = fields.values_at(:hour, :min, :sec).map(&:to_i)
+            DateTime.new(day.year, day.month, day.day, hour, min, sec + fields.fetch(:sec_fraction, 0),
+                         Rational(fields[:offset].to_i, 86_400))
           end
 
-          # @return [DateTime, nil] nil when the string names no month and day
-          def year_less(fields, now)
-            mon, mday, hour, min, sec = fields.values_at(:mon, :mday, :hour, :min, :sec)
-            return unless mon && mday
-
-            DateTime.new(now.year, mon, mday, hour.to_i, min.to_i, sec.to_i + fields.fetch(:sec_fraction, 0),
-                         Rational(fields[:offset].to_i, 86_400))
+          # A day of the year, a month and day, or a day alone takes what it lacks from the year and month of
+          # +today+; a time alone is +today+; a month alone is its first day.
+          def reference_day(fields, today)
+            if fields.key?(:yday)
+              ::Date.ordinal(today.year, fields.fetch(:yday))
+            elsif fields.key?(:mon) || fields.key?(:mday)
+              ::Date.new(today.year, fields.fetch(:mon, today.month), fields.fetch(:mday, 1))
+            elsif fields.key?(:hour)
+              today
+            end
           end
 
           def parse_attr(value, time_zone:, now:)
@@ -109,10 +122,9 @@ module Html2rss
 
           # Naive unless the parser resolved a real offset: unknown words ("Uhr", "ET") leave it nil, and a
           # single-letter military zone other than Z ("h") is a stray letter, not a zone.
-          def naive?(string)
-            parsed = DateTime._parse(string, limit: MAX_DATE_CHARS)
-            zone = parsed[:zone]
-            parsed[:offset].nil? || (zone.length == 1 && !zone.casecmp?('z'))
+          def naive?(fields)
+            zone = fields[:zone]
+            fields[:offset].nil? || (zone.length == 1 && !zone.casecmp?('z'))
           end
 
           def localize(datetime, time_zone)

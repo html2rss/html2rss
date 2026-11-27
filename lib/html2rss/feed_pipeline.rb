@@ -162,9 +162,7 @@ module Html2rss
     def extract(config:, response:, request_session:)
       clock = AutoSource::Clock.new(now: Time.now, time_zone: config.time_zone)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:, clock:)
-      deduped = Extraction.without_shared_categories(
-        Extraction.without_tracking(Extraction.unique(collected, limit: config.auto_source&.dig(:limit)))
-      )
+      deduped = Extraction.curate(collected, limit: config.auto_source&.dig(:limit))
       enriched, enrichment = enrich(deduped, config:, request_session:)
       unique = Extraction.with_url_dates(enriched, clock)
       Extracted.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,

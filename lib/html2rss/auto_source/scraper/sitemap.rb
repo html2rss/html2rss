@@ -42,13 +42,13 @@ module Html2rss
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @param body [String, nil] raw response body for direct sitemap XML parsing
         # @param opts [Hash] sitemap options
+        # @option opts [Time] :now the current time, which ages entries out (required)
         # @option opts [Float] :min_priority minimum priority score (default: 0.3)
         # @option opts [Integer] :max_age_days maximum entry age in days (default: 30)
-        # @option opts [Time] :now the current time, which ages entries out
         def initialize(parsed_body, url:, request_session: nil, body: nil, **opts)
           super(parsed_body, url: Html2rss::Url.from_absolute(url))
           @body = body
-          @now = opts[:now]
+          @now = opts.fetch(:now)
           @request_session = request_session
           @min_priority = opts.fetch(:min_priority, Scraper::Sitemap::Parser::DEFAULT_MIN_PRIORITY)
           @max_age_days = opts.fetch(:max_age_days, Scraper::Sitemap::Parser::DEFAULT_MAX_AGE_DAYS)

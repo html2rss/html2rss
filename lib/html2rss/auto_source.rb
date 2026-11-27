@@ -126,7 +126,8 @@ module Html2rss
     ##
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
-    # @param exchange [Html2rss::Extraction::Exchange, nil] the pass's follow-ups; nil runs none
+    # @param exchange [Html2rss::Extraction::Exchange] the pass's follow-ups; the default has no slots, so it
+    #   answers none
     # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope, resolved by the caller once and
     #   shared by every classifier of this run
     # @param clock [Clock] the run's time
@@ -134,7 +135,8 @@ module Html2rss
     # @option opts [Hash] :scraper scraper configuration map
     # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
-    def initialize(response, opts = DEFAULT_CONFIG, vocabulary:, clock:, exchange: nil)
+    def initialize(response, opts = DEFAULT_CONFIG, vocabulary:, clock:,
+                   exchange: Extraction::Exchange.new(responses: {}, cap: 0))
       @vocabulary = vocabulary
       @clock = clock
       @parsed_body = response.parsed_body
@@ -209,7 +211,7 @@ module Html2rss
       finish_articles(articles)
     end
 
-    def pending? = exchange&.requests&.any?
+    def pending? = exchange.requests.any?
 
     def settled?(tier, articles)
       pending? || enough_articles?(articles) || skip_html_padding?(tier, articles)
@@ -229,7 +231,7 @@ module Html2rss
       instance = Scraper.build_instance(scraper_class, context)
       return unless instance&.extractable?
 
-      scraped = exchange ? exchange.guard { run_scraper(instance) } : run_scraper(instance)
+      scraped = exchange.guard { run_scraper(instance) }
       return unless scraped
 
       articles.concat(scraped)

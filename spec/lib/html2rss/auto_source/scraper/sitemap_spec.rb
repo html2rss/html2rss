@@ -120,11 +120,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
 
   describe '#extractable?' do
     it 'returns true for a page that links a sitemap' do
-      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:).extractable?).to be(true)
+      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:,
+                                                                         now: Time.now.utc).extractable?).to be(true)
     end
 
     it 'returns false for a page without sitemap markers' do
-      expect(described_class.new(Nokogiri::HTML('<p>Hi</p>'), url:).extractable?).to be(false)
+      expect(described_class.new(Nokogiri::HTML('<p>Hi</p>'), url:, now: Time.now.utc).extractable?).to be(false)
     end
   end
 
@@ -179,7 +180,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     end
 
     it 'yields nothing when there is neither a direct body nor a request session' do
-      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:).to_a).to eq([])
+      expect(described_class.new(Nokogiri::HTML(SITEMAP_SPEC_LINK_HTML), url:, now: Time.now.utc).to_a).to eq([])
     end
 
     it 'yields nothing when the fetched sitemap has no entries' do

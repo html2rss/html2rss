@@ -44,7 +44,8 @@ RSpec.describe Html2rss::Extraction::Exchange do
     it 'counts the answered requests against the cap' do
       %w[a b c].each { |path| responses["auto_source https://example.com/#{path}"] = { error_kind: :timeout } }
 
-      expect { ask.call('d') }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded)
+      expect { ask.call('d') }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded,
+                                              'Request budget exhausted')
     end
 
     it 'takes a request already wanted again at the cap' do
@@ -53,13 +54,21 @@ RSpec.describe Html2rss::Extraction::Exchange do
       expect(exchange.requests.map(&:url)).to eq(%w[https://example.com/a https://example.com/b])
     end
 
-    it 'replays a failure as an error of its kind', :aggregate_failures do
-      responses['auto_source https://example.com/feed'] = { error_kind: :timeout }
-      responses['auto_source https://example.com/full'] = { error_kind: :budget }
+    %i[timeout budget].each do |kind|
+      it "replays a reported #{kind} failure as a request failure of that kind" do
+        responses['auto_source https://example.com/feed'] = { error_kind: kind }
 
-      expect { ask.call }.to raise_error(described_class::RequestFailed) { |error| expect(error.kind).to eq(:timeout) }
-      expect { ask.call('full') }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded,
-                                                 'Request budget exhausted')
+        expect { ask.call }.to raise_error(described_class::RequestFailed, /\(#{kind}\)/)
+      end
+    end
+
+    it 'spends one slot for one URL asked under two relations', :aggregate_failures do
+      [['a', :auto_source], ['a', :advertised_feed], ['b', :auto_source]].each do |path, relation|
+        exchange.guard { ask.call(path, relation:) }
+      end
+
+      expect(exchange.requests.size).to eq(3)
+      expect { ask.call('c') }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded)
     end
 
     it 'refuses a request beyond the cap', :aggregate_failures do

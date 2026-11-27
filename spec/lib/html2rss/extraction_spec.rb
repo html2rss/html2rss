@@ -8,6 +8,16 @@ EXTRACTION_FEED_JSON = '{"version":"https://jsonfeed.org/version/1.1","items":[{
                        'summer reading room","content_text":"Residents will read all summer long here",' \
                        '"url":"https://example.com/news/harbor-library-plans-summer"}]}'
 EXTRACTION_FEED_ID = 'advertised_feed https://example.com/news/feed.xml'
+EXTRACTION_SITEMAP_PAGE = '<html><head><link rel="sitemap" href="/sitemap.xml"></head><body></body></html>'
+EXTRACTION_SITEMAP_INDEX = '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' \
+                           '<sitemap><loc>https://example.com/post-sitemap.xml</loc></sitemap>' \
+                           '<sitemap><loc>https://example.com/page-sitemap.xml</loc></sitemap></sitemapindex>'
+EXTRACTION_SITEMAP_LEAF = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ' \
+                          'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"><url>' \
+                          '<loc>https://example.com/harbor-library-plans-summer-reading</loc>' \
+                          '<news:news><news:title>Harbor library plans a summer reading room</news:title>' \
+                          '<news:publication_date>2026-11-18</news:publication_date></news:news>' \
+                          '<lastmod>2026-11-18</lastmod><priority>0.8</priority></url></urlset>'
 
 RSpec.describe Html2rss::Extraction do
   let(:html) { File.read('spec/fixtures/news_front_page.html') }
@@ -145,6 +155,13 @@ RSpec.describe Html2rss::Extraction do
         expect(result.articles.map { _1[:scraper] }).to include('AutoSource::NativeFeed')
       end
 
+      it 'reads string keys, as a JSON host sends them' do
+        json = ->(value) { JSON.parse(JSON.generate(value)) }
+
+        expect(described_class.call(page: json.call(page), now: NOW_ISO, responses: json.call(recorded)))
+          .to eq(described_class.call(page:, now: NOW_ISO, responses: recorded))
+      end
+
       it 'returns the same data for the same inputs' do
         calls = Array.new(2) { described_class.call(page:, now: NOW_ISO, responses: recorded) }
 
@@ -166,6 +183,40 @@ RSpec.describe Html2rss::Extraction do
         expect(result.status).to eq(:ok)
         expect(result.articles.map { _1[:scraper] }).not_to include('AutoSource::NativeFeed')
       end
+    end
+
+    context 'with a page that links a sitemap' do
+      let(:page) { { url:, body: EXTRACTION_SITEMAP_PAGE } }
+      let(:answers) do
+        xml = ->(body) { { url: 'https://example.com/x.xml', body: } }
+        { 'auto_source https://example.com/sitemap.xml' => xml.call(EXTRACTION_SITEMAP_INDEX),
+          'auto_source https://example.com/post-sitemap.xml' => { error_kind: :budget },
+          'auto_source https://example.com/page-sitemap.xml' => xml.call(EXTRACTION_SITEMAP_LEAF) }
+      end
+
+      let(:parser) { Html2rss::AutoSource::Scraper::Sitemap::Parser }
+
+      before do
+        allow(Html2rss::Log).to receive(:event).and_call_original
+        allow(parser).to receive(:call).and_call_original
+        described_class.call(page:, now: NOW_ISO, responses: answers)
+      end
+
+      it 'hands the sub-sitemaps the run time, so an entry date is read against now' do
+        expect(parser).to have_received(:call).with(EXTRACTION_SITEMAP_LEAF,
+                                                    hash_including(now: Time.utc(2026, 11, 20, 12)))
+      end
+
+      it 'goes on past a sub-sitemap the host reports as over budget, with nothing quarantined' do
+        expect(Html2rss::Log).not_to have_received(:event).with(:warn, 'auto_source.quarantined', any_args)
+      end
+    end
+
+    it 'returns a page or an answer it cannot read as error data' do
+      unreadable = [{ page: { url: } }, { page: 'page' }, { responses: 'x' }, { responses: { 'x' => { url: } } },
+                    { responses: { 'x' => { error_kind: 'nope' } } }]
+
+      expect(unreadable.map { described_class.call(page:, now: NOW_ISO, **_1).status }).to all(eq(:error))
     end
 
     it 'raises on an invalid option' do

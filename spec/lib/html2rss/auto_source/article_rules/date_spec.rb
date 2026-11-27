@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
+  let(:now) { Time.utc(2026, 11, 20, 23, 30) }
+
   it 'reads a date scattered over fragment lines and strips it from the lines', :aggregate_failures do
     lines = ['November', '25', ',', '2026', '| 20:15 PM', 'Body text stays.']
 
@@ -16,7 +18,6 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
     expect(described_class.without_dates(['Intro line.', 'Other line.', '2026-11-27']))
       .to eq(['Intro line.', 'Other line.'])
   end
-  let(:now) { Time.utc(2026, 11, 20, 23, 30) }
 
   describe '.at_midnight' do
     it 'is local midnight of the day in the time zone' do
@@ -81,11 +82,44 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
       expect(described_class.parse_datetime('not a date', time_zone: nil, now:)).to be_nil
     end
 
-    it 'reads a date without a year in the year of now, not of the system clock', :aggregate_failures do
-      read = described_class.parse_datetime('12 Jul 10:30', time_zone: 'UTC', now:)
+    it 'returns nil for an over-long partial date' do
+      text = "12 Jul#{' ' * Html2rss::AutoSource::ArticleRules::Description::MAX_DATE_CHARS}"
 
-      expect(read.iso8601).to eq('2026-07-12T10:30:00+00:00')
-      expect(described_class.parse_datetime('10:30', time_zone: 'UTC', now:)).to be_nil
+      expect(described_class.parse_datetime(text, time_zone: nil, now:)).to be_nil
+    end
+
+    {
+      '10:30' => '2026-11-20T10:30:00+00:00',
+      '10:30:45.5' => '2026-11-20T10:30:45+00:00',
+      '10:30 +0200' => '2026-11-20T10:30:00+02:00',
+      '12th' => '2026-11-12T00:00:00+00:00',
+      'Jul' => '2026-07-01T00:00:00+00:00',
+      'Jul 12' => '2026-07-12T00:00:00+00:00',
+      '12 Jul 10:30' => '2026-07-12T10:30:00+00:00',
+      '-100' => '2026-04-10T00:00:00+00:00',
+      '100 10:30' => '2026-04-10T10:30:00+00:00',
+      '2026W471' => '2026-11-16T00:00:00+00:00',
+      'Monday' => nil,
+      'W47' => nil,
+      '31 Feb' => nil
+    }.each do |text, expected|
+      it "completes #{text.inspect} from now, not from the system clock" do
+        read = described_class.parse_datetime(text, time_zone: 'UTC', now:)
+
+        expect(read&.iso8601).to eq(expected)
+      end
+    end
+
+    it 'keeps the fraction of a second and the offset of a completed time', :aggregate_failures do
+      read = described_class.parse_datetime('10:30:45.5 +0200', time_zone: 'UTC', now:)
+
+      expect(read.sec_fraction).to eq(1 / 2r)
+      expect(read.offset).to eq(1 / 12r)
+    end
+
+    it 'completes a partial date from the day of now in the time zone' do
+      expect(described_class.parse_datetime('10:30', time_zone: 'Asia/Tokyo', now:).iso8601)
+        .to eq('2026-11-21T10:30:00+09:00')
     end
 
     it 'accepts text of exactly the maximum length' do
