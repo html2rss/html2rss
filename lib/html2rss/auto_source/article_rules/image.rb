@@ -47,7 +47,7 @@ module Html2rss
           # @param url [String] an image candidate
           # @return [Boolean] whether its path has no extension (CDN image URLs) or an image extension
           def image_url?(url)
-            extension = File.extname(url.to_s.strip.split(/[?#]/, 2).first.to_s).delete_prefix('.').downcase
+            extension = File.extname(url.to_s.strip[/\A[^?#]*/]).delete_prefix('.').downcase
             extension.empty? || IMAGE_EXTENSIONS.include?(extension)
           end
 

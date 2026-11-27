@@ -17,6 +17,12 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Image do
       expect(described_class.image_url?('https://example.com/cdn/image/123')).to be(true)
       expect(described_class.image_url?('https://example.com/files/report.pdf')).to be(false)
       expect(described_class.image_url?('https://example.com/files/report.pdf?dl=1#p')).to be(false)
+      expect(described_class.image_url?(' https://example.com/files/report.pdf#a.png')).to be(false)
+      expect(described_class.image_url?('https://example.com/img?file=a.pdf')).to be(true)
+      expect(described_class.image_url?('?a.pdf')).to be(true)
+      expect(described_class.image_url?(nil)).to be(true)
+      expect(described_class.image_url?('a.jpg ')).to be(true)
+      expect(described_class.image_url?('a.heic')).to be(true)
     end
 
     it 'keeps a pdf out of every source', :aggregate_failures do

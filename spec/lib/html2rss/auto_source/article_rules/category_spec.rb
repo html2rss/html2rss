@@ -20,6 +20,8 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
       expect(described_class.junk?('Topic', title: 'Another title: Topic')).to be(false)
       expect(described_class.junk?('Topic', title: 'No colon')).to be(false)
       expect(described_class.junk?('Topic', title: nil)).to be(false)
+      expect(described_class.junk?('Topic', title: 'Topic')).to be(false)
+      expect(described_class.junk?('topic', title: ' Topic : rest')).to be(true)
     end
   end
 
@@ -33,6 +35,10 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
     it 'keeps a value missing from one item and a single item as is', :aggregate_failures do
       expect(described_class.drop_shared([%w[News], []])).to eq([%w[News], []])
       expect(described_class.drop_shared([%w[News]])).to eq([%w[News]])
+    end
+
+    it 'drops a value shared by exactly two items' do
+      expect(described_class.drop_shared([%w[News A], %w[News B]])).to eq([%w[A], %w[B]])
     end
   end
 

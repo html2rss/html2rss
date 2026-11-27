@@ -69,8 +69,8 @@ module Html2rss
           private
 
           def title_prefix?(value, title)
-            prefix = title.to_s.split(':', 2).first if title.to_s.include?(':')
-            !prefix.nil? && prefix.strip.casecmp?(value)
+            prefix, rest = title.to_s.split(':', 2)
+            !rest.nil? && prefix.strip.casecmp?(value)
           end
 
           def class_token_match?(token)
