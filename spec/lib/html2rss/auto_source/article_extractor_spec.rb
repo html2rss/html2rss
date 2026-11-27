@@ -663,6 +663,8 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     expect(card.call('<img src="/images/photo.jpg" alt="">')).to eq('https://example.com/images/photo.jpg')
     expect(card.call('<img src="/images/photo.jpg" srcset="/images/wide.jpg 800w" alt="">'))
       .to eq('https://example.com/images/wide.jpg')
+    expect(card.call('<a href="/files/report.pdf" srcset="/files/report.pdf 800w">Report</a>'))
+      .to eq('https://example.com/posters/clip.jpg')
   end
 
   it 'gives a card without any image no image' do # rubocop:disable RSpec/ExampleLength

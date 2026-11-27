@@ -69,6 +69,10 @@ module Html2rss
     # @return [Article] a copy of this article carrying +value+ as image
     def with_image(value) = self.class.new(**@to_h, image: value)
 
+    # @param value [Array<String>] replacement category labels
+    # @return [Article] a copy of this article carrying +value+ as categories
+    def with_categories(value) = self.class.new(**@to_h, categories: value)
+
     # @param new_url [String, Html2rss::Url] replacement article URL
     # @return [Article] a copy of this article carrying +new_url+
     def with_url(new_url) = self.class.new(**@to_h, url: new_url)

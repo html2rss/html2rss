@@ -1078,6 +1078,32 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
+    context 'when every card carries the same category' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        cards = [['harbor-ferry-route-returns', 'Harbor ferry route returns'],
+                 ['city-park-opens', 'City park opens today']]
+        items = cards.map do |slug, title|
+          "<li><span class=\"category\">News</span><a href=\"/#{slug}\">#{title}</a></li>"
+        end
+        "<html><body><main><ul>#{items.join}</ul></main></body></html>"
+      end
+
+      it 'drops the shared category from every item' do
+        expect(articles.flat_map(&:categories)).to be_empty
+      end
+    end
+
+    context 'when a single card carries a category' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) do
+        '<html><body><main><ul><li><span class="category">News</span>' \
+          '<a href="/harbor-ferry-route-returns">Harbor ferry route returns</a></li></ul></main></body></html>'
+      end
+
+      it 'keeps it' do
+        expect(articles.flat_map(&:categories)).to eq(['News'])
+      end
+    end
+
     context 'with a markup date and a parent summary (card-walk shape)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:html) do
         '<html><body><main><ul><li><a href="/2024/05/03/some-story">Headline of the story</a>' \

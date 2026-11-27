@@ -11,6 +11,21 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Image do
     end
   end
 
+  describe '.image_url?' do
+    it 'accepts image or extensionless paths and rejects other extensions', :aggregate_failures do
+      expect(described_class.image_url?('https://example.com/a.JPG?w=2')).to be(true)
+      expect(described_class.image_url?('https://example.com/cdn/image/123')).to be(true)
+      expect(described_class.image_url?('https://example.com/files/report.pdf')).to be(false)
+      expect(described_class.image_url?('https://example.com/files/report.pdf?dl=1#p')).to be(false)
+    end
+
+    it 'keeps a pdf out of every source', :aggregate_failures do
+      expect(described_class.remote_src?('/files/report.pdf')).to be(false)
+      expect(described_class.largest_from_srcsets(['/files/report.pdf 800w'])).to be_nil
+      expect(described_class.best_from_styles(["background:url('/files/report.pdf')"])).to be_nil
+    end
+  end
+
   describe '.largest_from_srcsets' do
     it 'picks the largest width candidate and skips data URLs' do
       srcsets = [

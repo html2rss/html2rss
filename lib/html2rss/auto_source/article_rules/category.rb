@@ -18,7 +18,40 @@ module Html2rss
         # Hyphen/underscore/BEM separators inside a single CSS class token.
         CLASS_TOKEN_SPLIT = /[-_]+/
 
+        # A file-size label ("PDF 265 KB").
+        FILE_SIZE = /\d(?:[.,]\d+)?\s*(?:[KMGT]i?B|bytes?)\b/i
+
+        # A numeric date ("26.11.2026", "2026-11-26").
+        NUMERIC_DATE = %r{\b\d{1,2}[./]\d{1,2}[./]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b}
+
+        # Text cut off by the page ("Forschung und Ent...").
+        CUT_OFF = /(?:\.\.\.|…)\z/
+
         class << self
+          ##
+          # @param value [String] a stripped category candidate
+          # @param title [String, nil] headline whose text before a colon is not a category
+          # @return [Boolean] whether the value is a file-size label, holds a date, is cut off, or is the
+          #   title's own prefix before a colon ("Topic: rest of title")
+          def junk?(value, title: nil)
+            [FILE_SIZE, NUMERIC_DATE, CUT_OFF].any? { |pattern| value.match?(pattern) } ||
+              title_prefix?(value, title)
+          end
+
+          ##
+          # The one owner of the item-wide rule: a label every item of a feed carries says nothing about any
+          # one of them.
+          #
+          # @param category_lists [Array<Array<String>>] one category list per item
+          # @return [Array<Array<String>>] the lists without values present in all of them; unchanged for fewer
+          #   than two lists
+          def drop_shared(category_lists)
+            return category_lists if category_lists.size < 2
+
+            shared = category_lists.map { |list| list.to_set(&:downcase) }.reduce(:&)
+            category_lists.map { |list| list.reject { |value| shared.include?(value.downcase) } }
+          end
+
           ##
           # @param name [String]
           # @return [Boolean]
@@ -34,6 +67,11 @@ module Html2rss
           end
 
           private
+
+          def title_prefix?(value, title)
+            prefix = title.to_s.split(':', 2).first if title.to_s.include?(':')
+            !prefix.nil? && prefix.strip.casecmp?(value)
+          end
 
           def class_token_match?(token)
             token.downcase.split(CLASS_TOKEN_SPLIT).intersect?(CATEGORY_TERMS)

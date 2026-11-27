@@ -13,6 +13,8 @@ module Html2rss
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
       # {Html2rss::Curation::Capture::SelectorCandidates}, which owns no copy of it.
       TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
+      # Nodes whose +srcset+ is an image source.
+      SRCSET_NODES = Set[:img, :source, :picture].freeze
       # Nested blocks that mean a category node is actually a content container.
       CATEGORY_CONTAINER_NAMES = Set[:p, :article, :section].freeze
 
@@ -255,7 +257,7 @@ module Html2rss
       end
 
       def image_from_srcset
-        srcsets = @root.find_all { |n| n.attrs.srcset }.map { |n| n.attrs.srcset }
+        srcsets = @root.find_all { |n| SRCSET_NODES.include?(n.name) && n.attrs.srcset }.map { |n| n.attrs.srcset }
         ArticleRules::Image.largest_from_srcsets(srcsets)
       end
 

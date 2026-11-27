@@ -38,6 +38,14 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category::Collector do
       expect(collector.to_a).to eq(%w[Politics Launch])
     end
 
+    it 'drops file-size labels, dated, cut-off and title-prefix values', :aggregate_failures do
+      collector = described_class.new(vocabulary:, title: 'Topic: rest of the title')
+      ['PDF 265 KB', 'Forschung // 26.11.2026', 'Forschung und Entwick...', 'Topic', 'Forschung'].each do |text|
+        collector.add(text)
+      end
+      expect(collector.to_a).to eq(%w[Forschung])
+    end
+
     it 'strips surrounding whitespace before storing' do
       collector = described_class.new(vocabulary:)
       collector.add("  Politics \n")

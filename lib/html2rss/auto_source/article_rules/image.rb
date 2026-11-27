@@ -18,6 +18,8 @@ module Html2rss
         UNIT_BYTES = [119, 104].freeze
         # HTML/CSS whitespace bytes (space, tab, LF, CR, FF) treated as srcset token separators.
         WS_BYTES = [32, 9, 10, 13, 12].freeze
+        # Path extensions that name an image; any other extension (+.pdf+, +.zip+) is a document, not an image.
+        IMAGE_EXTENSIONS = %w[jpg jpeg jfif png gif webp avif apng svg bmp ico tif tiff heic heif].freeze
         # ASCII `,`.
         COMMA = 44
         # ASCII `0`.
@@ -37,8 +39,17 @@ module Html2rss
 
           ##
           # @param src [String, nil] an image URL attribute, e.g. a video +poster+
-          # @return [Boolean] whether it names a fetchable image: not blank, not an inline +data:+ URI
-          def remote_src?(src) = src.to_s.match?(/\S/) && !src.start_with?('data:')
+          # @return [Boolean] whether it names a fetchable image: not blank, not an inline +data:+ URI,
+          #   and its path is extensionless or has an image extension
+          def remote_src?(src) = src.to_s.match?(/\S/) && !src.start_with?('data:') && image_url?(src)
+
+          ##
+          # @param url [String] an image candidate
+          # @return [Boolean] whether its path has no extension (CDN image URLs) or an image extension
+          def image_url?(url)
+            extension = File.extname(url.to_s.strip.split(/[?#]/, 2).first.to_s).delete_prefix('.').downcase
+            extension.empty? || IMAGE_EXTENSIONS.include?(extension)
+          end
 
           ##
           # The one owner of which nodes carry a card image; {AutoSource::ArticleExtractor} reads its image from
@@ -69,7 +80,7 @@ module Html2rss
           def best_from_styles(style_strings)
             Array(style_strings)
               .filter_map { |style| style_url(style) }
-              .reject { |src| src.start_with?('data:') }
+              .select { |src| remote_src?(src) }
               .max_by(&:size)
           end
 
@@ -80,7 +91,7 @@ module Html2rss
             return if s.length > MAX_ATTR_CHARS
 
             each_srcset_pair(s) do |url, size|
-              next if url.start_with?('data:')
+              next unless remote_src?(url)
 
               by_size[size] = url
             end

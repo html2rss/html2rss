@@ -125,7 +125,7 @@ module Html2rss
     # @return [Extraction] unique articles with their dedup and admission drops and feed channel facts
     def extract(config:, response:, request_session:)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
-      deduped = without_tracking(capped(Article::Deduplicator.new(collected).call, config))
+      deduped = without_shared_categories(without_tracking(capped(Article::Deduplicator.new(collected).call, config)))
       enriched, enrichment = enrich(deduped, config:, request_session:)
       unique = with_url_dates(enriched, config.time_zone)
       Extraction.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,
@@ -149,6 +149,14 @@ module Html2rss
         url = article.url
         clean = url&.without_tracking_params
         clean.equal?(url) ? article : article.with_url(clean)
+      end
+    end
+
+    # The one owner of the item-wide category rule for every path: a category all items share is dropped.
+    def without_shared_categories(articles)
+      kept = AutoSource::ArticleRules::Category.drop_shared(articles.map(&:categories))
+      articles.zip(kept).map do |article, categories|
+        categories == article.categories ? article : article.with_categories(categories)
       end
     end
 
