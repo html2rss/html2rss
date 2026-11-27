@@ -6,9 +6,10 @@ RSpec.describe Html2rss::Extraction do
   let(:html) { File.read('spec/fixtures/news_front_page.html') }
   let(:url) { 'https://example.com/' }
   let(:now) { '2026-11-20T12:00:00Z' }
+  let(:page) { { url:, body: html } }
 
   describe '.call' do
-    subject(:result) { described_class.call(page: { url:, body: html }, now:) }
+    subject(:result) { described_class.call(page:, now:) }
 
     it 'returns the articles the local-file scrape returns', :aggregate_failures do
       scraped = Html2rss.scrape(url, strategy: :local_file, local_file_path: 'spec/fixtures/news_front_page.html')
@@ -35,18 +36,17 @@ RSpec.describe Html2rss::Extraction do
     end
 
     it 'dates an undated article from its URL path' do
-      page = '<html><body><article><h2><a href="/news/2024/05/12/harbor-library-plans-summer">Harbor library ' \
-             'plans a summer reading room</a></h2><p>Residents will read.</p></article></body></html>'
+      markup = '<html><body><article><h2><a href="/news/2024/05/12/harbor-library-plans-summer">Harbor library ' \
+               'plans a summer reading room</a></h2><p>Residents will read.</p></article></body></html>'
 
-      expect(described_class.call(page: { url:, body: page }, now:).articles.filter_map { _1[:published_at] })
+      expect(described_class.call(page: { url:, body: markup }, now:).articles.filter_map { _1[:published_at] })
         .to all(start_with('2024-05-12'))
     end
 
     it 'passes the options to the auto-source run' do
       allow(Html2rss::AutoSource).to receive(:new).and_call_original
 
-      described_class.call(page: { url:, body: html }, now:, limit: 3, keep_sponsored: true,
-                           keep_different_domain: true)
+      described_class.call(page:, now:, limit: 3, keep_sponsored: true, keep_different_domain: true)
       cleanup = { keep_sponsored: true, keep_different_domain: true }
 
       expect(Html2rss::AutoSource)
@@ -59,20 +59,20 @@ RSpec.describe Html2rss::Extraction do
       allow(Html2rss::AutoSource).to receive(:new).and_return(instance_double(Html2rss::AutoSource, articles: [article, article],
                                                                                                     admission_drops: {}, feed_channel: nil))
 
-      expect(described_class.call(page: { url:, body: html }, now:).articles.size).to eq(1)
+      expect(described_class.call(page:, now:).articles.size).to eq(1)
     end
 
     it 'strips tracking params from the item URLs' do
-      page = '<html><body><article><h2><a href="/news/harbor-library-plans-summer?utm_source=feed">Harbor library ' \
-             'plans a summer reading room</a></h2><p>Residents will read.</p></article></body></html>'
+      markup = '<html><body><article><h2><a href="/news/harbor-library-plans-summer?utm_source=feed">Harbor library ' \
+               'plans a summer reading room</a></h2><p>Residents will read.</p></article></body></html>'
 
-      expect(described_class.call(page: { url:, body: page }, now:).articles.map { _1[:url] }).to all(satisfy {
+      expect(described_class.call(page: { url:, body: markup }, now:).articles.map { _1[:url] }).to all(satisfy {
         !_1.include?('utm_')
       })
     end
 
     it 'keeps the requested limit' do
-      expect(described_class.call(page: { url:, body: html }, now:, limit: 3).articles.size).to eq(3)
+      expect(described_class.call(page:, now:, limit: 3).articles.size).to eq(3)
     end
 
     it 'reports a page without articles as empty' do
@@ -87,11 +87,9 @@ RSpec.describe Html2rss::Extraction do
     end
 
     it 'reads a date the page leaves without a year in the year of now, deterministically', :aggregate_failures do
-      page = '<html><body><article><h2><a href="/news/harbor-library-plans-summer">Harbor library plans a summer ' \
-             'reading room</a></h2><time datetime="12 Jul 10:30">12 Jul</time><p>Residents read.</p></article></body></html>'
-      dates = lambda do |at|
-        described_class.call(page: { url:, body: page }, now: at).articles.map { _1[:published_at] }
-      end
+      markup = '<html><body><article><h2><a href="/news/harbor-library-plans-summer">Harbor library plans a summer ' \
+               'reading room</a></h2><time datetime="12 Jul 10:30">12 Jul</time></article></body></html>'
+      dates = ->(at) { described_class.call(page: { url:, body: markup }, now: at).articles.map { _1[:published_at] } }
 
       expect(dates.call(now)).to eq(['2026-07-12T10:30:00+00:00'])
       expect(dates.call(now)).to eq(dates.call(now))
@@ -109,7 +107,7 @@ RSpec.describe Html2rss::Extraction do
     end
 
     it 'raises on a now that is not an ISO 8601 time' do
-      expect { described_class.call(page: { url:, body: html }, now: 'yesterday') }.to raise_error(Html2rss::InvalidOption)
+      expect { described_class.call(page:, now: 'yesterday') }.to raise_error(Html2rss::InvalidOption)
     end
 
     context 'with a page that advertises a native feed' do
@@ -155,7 +153,7 @@ RSpec.describe Html2rss::Extraction do
     end
 
     it 'raises on an invalid option' do
-      expect { described_class.call(page: { url:, body: html }, now:, limit: 0) }.to raise_error(Html2rss::InvalidOption)
+      expect { described_class.call(page:, now:, limit: 0) }.to raise_error(Html2rss::InvalidOption)
     end
   end
 
