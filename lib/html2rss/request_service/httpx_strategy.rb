@@ -6,6 +6,7 @@ require 'httpx/plugins/callbacks'
 require 'httpx/plugins/ssrf_filter'
 require 'httpx/plugins/brotli'
 require 'httpx/plugins/retries'
+require 'httpx/plugins/stream'
 
 module Html2rss
   class RequestService
@@ -39,6 +40,7 @@ module Html2rss
                             .plugin(:callbacks)
                             .plugin(:brotli)
                             .plugin(:retries, **RETRY_OPTIONS)
+                            .plugin(:stream)
         end
 
         # @return [HTTPX::Session]
@@ -111,7 +113,6 @@ module Html2rss
       end
 
       def redirect_limit_reached?(response)
-        return false unless response.is_a?(HTTPX::Response)
         return false if response.status == 304
         return false unless (300..399).cover?(response.status)
 
@@ -163,16 +164,13 @@ module Html2rss
       def execute_http_request(deadline:)
         validate_request!
         session = session_client(deadline)
-        response = http_get(session)
-        raise response.error if response.is_a?(HTTPX::ErrorResponse)
-
-        response
+        BodyReader.new(http_get(session), policy: ctx.policy, url: request_url).read
       end
 
       # GET only. Overflow here is HTTPX retry recursion; the same error from
       # redirect handling or body decode must stay loud.
       def http_get(session)
-        session.get(request_url.to_s, headers: ctx.headers)
+        session.get(request_url.to_s, headers: ctx.headers, stream: true)
       rescue SystemStackError
         raise HTTPX::ConnectionError, 'HTTPX retry recursion exhausted'
       end
@@ -224,7 +222,7 @@ module Html2rss
       def build_response(response)
         headers = response.headers.to_h
         Response.new(
-          body: CompressedBody.decode(response.body.to_s, headers:),
+          body: CompressedBody.decode(response.body, headers:),
           headers:,
           url: response_url(response),
           status: response.status

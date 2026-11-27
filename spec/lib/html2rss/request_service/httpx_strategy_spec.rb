@@ -81,6 +81,41 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
   end
 
+  # rubocop:disable-next RSpec/ExampleLength -- one request, three wiring facts
+  it 'forwards request headers, keeps response headers and classifies the body against the request URL',
+     :aggregate_failures do
+    ctx = Html2rss::RequestService::Context.new(url: 'https://example.com', headers: { 'X-Probe' => '1' }, policy:,
+                                                budget:)
+    stub_request(:get, 'https://example.com')
+      .to_return(status: 200, body: "<html>hello</html>#{' ' * 2000}", headers: { 'Content-Type' => 'text/html' })
+
+    result = described_class.new(ctx).execute
+
+    expect(a_request(:get, 'https://example.com').with(headers: { 'X-Probe' => '1' })).to have_been_made
+    expect(result.headers).to include('content-type' => 'text/html')
+    expect(policy).to have_received(:max_decompressed_bytes_for).with(an_object_having_attributes(url: ctx.url)).twice
+  end
+
+  context 'with the real per-type byte caps' do
+    let(:policy) { Html2rss::RequestService::Policy.new }
+
+    it 'rejects an HTML body over the HTML cap although the feed cap would allow it' do
+      body = "<html>#{'a' * (11 * 1024 * 1024)}</html>"
+      stub_request(:get, 'https://example.com')
+        .to_return(status: 200, body:, headers: { 'Content-Type' => 'text/html' })
+
+      expect { execute }.to raise_error(Html2rss::RequestService::ResponseTooLarge, /10485760 bytes/)
+    end
+
+    it 'accepts a feed between the HTML cap and the feed cap' do
+      body = "<rss version=\"2.0\"><channel><title>t</title>#{'<!-- -->' * (2 * 1024 * 1024)}</channel></rss>"
+      stub_request(:get, 'https://example.com')
+        .to_return(status: 200, body:, headers: { 'Content-Type' => 'application/rss+xml' })
+
+      expect(execute.body.bytesize).to eq(body.bytesize)
+    end
+  end
+
   [
     {
       label: 'gzip',
@@ -266,13 +301,13 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     it 'retries TimeoutError in Ruby without consuming extra budget slots', :aggregate_failures do
       session = instance_double(HTTPX::Session)
       timeout = HTTPX::TimeoutError.new({ request_timeout: 5 }, 'timed out')
-      raw_response = instance_double(
-        HTTPX::Response,
+      raw_response = double( # rubocop:disable RSpec/VerifiedDoubles -- StreamResponse delegates via method_missing
+        'stream',
         status: 200,
-        body: StringIO.new('<html>ok</html>'),
         headers: instance_double(HTTPX::Headers, to_h: { 'content-type' => 'text/html' }),
         uri: URI('https://example.com')
       )
+      allow(raw_response).to receive(:each).and_yield('<html>ok</html>')
       outcomes = [timeout, timeout, raw_response]
       allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
       allow(session).to receive(:with).and_return(session)
@@ -302,14 +337,16 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     it 'spends one slot across transport retries and a terminal-redirect retry', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario, one pinned count
       session = instance_double(HTTPX::Session)
       timeout = HTTPX::TimeoutError.new({ request_timeout: 5 }, 'timed out')
-      redirect = instance_double(HTTPX::Response, status: 301, uri: URI('https://example.com'),
-                                                  headers: { 'location' => 'https://example.com/terminal' })
-      ok = instance_double(
-        HTTPX::Response, status: 200, body: StringIO.new('<html>ok</html>'), uri: URI('https://example.com/terminal'),
-                         headers: instance_double(HTTPX::Headers, to_h: { 'content-type' => 'text/html' })
+      # rubocop:disable RSpec/VerifiedDoubles -- StreamResponse delegates via method_missing
+      redirect = double('stream', status: 301, uri: URI('https://example.com'),
+                                  headers: { 'location' => 'https://example.com/terminal' })
+      ok = double(
+        'stream', status: 200, uri: URI('https://example.com/terminal'),
+                  headers: instance_double(HTTPX::Headers, to_h: { 'content-type' => 'text/html' })
       )
-      allow(redirect).to receive(:is_a?).and_return(false)
-      allow(redirect).to receive(:is_a?).with(HTTPX::Response).and_return(true)
+      # rubocop:enable RSpec/VerifiedDoubles
+      allow(redirect).to receive(:each)
+      allow(ok).to receive(:each).and_yield('<html>ok</html>')
       outcomes = [timeout, timeout, redirect, ok]
       allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
       allow(session).to receive(:with).and_return(session)
@@ -326,13 +363,13 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     let(:deadline_probe) do
       timeouts = {}
       session = instance_double(HTTPX::Session)
-      raw_response = instance_double(
-        HTTPX::Response,
+      raw_response = double( # rubocop:disable RSpec/VerifiedDoubles -- StreamResponse delegates via method_missing
+        'stream',
         status: 200,
-        body: StringIO.new('<html>ok</html>'),
         headers: instance_double(HTTPX::Headers, to_h: { 'content-type' => 'text/html' }),
         uri: URI('https://example.com')
       )
+      allow(raw_response).to receive(:each).and_yield('<html>ok</html>')
       allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
       allow(session).to receive(:with) do |options|
         timeouts.replace(options.fetch(:timeout))
