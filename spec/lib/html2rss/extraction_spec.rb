@@ -57,6 +57,13 @@ RSpec.describe Html2rss::Extraction do
       expect(described_class.call(html:, url:).articles.size).to eq(1)
     end
 
+    it 'strips tracking params from the item URLs' do
+      page = '<html><body><article><h2><a href="/news/harbor-library-plans-summer?utm_source=feed">Harbor library ' \
+             'plans a summer reading room</a></h2><p>Residents will read.</p></article></body></html>'
+
+      expect(described_class.call(html: page, url:).articles.map { _1[:url] }).to all(satisfy { !_1.include?('utm_') })
+    end
+
     it 'keeps the requested limit' do
       expect(described_class.call(html:, url:, limit: 3).articles.size).to eq(3)
     end
@@ -89,6 +96,20 @@ RSpec.describe Html2rss::Extraction do
       expect(described_class.unique(articles, limit: nil).map(&:title)).to eq(%w[A B C])
       expect(described_class.unique(articles, limit: 2).map(&:title)).to eq(%w[A B])
       expect(described_class.unique(articles).map(&:title)).to eq(%w[A B C])
+    end
+  end
+
+  describe '.without_tracking' do
+    let(:tracked) { Html2rss::Article.new(url: 'https://example.com/a?utm_source=x&id=1', title: 'A') }
+    let(:clean) { Html2rss::Article.new(url: 'https://example.com/b', title: 'B') }
+    let(:linkless) { Html2rss::Article.new(title: 'C') }
+
+    it 'strips tracking params from item URLs and keeps untouched articles as they are', :aggregate_failures do
+      result = described_class.without_tracking([tracked, clean, linkless])
+
+      expect(result.map { _1.url&.to_s }).to eq(['https://example.com/a?id=1', 'https://example.com/b', nil])
+      expect(result.drop(1)).to eq([clean, linkless])
+      expect(result.last).to equal(linkless)
     end
   end
 
