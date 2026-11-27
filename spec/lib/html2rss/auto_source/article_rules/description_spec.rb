@@ -125,4 +125,58 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
       expect(described_class.from_lines([line, 'Kept dek'], vocabulary: zh)).to eq('Kept dek')
     end
   end
+
+  describe 'card text read as a description' do
+    let(:de) { Html2rss::Vocabulary[:de] }
+    let(:dek) { 'The team announced a new reactor design that cuts build time in half.' }
+
+    def describe_text(text, scope = vocabulary)
+      lines = described_class.lines_from(text)
+      described_class.from_lines(lines, vocabulary: scope)
+    end
+
+    it 'drops a share row and keeps the dek', :aggregate_failures do
+      expect(describe_text("- Teilen auf Facebook\n- Teilen auf Bluesky\nEin Satz, der bleibt.", de))
+        .to eq('Ein Satz, der bleibt.')
+      expect(describe_text("Share on Facebook\n#{dek}")).to eq(dek)
+    end
+
+    it 'drops a call to action and a reading time', :aggregate_failures do
+      expect(describe_text("Zur Merkliste hinzufügen\n3 Min\n#{dek}", de)).to eq(dek)
+      expect(describe_text("5 Minuten\n4 min.\n#{dek}")).to eq(dek)
+    end
+
+    it 'keeps a line that merely starts with a number and Min', :aggregate_failures do
+      expect(describe_text('3 Min Delay Hits Trains')).to eq('3 Min Delay Hits Trains')
+      expect(described_class.keep?('3 Min', vocabulary:)).to be(false)
+    end
+
+    it 'drops a leading photo credit but not a later one', :aggregate_failures do
+      expect(describe_text("© Example Org\n#{dek}")).to eq(dek)
+      expect(describe_text("Foto: A. Person\n#{dek}")).to eq(dek)
+      expect(describe_text("A. Person – example.com\n#{dek}")).to eq(dek)
+      later = "Opening dek line here.\nPhoto: A. Person"
+      expect(describe_text(later)).to eq(later)
+    end
+
+    it 'drops a short leading label before a longer paragraph', :aggregate_failures do
+      expect(describe_text("- Announcement\n#{dek}")).to eq(dek)
+      expect(describe_text("Category SDK Published\n#{dek}")).to eq(dek)
+      expect(describe_text('Category SDK Published')).to eq('Category SDK Published')
+    end
+
+    it 'joins list fragments into prose' do
+      expect(describe_text("#{dek}\n- Solar\n- Wind\n- Hydro")).to eq("#{dek}\nSolar, Wind, Hydro")
+    end
+
+    it 'keeps a list of sentences as a list' do
+      text = "- Trains run late today.\n- Buses replace the line."
+      expect(describe_text(text)).to eq(text)
+    end
+
+    it 'keeps a mixed list as a list' do
+      text = "- Solar\n- Buses replace the line."
+      expect(describe_text(text)).to eq(text)
+    end
+  end
 end

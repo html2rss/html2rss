@@ -40,7 +40,9 @@ module Html2rss
           /jetzt\s+(?:anmelden|registrieren)(?=[\s\p{P}\p{S}]*\z)/,
           /(?:diesen\s+)?artikel\s+teilen(?=[\s\p{P}\p{S}]*\z)/,
           /kommentare\s+(?:zum|zu\s+diesem)\s+artikel(?=[\s\p{P}\p{S}]*\z)/,
-          /kommentar\s+schreiben(?=[\s\p{P}\p{S}]*\z)/
+          /kommentar\s+schreiben(?=[\s\p{P}\p{S}]*\z)/,
+          # Share and bookmark widgets lead a card's text ("Teilen auf Facebook Teilen auf Bluesky").
+          'teilen auf', 'zur merkliste'
         ],
         read_more: [
           'weiterlesen', 'weiter lesen', 'mehr lesen', 'mehr erfahren', 'mehr dazu', 'mehr zum thema',
