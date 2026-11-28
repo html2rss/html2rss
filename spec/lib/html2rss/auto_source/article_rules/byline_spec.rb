@@ -51,6 +51,29 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Byline do
     end
   end
 
+  describe 'properties' do
+    it 'reads an author as a short substring of the normalised input', :aggregate_failures, :property do
+      forall(TextGenerators.byline_soup) do |line|
+        author = described_class.author_of(line)
+        normalised = line.gsub(/[[:space:]]+/, ' ').strip
+        expect(author.nil? || (author.length <= described_class::MAX_CHARS && normalised.include?(author))).to be(true)
+      end
+    end
+
+    it 'is total over any text', :property do
+      forall(TextGenerators.valid_text) do |text|
+        expect { described_class.first_author([text, text]) }.not_to raise_error
+      end
+    end
+
+    it 'reads the longest regexp inputs and 50_000 character lines in bounded time' do
+      texts = TextGenerators.adversarial_texts(prefix: 'By A', length: described_class::MAX_CHARS) +
+              TextGenerators.adversarial_texts(prefix: 'By A')
+      seconds = TextGenerators.slowest_seconds(texts) { |text| described_class.author_of(text) }
+      expect(seconds).to be < TextGenerators::TIME_BUDGET
+    end
+  end
+
   describe '.date_head' do
     it 'returns the date head of a dated byline only', :aggregate_failures do
       expect(described_class.date_head("27 Nov 2026  /  by Anna Beispiel\n")).to eq('27 Nov 2026')

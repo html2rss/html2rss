@@ -60,6 +60,36 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
     end
   end
 
+  describe 'leftover text properties' do
+    let(:soup) { TextGenerators.html_soup(exclude: ['__NEWLINE_PLACEHOLDER__']) }
+    let(:words_of) { ->(text) { text.to_s.split(/[[:space:]]+/).reject(&:empty?) } }
+
+    it 'reads lines_from as a fixpoint over words of the input', :aggregate_failures,
+       :property do
+      forall(soup) do |text|
+        lines = described_class.lines_from(text)
+        expect(described_class.lines_from(lines.join("\n"))).to eq(lines)
+        expect(words_of.call(lines.join(' ')) - words_of.call(text)).to be_empty
+      end
+    end
+
+    # Not a fixpoint: each pass can peel one more leading label or credit line.
+    it 'reads from_lines as words of the input and never raises', :aggregate_failures, :property do
+      forall(TextGenerators.valid_text, soup) do |any, text|
+        expect { described_class.from_lines(described_class.lines_from(any), vocabulary:) }.not_to raise_error
+        output = described_class.from_lines(described_class.lines_from(text), vocabulary:)
+        expect(words_of.call(output) - words_of.call(text)).to be_empty
+      end
+    end
+
+    it 'reads a 50_000 character adversarial text in bounded time' do
+      seconds = TextGenerators.slowest_seconds(TextGenerators.adversarial_texts) do |text|
+        described_class.from_lines(described_class.lines_from(text), vocabulary:)
+      end
+      expect(seconds).to be < TextGenerators::TIME_BUDGET
+    end
+  end
+
   describe 'card text read as a description' do
     let(:de) { Html2rss::Vocabulary[:de] }
     let(:dek) { 'The team announced a new reactor design that cuts build time in half.' }

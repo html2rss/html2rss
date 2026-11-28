@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'benchmark'
 require 'prop_check'
 
 # Text generators for +:property+ examples: tag soup, URL-like strings and regexp-like strings.
@@ -59,6 +60,12 @@ module TextGenerators
     PropCheck::Generators.one_of(url_soup(exclude:), raw_bytes, PropCheck::Generators.printable_ascii_string)
   end
 
+  # Page text reaches the article rules scrubbed (Response decodes and scrubs), so rule properties draw valid UTF-8.
+  # @return [PropCheck::Generator] {any_text} with invalid byte sequences replaced
+  def valid_text
+    any_text.map(&:scrub)
+  end
+
   REGEXP_PIECES = [
     '(', ')', '(?:', '(?<n>', '(?=', '(?!', '(?i)', '[', ']', '[^', '[[:alpha:]]', '{', '}',
     '{2,3}', '{,2}', '{2,}', '*', '+', '?', '*?', '++', '|', '\\', '\\1', '\\k<n>', '\\p{Alpha}',
@@ -76,5 +83,53 @@ module TextGenerators
     quantifier = pick(QUANTIFIERS)
     PropCheck::Generators.tuple(pick(%w[a [ab] . \\d]), quantifier, quantifier)
                          .map { |atom, inner, outer| "(#{atom}#{inner})#{outer}" }
+  end
+
+  LINE_PIECES = [
+    'November', '25', ',', '2026', '2026-11-27', '12 Nov 2026', '| 20:15 PM', 'Press release • 16 juli, 2026',
+    'Body text stays here and runs long enough to be a paragraph.', 'By Anna Beispiel', 'Read more', '3 Min',
+    'Photo: Anna', '- item', 'Topic:', 'Press releases', 'x', '', ' '
+  ].freeze
+
+  # @return [PropCheck::Generator] lists of short leftover lines, dates, chrome and prose mixed
+  def line_soup
+    PropCheck::Generators.array(pick(LINE_PIECES), max: 10).map { |lines| lines.map(&:dup) }
+  end
+
+  BYLINE_PIECES = [
+    'By ', 'by ', 'Von ', 'Anna', ' Beispiel', ' and ', ' und ', ', ', '&', ' van ', ' The ', ' of ', ' ', '.', '!',
+    '27 Nov 2026 / ', ' / ', "\u00A0", "\n", 'x'
+  ].freeze
+
+  # @return [PropCheck::Generator] byline-shaped strings built from {BYLINE_PIECES}
+  def byline_soup
+    PropCheck::Generators.array(pick(BYLINE_PIECES), max: 12).map(&:join)
+  end
+
+  CATEGORY_POOL = %w[News news NEWS Sport sport Art Tech].freeze
+
+  # @return [PropCheck::Generator] up to five lists of category values drawn from a small mixed-case pool
+  def category_lists
+    PropCheck::Generators.array(PropCheck::Generators.array(pick(CATEGORY_POOL), max: 4), max: 5)
+  end
+
+  ADVERSARIAL_UNITS = [' ', ', ', ' and ', 'und ', '1,', 'a.', '- ', ' / '].freeze
+
+  # Generous wall budget in seconds for one adversarial input; a superlinear regexp takes minutes at 50_000.
+  TIME_BUDGET = 5
+
+  # @param prefix [String] text before the repeated unit
+  # @param suffix [String] text after it
+  # @param length [Integer] total length of the repeated part, in characters
+  # @return [Array<String>] one string per {ADVERSARIAL_UNITS} entry, cut to +length+
+  def adversarial_texts(prefix: '', suffix: '', length: 50_000)
+    ADVERSARIAL_UNITS.map { |unit| "#{prefix}#{(unit * ((length / unit.length) + 1))[0, length]}#{suffix}" }
+  end
+
+  # @param texts [Array<String>]
+  # @yieldparam text [String]
+  # @return [Float] the longest wall time of the block over +texts+
+  def slowest_seconds(texts)
+    texts.map { |text| Benchmark.realtime { yield text } }.max
   end
 end
