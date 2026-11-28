@@ -22,6 +22,10 @@ module Html2rss
         wait_for_complete_page_load user_agent headers cookies window_size lang headless proxy
       ].freeze
 
+      # Navigation-only headers Chromium sets itself (lowercase). Forwarded values are applied to every request,
+      # including the page's own XHR/fetch calls, which then fail and keep JS-rendered content from appearing.
+      BROWSER_OWNED_NAVIGATION_HEADER = /\A(sec-fetch-|upgrade-insecure-requests\z)/
+
       # OpenAPI WindowSize required keys (positive integers).
       WINDOW_SIZE_PROPERTIES = %i[width height].freeze
 
@@ -299,7 +303,7 @@ module Html2rss
       def request_payload
         payload = { url: url.to_s }.merge(filtered_options)
         forwarded_headers = merged_headers
-        payload[:headers] = forwarded_headers if forwarded_headers&.any?
+        forwarded_headers ? payload[:headers] = forwarded_headers : payload.delete(:headers)
         cap_wait_timeout!(payload)
         merge_cookies!(payload)
         payload
@@ -332,7 +336,8 @@ module Html2rss
         explicit = options[:headers] || {}
         base = headers.is_a?(Hash) ? headers : {}
         merged = base.merge(explicit).transform_keys(&:to_s).compact
-        merged.empty? ? nil : merged
+        merged.reject! { |name, _| name.downcase.match?(BROWSER_OWNED_NAVIGATION_HEADER) }
+        merged unless merged.empty?
       end
 
       def filtered_options
