@@ -106,4 +106,28 @@ module PropertyGenerators
   def any_text(exclude: [])
     PropCheck::Generators.one_of(url_soup(exclude:), raw_bytes, PropCheck::Generators.printable_ascii_string)
   end
+
+  REGEXP_PIECES = [
+    '(', ')', '(?:', '(?<n>', '(?=', '(?!', '(?i)', '[', ']', '[^', '[[:alpha:]]', '{', '}',
+    '{2,3}', '{,2}', '{2,}', '*', '+', '?', '*?', '++', '|', '\\', '\\1', '\\k<n>', '\\p{Alpha}',
+    '\\h', '/', '/x/i', '^', '$', '.', '-', 'a', 'b', ' ', "\n", "\u00fc", '#'
+  ].freeze
+  QUANTIFIERS = ['*', '+', '?', '{2,}', '{1,3}', '*?', '++'].freeze
+
+  # @return [PropCheck::Generator] regexp-like strings, mostly malformed, built from {REGEXP_PIECES}
+  def regexp_soup
+    PropCheck::Generators.array(PropCheck::Generators.one_of(*REGEXP_PIECES.map do |piece|
+      PropCheck::Generators.constant(piece)
+    end), max: 12)
+                         .map(&:join)
+  end
+
+  # @return [PropCheck::Generator] well-formed patterns whose quantified group contains a quantified atom
+  def nested_quantifier_pattern
+    quantifier = PropCheck::Generators.one_of(*QUANTIFIERS.map { |piece| PropCheck::Generators.constant(piece) })
+    PropCheck::Generators.tuple(PropCheck::Generators.one_of(*%w[a [ab] . \\d].map do |atom|
+      PropCheck::Generators.constant(atom)
+    end),
+                                quantifier, quantifier).map { |atom, inner, outer| "(#{atom}#{inner})#{outer}" }
+  end
 end

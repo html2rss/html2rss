@@ -105,6 +105,14 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
   # Ordinary YAML must stay valid. Nested quantifiers, the character cap, and unparsable
   # patterns are the rejects. Overlapping alternation stays accepted (star-height residual).
   describe '.compiled_pattern' do
+    let(:attempt) do
+      lambda do |&build|
+        build.call
+      rescue Html2rss::InvalidOption => error
+        error
+      end
+    end
+
     ordinary_patterns = [
       { label: 'literal replacement', pattern: 'boo', value: 'Foo bar and boo', replacement: 'baz',
         expected: 'Foo bar and baz' },
@@ -120,6 +128,25 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       { label: 'overlapping alternation', pattern: '(a|aa)+', value: 'aaa', replacement: 'x', expected: 'x' },
       { label: 'quantifier inside a group', pattern: '(a+)b', value: 'aab', replacement: 'x', expected: 'x' }
     ].freeze
+
+    it 'compiles any string to a Regexp or raises InvalidOption, never a core error', :property do
+      forall(PropertyGenerators.regexp_soup) do |pattern|
+        outcome = attempt.call { described_class.compiled_pattern(pattern) }
+        expect(outcome).to be_a(Regexp).or be_a(Html2rss::InvalidOption)
+      end
+    end
+
+    it 'rejects every pattern that quantifies a group holding a quantified atom', :property do
+      forall(PropertyGenerators.nested_quantifier_pattern) do |pattern|
+        expect { described_class.compiled_pattern(pattern) }
+          .to raise_error(Html2rss::InvalidOption, /nested quantifiers/)
+      end
+    end
+
+    it 'raises InvalidOption for a pattern the parser accepts but Ruby rejects', :aggregate_failures do
+      expect { described_class.compiled_pattern('[]') }.to raise_error(Html2rss::InvalidOption)
+      expect { described_class.compiled_pattern('[z-a]') }.to raise_error(Html2rss::InvalidOption)
+    end
 
     it 'publishes a 256-character pattern cap' do
       expect(described_class::MAX_PATTERN_LENGTH).to eq(256)
