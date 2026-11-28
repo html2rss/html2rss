@@ -179,7 +179,7 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
       expect(described_class.date_shaped?("a - #{'  ' * 5_000}")).to be(false)
     end
 
-    it 'accepts a Nokia-shaped pipe date with spaced comma and clock zone' do
+    it 'accepts a pipe date with spaced comma and clock zone' do
       expect(described_class.date_shaped?('August 06 , 2026 | 13:00 PM Europe/Amsterdam')).to be(true)
     end
 
@@ -190,12 +190,12 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
         .to be(false)
     end
 
-    it 'accepts a Telenor-shaped leading type-chip with juli' do
+    it 'accepts a leading type-chip date with juli' do
       expect(described_class.date_shaped?('Press release • 16 juli, 2026')).to be(true)
     end
   end
 
-  describe '.date_core Nokia/Telenor fragments' do
+  describe '.date_core pipe clock and chip fragments' do
     it 'keeps the calendar day from a pipe clock line' do
       expect(described_class.date_core('August 06 , 2026 | 13:00 PM Europe/Amsterdam'))
         .to match(/August 06\s*,?\s*2026/)

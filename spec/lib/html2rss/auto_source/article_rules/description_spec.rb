@@ -6,7 +6,7 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
   describe '.keep?' do
     let(:date_rules) { Html2rss::AutoSource::ArticleRules::Date }
 
-    it 'drops a Telenor-shaped type-chip date line' do
+    it 'drops a leading type-chip date line' do
       expect(described_class.keep?('Press release • 16 juli, 2026', vocabulary:)).to be(false)
     end
 
@@ -27,7 +27,7 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
                                    vocabulary:)).to be(true)
     end
 
-    it 'still drops a Nokia-shaped pipe clock line as description chrome' do
+    it 'still drops a pipe clock date line as description chrome' do
       expect(described_class.keep?('August 06 , 2026 | 13:00 PM Europe/Amsterdam', vocabulary:)).to be(false)
     end
 
