@@ -77,7 +77,7 @@ module Html2rss
           image: extract_image,
           description: description_from(lines, title),
           id: parse_id_from_dom,
-          published_at:, author: ArticleRules::Description::Byline.first_author(lines),
+          published_at:, author: ArticleRules::Byline.first_author(lines),
           enclosures: extract_enclosures,
           categories: extract_categories(title, root:)
         }
@@ -273,7 +273,13 @@ module Html2rss
 
       def extract_published_at(lines, root: @root)
         datetimes = root.each_node.map { |n| n.attrs.datetime }
-        ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
+        ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone) ||
+          ArticleRules::Date.earliest(datetimes, leftover_lines: byline_date_heads(lines), time_zone: @time_zone)
+      end
+
+      # The date head of each "<date> / by X" byline line; a fallback when nothing else in the card dates it.
+      def byline_date_heads(lines)
+        lines.filter_map { |line| ArticleRules::Byline.date_head(line) }
       end
 
       # The date of a chip the headline title left out, when nothing else in the card dates it.

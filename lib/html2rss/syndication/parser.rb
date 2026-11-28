@@ -73,7 +73,8 @@ module Html2rss
           article(
             Url.resolve_web(item.link, base_url), media,
             id: item.guid&.content, title: item.title, description: item.description,
-            published_at: item.pubDate, author: item.author, categories: item.categories.map(&:content)
+            published_at: item.pubDate, author: item.author || item.dc_creator,
+            categories: item.categories.map(&:content)
           )
         end
 

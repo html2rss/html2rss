@@ -10,6 +10,7 @@ module Html2rss
   # Channel field projection:
   # - Rss: language, title, description, ttl, link, updated, managingEditor (author in email form only)
   #   (+ itunes:image, itunes:author, itunes:category, itunes:explicit on a media feed)
+  #   Items: author in email form only, other names as dc:creator
   # - JsonFeed: title, home_page_url, description, language, icon, authors (+ feed_url)
   module FeedBuilder
   end

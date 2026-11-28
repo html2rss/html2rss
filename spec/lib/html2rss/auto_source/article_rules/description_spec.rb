@@ -3,124 +3,10 @@
 RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
   let(:vocabulary) { Html2rss::Vocabulary[nil] }
 
-  describe '.date_core' do
-    it 'strips a known type-chip suffix after a dash', :aggregate_failures do
-      expect(described_class.date_core('12 March 2024 - News article')).to eq('12 March 2024')
-      expect(described_class.date_core('12 March 2024 – Press release')).to eq('12 March 2024')
-      expect(described_class.date_core('12 March 2024 — News')).to eq('12 March 2024')
-    end
-
-    it 'leaves lines without a type-chip suffix unchanged' do
-      expect(described_class.date_core('12 March 2024 - something else'))
-        .to eq('12 March 2024 - something else')
-    end
-  end
-
-  describe '.date_shaped?' do
-    it 'reads a byline as an author name only when it is name-shaped', :aggregate_failures do
-      expect(described_class::Byline.author_of('Von Anna Beispiel')).to eq('Anna Beispiel')
-      expect(described_class::Byline.author_of('27 Nov 2026 / by Anna van Beispiel')).to eq('Anna van Beispiel')
-      expect(described_class::Byline.author_of('By the end of the year')).to be_nil
-      expect(described_class::Byline.author_of('Tram news / by Anna Beispiel')).to be_nil
-      expect(described_class::Byline.author_of(nil)).to be_nil
-    end
-
-    it 'keeps prose and function-word lines out of bylines', :aggregate_failures do
-      ['By Land and Sea', 'By The Associated Press', 'By Order of the King', 'Von Die Zeit',
-       'By Anna Maria Beispiel Jones Smith'].each do |line|
-        expect(described_class::Byline.author_of(line)).to be_nil
-      end
-    end
-
-    it 'reads a one-word name, a particle name and two full names', :aggregate_failures do
-      expect(described_class::Byline.author_of('By Beispiel')).to eq('Beispiel')
-      expect(described_class::Byline.author_of('Von Ursula von der Beispiel')).to eq('Ursula von der Beispiel')
-      expect(described_class::Byline.author_of('By Anna Beispiel and Bob Muster')).to eq('Anna Beispiel and Bob Muster')
-    end
-
-    it 'collapses and trims whitespace before reading a byline', :aggregate_failures do
-      expect(described_class::Byline.author_of("  By Anna Beispiel \n")).to eq('Anna Beispiel')
-      expect(described_class::Byline.author_of('By  Anna   Beispiel')).to eq('Anna Beispiel')
-      expect(described_class::Byline.author_of("By\u00A0Anna\u00A0\u00A0Beispiel")).to eq('Anna Beispiel')
-    end
-
-    it 'reads a byline of exactly the label length but not one character more', :aggregate_failures do
-      at_limit = "By A#{'a' * (described_class::MAX_LABEL_CHARS - 4)}"
-
-      expect(at_limit.length).to eq(described_class::MAX_LABEL_CHARS)
-      expect(described_class::Byline.author_of(at_limit)).to eq(at_limit.delete_prefix('By '))
-      expect(described_class::Byline.author_of("#{at_limit}a")).to be_nil
-    end
-
-    it 'does not read a byline that ends like a sentence' do
-      expect(described_class::Byline.author_of('By Anna Beispiel.')).to be_nil
-    end
-
-    it 'takes the author of the first byline line', :aggregate_failures do
-      lines = ['A headline without author', 'By Anna Beispiel', 'By Bert Muster']
-
-      expect(described_class::Byline.first_author(lines)).to eq('Anna Beispiel')
-      expect(described_class::Byline.first_author(lines.drop(1))).to eq('Anna Beispiel')
-      expect(described_class::Byline.first_author(lines.first(1))).to be_nil
-      expect(described_class::Byline.first_author([])).to be_nil
-    end
-
-    it 'reads a digitless line without peeling or matching date shapes', :aggregate_failures do
-      allow(described_class).to receive(:date_core).and_call_original
-
-      expect(described_class.date_shaped?('Press releases')).to be(false)
-      expect(described_class.date_shaped?(nil)).to be(false)
-      expect(described_class).not_to have_received(:date_core)
-      expect(described_class.date_shaped?('2024-03-12')).to be(true)
-    end
-
-    it 'accepts whole-line date shapes', :aggregate_failures do
-      expect(described_class.date_shaped?('2024-03-12')).to be(true)
-      expect(described_class.date_shaped?('2024-03-12T12:00:00Z')).to be(true)
-      expect(described_class.date_shaped?('12/03/2024')).to be(true)
-      expect(described_class.date_shaped?('12 March 2024')).to be(true)
-      expect(described_class.date_shaped?('March 12, 2024')).to be(true)
-    end
-
-    it 'accepts a date with a type-chip suffix' do
-      expect(described_class.date_shaped?('12 March 2024 - News article')).to be(true)
-    end
-
-    it 'normalizes unicode space before matching' do
-      expect(described_class.date_shaped?("12\u00A0March\u00A02024")).to be(true)
-    end
-
-    it 'rejects teasers and space-padded junk', :aggregate_failures do
-      expect(described_class.date_shaped?('On 12 March 2024 the company ordered vessels')).to be(false)
-      expect(described_class.date_shaped?("a#{' ' * 10_000}")).to be(false)
-      expect(described_class.date_shaped?("a - #{'  ' * 5_000}")).to be(false)
-    end
-
-    it 'accepts a Nokia-shaped pipe date with spaced comma and clock zone' do
-      expect(described_class.date_shaped?('August 06 , 2026 | 13:00 PM Europe/Amsterdam')).to be(true)
-    end
-
-    it 'rejects a clock plus teaser after a date separator', :aggregate_failures do
-      expect(described_class.date_shaped?('12 March 2024 - 10:00 Team announces a new reactor design'))
-        .to be(false)
-      expect(described_class.date_shaped?('12 March 2024 | 10:00 Team announces a new reactor design'))
-        .to be(false)
-    end
-
-    it 'accepts a Telenor-shaped leading type-chip with juli' do
-      expect(described_class.date_shaped?('Press release • 16 juli, 2026')).to be(true)
-    end
-  end
-
-  describe '.date_core Nokia/Telenor fragments' do
-    it 'keeps the calendar day from a pipe clock line' do
-      expect(described_class.date_core('August 06 , 2026 | 13:00 PM Europe/Amsterdam'))
-        .to match(/August 06\s*,?\s*2026/)
-    end
-  end
-
   describe '.keep?' do
-    it 'drops a Telenor-shaped type-chip date line' do
+    let(:date_rules) { Html2rss::AutoSource::ArticleRules::Date }
+
+    it 'drops a leading type-chip date line' do
       expect(described_class.keep?('Press release • 16 juli, 2026', vocabulary:)).to be(false)
     end
 
@@ -141,7 +27,7 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
                                    vocabulary:)).to be(true)
     end
 
-    it 'still drops a Nokia-shaped pipe clock line as description chrome' do
+    it 'still drops a pipe clock date line as description chrome' do
       expect(described_class.keep?('August 06 , 2026 | 13:00 PM Europe/Amsterdam', vocabulary:)).to be(false)
     end
 
@@ -158,7 +44,7 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Description do
        :aggregate_failures do
       %w[独自 写真].product([' - ', ' | ', ' • ']).flat_map { |w, sep| ["2024-03-12#{sep}#{w}", "#{w}#{sep}2024-03-12"] }
                .each do |line|
-        expect([described_class.date_core(line), described_class.date_shaped?(line)]).to eq(['2024-03-12', true]), line
+        expect([date_rules.date_core(line), date_rules.date_shaped?(line)]).to eq(['2024-03-12', true]), line
         expect(described_class.keep?(line, vocabulary: Html2rss::Vocabulary[:zh])).to be(false), line
       end
     end
