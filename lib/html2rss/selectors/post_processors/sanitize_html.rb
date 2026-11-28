@@ -136,15 +136,11 @@ module Html2rss
         # @param base_url [String, Html2rss::Url]
         # @return [String, nil]
         def self.sanitize(html, base_url)
-          return nil if String(html).empty?
-
-          # Temporarily replace newlines with a placeholder to preserve them during space collapsing
-          temp_value = html.to_s.gsub("\n", ' __NEWLINE_PLACEHOLDER__ ')
-          sanitized_html = Sanitize.fragment(temp_value, sanitize_config(base_url)).to_s
-          sanitized_html.gsub!(/\s+/, ' ')
-
-          # Restore newlines and clean up surrounding whitespace
-          sanitized_html.gsub!(/[ \t\r]*__NEWLINE_PLACEHOLDER__[ \t\r]*/, "\n")
+          sanitized_html = Sanitize.fragment(html.to_s, sanitize_config(base_url)).to_s
+          # Collapse horizontal whitespace only: newlines are structure and must survive. A text placeholder
+          # for them would also turn user text that spells the placeholder into a newline.
+          sanitized_html.gsub!(/[^\S\n]+/, ' ')
+          sanitized_html.gsub!(/ ?\n ?/, "\n")
           sanitized_html.gsub!(/\n{3,}/, "\n\n")
 
           sanitized_html.strip!

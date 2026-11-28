@@ -27,7 +27,7 @@ Architecture and seam ownership map: `CONTEXT.md`.
 
 ## Description & HTML Processing
 
-- Preserve structural block newlines (`\n`, `\n\n`) and lists. Protect newlines with `__NEWLINE_PLACEHOLDER__` before horizontal whitespace collapsing (`gsub(/\s+/, ' ')`) and restore them afterward.
+- Preserve structural block newlines (`\n`, `\n\n`) and lists. Collapse horizontal whitespace only (`gsub(/[^\S\n]+/, ' ')`); never swap newlines for a text placeholder, because text that spells the placeholder would become a newline.
 - Collapse consecutive wrapping whitespace (including line breaks) inside raw HTML text nodes to a single space.
 - Exclude heading elements (`h1..h6`) and the selected read-more/permalink anchor (`a`) when extracting visible article description text.
 - New junk title patterns require a fixture with expected **reason**; prefer fixing extractor title provenance when a reason keeps firing.

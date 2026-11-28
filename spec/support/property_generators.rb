@@ -53,4 +53,27 @@ module PropertyGenerators
      IPAddr.new(IPAddr.new('64:ff9b::').to_i | number, Socket::AF_INET6),
      IPAddr.new((0x2002 << 112) | (number << 80), Socket::AF_INET6)]
   end
+
+  ANCHOR = '<a href="/x" onclick="y()">'
+  HTML_PIECES = [
+    '<p>', '</p>', '<b>', '</b>', '<div onmouseover="x()">', '</div>', '<br>', ANCHOR, '</a>',
+    '<img src="/i.png" onerror="z()">', '<script>alert(1)</script>', '<SCRIPT src=//e.example/x.js></SCRIPT>',
+    '<style>p{}</style>', '<ul><li>', '</li></ul>', '<table><tr><td>', "\n", "\n\n", ' ', "\t", '&amp;', '&lt;',
+    '<', '>', '"', 'word', 'lorem ipsum', '__NEWLINE_PLACEHOLDER__'
+  ].freeze
+
+  # @param exclude [Array<String>] pieces to leave out
+  # @return [PropCheck::Generator] tag soup built from {HTML_PIECES}, hostile markup included
+  def html_soup(exclude: [])
+    pieces = HTML_PIECES - exclude
+    PropCheck::Generators.array(PropCheck::Generators.one_of(*pieces.map do |piece|
+      PropCheck::Generators.constant(piece)
+    end))
+                         .map(&:join)
+  end
+
+  # @return [PropCheck::Generator] non-empty lowercase words
+  def words
+    PropCheck::Generators.array(PropCheck::Generators.alphanumeric_string.where { |word| !word.empty? }, min: 1, max: 6)
+  end
 end
