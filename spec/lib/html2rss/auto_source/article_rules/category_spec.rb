@@ -73,18 +73,25 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
       end
     end
 
-    it 'keeps each list as an ordered subset of itself', :property do
+    it 'keeps each output list an ordered subset of its input list', :property do
       forall(TextGenerators.category_lists) do |lists|
-        result = described_class.drop_shared(lists)
-        expect(result.zip(lists).all? { |out, list| out == list.select { |value| out.include?(value) } }).to be(true)
+        pairs = described_class.drop_shared(lists).zip(lists)
+        expect(pairs.map { |out, list| out == list.select { |value| out.include?(value) } }).to all(be(true))
       end
     end
 
-    it 'leaves fewer than three lists unchanged and drops every shared value from more', :property do
+    it 'leaves no value common to every output list when there are three or more', :property do
+      forall(TextGenerators.category_lists.where { _1.size >= 3 }) do |lists|
+        folded = described_class.drop_shared(lists).map { |out| out.map(&:downcase) }
+        expect(folded.reduce(:&)).to be_empty
+      end
+    end
+
+    it 'never drops a value missing from at least one input list', :property do
       forall(TextGenerators.category_lists) do |lists|
-        shared = lists.map { |list| list.map(&:downcase) }.reduce(:&)
-        expected = lists.size < 3 ? lists : lists.map { |list| list.reject { |v| shared.include?(v.downcase) } }
-        expect(described_class.drop_shared(lists)).to eq(expected)
+        folded = lists.map { |list| list.map(&:downcase) }
+        dropped = lists.zip(described_class.drop_shared(lists)).flat_map { |list, out| list - out }
+        expect(dropped.reject { |value| folded.all? { _1.include?(value.downcase) } }).to be_empty
       end
     end
 

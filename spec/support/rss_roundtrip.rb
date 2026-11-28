@@ -24,4 +24,27 @@ module RssRoundtrip
   # @param articles [Array<Html2rss::Article>]
   # @return [Array<Html2rss::Article>] the articles a reader gets back from the built RSS
   def call(articles) = hashes(articles).map { Html2rss::Article.new(**_1) }
+
+  # @param articles [Array<Html2rss::Article>]
+  # @return [Array<Hash>] the compared fields of each article a feed should render
+  def expected_fields(articles)
+    renderable(articles).map { fields(_1, _1.guid) }
+  end
+
+  # @param articles [Array<Html2rss::Article>]
+  # @return [Array<Hash>] the same fields as read back from the built RSS (the guid is the parsed id)
+  def actual_fields(articles)
+    hashes(articles).map { fields(Html2rss::Article.new(**_1), _1[:id]) }
+  end
+
+  # @return [Hash] url, title, publication second, categories, author and guid of +article+
+  def fields(article, guid)
+    { url: article.url.to_s, title: article.title, published_at: article.published_at.to_time.to_i,
+      categories: article.categories, author: article.author, guid: }
+  end
+
+  # @return [String] the description read back for a one-article feed with +description+ and +title+
+  def description_of(description, title:)
+    call([Html2rss::Article.new(url: 'https://example.com/a', title:, description:)]).first&.description.to_s
+  end
 end

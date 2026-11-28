@@ -37,6 +37,10 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Byline do
       expect(described_class.author_of("#{at_limit}a")).to be_nil
     end
 
+    it 'reads the name from a plain byline' do
+      expect(described_class.author_of('By Ada Examplesson')).to eq('Ada Examplesson')
+    end
+
     it 'does not read a byline that ends like a sentence' do
       expect(described_class.author_of('By Anna Beispiel.')).to be_nil
     end
