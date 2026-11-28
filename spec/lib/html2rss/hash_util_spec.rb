@@ -22,12 +22,32 @@ RSpec.describe Html2rss::HashUtil do
       expect(duplicate).not_to be_frozen
     end
 
+    it 'copies an equal tree', :property do
+      forall(PropertyGenerators.string_keyed_tree) do |tree|
+        expect(described_class.deep_dup(tree)).to eq(tree)
+      end
+    end
+
+    it 'shares nothing with the original, even with frozen leaves', :property do
+      forall(PropertyGenerators.string_keyed_tree) do |tree|
+        snapshot = Marshal.load(Marshal.dump(tree))
+        PropertyGenerators.mutate!(described_class.deep_dup(tree))
+        expect(tree).to eq(snapshot)
+      end
+    end
+
     it 'returns the same immediate' do
       expect(described_class.deep_dup(1)).to be(1)
     end
   end
 
   describe '.deep_merge' do
+    it 'is the identity with an empty override and idempotent with itself', :property do
+      forall(PropertyGenerators.string_keyed_tree) do |tree|
+        expect([described_class.deep_merge(tree, {}), described_class.deep_merge(tree, tree)]).to all(eq(tree))
+      end
+    end
+
     it 'recursively merges nested hashes while replacing scalar values' do
       merged = described_class.deep_merge(
         { channel: { title: 'Global', locale: 'en' }, retry: 1 },
@@ -69,6 +89,12 @@ RSpec.describe Html2rss::HashUtil do
   end
 
   describe '.deep_stringify_keys' do
+    it 'undoes deep_symbolize_keys on string-keyed trees', :property do
+      forall(PropertyGenerators.string_keyed_tree) do |tree|
+        expect(described_class.deep_stringify_keys(described_class.deep_symbolize_keys(tree))).to eq(tree)
+      end
+    end
+
     it 'converts nested symbol keys and symbol values to strings' do
       input = { channel: { url: 'https://example.com' }, strategy: :default }
       expected = { 'channel' => { 'url' => 'https://example.com' }, 'strategy' => 'default' }
