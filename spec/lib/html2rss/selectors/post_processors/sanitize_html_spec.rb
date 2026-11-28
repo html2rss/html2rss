@@ -116,6 +116,11 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       expect(described_class.call("<p>a</p>\n\n\n<p>b</p>", 'http://example.com')).to eq("<p>a</p>\n\n<p>b</p>")
     end
 
+    it 'keeps text that spells the old newline placeholder' do
+      expect(described_class.call('a __NEWLINE_PLACEHOLDER__ b',
+                                  'http://example.com')).to eq('a __NEWLINE_PLACEHOLDER__ b')
+    end
+
     it 'returns nil when only whitespace or removed content remains', :aggregate_failures do
       expect(described_class.call('   ', 'http://example.com')).to be_nil
       expect(described_class.call('<script>x</script>', 'http://example.com')).to be_nil
@@ -129,6 +134,35 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       expect(described_class.call(html, 'http://a.example')).to eq(expected)
       expect(described_class.call(html, 'http://a.example')).to eq(expected)
       expect(described_class.call(html, 'http://b.example')).to include('http://b.example/x')
+    end
+
+    # Without anchors: an <img> inside <a><p> gets its own wrapping <a> (only the direct parent counts), and
+    # a second parse splits those nested anchors apart.
+    it 'is idempotent on any anchor-free tag soup', :property do
+      forall(TextGenerators.html_soup(exclude: [TextGenerators::ANCHOR])) do |html|
+        once = described_class.sanitize(html, 'http://example.com')
+        expect(described_class.sanitize(once, 'http://example.com')).to eq(once)
+      end
+    end
+
+    it 'never emits scripts, event handlers or the newline placeholder', :property do
+      forbidden = /<script|<[^>]*\son\w+\s*=|__NEWLINE_PLACEHOLDER__/i
+      forall(TextGenerators.html_soup(exclude: ['__NEWLINE_PLACEHOLDER__'])) do |html|
+        expect(described_class.sanitize(html, 'http://example.com').to_s).not_to match(forbidden)
+      end
+    end
+
+    it 'keeps the lines of plain text', :property do
+      forall(TextGenerators.words) do |lines|
+        expect(described_class.sanitize(lines.join("\n"), 'http://example.com')).to eq(lines.join("\n"))
+      end
+    end
+
+    it 'treats the placeholder literal as text, not as a newline', :property do
+      forall(TextGenerators.words) do |words|
+        text = words.join(' __NEWLINE_PLACEHOLDER__ ')
+        expect(described_class.sanitize(text, 'http://example.com')).to eq(text)
+      end
     end
 
     context 'with html being nil' do

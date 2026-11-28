@@ -1,0 +1,65 @@
+# frozen_string_literal: true
+
+require 'ipaddr'
+require 'prop_check'
+
+##
+# PropCheck generators and value builders for IP addresses, for +:property+ examples.
+module NetworkGenerators
+  # Independent oracle for the NetworkGuard properties: the IANA special-purpose registries, spelled out apart
+  # from the guard's own list.
+  SPECIAL_PURPOSE_RANGES = %w[
+    0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12 192.0.0.0/24 192.0.2.0/24
+    192.88.99.0/24 192.168.0.0/16 198.18.0.0/15 198.51.100.0/24 203.0.113.0/24 224.0.0.0/4 240.0.0.0/4
+    ::/128 ::1/128 100::/64 2001:10::/28 2001:20::/28 2001:db8::/32 fe80::/10 fc00::/7 ff00::/8
+    64:ff9b:1::/48 2001::/32
+  ].map { |cidr| IPAddr.new(cidr) }.freeze
+
+  module_function
+
+  # @return [PropCheck::Generator] any IPv4 address (mostly public)
+  def random_ipv4
+    octet = PropCheck::Generators.choose(0..255)
+    PropCheck::Generators.tuple(octet, octet, octet, octet).map { |octets| IPAddr.new(octets.join('.')) }
+  end
+
+  # @param ranges [Array<IPAddr>] CIDR ranges
+  # @return [PropCheck::Generator] an address inside one of +ranges+, weighted toward each range's first and last
+  def address_in(ranges)
+    PropCheck::Generators.choose(0...ranges.size).bind { |index| inside(ranges[index]) }
+  end
+
+  # Shrinks toward the first address of +range+ because the offset, not the address, is drawn.
+  #
+  # @param range [IPAddr] a CIDR range
+  # @return [PropCheck::Generator] an address of +range+, often its first or last
+  def inside(range)
+    first, last = range.to_range.minmax.map(&:to_i)
+    generators = PropCheck::Generators
+    edge = generators.one_of(generators.constant(0), generators.constant(last - first))
+    generators.one_of(generators.choose(0..(last - first)), edge).map do |offset|
+      IPAddr.new(first + offset, range.family)
+    end
+  end
+
+  # @param ranges [Array<IPAddr>] CIDR ranges
+  # @return [PropCheck::Generator] an address inside +ranges+ or a random IPv4 address
+  def mixed_address(ranges)
+    PropCheck::Generators.one_of(address_in(ranges), random_ipv4)
+  end
+
+  # @param ranges [Array<IPAddr>] CIDR ranges
+  # @return [PropCheck::Generator] up to four {mixed_address}es, possibly none
+  def resolver_answer(ranges)
+    PropCheck::Generators.array(mixed_address(ranges), min: 0, max: 4)
+  end
+
+  # @param ipv4 [IPAddr] an IPv4 address
+  # @return [Array<IPAddr>] +ipv4+ followed by its IPv4-mapped, NAT64 and 6to4 IPv6 spellings
+  def ipv6_forms(ipv4)
+    number = ipv4.to_i
+    [ipv4, ipv4.ipv4_mapped,
+     IPAddr.new(IPAddr.new('64:ff9b::').to_i | number, Socket::AF_INET6),
+     IPAddr.new((0x2002 << 112) | (number << 80), Socket::AF_INET6)]
+  end
+end
