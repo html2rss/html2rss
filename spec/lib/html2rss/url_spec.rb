@@ -67,6 +67,20 @@ RSpec.describe Html2rss::Url do
 
   describe '.from_relative' do
     let(:base_url) { 'https://example.com' }
+    let(:attempt) do
+      lambda do |&build|
+        build.call
+      rescue described_class::InvalidUrlError => error
+        error
+      end
+    end
+
+    it 'resolves any reference against an absolute base to an absolute Url or InvalidUrlError', :property do
+      forall(TextGenerators.any_text) do |text|
+        outcome = attempt.call { described_class.from_relative(text, 'https://example.com/a/b/') }
+        expect(outcome).to be_a(described_class::InvalidUrlError).or be_absolute
+      end
+    end
 
     {
       '/sprite.svg#play' => 'https://example.com/sprite.svg#play',
@@ -76,6 +90,10 @@ RSpec.describe Html2rss::Url do
         url = described_class.from_relative(relative_url, base_url)
         expect(url.to_s).to eq(expected_absolute)
       end
+    end
+
+    it 'raises InvalidUrlError for text that is not valid UTF-8' do
+      expect { described_class.from_relative("/a\x80", base_url) }.to raise_error(Html2rss::Url::InvalidUrlError)
     end
 
     it 'raises InvalidUrlError for malformed URLs' do
@@ -175,8 +193,28 @@ RSpec.describe Html2rss::Url do
   end
 
   describe '.sanitize' do
+    # Without mailto:, whose query-only form ("mailto:?") normalizes to a bare "mailto:" that sanitize rejects.
+    it 'yields a Url or nil, never a core error, and is idempotent', :property do
+      forall(TextGenerators.any_text(exclude: ['mailto:'])) do |text|
+        url = described_class.sanitize(text)
+        expect(described_class.sanitize(url&.to_s)).to eq(url)
+      end
+    end
+
     it 'is nil when the URL cannot be parsed' do
       expect(described_class.sanitize('http://x:y:z/a')).to be_nil
+    end
+
+    it 'is nil for text that is not valid UTF-8' do
+      expect(described_class.sanitize("http://example.com/\x80")).to be_nil
+    end
+
+    it 'is nil when the authority has a stray colon after the port' do
+      expect(described_class.sanitize('http://example.com:80:')).to be_nil
+    end
+
+    it 'is nil when a percent-escaped host decodes to invalid UTF-8' do
+      expect(described_class.sanitize('http://%999.1.1.1./')).to be_nil
     end
 
     it 'is nil when the host is invalid' do
@@ -287,6 +325,23 @@ RSpec.describe Html2rss::Url do
   end
 
   describe '.from_absolute' do
+    let(:attempt) do
+      lambda do |&build|
+        build.call
+      rescue described_class::InvalidUrlError => error
+        error
+      end
+    end
+
+    it 'yields an absolute Url or InvalidUrlError, never a core error, and is idempotent', :property do
+      forall(TextGenerators.any_text) do |text|
+        url = attempt.call { described_class.from_absolute(text) }
+        next if url.is_a?(described_class::InvalidUrlError)
+
+        expect(described_class.from_absolute(url.to_s)).to eq(url)
+      end
+    end
+
     it 'parses an absolute URL string' do
       expect(described_class.from_absolute('https://example.com/path').to_s).to eq('https://example.com/path')
     end

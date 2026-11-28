@@ -9,6 +9,9 @@ on:
   pull_request:
     branches: [master]
 
+env:
+  PROP_SEED: "20260101"
+
 jobs:
   test:
     runs-on: ubuntu-latest

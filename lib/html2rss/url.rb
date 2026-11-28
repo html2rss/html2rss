@@ -69,7 +69,11 @@ module Html2rss
       (?:(?:/[A-Za-z0-9_~-]+(?:\.[A-Za-z0-9_~-]+)*)+/?|/)
       (?:\?[A-Za-z0-9_=&/~-]+)?\z
     }x
-    private_constant :NORMAL_FORM, :DNS_LABEL, :DNS_NAME, :OCTET, :IPV4, :NUMERIC_LAST_LABEL, :MAX_HOST_LENGTH
+    # A host Addressable keeps as +example.com:80+ for +http://example.com:80:+; normalizing would re-read it as
+    # a port. Only a bracketed IPv6 literal may contain a colon.
+    STRAY_COLON = /\A(?!\[[^\]]*\]\z)[^:]*:/
+    private_constant :STRAY_COLON, :NORMAL_FORM, :DNS_LABEL, :DNS_NAME, :OCTET, :IPV4, :NUMERIC_LAST_LABEL,
+                     :MAX_HOST_LENGTH
 
     ##
     # Creates a URL from a relative path and base URL.
@@ -79,7 +83,7 @@ module Html2rss
     # @return [Url] the resolved, normalized absolute URL
     # @raise [InvalidUrlError] if the URL cannot be parsed
     def self.from_relative(relative_url, base_url)
-      url = parse(relative_url.to_s.strip, base_url.to_s[SCHEME_PREFIX, 1])
+      url = parse(text_of(relative_url).strip, text_of(base_url)[SCHEME_PREFIX, 1])
       return new(normalized(url)) if url.absolute?
 
       join_parsed_base(base_url, url)
@@ -96,13 +100,34 @@ module Html2rss
     end
     private_class_method :join_parsed_base
 
+    # @param value [#to_s] raw URL input
+    # @return [String] +value+ as text
+    # @raise [Addressable::URI::InvalidURIError] if the text is not valid in its encoding
+    def self.text_of(value)
+      value.to_s.tap do |text|
+        raise Addressable::URI::InvalidURIError unless text.valid_encoding?
+      end
+    end
+    private_class_method :text_of
+
     # +uri.normalize+, skipped when +uri+ is already in the one shape normalization leaves alone: a lowercase
     # http(s) host without port or userinfo, a path of unreserved characters without dot or empty segments,
     # and an optional query of unreserved characters (no percent escape, no fragment).
     #
     # @param uri [Addressable::URI] an absolute URI
     # @return [Addressable::URI]
-    def self.normalized(uri) = NORMAL_FORM.match?(uri.to_s) ? uri : uri.normalize
+    # @raise [Addressable::URI::InvalidURIError] if the host has a stray colon, or a percent escape in it
+    #   decodes to invalid UTF-8
+    def self.normalized(uri)
+      return uri if NORMAL_FORM.match?(uri.to_s)
+      raise Addressable::URI::InvalidURIError if uri.host&.match?(STRAY_COLON)
+
+      begin
+        uri.normalize
+      rescue ArgumentError
+        raise Addressable::URI::InvalidURIError
+      end
+    end
     private_class_method :normalized
 
     ##
@@ -136,10 +161,10 @@ module Html2rss
     # @param raw_url [String] the raw URL string to sanitize
     # @return [Url, nil] the sanitized URL, or nil if no valid URL found
     def self.sanitize(raw_url)
-      match = raw_url.to_s.match(%r{(?:https?:[/\\]{2}|ftp://|mailto:)[^\s<>"]+})
+      match = text_of(raw_url).match(%r{(?:https?:[/\\]{2}|ftp://|mailto:)[^\s<>"]+})
       return unless match
 
-      new(parse(match[0]).normalize)
+      new(normalized(parse(match[0])))
     rescue Addressable::URI::InvalidURIError, InvalidUrlError
       nil
     end
@@ -153,7 +178,7 @@ module Html2rss
     def self.from_absolute(url_string)
       return url_string if url_string.is_a?(self)
 
-      new(parse(url_string.to_s.lstrip).normalize).tap do |url|
+      new(normalized(parse(text_of(url_string).lstrip))).tap do |url|
         raise InvalidUrlError, 'URL must be absolute' unless url.absolute?
       end
     rescue Addressable::URI::InvalidURIError

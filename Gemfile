@@ -37,6 +37,7 @@ end
 
 group :test do
   gem 'climate_control', require: false
+  gem 'prop_check', '~> 1.0', require: false
   gem 'simplecov', require: false
   gem 'timecop', require: false
   gem 'webmock', require: false

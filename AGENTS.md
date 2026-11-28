@@ -22,12 +22,13 @@ Architecture and seam ownership map: `CONTEXT.md`.
 
 - Do not define methods inside `*_spec.rb` files; use helpers or shared examples when needed.
 - Never use `send(:method_name)` in specs.
+- Property tests (`prop_check`, tag `:property`, generators in `spec/support/*_generators.rb`) live inside the existing `describe`. `PROP_RUNS` sets runs per property (default 100); a failure prints the `PROP_SEED` that replays it, and `make` pins `PROP_SEED` for CI.
 - Tag multi-expectation examples with `:aggregate_failures` (`RSpec/MultipleExpectations`).
 - **Mutation testing (not a `make ready` gate: wall time is too long):** after adding or substantially changing `lib/` code, run `make mutant SUBJECT='Html2rss::X#method'` (per class or method, never the whole tree) and kill or justify survivors before the PR. Add examples inside the existing `describe` for that method; a new per-method `describe` can shadow stronger specs under expression selection, so compare alive counts before and after. Use `MUTANT_JOBS=4` on an idle machine. Prefer deleting dead defensive code over testing it. Cheap-model hands may do this with a disjoint file list.
 
 ## Description & HTML Processing
 
-- Preserve structural block newlines (`\n`, `\n\n`) and lists. Protect newlines with `__NEWLINE_PLACEHOLDER__` before horizontal whitespace collapsing (`gsub(/\s+/, ' ')`) and restore them afterward.
+- Preserve structural block newlines (`\n`, `\n\n`) and lists. Collapse horizontal whitespace only (`gsub(/[^\S\n]+/, ' ')`); never swap newlines for a text placeholder, because text that spells the placeholder would become a newline.
 - Collapse consecutive wrapping whitespace (including line breaks) inside raw HTML text nodes to a single space.
 - Exclude heading elements (`h1..h6`) and the selected read-more/permalink anchor (`a`) when extracting visible article description text.
 - New junk title patterns require a fixture with expected **reason**; prefer fixing extractor title provenance when a reason keeps firing.

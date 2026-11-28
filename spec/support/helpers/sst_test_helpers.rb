@@ -53,13 +53,19 @@ module SstTestHelpers
   end
 
   # A node of a document nothing references any more, so its index is free to be collected.
-  def orphan_node_for(html) = document_for(html).root.find(&:link?)
+  def orphan_node_for(html) = built_off_stack { document_for(html).root.find(&:link?) }
+
+  # Runs the block on a finished thread: the GC scans the stack conservatively, so a document built in the
+  # example's own frames can stay reachable through a stale slot. A dead thread's stack holds no residue.
+  def built_off_stack(&) = Thread.new(&).value # rubocop:disable ThreadSafety/NewThread -- one-shot, joined by #value
 
   # A segment of +html+ whose document nothing references, so its index is free to be collected.
   def build_orphan_segment(html)
-    root = document_for(html).root.find { _1.name == :article }
-    Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :semantic,
-                                        position: 0)
+    built_off_stack do
+      root = document_for(html).root.find { _1.name == :article }
+      Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :semantic,
+                                          position: 0)
+    end
   end
 
   # Keeps +doc+ referenced for the example so its index stays live; returns +doc+.

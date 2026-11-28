@@ -82,7 +82,8 @@ module Html2rss
         # Length is the character count of the authored string (the JSON Schema
         # +maxLength+ unit), then the AST is walked for nested quantifiers,
         # then +to_re+. Parser errors are re-raised as InvalidOption so
-        # validation and execution share one path.
+        # validation and execution share one path. A pattern the parser accepts but Ruby rejects
+        # (an empty character class such as +[]+) raises +RegexpError+ from +to_re+ and is re-raised the same way.
         #
         # @param string [String]
         # @return [Regexp]
@@ -98,7 +99,7 @@ module Html2rss
           raise InvalidOption, 'pattern contains nested quantifiers' if nested_quantifiers?(expression)
 
           expression.to_re
-        rescue Regexp::Parser::Error => error
+        rescue Regexp::Parser::Error, RegexpError => error
           raise InvalidOption, error.message, [], cause: nil
         end
         private_class_method :compile_regexp_string
