@@ -29,6 +29,16 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category::Collector do
     end
   end
 
+  describe '#to_a properties' do
+    it 'holds no duplicates and never raises', :aggregate_failures, :property do
+      forall(PropCheck::Generators.array(TextGenerators.valid_text, max: 8)) do |texts|
+        collector = described_class.new(vocabulary:)
+        texts.each { |text| [collector.add(text), collector.add_split(text)] }
+        expect(collector.to_a).to eq(collector.to_a.uniq)
+      end
+    end
+  end
+
   describe '#add' do
     it 'keeps insertion order and drops duplicates', :aggregate_failures do
       collector = described_class.new(vocabulary:)

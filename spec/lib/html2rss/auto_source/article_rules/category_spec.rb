@@ -66,6 +66,43 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Category do
     end
   end
 
+  describe 'properties' do
+    it 'reads junk? as total over any text', :property do
+      forall(TextGenerators.valid_text, TextGenerators.valid_text) do |value, title|
+        expect { described_class.junk?(value, title:) }.not_to raise_error
+      end
+    end
+
+    it 'keeps each output list an ordered subset of its input list', :property do
+      forall(TextGenerators.category_lists) do |lists|
+        pairs = described_class.drop_shared(lists).zip(lists)
+        expect(pairs.map { |out, list| out == list.select { |value| out.include?(value) } }).to all(be(true))
+      end
+    end
+
+    it 'leaves no value common to every output list when there are three or more', :property do
+      forall(TextGenerators.category_lists.where { _1.size >= 3 }) do |lists|
+        folded = described_class.drop_shared(lists).map { |out| out.map(&:downcase) }
+        expect(folded.reduce(:&)).to be_empty
+      end
+    end
+
+    it 'never drops a value missing from at least one input list', :property do
+      forall(TextGenerators.category_lists) do |lists|
+        folded = lists.map { |list| list.map(&:downcase) }
+        dropped = lists.zip(described_class.drop_shared(lists)).flat_map { |list, out| list - out }
+        expect(dropped.reject { |value| folded.all? { _1.include?(value.downcase) } }).to be_empty
+      end
+    end
+
+    it 'reads 50_000 character adversarial values in bounded time' do
+      seconds = TextGenerators.slowest_seconds(TextGenerators.adversarial_texts(prefix: 'x', suffix: '1')) do |text|
+        described_class.junk?(text, title: text)
+      end
+      expect(seconds).to be < TextGenerators::TIME_BUDGET
+    end
+  end
+
   describe '.class_match?' do
     it 'matches hyphenated class tokens, not layout substrings', :aggregate_failures do
       expect(described_class.class_match?(%w[category-news post-tag])).to be(true)

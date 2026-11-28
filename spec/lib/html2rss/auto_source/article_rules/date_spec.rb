@@ -17,6 +17,30 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
       .to eq(['Intro line.', 'Other line.'])
   end
 
+  describe '.without_dates properties' do
+    it 'keeps an ordered subset of the lines', :property do
+      forall(TextGenerators.line_soup) do |lines|
+        kept = described_class.without_dates(lines).map(&:object_id)
+        expect(lines.map(&:object_id).select { |id| kept.include?(id) }).to eq(kept)
+      end
+    end
+
+    it 'reads date_shaped? and earliest as total over any text', :aggregate_failures, :property do
+      forall(TextGenerators.valid_text, TextGenerators.line_soup) do |text, lines|
+        expect { described_class.date_shaped?(text) }.not_to raise_error
+        expect { described_class.earliest([text], leftover_lines: lines) }.not_to raise_error
+      end
+    end
+
+    it 'reads 50_000 character adversarial lines in bounded time' do
+      seconds = TextGenerators.slowest_seconds(TextGenerators.adversarial_texts(prefix: '1 Nov', suffix: '2026')) do |t|
+        [described_class.date_shaped?(t), described_class.earliest([t], leftover_lines: [t]),
+         described_class.without_dates([t, t])]
+      end
+      expect(seconds).to be < TextGenerators::TIME_BUDGET
+    end
+  end
+
   describe '.at_midnight' do
     it 'is local midnight of the day in the time zone' do
       result = described_class.at_midnight(Date.new(2026, 11, 20), time_zone: 'Europe/Berlin')
