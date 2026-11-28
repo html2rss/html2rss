@@ -1,5 +1,8 @@
 # html2rss Development Makefile
 
+# Fixed seed for :property specs (spec/support/property_testing.rb); override with PROP_SEED=<n>.
+export PROP_SEED ?= 20260101
+
 RUBY_RUNNER = $(shell if command -v mise >/dev/null 2>&1; then printf 'mise exec -- '; fi)
 SHELL_SCRIPTS = \
 	bin/list-changed-paths \
