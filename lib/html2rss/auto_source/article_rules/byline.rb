@@ -27,15 +27,12 @@ module Html2rss
           ##
           # @param line [String, nil]
           # @return [String, nil] the author name when +line+ is a byline of at most {MAX_CHARS}
-          def author_of(line)
-            text = line.to_s.gsub(/[[:space:]]+/, ' ').strip
-            return if text.length > MAX_CHARS || text.match?(SENTENCE_END)
+          def author_of(line) = read(line)&.last
 
-            head, sep, tail = text.rpartition(DATE_SEPARATOR)
-            candidate = !sep.empty? && Date.date_shaped?(head) ? tail : text
-            match = candidate.match(PATTERN)
-            match[:names] if match && person_names?(match[:first], match[:second])
-          end
+          ##
+          # @param line [String, nil]
+          # @return [String, nil] the date-shaped head of a "<date> / by X" byline, else nil
+          def date_head(line) = read(line)&.first
 
           ##
           # @param lines [Array<String>]
@@ -43,6 +40,22 @@ module Html2rss
           def first_author(lines) = lines.filter_map { |line| author_of(line) }.first
 
           private
+
+          # [date head or nil, author] of a byline line, nil for any other line.
+          def read(line)
+            text = line.to_s.gsub(/[[:space:]]+/, ' ').strip
+            return if text.length > MAX_CHARS || text.match?(SENTENCE_END)
+
+            head, candidate = dated_split(text)
+            match = candidate.match(PATTERN)
+            [head, match[:names]] if match && person_names?(match[:first], match[:second])
+          end
+
+          # [date head, byline] when a date-shaped head precedes the separator, else [nil, text].
+          def dated_split(text)
+            head, sep, tail = text.rpartition(DATE_SEPARATOR)
+            !sep.empty? && Date.date_shaped?(head) ? [head, tail] : [nil, text]
+          end
 
           # No function word in a name; two joined names are full names ("By Land and Sea" is prose).
           def person_names?(first, second)

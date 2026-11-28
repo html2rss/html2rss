@@ -105,17 +105,14 @@ module Html2rss
 
             left = normalized[0, idx]
             right = normalized[(idx + sep.length)..]
-            return left if type_chip?(right) || clock_zone?(right)
-            return right if type_chip?(left)
+            return left if type_chip?(right) || Article::Title.clock_piece?(right)
 
-            nil
+            right if type_chip?(left)
           end
 
           # A chip beside a date is peeled whatever the page language: a word that is no marker on a Chinese page
           # (+独自+) is still a type chip once a date stands next to it.
           def type_chip?(text) = Article::Title::TYPE_MARKERS.include?(text.downcase)
-
-          def clock_zone?(text) = Article::Title.clock_piece?(text)
 
           def normalize(line) = line.to_s.gsub(/[[:space:]]+/, ' ').strip
 

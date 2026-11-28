@@ -50,4 +50,18 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Byline do
       expect(described_class.first_author([])).to be_nil
     end
   end
+
+  describe '.date_head' do
+    it 'returns the date head of a dated byline only', :aggregate_failures do
+      expect(described_class.date_head("27 Nov 2026  /  by Anna Beispiel\n")).to eq('27 Nov 2026')
+      expect(described_class.date_head('by Anna Beispiel')).to be_nil
+      expect(described_class.date_head('Tram news / by Anna Beispiel')).to be_nil
+    end
+
+    it 'ignores a head that is not date-shaped or a tail that is not a byline', :aggregate_failures do
+      expect(described_class.date_head('27 Nov 2026 / The tram depot reopens')).to be_nil
+      expect(described_class.date_head('27 Nov 2026 / by Anna Beispiel.')).to be_nil
+      expect(described_class.date_head(nil)).to be_nil
+    end
+  end
 end
