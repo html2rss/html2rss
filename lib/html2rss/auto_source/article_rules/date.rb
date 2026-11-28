@@ -9,8 +9,19 @@ module Html2rss
       ##
       # DOM-agnostic datetime aggregation for article published_at.
       module Date
-        # Skip DateTime.parse above this length (Ruby parse is not a validator).
-        MAX_DATE_CHARS = Description::MAX_DATE_CHARS
+        # An ASCII digit: every {DATE_SHAPES} entry needs one.
+        DIGIT = /\d/
+        # Skip date detection / DateTime.parse above this length.
+        MAX_DATE_CHARS = 128
+        # Optional type-chip / clock separators (ASCII/en/em dash, pipe, bullet).
+        CHIP_SEPARATORS = [' - ', ' – ', ' — ', ' | ', ' • '].freeze
+        # Whole-line date shapes after normalize (ISO, numeric, day-month, month-day).
+        DATE_SHAPES = [
+          /\A\d{4}-\d{1,2}-\d{1,2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?\z/i,
+          %r{\A\d{1,2}[./-]\d{1,2}[./-]\d{2,4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z},
+          /\A\d{1,2}\.? \p{L}{3,9}\.?(?:\s*,)?\s*\d{4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z/i,
+          /\A\p{L}{3,9}\.? \d{1,2}(?:\s*,)?\s*\d{4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z/i
+        ].freeze
         # Prefer standard time when a local clock time occurs twice (DST fall-back).
         AMBIGUOUS_DST = false
         # Most consecutive fragment lines read together as one date.
@@ -62,7 +73,51 @@ module Html2rss
             nil
           end
 
+          ##
+          # @param line [String, nil]
+          # @return [Boolean]
+          def date_shaped?(line)
+            return false unless line.to_s.match?(DIGIT) # every date shape holds a digit
+
+            core = date_core(line)
+            return false if core.empty? || core.length > MAX_DATE_CHARS
+
+            DATE_SHAPES.any? { |shape| core.match?(shape) }
+          end
+
+          ##
+          # @param line [String, nil]
+          # @return [String]
+          def date_core(line)
+            normalized = normalize(line)
+            CHIP_SEPARATORS.each do |sep|
+              peeled = peel_separator(normalized, sep)
+              return peeled if peeled
+            end
+            normalized
+          end
+
           private
+
+          def peel_separator(normalized, sep)
+            idx = normalized.rindex(sep)
+            return unless idx
+
+            left = normalized[0, idx]
+            right = normalized[(idx + sep.length)..]
+            return left if type_chip?(right) || clock_zone?(right)
+            return right if type_chip?(left)
+
+            nil
+          end
+
+          # A chip beside a date is peeled whatever the page language: a word that is no marker on a Chinese page
+          # (+独自+) is still a type chip once a date stands next to it.
+          def type_chip?(text) = Article::Title::TYPE_MARKERS.include?(text.downcase)
+
+          def clock_zone?(text) = Article::Title.clock_piece?(text)
+
+          def normalize(line) = line.to_s.gsub(/[[:space:]]+/, ' ').strip
 
           # Consecutive line runs (longest first, at most MAX_RUN_LINES) that read as one date.
           def date_runs(lines)
@@ -71,7 +126,7 @@ module Html2rss
             index = 0
             while index < lines.length
               run = MAX_RUN_LINES.downto(1).lazy.map { |size| lines[index, size] }
-                                 .find { |candidate| Description.date_shaped?(candidate.join(' ')) }
+                                 .find { |candidate| date_shaped?(candidate.join(' ')) }
               runs << run if run
               index += run ? run.length : 1
             end
@@ -83,9 +138,9 @@ module Html2rss
           end
 
           def parse_line(line, time_zone:)
-            return unless Description.date_shaped?(line)
+            return unless date_shaped?(line)
 
-            parse_datetime(Description.date_core(line), time_zone:)
+            parse_datetime(date_core(line), time_zone:)
           end
 
           # Naive unless the parser resolved a real offset: unknown words ("Uhr", "ET") leave it nil, and a

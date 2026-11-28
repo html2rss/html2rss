@@ -73,9 +73,9 @@ module Html2rss
           private
 
           # The value, or one of its separator-set pieces ("Topic // 26.11.2026"), is a date by
-          # the one date-shape owner ({Description.date_shaped?}).
+          # the one date-shape owner ({Date.date_shaped?}).
           def dated?(value)
-            [value, *value.split(PIECE_SEPARATOR)].any? { |piece| Description.date_shaped?(piece) }
+            [value, *value.split(PIECE_SEPARATOR)].any? { |piece| Date.date_shaped?(piece) }
           end
 
           def title_prefix?(value, title)
