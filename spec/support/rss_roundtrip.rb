@@ -11,6 +11,10 @@ module RssRoundtrip
   end
 
   # @param articles [Array<Html2rss::Article>]
+  # @return [Array<Html2rss::Article>] the articles a feed renders, in order
+  def renderable(articles) = articles.select { Html2rss::FeedBuilder::ItemPresentation.renderable?(_1) }
+
+  # @param articles [Array<Html2rss::Article>]
   # @return [Array<Hash>] the article hashes the syndication parser reads from the built RSS
   def hashes(articles)
     xml = Html2rss::FeedBuilder::Rss.new(channel:, articles:, generator: 'spec').call.to_s

@@ -2,39 +2,49 @@
 
 RSpec.describe Html2rss::FeedBuilder::Rss do
   describe 'round trip', :property do
-    it 'keeps title and url and one item per article', :aggregate_failures do
-      forall(ArticleGenerators.article) do |article|
-        back = RssRoundtrip.call([article])
+    it 'keeps one item per renderable article, in order' do
+      forall(ArticleGenerators.feed) do |articles|
+        urls = ->(list) { list.map { _1.url.to_s } }
 
-        expect(back.map(&:title)).to eq([article.title])
-        expect(back.map { _1.url.to_s }).to eq([article.url.to_s])
+        expect(urls.call(RssRoundtrip.call(articles))).to eq(urls.call(RssRoundtrip.renderable(articles)))
       end
     end
 
-    it 'keeps the publication second and the categories', :aggregate_failures do
-      forall(ArticleGenerators.article) do |article|
-        back = RssRoundtrip.call([article]).first
+    it 'pairs the title with each renderable article' do
+      forall(ArticleGenerators.feed) do |articles|
+        expect(RssRoundtrip.call(articles).map(&:title)).to eq(RssRoundtrip.renderable(articles).map(&:title))
+      end
+    end
 
-        expect(back.published_at.to_time.to_i).to eq(article.published_at.to_time.to_i)
-        expect(back.categories).to eq(article.categories)
+    it 'pairs the publication second with each renderable article' do
+      forall(ArticleGenerators.feed) do |articles|
+        seconds = ->(list) { list.map { _1.published_at.to_time.to_i } }
+
+        expect(seconds.call(RssRoundtrip.call(articles))).to eq(seconds.call(RssRoundtrip.renderable(articles)))
+      end
+    end
+
+    it 'pairs the categories with each renderable article' do
+      forall(ArticleGenerators.feed) do |articles|
+        expect(RssRoundtrip.call(articles).map(&:categories)).to eq(RssRoundtrip.renderable(articles).map(&:categories))
       end
     end
 
     it 'keeps the wire guid as the parsed id (Article#guid is derived, so it is not re-read)' do
-      forall(ArticleGenerators.article) do |article|
-        expect(RssRoundtrip.hashes([article]).first[:id]).to eq(article.guid)
+      forall(ArticleGenerators.feed) do |articles|
+        expect(RssRoundtrip.hashes(articles).map { _1[:id] }).to eq(RssRoundtrip.renderable(articles).map(&:guid))
       end
     end
 
-    it 'keeps a person name as author via dc:creator', :aggregate_failures do
-      forall(ArticleGenerators.article(author: ArticleGenerators.person_name)) do |article|
-        expect(RssRoundtrip.call([article]).first.author).to eq(article.author)
+    it 'keeps a person name as author via dc:creator' do
+      forall(ArticleGenerators.feed(author: ArticleGenerators.person_name)) do |articles|
+        expect(RssRoundtrip.call(articles).map(&:author)).to eq(RssRoundtrip.renderable(articles).map(&:author))
       end
     end
 
-    it 'keeps an email address as author via author', :aggregate_failures do
-      forall(ArticleGenerators.article(author: ArticleGenerators.email_person)) do |article|
-        expect(RssRoundtrip.call([article]).first.author).to eq(article.author)
+    it 'keeps an email address as author via author' do
+      forall(ArticleGenerators.feed(author: ArticleGenerators.email_person)) do |articles|
+        expect(RssRoundtrip.call(articles).map(&:author)).to eq(RssRoundtrip.renderable(articles).map(&:author))
       end
     end
 

@@ -45,6 +45,24 @@ module ArticleGenerators
     end
   end
 
+  # Urls are made unique on purpose (an index path segment), so item order and pairing are unambiguous.
+  #
+  # @param author [PropCheck::Generator] where each author comes from
+  # @return [PropCheck::Generator] 1 to 8 articles; some lack a title, some lack title and description
+  def feed(author: GEN.one_of(person_name, email_person))
+    GEN.array(GEN.tuple(article(author:), TextGenerators.pick(%i[full untitled blank])), min: 1, max: 8)
+       .map { |entries| entries.each_with_index.map { |(article, kind), index| strip(article, kind, index) } }
+  end
+
+  # @return [Html2rss::Article] +article+ without the fields +kind+ drops, at a url unique by +index+
+  def strip(article, kind, index)
+    fields = { url: "#{article.url}/#{index}", description: article.description, title: article.title,
+               author: article.author, published_at: article.published_at, categories: article.categories }
+    fields[:title] = nil unless kind == :full
+    fields[:description] = nil if kind == :blank
+    Html2rss::Article.new(**fields)
+  end
+
   # @return [PropCheck::Generator] one lowercase-or-digit word
   def word = GEN.alphanumeric_string.where { !_1.empty? }
 end
