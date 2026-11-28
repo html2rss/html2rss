@@ -29,6 +29,7 @@ RSpec.configure do |config|
   config.include PropCheck, :property
 
   config.before(:example, :property) do
+    # Every no-arg Random.new inside a property example shares this one seeded stream.
     seeded = Random.new(PropertyTesting.seed)
     allow(Random).to receive(:new).and_call_original
     allow(Random).to receive(:new).with(no_args).and_return(seeded)

@@ -3,8 +3,14 @@
 require 'prop_check'
 
 # Text generators for +:property+ examples: tag soup, URL-like strings and regexp-like strings.
-module PropertyGenerators
+module TextGenerators
   module_function
+
+  # @param values [Array] candidate values
+  # @return [PropCheck::Generator] one of +values+, shrinking toward the first
+  def pick(values)
+    PropCheck::Generators.one_of(*values.map { |value| PropCheck::Generators.constant(value) })
+  end
 
   ANCHOR = '<a href="/x" onclick="y()">'
   HTML_PIECES = [
@@ -18,10 +24,7 @@ module PropertyGenerators
   # @return [PropCheck::Generator] tag soup built from {HTML_PIECES}, hostile markup included
   def html_soup(exclude: [])
     pieces = HTML_PIECES - exclude
-    PropCheck::Generators.array(PropCheck::Generators.one_of(*pieces.map do |piece|
-      PropCheck::Generators.constant(piece)
-    end))
-                         .map(&:join)
+    PropCheck::Generators.array(pick(pieces)).map(&:join)
   end
 
   # @return [PropCheck::Generator] non-empty lowercase words
@@ -40,10 +43,7 @@ module PropertyGenerators
   # @param exclude [Array<String>] pieces to leave out
   # @return [PropCheck::Generator] URL-shaped strings built from {URL_PIECES}
   def url_soup(exclude: [])
-    PropCheck::Generators.array(PropCheck::Generators.one_of(*(URL_PIECES - exclude).map do |piece|
-      PropCheck::Generators.constant(piece)
-    end))
-                         .map(&:join)
+    PropCheck::Generators.array(pick(URL_PIECES - exclude)).map(&:join)
   end
 
   # @return [PropCheck::Generator] strings with bytes that may be invalid UTF-8
@@ -68,18 +68,13 @@ module PropertyGenerators
 
   # @return [PropCheck::Generator] regexp-like strings, mostly malformed, built from {REGEXP_PIECES}
   def regexp_soup
-    PropCheck::Generators.array(PropCheck::Generators.one_of(*REGEXP_PIECES.map do |piece|
-      PropCheck::Generators.constant(piece)
-    end), max: 12)
-                         .map(&:join)
+    PropCheck::Generators.array(pick(REGEXP_PIECES), max: 12).map(&:join)
   end
 
   # @return [PropCheck::Generator] well-formed patterns whose quantified group contains a quantified atom
   def nested_quantifier_pattern
-    quantifier = PropCheck::Generators.one_of(*QUANTIFIERS.map { |piece| PropCheck::Generators.constant(piece) })
-    PropCheck::Generators.tuple(PropCheck::Generators.one_of(*%w[a [ab] . \\d].map do |atom|
-      PropCheck::Generators.constant(atom)
-    end),
-                                quantifier, quantifier).map { |atom, inner, outer| "(#{atom}#{inner})#{outer}" }
+    quantifier = pick(QUANTIFIERS)
+    PropCheck::Generators.tuple(pick(%w[a [ab] . \\d]), quantifier, quantifier)
+                         .map { |atom, inner, outer| "(#{atom}#{inner})#{outer}" }
   end
 end

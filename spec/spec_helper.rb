@@ -46,8 +46,9 @@ require_relative 'support/helpers/mcp_test_helpers'
 require_relative 'support/helpers/feed_test_helpers'
 require_relative 'support/helpers/thread_helpers'
 require_relative 'support/property_testing'
-require_relative 'support/property_generators'
-require_relative 'support/property_text_generators'
+require_relative 'support/network_generators'
+require_relative 'support/text_generators'
+require_relative 'support/tree_generators'
 
 # Load shared examples
 Dir.glob('**/*.rb', base: File.join(__dir__, 'support/shared_examples')).each do |f|

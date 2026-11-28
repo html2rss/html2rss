@@ -76,7 +76,7 @@ RSpec.describe Html2rss::Url do
     end
 
     it 'resolves any reference against an absolute base to an absolute Url or InvalidUrlError', :property do
-      forall(PropertyGenerators.any_text) do |text|
+      forall(TextGenerators.any_text) do |text|
         outcome = attempt.call { described_class.from_relative(text, 'https://example.com/a/b/') }
         expect(outcome).to be_a(described_class::InvalidUrlError).or be_absolute
       end
@@ -195,7 +195,7 @@ RSpec.describe Html2rss::Url do
   describe '.sanitize' do
     # Without mailto:, whose query-only form ("mailto:?") normalizes to a bare "mailto:" that sanitize rejects.
     it 'yields a Url or nil, never a core error, and is idempotent', :property do
-      forall(PropertyGenerators.any_text(exclude: ['mailto:'])) do |text|
+      forall(TextGenerators.any_text(exclude: ['mailto:'])) do |text|
         url = described_class.sanitize(text)
         expect(described_class.sanitize(url&.to_s)).to eq(url)
       end
@@ -334,7 +334,7 @@ RSpec.describe Html2rss::Url do
     end
 
     it 'yields an absolute Url or InvalidUrlError, never a core error, and is idempotent', :property do
-      forall(PropertyGenerators.any_text) do |text|
+      forall(TextGenerators.any_text) do |text|
         url = attempt.call { described_class.from_absolute(text) }
         next if url.is_a?(described_class::InvalidUrlError)
 

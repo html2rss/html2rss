@@ -122,9 +122,11 @@ module Html2rss
       return uri if NORMAL_FORM.match?(uri.to_s)
       raise Addressable::URI::InvalidURIError if uri.host&.match?(STRAY_COLON)
 
-      uri.normalize
-    rescue ArgumentError
-      raise Addressable::URI::InvalidURIError
+      begin
+        uri.normalize
+      rescue ArgumentError
+        raise Addressable::URI::InvalidURIError
+      end
     end
     private_class_method :normalized
 

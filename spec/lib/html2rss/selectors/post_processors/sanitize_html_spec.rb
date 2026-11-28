@@ -139,7 +139,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
     # Without anchors: an <img> inside <a><p> gets its own wrapping <a> (only the direct parent counts), and
     # a second parse splits those nested anchors apart.
     it 'is idempotent on any anchor-free tag soup', :property do
-      forall(PropertyGenerators.html_soup(exclude: [PropertyGenerators::ANCHOR])) do |html|
+      forall(TextGenerators.html_soup(exclude: [TextGenerators::ANCHOR])) do |html|
         once = described_class.sanitize(html, 'http://example.com')
         expect(described_class.sanitize(once, 'http://example.com')).to eq(once)
       end
@@ -147,19 +147,19 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
 
     it 'never emits scripts, event handlers or the newline placeholder', :property do
       forbidden = /<script|<[^>]*\son\w+\s*=|__NEWLINE_PLACEHOLDER__/i
-      forall(PropertyGenerators.html_soup(exclude: ['__NEWLINE_PLACEHOLDER__'])) do |html|
+      forall(TextGenerators.html_soup(exclude: ['__NEWLINE_PLACEHOLDER__'])) do |html|
         expect(described_class.sanitize(html, 'http://example.com').to_s).not_to match(forbidden)
       end
     end
 
     it 'keeps the lines of plain text', :property do
-      forall(PropertyGenerators.words) do |lines|
+      forall(TextGenerators.words) do |lines|
         expect(described_class.sanitize(lines.join("\n"), 'http://example.com')).to eq(lines.join("\n"))
       end
     end
 
     it 'treats the placeholder literal as text, not as a newline', :property do
-      forall(PropertyGenerators.words) do |words|
+      forall(TextGenerators.words) do |words|
         text = words.join(' __NEWLINE_PLACEHOLDER__ ')
         expect(described_class.sanitize(text, 'http://example.com')).to eq(text)
       end

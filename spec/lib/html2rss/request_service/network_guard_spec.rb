@@ -33,17 +33,9 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
     64:ff9b::8.8.8.8 64:ff9b::1.1.1.1 2002:0808:0808:: 2001:1::1
   ]
 
-  # Independent oracle for the :property examples: the special-purpose registries, spelled out apart from the guard.
-  expected_ranges = %w[
-    0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12 192.0.0.0/24 192.0.2.0/24
-    192.88.99.0/24 192.168.0.0/16 198.18.0.0/15 198.51.100.0/24 203.0.113.0/24 224.0.0.0/4 240.0.0.0/4
-    ::/128 ::1/128 100::/64 2001:10::/28 2001:20::/28 2001:db8::/32 fe80::/10 fc00::/7 ff00::/8
-    64:ff9b:1::/48 2001::/32
-  ].map { |cidr| IPAddr.new(cidr) }
-
   describe '#enforce_public_network!' do
-    it 'refuses a host iff it resolves to nothing or any address is blocked', :property do
-      forall(PropertyGenerators.resolver_answer(expected_ranges)) do |found|
+    it 'refuses a host iff the resolver answers nothing or any answer is blocked (combination only)', :property do
+      forall(NetworkGenerators.resolver_answer(NetworkGenerators::SPECIAL_PURPOSE_RANGES)) do |found|
         allow(resolver).to found.inject(receive(:each_address).with('example.com')) { |c, ip| c.and_yield(ip.to_s) }
         expect(refuses.call).to be(found.empty? || found.any? { |address| guard.blocked_ip?(address) })
       end
@@ -186,16 +178,16 @@ RSpec.describe Html2rss::RequestService::NetworkGuard do
 
   describe '#blocked_ip?' do
     it 'denies every address inside a blocked range, in every spelling', :property do
-      forall(PropertyGenerators.address_in(expected_ranges)) do |address|
+      forall(NetworkGenerators.address_in(NetworkGenerators::SPECIAL_PURPOSE_RANGES)) do |address|
         spellings = [address.to_s, address.to_s.upcase, address.to_string, address.to_string.upcase].uniq
         expect(spellings.map { |text| guard.blocked_ip?(IPAddr.new(text)) }).to all(be(true))
       end
     end
 
     it 'judges IPv4 by the ranges in plain, IPv4-mapped, NAT64 and 6to4 forms', :property do
-      forall(PropertyGenerators.random_ipv4) do |address|
-        expected = expected_ranges.any? { |range| range.include?(address) }
-        expect(PropertyGenerators.ipv6_forms(address).map { |form| guard.blocked_ip?(form) }).to all(be(expected))
+      forall(NetworkGenerators.random_ipv4) do |address|
+        expected = NetworkGenerators::SPECIAL_PURPOSE_RANGES.any? { |range| range.include?(address) }
+        expect(NetworkGenerators.ipv6_forms(address).map { |form| guard.blocked_ip?(form) }).to all(be(expected))
       end
     end
 

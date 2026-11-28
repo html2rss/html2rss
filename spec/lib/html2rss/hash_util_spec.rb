@@ -23,15 +23,15 @@ RSpec.describe Html2rss::HashUtil do
     end
 
     it 'copies an equal tree', :property do
-      forall(PropertyGenerators.string_keyed_tree) do |tree|
+      forall(TreeGenerators.string_keyed_tree) do |tree|
         expect(described_class.deep_dup(tree)).to eq(tree)
       end
     end
 
     it 'shares nothing with the original, even with frozen leaves', :property do
-      forall(PropertyGenerators.string_keyed_tree) do |tree|
+      forall(TreeGenerators.string_keyed_tree) do |tree|
         snapshot = Marshal.load(Marshal.dump(tree))
-        PropertyGenerators.mutate!(described_class.deep_dup(tree))
+        TreeGenerators.mutate!(described_class.deep_dup(tree))
         expect(tree).to eq(snapshot)
       end
     end
@@ -43,7 +43,7 @@ RSpec.describe Html2rss::HashUtil do
 
   describe '.deep_merge' do
     it 'is the identity with an empty override and idempotent with itself', :property do
-      forall(PropertyGenerators.string_keyed_tree) do |tree|
+      forall(TreeGenerators.string_keyed_tree) do |tree|
         expect([described_class.deep_merge(tree, {}), described_class.deep_merge(tree, tree)]).to all(eq(tree))
       end
     end
@@ -90,7 +90,7 @@ RSpec.describe Html2rss::HashUtil do
 
   describe '.deep_stringify_keys' do
     it 'undoes deep_symbolize_keys on string-keyed trees', :property do
-      forall(PropertyGenerators.string_keyed_tree) do |tree|
+      forall(TreeGenerators.string_keyed_tree) do |tree|
         expect(described_class.deep_stringify_keys(described_class.deep_symbolize_keys(tree))).to eq(tree)
       end
     end

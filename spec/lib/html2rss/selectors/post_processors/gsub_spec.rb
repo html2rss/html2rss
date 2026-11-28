@@ -130,14 +130,14 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     ].freeze
 
     it 'compiles any string to a Regexp or raises InvalidOption, never a core error', :property do
-      forall(PropertyGenerators.regexp_soup) do |pattern|
+      forall(TextGenerators.regexp_soup) do |pattern|
         outcome = attempt.call { described_class.compiled_pattern(pattern) }
         expect(outcome).to be_a(Regexp).or be_a(Html2rss::InvalidOption)
       end
     end
 
     it 'rejects every pattern that quantifies a group holding a quantified atom', :property do
-      forall(PropertyGenerators.nested_quantifier_pattern) do |pattern|
+      forall(TextGenerators.nested_quantifier_pattern) do |pattern|
         expect { described_class.compiled_pattern(pattern) }
           .to raise_error(Html2rss::InvalidOption, /nested quantifiers/)
       end

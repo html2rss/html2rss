@@ -4,8 +4,17 @@ require 'ipaddr'
 require 'prop_check'
 
 ##
-# Reusable PropCheck generators and value builders for +:property+ examples.
-module PropertyGenerators
+# PropCheck generators and value builders for IP addresses, for +:property+ examples.
+module NetworkGenerators
+  # Independent oracle for the NetworkGuard properties: the IANA special-purpose registries, spelled out apart
+  # from the guard's own list.
+  SPECIAL_PURPOSE_RANGES = %w[
+    0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12 192.0.0.0/24 192.0.2.0/24
+    192.88.99.0/24 192.168.0.0/16 198.18.0.0/15 198.51.100.0/24 203.0.113.0/24 224.0.0.0/4 240.0.0.0/4
+    ::/128 ::1/128 100::/64 2001:10::/28 2001:20::/28 2001:db8::/32 fe80::/10 fc00::/7 ff00::/8
+    64:ff9b:1::/48 2001::/32
+  ].map { |cidr| IPAddr.new(cidr) }.freeze
+
   module_function
 
   # @return [PropCheck::Generator] any IPv4 address (mostly public)
@@ -52,29 +61,5 @@ module PropertyGenerators
     [ipv4, ipv4.ipv4_mapped,
      IPAddr.new(IPAddr.new('64:ff9b::').to_i | number, Socket::AF_INET6),
      IPAddr.new((0x2002 << 112) | (number << 80), Socket::AF_INET6)]
-  end
-
-  # @return [PropCheck::Generator] string-keyed hashes nesting hashes and arrays of hashes, with frozen string leaves
-  def string_keyed_tree
-    gen = PropCheck::Generators
-    key = gen.alphanumeric_string.where { |text| !text.empty? }
-    leaf = gen.one_of(gen.alphanumeric_string.map(&:freeze), gen.integer, gen.constant(nil), gen.constant(true))
-    node = gen.tree(leaf) do |child|
-      gen.frequency(1 => gen.hash_of(key, child, max: 3), 2 => gen.array(child, max: 3))
-    end
-    gen.hash_of(key, node, max: 4)
-  end
-
-  # Changes every mutable part of +tree+ in place: appends to arrays and strings, adds a key to hashes.
-  #
-  # @param tree [Object] a value from {string_keyed_tree}
-  # @return [Object] +tree+
-  def mutate!(tree)
-    case tree
-    when Hash then tree.each_value { |value| mutate!(value) }.store('mutated', true)
-    when Array then tree.each { |value| mutate!(value) }.push(:mutated)
-    when String then tree << 'mutated'
-    end
-    tree
   end
 end
