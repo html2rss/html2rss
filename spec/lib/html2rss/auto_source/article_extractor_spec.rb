@@ -64,6 +64,13 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
         expect(result[:published_at].to_s).to start_with('2026-01-02T')
       end
 
+      it 'keeps a later datetime attribute over an earlier byline date head' do
+        time = '<time datetime="2026-12-05T00:00:00Z">5 Dec</time>'
+        result = leftover_fields.call("<article>#{head}#{time}<p>27 Nov 2026 / by Anna Beispiel</p>#{body}</article>")
+
+        expect(result[:published_at].to_s).to start_with('2026-12-05T')
+      end
+
       it 'keeps prose that starts with "By" in the description', :aggregate_failures do
         result = leftover_fields.call("<article>#{head}<p>By the end of the year the depot reopens.</p></article>")
 
