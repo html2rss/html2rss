@@ -25,7 +25,6 @@ module Html2rss
         LIST_MARK = /\A- /
         # An item of this length without sentence-ending punctuation is a fragment, not a sentence.
         MAX_FRAGMENT_CHARS = 40
-        # Closing punctuation of a sentence or lead-in.
 
         class << self
           ##
