@@ -114,6 +114,65 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       end
     end
 
+    context 'when headers include browser-owned navigation headers' do
+      let(:contract) do
+        described_class.new(
+          url:,
+          headers: { 'Sec-Fetch-Dest' => 'document', 'Upgrade-Insecure-Requests' => '1', 'Accept' => 'text/html' },
+          options: { headers: {
+            'sec-fetch-mode' => 'navigate', :'SEC-FETCH-SITE' => 'none',
+            'upgrade-insecure-requests' => '1', 'X-Upgrade' => '1'
+          } }
+        )
+      end
+
+      it 'drops them from context and explicit headers, case-insensitively' do
+        expect(payload[:headers]).to eq('Accept' => 'text/html', 'X-Upgrade' => '1')
+      end
+    end
+
+    context 'when headers mix symbol keys, nil values and a non-Hash context' do
+      let(:contract) do
+        described_class.new(url:, headers: %w[ignored], options: { headers: { Accept: 'text/html', 'X-Nil' => nil } })
+      end
+
+      it 'stringifies keys, drops nil values and ignores non-Hash context headers' do
+        expect(payload[:headers]).to eq('Accept' => 'text/html')
+      end
+    end
+
+    context 'when context headers are a Hash subclass' do
+      let(:contract) { described_class.new(url:, headers: Class.new(Hash).new.merge!('X-A' => '1')) }
+
+      it 'forwards them' do
+        expect(payload[:headers]).to eq('X-A' => '1')
+      end
+    end
+
+    context 'when explicit headers override context headers' do
+      let(:contract) do
+        described_class.new(url:, headers: { 'Accept' => 'a', 'X-A' => '1' }, options: { headers: { 'Accept' => 'b' } })
+      end
+
+      it 'lets explicit values win and keeps the rest' do
+        expect(payload[:headers]).to eq('Accept' => 'b', 'X-A' => '1')
+      end
+    end
+
+    context 'when only browser-owned navigation headers are given' do
+      let(:contract) do
+        described_class.new(
+          url:,
+          headers: { 'Sec-Fetch-User' => '?1', 'Upgrade-Insecure-Requests' => '1' },
+          options: { headers: { 'Sec-Fetch-Dest' => 'document' } }
+        )
+      end
+
+      it 'omits the headers key' do
+        expect(payload).not_to have_key(:headers)
+      end
+    end
+
     context 'when options include a validator-legal key' do
       let(:contract) { described_class.new(url:, options: { scroll: true }) }
 
