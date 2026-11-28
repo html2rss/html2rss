@@ -2,7 +2,6 @@
 
 require 'addressable/uri'
 require 'cgi'
-require 'ipaddr'
 require 'nokogiri'
 require 'public_suffix'
 
@@ -61,6 +60,10 @@ module Html2rss
     DNS_NAME = /\A(?:#{DNS_LABEL}\.)*#{DNS_LABEL}\z/i
     OCTET = '(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
     IPV4 = /\A(?:#{OCTET}\.){3}#{OCTET}\z/
+    # A dotted IPv4 ending an IPv6 text form: it stands for the last two groups.
+    IPV6_IPV4_TAIL = /(?<=:)(?:#{OCTET}\.){3}#{OCTET}\z/
+    # One IPv6 group: 1-4 hex digits.
+    IPV6_GROUP = /\A\h{1,4}\z/
     NUMERIC_LAST_LABEL = /(?:\A|\.)\d+\z/
     MAX_HOST_LENGTH = 253
     # A URL string +Addressable::URI#normalize+ returns unchanged (see {.normalized}); anything else is normalized.
@@ -271,11 +274,12 @@ module Html2rss
     def user = @uri.user
 
     # Registrable domain (eTLD+1). Same-site hosts like www.example.com and news.example.com
-    # share `example.com`. IP literals stay the host so 1.2.3.4 is not treated as `3.4`.
+    # share `example.com`. An IPv4 or bracketed IPv6 literal stays the host so 1.2.3.4 is not treated as `3.4`
+    # (nor ::ffff:1.2.3.4).
     #
     # @return [String, nil]
     def domain
-      return host if ip_address_host?
+      return host if host&.start_with?('[') || IPV4.match?(host)
 
       PublicSuffix.domain(host, list: PUBLIC_SUFFIX_LIST, ignore_private: true) || host
     end
@@ -516,22 +520,21 @@ module Html2rss
       dns_name_or_ipv4?(host)
     end
 
+    # A bracketed IPv6 literal in RFC 4291 text form (section 2.2): 1-4 hex digit groups, one +::+ at most,
+    # an optional trailing dotted IPv4, no zone id and no prefix length.
     def ipv6_literal?(host)
-      IPAddr.new(host, Socket::AF_INET6)
-    rescue IPAddr::Error
-      false
+      text = host[/\A\[(.+)\]\z/, 1]
+      return false unless text
+
+      head, compressed, tail = text.sub(IPV6_IPV4_TAIL, '0:0').partition('::')
+      groups = [head, tail].flat_map { _1.empty? ? [] : _1.split(':', -1) }
+      groups.all?(IPV6_GROUP) && (compressed.empty? ? groups.size == 8 : groups.size < 8)
     end
 
     def dns_name_or_ipv4?(name)
       return IPV4.match?(name) if NUMERIC_LAST_LABEL.match?(name)
 
       name.length <= MAX_HOST_LENGTH && DNS_NAME.match?(name)
-    end
-
-    def ip_address_host?
-      !IPAddr.new(host).nil?
-    rescue IPAddr::Error
-      false
     end
   end
 end

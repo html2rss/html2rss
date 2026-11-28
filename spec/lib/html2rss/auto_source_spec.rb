@@ -97,6 +97,24 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 
+  describe '.options' do
+    it 'is the default config without overrides' do
+      expect(described_class.options).to eq(described_class::DEFAULT_CONFIG)
+    end
+
+    it 'writes limit, cleanup and entry resolution overrides over the defaults', :aggregate_failures do
+      options = described_class.options(limit: 7, keep_sponsored: true, resolution_scope: :site)
+
+      expect(options).to include(limit: 7)
+      expect(options[:cleanup]).to eq(described_class::Cleanup::DEFAULT_CONFIG.merge(keep_sponsored: true))
+      expect(options.dig(:entry_resolution, :scope)).to eq('site')
+    end
+
+    it 'rejects a limit below one' do
+      expect { described_class.options(limit: 0) }.to raise_error(Html2rss::InvalidOption, /limit/)
+    end
+  end
+
   describe '.request_slots_for' do
     let(:scrapers) { described_class::DEFAULT_CONFIG.fetch(:scraper) }
     let(:without_oembed) { { scraper: scrapers.merge(meta_oembed: { enabled: false }) } }

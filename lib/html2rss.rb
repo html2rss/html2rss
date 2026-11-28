@@ -243,5 +243,3 @@ module Html2rss
 
   logger.level = defaults.log_level
 end
-
-loader.eager_load

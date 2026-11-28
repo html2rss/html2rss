@@ -107,7 +107,7 @@ module Html2rss
         end
 
         # @param response [RequestService::Response] successful response
-        # @param extraction [Html2rss::FeedPipeline::Extraction] its articles, drops and feed channel facts
+        # @param extraction [Html2rss::FeedPipeline::Extracted] its articles, drops and feed channel facts
         # @param selected_strategy [Symbol] concrete strategy that produced items
         # @param attempt_count [Integer] number of attempts recorded for this chain
         # @param scrape_target [Html2rss::FeedPipeline::ScrapeTarget]

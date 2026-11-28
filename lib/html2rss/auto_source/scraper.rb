@@ -94,6 +94,13 @@ module Html2rss
       end
 
       ##
+      # @param klass [Class, #to_s] scraper class (+nil+ names none)
+      # @return [String] short scraper label for tallies, generator text and extraction results
+      def self.name_for(klass)
+        klass.to_s.gsub(/(?:Html2rss|Scraper)::/, '')
+      end
+
+      ##
       # @param tier [Array<Class>]
       # @return [Boolean]
       def self.heuristic_tier?(tier)

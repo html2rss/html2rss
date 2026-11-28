@@ -45,7 +45,7 @@ module Html2rss
       def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0,
                 strategy_attempts: [], admission_drops: {}, scrape_target: nil,
                 entry_url: nil, scrape_url: nil, entry_resolution: nil, enrichment: {})
-        tallies = articles.filter_map(&:scraper).tally.transform_keys { |klass| scraper_name(klass) }
+        tallies = articles.filter_map(&:scraper).tally.transform_keys { |klass| AutoSource::Scraper.name_for(klass) }
         new(
           version: Html2rss::VERSION,
           scraper_tallies: tallies,
@@ -59,13 +59,6 @@ module Html2rss
           entry_resolution:,
           **ENRICHMENT_KEYS.to_h { [_1, enrichment.fetch(_1, 0)] }
         )
-      end
-
-      ##
-      # @param klass [Class, #to_s] scraper class
-      # @return [String] short scraper label for tallies / generator text
-      def scraper_name(klass)
-        klass.to_s.gsub(/(?:Html2rss|Scraper)::/, '')
       end
     end
 

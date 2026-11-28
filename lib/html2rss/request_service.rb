@@ -170,15 +170,16 @@ module Html2rss
     # Raised when Botasaurus responds but the scrape fails (upstream error, bad payload).
     class BotasaurusServiceError < Html2rss::Error; end
 
-    # Map of supported strategy names to their implementation classes.
-    # @return [Hash{Symbol => Class<Strategy>}]
+    # Supported strategy names, each a lambda returning its implementation: the transports load on first use,
+    # never with this class.
+    # @return [Hash{Symbol => Proc}]
     STRATEGIES = {
-      default: HttpxStrategy,
-      httpx: HttpxStrategy,
-      faraday: HttpxStrategy,
-      botasaurus: BotasaurusStrategy,
-      browserless: BotasaurusStrategy,
-      local_file: LocalFileStrategy
+      default: -> { HttpxStrategy },
+      httpx: -> { HttpxStrategy },
+      faraday: -> { HttpxStrategy },
+      botasaurus: -> { BotasaurusStrategy },
+      browserless: -> { BotasaurusStrategy },
+      local_file: -> { LocalFileStrategy }
     }.freeze
 
     # Deprecated strategy aliases and the preferred replacement name for warnings.
@@ -262,7 +263,7 @@ module Html2rss
                 "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
         end
 
-        fetch_initial_through_cache(ctx, strategy_sym) { strategy_class.new(ctx).execute }
+        fetch_initial_through_cache(ctx, strategy_sym) { strategy_class.call.new(ctx).execute }
       end
 
       ##

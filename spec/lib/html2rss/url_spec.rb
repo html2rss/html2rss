@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'ipaddr'
+
 RSpec.describe Html2rss::Url do
   describe '.from_relative normalization' do
     let(:uri) { Addressable::URI.parse(href) }
@@ -257,6 +259,42 @@ RSpec.describe Html2rss::Url do
       }.each do |name, raw|
         it "rejects #{name}" do
           expect { described_class.from_absolute(raw) }.to raise_error(described_class::InvalidUrlError)
+        end
+      end
+
+      # The host check is the RFC 4291 text form IPAddr reads, except that Url rejects a zone id and a prefix length.
+      let(:url_accepts) do
+        lambda do |text|
+          described_class.new(Addressable::URI.parse('http://x/a').tap { _1.host = "[#{text}]" })
+          true
+        rescue described_class::InvalidUrlError, Addressable::URI::InvalidURIError
+          false
+        end
+      end
+      let(:ipaddr_accepts) do
+        lambda do |text|
+          IPAddr.new("[#{text}]", Socket::AF_INET6)
+          true
+        rescue IPAddr::Error
+          false
+        end
+      end
+
+      [
+        '::', '::1', '1::', '1:2:3:4:5:6:7:8', '1:2:3:4:5:6:7::', '1:2:3:4:5:6:7:8:9', '1:2:3:4:5:6:7:8::',
+        '1::2::3', ':::', ':1::', '12345::', '::ffff:1.2.3.4', '1:2:3:4:5:6:1.2.3.4', '1:2:3:4:5:6:7:1.2.3.4',
+        '::01.2.3.4', '::1.2.3.4.5', '1.2.3.4', 'fe80::1%eth0', '::1/64', '', 'garbage', '::g'
+      ].each do |text|
+        it "reads the bracketed host [#{text}] as IPAddr does" do
+          expect(url_accepts.call(text)).to eq(ipaddr_accepts.call(text) && !text.match?(%r{[%/]}))
+        end
+      end
+
+      %w[[::1 ::1] ::1].each do |host|
+        it "rejects #{host} without both brackets" do
+          uri = Addressable::URI.parse('http://x/a').tap { _1.host = host }
+
+          expect { described_class.new(uri) }.to raise_error(described_class::InvalidUrlError)
         end
       end
 
@@ -717,6 +755,16 @@ RSpec.describe Html2rss::Url do
 
     it 'uses the host for IP addresses instead of a public-suffix suffix' do
       expect(described_class.from_absolute('https://1.2.3.4/story').domain).to eq('1.2.3.4')
+    end
+
+    it 'has no domain without a host' do
+      expect(described_class.new(Addressable::URI.parse('/a/b')).domain).to be_nil
+    end
+
+    it 'uses the bracketed host for an IPv6 literal, with or without a dotted IPv4 tail', :aggregate_failures do
+      %w[[2001:db8::1] [::ffff:1.2.3.4] [::1.2.3.4]].each do |host|
+        expect(described_class.from_absolute("https://#{host}/story").domain).to eq(host)
+      end
     end
 
     it 'delegates path method' do

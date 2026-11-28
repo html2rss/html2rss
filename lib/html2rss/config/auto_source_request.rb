@@ -64,15 +64,7 @@ module Html2rss
 
       private
 
-      def resolution_config = AutoSource::DEFAULT_CONFIG[:entry_resolution].merge(scope: resolution_scope.to_s)
-
-      def auto_source
-        base = AutoSource::DEFAULT_CONFIG
-        base = base.merge(limit: Option.integer(:limit, limit, min: 1)) unless limit.nil?
-        base = base.merge(entry_resolution: resolution_config) if resolution_scope
-        cleanup = { keep_different_domain:, keep_sponsored: }.compact
-        cleanup.empty? ? base : base.merge(cleanup: base[:cleanup].merge(cleanup))
-      end
+      def auto_source = AutoSource.options(limit:, keep_different_domain:, keep_sponsored:, resolution_scope:)
     end
   end
 end

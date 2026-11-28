@@ -27,12 +27,7 @@ module Html2rss
         raise InvalidOption, 'Local file path is required for local_file strategy' unless file_path
 
         body = File.read(file_path, encoding: Encoding::UTF_8)
-        Response.new(
-          body:,
-          headers: { 'content-type' => 'text/html; charset=utf-8' },
-          url: ctx.url,
-          status: 200
-        )
+        Response.local_html(body:, url: ctx.url)
       end
     end
   end

@@ -84,6 +84,14 @@ RSpec.describe Html2rss::RequestService do
       expect(described_class.strategy_registered?(:botasaurus)).to be true
       expect(described_class.strategy_registered?(:browserless)).to be true
     end
+
+    it 'maps every registered name to a strategy class', :aggregate_failures do
+      classes = described_class::STRATEGIES.values.map(&:call)
+
+      expect(classes).to all(be < described_class::Strategy)
+      expect(described_class::STRATEGIES.fetch(:local_file).call).to be described_class::LocalFileStrategy
+      expect(described_class.strategy_registered?(:nope)).to be false
+    end
   end
 
   describe '#execute' do

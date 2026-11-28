@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'dry-validation'
 require 'json'
 
 module Html2rss

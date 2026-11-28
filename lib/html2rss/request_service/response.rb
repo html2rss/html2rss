@@ -56,6 +56,16 @@ module Html2rss
       end
 
       ##
+      # A page already in hand (a local file, the extraction kernel): UTF-8 HTML with no transport behind it.
+      #
+      # @param body [String] the page body
+      # @param url [String, Html2rss::Url] the page's absolute URL
+      # @return [Response]
+      def self.local_html(body:, url:)
+        new(body:, url: Url.from_absolute(url), headers: { 'content-type' => 'text/html; charset=utf-8' }, status: 200)
+      end
+
+      ##
       # @param body [String] the body of the response
       # @param url [Html2rss::Url] the final request URL
       # @param headers [Hash] the headers of the response

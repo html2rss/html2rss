@@ -189,6 +189,14 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     end
   end
 
+  describe '.name_for' do
+    it 'drops the Html2rss and Scraper namespaces and names no scraper as an empty string', :aggregate_failures do
+      expect(described_class.name_for(Html2rss::AutoSource::Scraper::Schema)).to eq('AutoSource::Schema')
+      expect(described_class.name_for(Html2rss::Selectors)).to eq('Selectors')
+      expect(described_class.name_for(nil)).to eq('')
+    end
+  end
+
   describe '.build_instance' do
     let(:parsed_body) do
       Nokogiri::HTML('<html><body><article><a href="/article-1">Article 1</a></article></body></html>')
