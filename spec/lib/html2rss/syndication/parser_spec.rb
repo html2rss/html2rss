@@ -389,6 +389,17 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(article).not_to have_key(:description)
     end
 
+    it 'reads the author of an RSS 2.0 item from dc:creator when it has no author element' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>C</title>
+          <item><title>T</title><link>https://example.com/p</link><dc:creator>Ada</dc:creator></item>
+        </channel></rss>
+      XML
+
+      expect(described_class.parse(body).articles.first).to include(author: 'Ada')
+    end
+
     it 'dates an Atom entry by dc:date only when it has neither published nor updated', :aggregate_failures do
       body = <<~XML
         <?xml version="1.0"?>
