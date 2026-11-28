@@ -106,6 +106,50 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
     expect(rss.to_s).not_to include('xml-stylesheet')
   end
 
+  describe 'item authors' do
+    let(:author) { nil }
+    let(:articles) { [Html2rss::Article.new(id: 1, title: 'T', author:, description: 'D', scraper: RSpec)] }
+    let(:item) { Nokogiri::XML(instance.call.to_s).css('item').first }
+
+    ['jane@example.com (Jane Doe)', 'jane@example.com'].each do |email_author|
+      context "with the email author #{email_author}" do
+        let(:author) { email_author }
+
+        it 'emits <author> and no dc:creator', :aggregate_failures do
+          expect(item.at_css('author').text).to eq(email_author)
+          expect(item.xpath('*').map(&:name)).not_to include('creator')
+        end
+      end
+    end
+
+    ['By Jane (jane@example.com) Doe', 'Jane @ Example', 'jane@example.com and Bob'].each do |name_author|
+      context "with the name #{name_author}" do
+        let(:author) { name_author }
+
+        it 'emits dc:creator and no <author>', :aggregate_failures do
+          expect(item.at_css('author')).to be_nil
+          expect(item.at_xpath('dc:creator').text).to eq(name_author)
+        end
+      end
+    end
+
+    context 'with a name author' do
+      let(:author) { 'Jane Doe' }
+
+      it 'declares dc and parses back as RSS 2.0 with the creator', :aggregate_failures do
+        expect(instance.call.to_s).to include('xmlns:dc="http://purl.org/dc/elements/1.1/"')
+        expect(RSS::Parser.parse(instance.call.to_s).items.first.dc_creator).to eq('Jane Doe')
+      end
+    end
+
+    context 'without an author' do
+      it 'emits neither', :aggregate_failures do
+        expect(item.at_css('author')).to be_nil
+        expect(item.xpath('*').map(&:name)).not_to include('creator')
+      end
+    end
+  end
+
   describe '#call' do
     subject(:rss) { instance.call }
 
@@ -250,8 +294,9 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
       end
       let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
 
-      it 'emits author, trimmed categories, an isPermaLink="false" guid and no link', :aggregate_failures do
-        expect(item.at_css('author').text).to eq('Jane Doe')
+      it 'emits dc:creator, trimmed categories, an isPermaLink="false" guid and no link', :aggregate_failures do
+        expect(item.at_xpath('dc:creator').text).to eq('Jane Doe')
+        expect(item.at_css('author')).to be_nil
         expect(item.css('category').map(&:text)).to eq(%w[news tech])
         expect(item.at_css('guid')['isPermaLink']).to eq('false')
         expect(item.at_css('link')).to be_nil

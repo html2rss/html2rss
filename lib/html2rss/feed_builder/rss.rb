@@ -14,6 +14,7 @@ module Html2rss
     #
     # +managingEditor+ carries the channel author only when it is an RSS 2.0 email address
     # (+editor@example.com+ or +editor@example.com (Name)+); a plain name is no managing editor.
+    # An item author follows the same rule: an email address is +author+, any other name is +dc:creator+.
     class Rss # rubocop:disable Metrics/ClassLength -- channel, item and podcast projections stay co-located
       # First duration in seconds that +itunes:duration+ cannot spell as +HH:MM:SS+ (100 hours).
       MAX_CLOCK_DURATION = 100 * 3600
@@ -48,11 +49,20 @@ module Html2rss
 
         def add_item_string_values(article, item_maker)
           item_maker.title = article.title
-          item_maker.author = article.author
+          add_item_author(article.author, item_maker)
           description = ItemPresentation.description_for(article)
           item_maker.description = description if description
           item_maker.link = article.url.to_s if article.url
           item_maker.pubDate = article.published_at&.rfc2822
+        end
+
+        # RSS 2.0 +author+ must be an email address; any other name goes to +dc:creator+.
+        def add_item_author(author, item_maker)
+          if EMAIL_PERSON.match?(author)
+            item_maker.author = author
+          else
+            item_maker.dc_creator = author
+          end
         end
 
         def add_item_categories(article, item_maker)
