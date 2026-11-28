@@ -48,6 +48,8 @@ require_relative 'support/helpers/thread_helpers'
 require_relative 'support/property_testing'
 require_relative 'support/network_generators'
 require_relative 'support/text_generators'
+require_relative 'support/article_generators'
+require_relative 'support/rss_roundtrip'
 require_relative 'support/tree_generators'
 
 # Load shared examples
