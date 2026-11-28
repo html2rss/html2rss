@@ -32,9 +32,10 @@ module Html2rss
             # @param xml_content [String] sitemap XML body string
             # @param min_priority [Float] minimum priority score (0.0..1.0)
             # @param max_age_days [Integer] maximum age in days for entries
+            # @param now [Time] the current time, which ages entries out
             # @return [Result] result with entries and/or sub_sitemap_urls
-            def call(xml_content, min_priority: DEFAULT_MIN_PRIORITY, max_age_days: DEFAULT_MAX_AGE_DAYS)
-              new(xml_content, min_priority:, max_age_days:).call
+            def call(xml_content, now:, min_priority: DEFAULT_MIN_PRIORITY, max_age_days: DEFAULT_MAX_AGE_DAYS)
+              new(xml_content, now:, min_priority:, max_age_days:).call
             end
           end
 
@@ -42,8 +43,10 @@ module Html2rss
           # @param xml_content [String]
           # @param min_priority [Float]
           # @param max_age_days [Integer]
-          def initialize(xml_content, min_priority: DEFAULT_MIN_PRIORITY, max_age_days: DEFAULT_MAX_AGE_DAYS)
+          # @param now [Time]
+          def initialize(xml_content, now:, min_priority: DEFAULT_MIN_PRIORITY, max_age_days: DEFAULT_MAX_AGE_DAYS)
             @xml_content = xml_content
+            @now = now
             @min_priority = min_priority
             @max_age_days = max_age_days
           end
@@ -63,7 +66,7 @@ module Html2rss
 
           private
 
-          attr_reader :xml_content, :min_priority, :max_age_days
+          attr_reader :xml_content, :min_priority, :max_age_days, :now
 
           def invalid_xml?(document)
             document.errors.any? && document.at_css('urlset, sitemapindex').nil?
@@ -149,7 +152,7 @@ module Html2rss
           def stale_date?(published_at)
             return false unless published_at
 
-            (Time.now.utc - Time.parse(published_at)) > (max_age_days * 86_400)
+            (now - Time.parse(published_at)) > (max_age_days * 86_400)
           end
         end
       end

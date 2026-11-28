@@ -126,31 +126,34 @@ module Html2rss
     ##
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
-    # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
+    # @param exchange [Html2rss::Extraction::Exchange] the pass's follow-ups; the default has no slots, so it
+    #   answers none
     # @param vocabulary [Html2rss::Vocabulary::Scope] the page language's scope, resolved by the caller once and
     #   shared by every classifier of this run
-    # @param time_zone [String, nil] channel time zone for naive leftover dates (nil reads as UTC)
+    # @param clock [Clock] the run's time
     # @option opts [Integer] :limit max articles to keep; later tiers stop once this many survive Cleanup
     # @option opts [Hash] :scraper scraper configuration map
     # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
-    def initialize(response, opts = DEFAULT_CONFIG, vocabulary:, request_session: nil, time_zone: nil)
+    def initialize(response, opts = DEFAULT_CONFIG, vocabulary:, clock:,
+                   exchange: Extraction::Exchange.new(responses: {}, cap: 0))
       @vocabulary = vocabulary
-      @time_zone = time_zone
+      @clock = clock
       @parsed_body = response.parsed_body
       @body = response.body
       @url = response.url
       @json_response = response.json_response?
       @captured_responses = response.captured_responses
       @opts = opts
-      @request_session = request_session
+      @exchange = exchange
       @cards_read = false
     end
 
     ##
     # Extracts articles by running scraper tiers until a sufficient set is found.
     #
-    # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
+    # Tiers: in-page structured → follow-up IO → SemanticHtml → Html. A follow-up still unanswered ends the
+    # pass after its tier with no articles; the +exchange+ holds the wanted requests.
     # SST is built at most once, lazily, by the first consumer: a heuristic tier or the
     # {Corroboration} page check of structured-tier items. Later tiers are skipped once
     # +limit+ counting articles with url+title remain after Cleanup ({#counting}); the result
@@ -190,7 +193,7 @@ module Html2rss
 
     private
 
-    attr_reader :url, :parsed_body, :body, :request_session, :captured_responses, :vocabulary
+    attr_reader :url, :parsed_body, :body, :exchange, :captured_responses, :vocabulary, :clock
 
     def extract_articles
       return extract_json_document_articles if json_response?
@@ -198,13 +201,20 @@ module Html2rss
       articles = []
       matched = false
       Scraper::SCRAPER_TIERS.each do |tier|
-        break if enough_articles?(articles) || skip_html_padding?(tier, articles)
+        break if settled?(tier, articles)
 
         matched |= run_tier(tier, articles).any?
       end
+      return [] if pending?
       raise Scraper.no_scraper_found_for(parsed_body, body:) unless matched
 
       finish_articles(articles)
+    end
+
+    def pending? = exchange.requests.any?
+
+    def settled?(tier, articles)
+      pending? || enough_articles?(articles) || skip_html_padding?(tier, articles)
     end
 
     # Runs every enabled, extractable scraper of +tier+, appending its articles.
@@ -213,7 +223,7 @@ module Html2rss
     def run_tier(tier, articles)
       heuristic = Scraper.heuristic_tier?(tier)
       @cards_read = true if heuristic
-      context = scraper_context(document: (page_document if heuristic), link_resolver:, time_zone: @time_zone)
+      context = scraper_context(document: (page_document if heuristic), link_resolver:, clock:)
       tier.filter_map { run_instance(_1, context, articles) }
     end
 
@@ -221,7 +231,10 @@ module Html2rss
       instance = Scraper.build_instance(scraper_class, context)
       return unless instance&.extractable?
 
-      articles.concat(run_scraper(instance))
+      scraped = exchange.guard { run_scraper(instance) }
+      return unless scraped
+
+      articles.concat(scraped)
       @native_feed = instance if instance.is_a?(Scraper::NativeFeed)
       instance
     end
@@ -245,8 +258,8 @@ module Html2rss
     end
 
     def scraper_context(**page_state)
-      Scraper::Context.new(parsed_body:, opts: @opts.fetch(:scraper, {}), url:, request_session:, body:,
-                           captured_responses:, **page_state)
+      Scraper::Context.new(parsed_body:, opts: @opts.fetch(:scraper, {}), url:, request_session: exchange, body:,
+                           captured_responses:, clock:, **page_state)
     end
 
     def finish_articles(articles)
@@ -382,7 +395,7 @@ module Html2rss
     # Hash scrapers emit published_at strings; a naive one is read in the channel time zone.
     def localized_date(item)
       string = item[:published_at].to_s
-      parsed = AutoSource::ArticleRules::Date.parse_datetime(string, time_zone: @time_zone)
+      parsed = AutoSource::ArticleRules::Date.parse_datetime(string, time_zone: clock.time_zone, now: clock.now)
       parsed ? item.merge(published_at: parsed) : item
     end
 

@@ -63,7 +63,7 @@ RSpec.describe Html2rss::AutoSource do
     let(:html) do
       %(<!doctype html><html><head><meta charset="iso-8859-15"></head><body><ul>#{links.join}</ul></body></html>)
     end
-    let(:titles) { AutoSourceCorpus.auto_source(path:, url: 'https://example.com/news/').articles.map(&:title) }
+    let(:titles) { AutoSourceCorpus.extraction(path:, url: 'https://example.com/news/').articles.map(&:title) }
 
     before { File.write(path, html, encoding: Encoding::UTF_8) }
 
@@ -121,7 +121,7 @@ RSpec.describe Html2rss::AutoSource do
     let(:urls) do
       lambda do |code, body|
         File.write(path, %(<!doctype html><html lang="#{code}"><body>#{body}</body></html>))
-        AutoSourceCorpus.auto_source(path:, url: 'https://example.com/section/').articles.map { _1.url.to_s }
+        AutoSourceCorpus.extraction(path:, url: 'https://example.com/section/').articles.map { _1.url.to_s }
       end
     end
     let(:pages) do

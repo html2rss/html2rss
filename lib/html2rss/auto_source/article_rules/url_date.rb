@@ -34,9 +34,10 @@ module Html2rss
           ##
           # @param url [Html2rss::Url, String, nil] article URL (only its path is read)
           # @param time_zone [String] channel time zone
+          # @param now [Time] the current time, which bounds a plausible date
           # @return [DateTime, nil] local midnight of the one unambiguous path date
-          def call(url, time_zone:)
-            dates = path_dates(Url.from_absolute(url).decoded_path_segments, time_zone:)
+          def call(url, time_zone:, now:)
+            dates = path_dates(Url.from_absolute(url).decoded_path_segments, time_zone:, now:)
             return unless dates.one?
 
             Date.at_midnight(dates.first, time_zone:)
@@ -46,8 +47,8 @@ module Html2rss
 
           private
 
-          def path_dates(segments, time_zone:)
-            latest = Date.local_today(time_zone:) + 1
+          def path_dates(segments, time_zone:, now:)
+            latest = Date.local_today(time_zone:, now:) + 1
             candidates = segments.each_index.filter_map { candidate(segments.drop(_1)) }
             candidates.map { plausible(_1.map(&:to_i), latest) }.uniq
           end

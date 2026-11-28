@@ -52,7 +52,7 @@ module Html2rss
 
         def articles
           @articles ||= begin
-            deduplicator = EntryDeduplicator.new(url, scraper: self.class, link_resolver:, time_zone:)
+            deduplicator = EntryDeduplicator.new(url, scraper: self.class, link_resolver:, clock:)
             entries = deduplicator.call(ranked_segments)
             entries.filter_map { |ranked| deduplicator.article_for(ranked) }
           end

@@ -67,6 +67,42 @@ module Html2rss
     private_class_method :botasaurus_hint
 
     ##
+    # The host side of the {Extraction} protocol: runs a pass, fetches the requests it wants through +session+
+    # (which keeps every network policy) and runs again with every answer so far.
+    #
+    # @api private
+    # @param response [Html2rss::RequestService::Response] the page
+    # @param auto_source [Hash] validated auto-source options
+    # @param clock [AutoSource::Clock]
+    # @param session [#follow_up] a {RequestSession}
+    # @param channel [Hash{Symbol => Object}] channel overrides
+    # @return [Extraction::Outcome]
+    def self.drive(response:, auto_source:, clock:, session:, channel: {})
+      responses = {}
+      loop do
+        outcome = Extraction.run(response:, auto_source:, clock:, responses:, channel:)
+        return outcome if outcome.requests.empty?
+
+        outcome.requests.each { responses[_1.id] = fetch(_1, response, session) }
+      end
+    end
+
+    # An advertised feed may leave the page origin, so that proof is rebuilt from the page, never from a request.
+    def self.fetch(request, page, session)
+      advertisement = if request.relation == :advertised_feed
+                        RequestService::FeedAdvertisement.from_document(page.parsed_body, page_url: page.url)
+                      end
+      response = session.follow_up(url: request.url, relation: request.relation, origin_url: request.origin_url,
+                                   advertisement:)
+      { url: response.url.to_s, status: response.status, headers: response.headers, body: response.body }
+    rescue Html2rss::ContractError
+      raise
+    rescue Html2rss::Error => error
+      { error_kind: error.kind }
+    end
+    private_class_method :fetch
+
+    ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
       @raw_config = raw_config
@@ -124,12 +160,11 @@ module Html2rss
     # @param request_session [Html2rss::RequestSession]
     # @return [Extracted] unique articles with their dedup and admission drops and feed channel facts
     def extract(config:, response:, request_session:)
-      collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
-      deduped = Extraction.without_shared_categories(
-        Extraction.without_tracking(Extraction.unique(collected, limit: config.auto_source&.dig(:limit)))
-      )
+      clock = AutoSource::Clock.new(now: Time.now, time_zone: config.time_zone)
+      collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:, clock:)
+      deduped = Extraction.curate(collected, limit: config.auto_source&.dig(:limit))
       enriched, enrichment = enrich(deduped, config:, request_session:)
-      unique = Extraction.with_url_dates(enriched, config.time_zone)
+      unique = Extraction.with_url_dates(enriched, clock)
       Extracted.new(articles: unique, dedup_dropped: collected.size - deduped.size, admission_drops:, feed_channel:,
                     enrichment:)
     end
@@ -193,9 +228,9 @@ module Html2rss
       ).call
     end
 
-    def collect_articles(config:, response:, request_session:)
+    def collect_articles(config:, response:, request_session:, clock:)
       selector, selector_drops = selector_articles(config:, response:, request_session:)
-      auto, auto_drops, feed_channel = auto_source_articles(config:, response:, request_session:)
+      auto, auto_drops, feed_channel = auto_source_articles(config:, response:, request_session:, clock:)
       [selector + auto, selector_drops.merge(auto_drops) { |_reason, left, right| left + right }, feed_channel]
     end
 
@@ -232,13 +267,13 @@ module Html2rss
     end
 
     # @return [Array(Array<Html2rss::Article>, Hash{String => Integer}, Html2rss::Syndication::ChannelFacts)]
-    def auto_source_articles(config:, response:, request_session:)
+    def auto_source_articles(config:, response:, request_session:, clock:)
       return [[], {}, nil] unless (auto_source = config.auto_source)
       return syndication_articles(response) if response.feed_response?
 
-      vocabulary = Vocabulary[Channel.language_for(response, config.channel)]
-      source = AutoSource.new(response, auto_source, request_session:, vocabulary:, time_zone: config.time_zone)
-      [source.articles, source.admission_drops, source.feed_channel]
+      outcome = self.class.drive(response:, auto_source:, clock:, session: request_session,
+                                 channel: config.channel)
+      [outcome.articles, outcome.admission_drops, outcome.feed_channel]
     end
 
     # A feed response (direct feed URL or entry-resolved feed) skips {AutoSource}; {#extract} applies +limit+.

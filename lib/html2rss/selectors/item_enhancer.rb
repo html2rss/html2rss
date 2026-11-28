@@ -30,7 +30,7 @@ module Html2rss
       def initialize(items, base_url:, time_zone:, vocabulary:)
         @items = items
         @base_url = base_url
-        @time_zone = time_zone
+        @clock = AutoSource::Clock.new(now: Time.now, time_zone:)
         @vocabulary = vocabulary
         @alone = []
       end
@@ -44,7 +44,7 @@ module Html2rss
 
         segment = AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?), strategy: :list,
                                             position: 0)
-        AutoSource::ArticleExtractor::Item.call(segment, base_url: @base_url, time_zone: @time_zone, link_resolver:)
+        AutoSource::ArticleExtractor::Item.call(segment, base_url: @base_url, clock: @clock, link_resolver:)
       end
 
       ##

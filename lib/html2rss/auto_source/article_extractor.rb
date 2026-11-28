@@ -23,23 +23,23 @@ module Html2rss
         # @param ranked_or_segment [Scoring::RankedSegment, AutoSource::Segment]
         # @param base_url [String, Html2rss::Url]
         # @param scraper [Class, nil]
-        # @param time_zone [String, nil] channel time zone for naive leftover dates; nil reads as UTC
+        # @param clock [AutoSource::Clock] the run's time, for naive and year-less leftover dates
         # @param link_resolver [Scoring::LinkResolver] the page's resolver, built for the same +base_url+;
         #   its already resolved URL of the primary link is reused instead of resolving it again, and it
         #   owns the page's +vocabulary+ (read for title type markers) and +text_classifier+ (the page-scoped
         #   label reader, so a label is normalized once)
         # @return [Html2rss::Article, nil] nil when the segment has no primary link (no URL of its own)
-        def call(ranked_or_segment, base_url:, time_zone:, link_resolver:, scraper: nil)
-          new(ranked_or_segment, base_url:, scraper:, time_zone:, link_resolver:).call
+        def call(ranked_or_segment, base_url:, clock:, link_resolver:, scraper: nil)
+          new(ranked_or_segment, base_url:, scraper:, clock:, link_resolver:).call
         end
       end
 
       # @param ranked_or_segment [Scoring::RankedSegment, AutoSource::Segment]
       # @param base_url [String, Html2rss::Url]
       # @param scraper [Class, nil]
-      # @param time_zone [String, nil] channel time zone for naive leftover dates; nil reads as UTC
+      # @param clock [AutoSource::Clock] the run's time, for naive and year-less leftover dates
       # @param link_resolver [Scoring::LinkResolver] see {.call}
-      def initialize(ranked_or_segment, base_url:, scraper:, time_zone:, link_resolver:)
+      def initialize(ranked_or_segment, base_url:, scraper:, clock:, link_resolver:)
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise InvalidError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
@@ -47,7 +47,7 @@ module Html2rss
         @selected_anchor = segment.primary_link
         @base_url = base_url
         @scraper = scraper
-        @time_zone = time_zone
+        @clock = clock
         @link_resolver = link_resolver
         @vocabulary = link_resolver.vocabulary
         @classifier = link_resolver.text_classifier
@@ -273,13 +273,13 @@ module Html2rss
 
       def extract_published_at(lines, root: @root)
         datetimes = root.each_node.map { |n| n.attrs.datetime }
-        ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
+        ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @clock.time_zone, now: @clock.now)
       end
 
       # The date of a chip the headline title left out, when nothing else in the card dates it.
       def title_chip_date
         texts = [heading, @selected_anchor].flat_map { |n| title_pieces.dropped_texts(n) }
-        ArticleRules::Date.earliest([], leftover_lines: texts, time_zone: @time_zone)
+        ArticleRules::Date.earliest([], leftover_lines: texts, time_zone: @clock.time_zone, now: @clock.now)
       end
 
       def extract_enclosures = ArticleRules::Enclosure.unique(collect_enclosures(@root, nil, []))

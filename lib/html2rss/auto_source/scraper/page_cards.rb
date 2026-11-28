@@ -10,30 +10,32 @@ module Html2rss
       class PageCards < Base
         # Absolute base URL used when probe-time detection needs to normalize relative hrefs.
         DETECTION_BASE_URL = 'https://example.com'
+        # The probe reads no dates.
+        DETECTION_CLOCK = AutoSource::Clock.new(now: Time.at(0).utc, time_zone: nil)
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
         # @return [Boolean] true when a probe instance finds ranked segments
         def self.articles?(parsed_body)
           return false unless parsed_body
 
-          new(parsed_body, url: DETECTION_BASE_URL).extractable?
+          new(parsed_body, url: DETECTION_BASE_URL, clock: DETECTION_CLOCK).extractable?
         end
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
         # @param document [Html2rss::Html::SST::Document, nil] shared document built once per page
         # @param link_resolver [Scoring::LinkResolver, nil] shared link resolver
-        # @param time_zone [String, nil] channel time zone for naive leftover dates
-        def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, time_zone: nil)
+        # @param clock [AutoSource::Clock] the run's time, for naive and year-less leftover dates
+        def initialize(parsed_body = nil, url:, clock:, document: nil, link_resolver: nil)
           super(parsed_body, url:)
-          @time_zone = time_zone
+          @clock = clock
           @provided_document = document
           @provided_link_resolver = link_resolver
         end
 
         private
 
-        attr_reader :time_zone
+        attr_reader :clock
 
         def link_resolver
           @link_resolver ||= @provided_link_resolver || Scoring::LinkResolver.new(url)

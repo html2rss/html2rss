@@ -22,6 +22,8 @@ module AutoSourceCorpus # rubocop:disable Metrics/ModuleLength -- one cohesive c
   ROOT = File.expand_path('../fixtures/auto_source/corpus', __dir__)
   BASELINE_PATH = File.join(ROOT, 'baseline.yml')
   BASE_URL = 'https://example.com/news/'
+  # The fixed run time of every saved page.
+  NOW = Time.utc(2026, 11, 20, 12)
   CONTENT_TYPES = { '.html' => 'text/html', '.json' => 'application/json' }.freeze
   FEED_CONTENT_TYPE = 'application/xml'
   RECORD_COMMAND = 'mise exec -- make corpus-baseline'
@@ -47,6 +49,14 @@ module AutoSourceCorpus # rubocop:disable Metrics/ModuleLength -- one cohesive c
     end
   end
 
+  # Stands in for the network when a run has no saved follow-up responses: every follow-up is unreachable, so
+  # the follow-up tiers (native feed, WordPress API, sitemap, oEmbed) find nothing.
+  module Offline
+    def self.follow_up(url:, **)
+      raise Html2rss::RequestService::ConnectionFailed, "offline: #{url}"
+    end
+  end
+
   class << self
     # @return [Array<String>] corpus page names (basename with extension), sorted
     def pages
@@ -59,18 +69,18 @@ module AutoSourceCorpus # rubocop:disable Metrics/ModuleLength -- one cohesive c
       pages.map { run_page(_1) }
     end
 
-    # Runs one saved page file through {Html2rss::AutoSource} offline. Without a request session the
-    # follow-up tiers (native feed, WordPress API, sitemap, oEmbed) are skipped; pass a
-    # {SavedResponses} to serve them from saved files instead (still no network).
+    # Runs one saved page file through the extraction kernel offline, driving its follow-up requests from
+    # +request_session+; pass a {SavedResponses} to serve them from saved files (still no network).
     #
     # @param path [String] saved page file (+.html+, or +.json+ for a JSON document)
     # @param url [String] absolute page URL
-    # @param request_session [#follow_up, nil] session for follow-up fetches
-    # @return [Html2rss::AutoSource] not yet extracted; call +articles+
-    def auto_source(path:, url: BASE_URL, request_session: nil)
-      page = response(path:, url:)
-      vocabulary = Html2rss::Vocabulary[Html2rss::Channel.language_for(page)]
-      Html2rss::AutoSource.new(page, request_session:, vocabulary:)
+    # @param request_session [#follow_up, nil] session for follow-up fetches; nil is offline
+    # @return [Html2rss::Extraction::Outcome] +articles+ and +admission_drops+ of the run
+    def extraction(path:, url: BASE_URL, request_session: nil)
+      Html2rss::FeedPipeline.drive(
+        response: response(path:, url:), auto_source: Html2rss::AutoSource::DEFAULT_CONFIG,
+        clock: Html2rss::AutoSource::Clock.new(now: NOW, time_zone: nil), session: request_session || Offline
+      )
     end
 
     # The one builder of a Response from a saved file, shared with {SavedResponses}: a page whose bytes are
@@ -179,7 +189,7 @@ module AutoSourceCorpus # rubocop:disable Metrics/ModuleLength -- one cohesive c
     end
 
     def page_articles(page, responses)
-      auto_source(path: File.join(ROOT, page), request_session: saved_responses(responses)).articles
+      extraction(path: File.join(ROOT, page), request_session: saved_responses(responses)).articles
     end
 
     # Loaded on first use: SavedResponses builds its responses through this module.

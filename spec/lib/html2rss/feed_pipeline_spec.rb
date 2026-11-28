@@ -724,8 +724,8 @@ RSpec.describe Html2rss::FeedPipeline do
                                         request_session: session)
 
         expect(Html2rss::AutoSource).to have_received(:new)
-          .with(anything, anything, request_session: session, vocabulary: be(Html2rss::Vocabulary[:sv]),
-                                    time_zone: 'Europe/Berlin')
+          .with(anything, anything, exchange: anything, vocabulary: be(Html2rss::Vocabulary[:sv]),
+                                    clock: have_attributes(time_zone: 'Europe/Berlin'))
       end
 
       it 'builds the selectors with the configured time zone' do
@@ -1205,6 +1205,40 @@ RSpec.describe Html2rss::FeedPipeline do
 
       expect(feed.items.size).to eq(3)
       expect(a_request(:get, 'https://example.com/feed.xml')).to have_been_made.once
+    end
+  end
+
+  describe 'the extraction driver' do
+    subject(:drive) do
+      described_class.drive(response: page, auto_source: Html2rss::AutoSource::DEFAULT_CONFIG, clock: clock_for(nil),
+                            session:)
+    end
+
+    let(:session) { instance_double(Html2rss::RequestSession) }
+    let(:page) do
+      link = '<link rel="alternate" type="application/rss+xml" href="/feed">'
+      build_response.call(body: "<html><head>#{link}</head><body><p>none</p></body></html>", url: 'https://example.com/')
+    end
+
+    it 'rebuilds the feed advertisement from the page for an advertised feed' do
+      feed = '<rss version="2.0"><channel><title>t</title></channel></rss>'
+      allow(session).to receive(:follow_up).and_return(build_response.call(body: feed))
+      drive
+
+      expect(session).to have_received(:follow_up)
+        .with(hash_including(relation: :advertised_feed, advertisement: be_a(Html2rss::RequestService::FeedAdvertisement)))
+    end
+
+    it 'hands a failed fetch to the kernel as no feed' do
+      allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::RequestTimedOut)
+
+      expect(drive.requests).to be_empty
+    end
+
+    it 'lets a contract error through' do
+      allow(session).to receive(:follow_up).and_raise(Html2rss::ContractError)
+
+      expect { drive }.to raise_error(Html2rss::ContractError)
     end
   end
 

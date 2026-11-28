@@ -132,16 +132,19 @@ module Html2rss
 
       def self.construction_kwargs(scraper, context)
         if HEURISTIC_SCRAPERS.include?(scraper)
-          context.to_h.slice(:document, :link_resolver, :time_zone).compact
+          context.to_h.slice(:document, :link_resolver, :clock).compact
         else
           {}.tap do |kwargs|
             kwargs[:request_session] = context.request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
-            kwargs[:body] = context.body if scraper == Sitemap
+            kwargs.merge!(sitemap_kwargs(context)) if scraper == Sitemap
             kwargs[:captured_responses] = context.captured_responses if CAPTURED_RESPONSE_SCRAPERS.include?(scraper)
           end
         end
       end
       private_class_method :construction_kwargs
+
+      def self.sitemap_kwargs(context) = { body: context.body, now: context.clock.now }
+      private_class_method :sitemap_kwargs
     end
   end
 end

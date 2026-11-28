@@ -48,7 +48,8 @@ module SstTestHelpers
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: root.find(&:link?),
                                                   strategy: :list, position: 0)
     resolver = page_resolver(base_url, vocabulary:)
-    [Html2rss::AutoSource::ArticleExtractor::Item.call(segment, base_url:, time_zone:, link_resolver: resolver),
+    clock = clock_for(time_zone)
+    [Html2rss::AutoSource::ArticleExtractor::Item.call(segment, base_url:, clock:, link_resolver: resolver),
      document].first
   end
 

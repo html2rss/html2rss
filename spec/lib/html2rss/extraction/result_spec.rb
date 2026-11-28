@@ -23,7 +23,7 @@ RSpec.describe Html2rss::Extraction::Result do
     it 'holds one plain hash per article', :aggregate_failures do
       result = described_class.ok([full])
 
-      expect(result).to have_attributes(status: :ok, error_kind: nil)
+      expect(result).to have_attributes(status: :ok, error_kind: nil, requests: [])
       expect(result.articles).to eq([full_data])
     end
 
@@ -38,12 +38,21 @@ RSpec.describe Html2rss::Extraction::Result do
     end
   end
 
+  describe '.needs_requests' do
+    it 'holds the wanted requests as plain hashes, without articles' do
+      request = Html2rss::Extraction::Exchange::Request.new(id: 'i', url: 'u', relation: :auto_source, origin_url: 'o')
+
+      expect(described_class.needs_requests([request]))
+        .to have_attributes(status: :needs_requests, articles: [], error_kind: nil, requests: [request.to_h])
+    end
+  end
+
   describe '.failure' do
     it 'carries the error kind of the failure' do
       error = Html2rss::RequestService::RequestTimedOut.new('slow')
 
       expect(described_class.failure(error))
-        .to have_attributes(status: :error, articles: [], error_kind: Html2rss::ErrorKind[:timeout])
+        .to have_attributes(status: :error, articles: [], error_kind: Html2rss::ErrorKind[:timeout], requests: [])
     end
   end
 end

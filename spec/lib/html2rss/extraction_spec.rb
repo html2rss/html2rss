@@ -1,11 +1,32 @@
 # frozen_string_literal: true
 
+require_relative '../../support/saved_responses'
+
+EXTRACTION_FEED_DIR = 'spec/fixtures/auto_source/corpus/t6_feed_merge'
+NOW_ISO = '2026-11-20T12:00:00Z'
+EXTRACTION_FEED_JSON = '{"version":"https://jsonfeed.org/version/1.1","items":[{"title":"Harbor library plans a ' \
+                       'summer reading room","content_text":"Residents will read all summer long here",' \
+                       '"url":"https://example.com/news/harbor-library-plans-summer"}]}'
+EXTRACTION_FEED_ID = 'advertised_feed https://example.com/news/feed.xml'
+EXTRACTION_SITEMAP_PAGE = '<html><head><link rel="sitemap" href="/sitemap.xml"></head><body></body></html>'
+EXTRACTION_SITEMAP_INDEX = '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' \
+                           '<sitemap><loc>https://example.com/post-sitemap.xml</loc></sitemap>' \
+                           '<sitemap><loc>https://example.com/page-sitemap.xml</loc></sitemap></sitemapindex>'
+EXTRACTION_SITEMAP_LEAF = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ' \
+                          'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"><url>' \
+                          '<loc>https://example.com/harbor-library-plans-summer-reading</loc>' \
+                          '<news:news><news:title>Harbor library plans a summer reading room</news:title>' \
+                          '<news:publication_date>2026-11-18</news:publication_date></news:news>' \
+                          '<lastmod>2026-11-18</lastmod><priority>0.8</priority></url></urlset>'
+
 RSpec.describe Html2rss::Extraction do
   let(:html) { File.read('spec/fixtures/news_front_page.html') }
   let(:url) { 'https://example.com/' }
 
   describe '.call' do
-    subject(:result) { described_class.call(html:, url:) }
+    subject(:result) { described_class.call(page:, now: NOW_ISO) }
+
+    let(:page) { { url:, body: html } }
 
     it 'returns the articles the local-file scrape returns', :aggregate_failures do
       scraped = Html2rss.scrape(url, strategy: :local_file, local_file_path: 'spec/fixtures/news_front_page.html')
@@ -23,64 +44,183 @@ RSpec.describe Html2rss::Extraction do
       expect(JSON.parse(JSON.generate(result.articles), symbolize_names: true)).to eq(result.articles)
     end
 
+    it 'lets an explicit channel language win over the page language' do
+      allow(Html2rss::Vocabulary).to receive(:[]).and_call_original
+      response = Html2rss::RequestService::Response.local_html(body: html.sub('<html', '<html lang="de"'), url:)
+
+      described_class.run(response:, auto_source: Html2rss::AutoSource::DEFAULT_CONFIG, clock: clock_for(nil),
+                          responses: {}, channel: { language: 'fr' })
+
+      expect(Html2rss::Vocabulary).to have_received(:[]).with('fr')
+    end
+
     it 'reads the page language for the heuristics' do
       allow(Html2rss::Vocabulary).to receive(:[]).and_call_original
 
-      described_class.call(html: html.sub('<html', '<html lang="de"'), url:)
+      described_class.call(page: { url:, body: html.sub('<html', '<html lang="de"') }, now: NOW_ISO)
 
       expect(Html2rss::Vocabulary).to have_received(:[]).with('de')
     end
 
     it 'dates an undated article from its URL path' do
-      page = '<html><body><article><h2><a href="/news/2024/05/12/harbor-library-plans-summer">Harbor library ' \
-             'plans a summer reading room</a></h2><p>Residents will read.</p></article></body></html>'
+      body = harbor_card('/news/2024/05/12/harbor-library-plans-summer')
+      articles = described_class.call(page: { url:, body: }, now: NOW_ISO).articles
 
-      expect(described_class.call(html: page, url:).articles.filter_map { _1[:published_at] })
-        .to all(start_with('2024-05-12'))
+      expect(articles.filter_map { _1[:published_at] }).to all(start_with('2024-05-12'))
     end
 
     it 'passes the options to the auto-source run' do
       allow(Html2rss::AutoSource).to receive(:new).and_call_original
-
-      described_class.call(html:, url:, limit: 3, keep_sponsored: true, keep_different_domain: true)
       cleanup = { keep_sponsored: true, keep_different_domain: true }
 
-      expect(Html2rss::AutoSource)
-        .to have_received(:new).with(anything, hash_including(limit: 3, cleanup:), vocabulary: anything)
+      described_class.call(page:, now: NOW_ISO, limit: 3, **cleanup)
+
+      expect(Html2rss::AutoSource).to have_received(:new)
+        .with(anything, hash_including(limit: 3, cleanup:), exchange: anything, vocabulary: anything, clock: anything)
     end
 
     it 'deduplicates the articles the scrapers return' do
       article = Html2rss::Article.new(url: 'https://example.com/a', title: 'A')
-      allow(Html2rss::AutoSource).to receive(:new).and_return(instance_double(Html2rss::AutoSource,
-                                                                              articles: [article, article]))
+      source = instance_double(Html2rss::AutoSource, articles: [article, article], admission_drops: {},
+                                                     feed_channel: nil)
+      allow(Html2rss::AutoSource).to receive(:new).and_return(source)
 
-      expect(described_class.call(html:, url:).articles.size).to eq(1)
+      expect(described_class.call(page:, now: NOW_ISO).articles.size).to eq(1)
     end
 
     it 'strips tracking params from the item URLs' do
-      page = '<html><body><article><h2><a href="/news/harbor-library-plans-summer?utm_source=feed">Harbor library ' \
-             'plans a summer reading room</a></h2><p>Residents will read.</p></article></body></html>'
+      body = harbor_card('/news/harbor-library-plans-summer?utm_source=feed')
+      urls = described_class.call(page: { url:, body: }, now: NOW_ISO).articles.map { _1[:url] }
 
-      expect(described_class.call(html: page, url:).articles.map { _1[:url] }).to all(satisfy { !_1.include?('utm_') })
+      expect(urls).to all(satisfy { !_1.include?('utm_') })
     end
 
     it 'keeps the requested limit' do
-      expect(described_class.call(html:, url:, limit: 3).articles.size).to eq(3)
+      expect(described_class.call(page:, now: NOW_ISO, limit: 3).articles.size).to eq(3)
     end
 
     it 'reports a page without articles as empty' do
-      expect(described_class.call(html: '<html><body><p>nothing</p></body></html>', url:))
+      expect(described_class.call(page: { url:, body: '<html><body><p>nothing</p></body></html>' }, now: NOW_ISO))
         .to have_attributes(status: :empty, articles: [])
     end
 
     it 'returns a failure as an error kind', :aggregate_failures do
-      result = described_class.call(html:, url: 'not a url')
+      result = described_class.call(page: { url: 'not a url', body: html }, now: NOW_ISO)
 
       expect(result).to have_attributes(status: :error, articles: [], error_kind: Html2rss::ErrorKind[:invalid_url])
     end
 
+    it 'reads a date the page leaves without a year in the year of now', :aggregate_failures do
+      body = harbor_card('/news/harbor-library-plans-summer', '<time datetime="12 Jul 10:30">12 Jul</time>')
+      dates = ->(at) { described_class.call(page: { url:, body: }, now: at).articles.map { _1[:published_at] } }
+
+      expect(dates.call(NOW_ISO)).to eq(['2026-07-12T10:30:00+00:00'])
+      expect(dates.call('2031-01-01T00:00:00Z')).to eq(['2031-07-12T10:30:00+00:00'])
+    end
+
+    it 'reads the page headers, so a JSON feed reaches the JSON scraper' do
+      feed = { url: 'https://example.com/feed.json', body: EXTRACTION_FEED_JSON,
+               headers: { 'content-type' => 'application/feed+json' } }
+
+      expect(described_class.call(page: feed, now: NOW_ISO).articles.map { _1[:url] })
+        .to eq(['https://example.com/news/harbor-library-plans-summer'])
+    end
+
+    it 'raises on a now that is not an ISO 8601 time' do
+      expect { described_class.call(page:, now: 'yesterday') }.to raise_error(Html2rss::InvalidOption, /yesterday/)
+    end
+
+    context 'with a page that advertises a native feed' do
+      let(:page) { { url: 'https://example.com/news/', body: File.read("#{EXTRACTION_FEED_DIR}.html") } }
+      let(:recorded) do
+        { EXTRACTION_FEED_ID => { url: 'https://example.com/news/feed.xml', status: 200,
+                                  headers: { 'content-type' => 'application/rss+xml' },
+                                  body: File.read("#{EXTRACTION_FEED_DIR}/feed.xml") } }
+      end
+
+      it 'asks for the feed instead of reading it', :aggregate_failures do
+        result = described_class.call(page:, now: NOW_ISO)
+
+        expect(result).to have_attributes(status: :needs_requests, articles: [])
+        expect(result.requests).to eq([{ id: EXTRACTION_FEED_ID, url: 'https://example.com/news/feed.xml',
+                                         relation: :advertised_feed, origin_url: 'https://example.com/news/' }])
+      end
+
+      it 'replays the recorded exchange to the articles the gem path reads', :aggregate_failures do
+        gem_path = AutoSourceCorpus.extraction(path: "#{EXTRACTION_FEED_DIR}.html", url: page[:url],
+                                               request_session: SavedResponses.new(EXTRACTION_FEED_DIR))
+        result = described_class.call(page:, now: NOW_ISO, responses: recorded)
+
+        expect(result.articles.map { _1[:url] }.sort).to eq(gem_path.articles.map { _1.url.to_s }.sort)
+        expect(result.articles.map { _1[:scraper] }).to include('AutoSource::NativeFeed')
+      end
+
+      it 'reads string keys, as a JSON host sends them' do
+        json = ->(value) { JSON.parse(JSON.generate(value)) }
+
+        expect(described_class.call(page: json.call(page), now: NOW_ISO, responses: json.call(recorded)))
+          .to eq(described_class.call(page:, now: NOW_ISO, responses: recorded))
+      end
+
+      it 'returns the same data for the same inputs' do
+        calls = Array.new(2) { described_class.call(page:, now: NOW_ISO, responses: recorded) }
+
+        expect(calls.uniq.size).to eq(1)
+      end
+
+      it 'carries the channel facts of the feed it read' do
+        response = Html2rss::RequestService::Response.local_html(body: page[:body], url: page[:url])
+        config = Html2rss::AutoSource::DEFAULT_CONFIG
+        outcome = described_class.run(response:, auto_source: config, clock: clock_for(nil), responses: recorded)
+
+        expect(outcome.feed_channel).to be_a(Html2rss::Syndication::ChannelFacts)
+      end
+
+      it 'reads a failed request as no feed, and the page items remain', :aggregate_failures do
+        failed = { EXTRACTION_FEED_ID => { error_kind: :connection } }
+        result = described_class.call(page:, now: NOW_ISO, responses: failed)
+
+        expect(result.status).to eq(:ok)
+        expect(result.articles.map { _1[:scraper] }).not_to include('AutoSource::NativeFeed')
+      end
+    end
+
+    context 'with a page that links a sitemap' do
+      let(:page) { { url:, body: EXTRACTION_SITEMAP_PAGE } }
+      let(:answers) do
+        xml = ->(body) { { url: 'https://example.com/x.xml', body: } }
+        { 'auto_source https://example.com/sitemap.xml' => xml.call(EXTRACTION_SITEMAP_INDEX),
+          'auto_source https://example.com/post-sitemap.xml' => { error_kind: :budget },
+          'auto_source https://example.com/page-sitemap.xml' => xml.call(EXTRACTION_SITEMAP_LEAF) }
+      end
+
+      let(:parser) { Html2rss::AutoSource::Scraper::Sitemap::Parser }
+
+      before do
+        allow(Html2rss::Log).to receive(:event).and_call_original
+        allow(parser).to receive(:call).and_call_original
+        described_class.call(page:, now: NOW_ISO, responses: answers)
+      end
+
+      it 'hands the sub-sitemaps the run time, so an entry date is read against now' do
+        expect(parser).to have_received(:call).with(EXTRACTION_SITEMAP_LEAF,
+                                                    hash_including(now: Time.utc(2026, 11, 20, 12)))
+      end
+
+      it 'goes on past a sub-sitemap the host reports as over budget, with nothing quarantined' do
+        expect(Html2rss::Log).not_to have_received(:event).with(:warn, 'auto_source.quarantined', any_args)
+      end
+    end
+
+    it 'returns a page or an answer it cannot read as error data' do
+      unreadable = [{ page: { url: } }, { page: 'page' }, { responses: 'x' }, { responses: { 'x' => { url: } } },
+                    { responses: { 'x' => { error_kind: 'nope' } } }]
+
+      expect(unreadable.map { described_class.call(page:, now: NOW_ISO, **_1).status }).to all(eq(:error))
+    end
+
     it 'raises on an invalid option' do
-      expect { described_class.call(html:, url:, limit: 0) }.to raise_error(Html2rss::InvalidOption)
+      expect { described_class.call(page:, now: NOW_ISO, limit: 0) }.to raise_error(Html2rss::InvalidOption)
     end
   end
 
@@ -119,7 +259,7 @@ RSpec.describe Html2rss::Extraction do
     let(:no_date_in_url) { Html2rss::Article.new(url: 'https://example.com/c') }
 
     it 'dates only the articles without a date whose URL names one', :aggregate_failures do
-      result = described_class.with_url_dates([dated, undated, no_date_in_url], 'UTC')
+      result = described_class.with_url_dates([dated, undated, no_date_in_url], clock_for('UTC'))
 
       expect(result.map { _1.published_at&.iso8601 })
         .to eq(['2020-01-01T00:00:00+00:00', '2024-05-13T00:00:00+00:00', nil])
@@ -128,7 +268,7 @@ RSpec.describe Html2rss::Extraction do
     end
 
     it 'reads the URL date in the given time zone' do
-      expect(described_class.with_url_dates([undated], 'Asia/Tokyo').first.published_at.iso8601)
+      expect(described_class.with_url_dates([undated], clock_for('Asia/Tokyo')).first.published_at.iso8601)
         .to eq('2024-05-13T00:00:00+09:00')
     end
   end
@@ -138,7 +278,7 @@ RSpec.describe Html2rss::Extraction do
       <<~RUBY
         require 'html2rss'
         html = File.read('spec/fixtures/news_front_page.html')
-        r = Html2rss::Extraction.call(html:, url: 'https://example.com/')
+        r = Html2rss::Extraction.call(page: { body: html, url: 'https://example.com/' }, now: '2026-11-20T12:00:00Z')
         puts r.articles.size, $LOADED_FEATURES
       RUBY
     end

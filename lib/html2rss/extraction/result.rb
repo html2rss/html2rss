@@ -2,28 +2,38 @@
 
 module Html2rss
   module Extraction
-    Result = Data.define(:status, :articles, :error_kind)
+    Result = Data.define(:status, :articles, :error_kind, :requests)
 
     ##
     # One extraction run as plain data: strings, numbers, symbols, arrays and hashes only.
     #
-    # status: +:ok+ (at least one article), +:empty+ (the page yielded none) or +:error+.
+    # status: +:ok+ (at least one article), +:empty+ (the page yielded none), +:needs_requests+ (call again with the
+    # answers to +requests+) or +:error+.
     # articles: one hash per article with +:url+, +:title+, +:description+, +:image+, +:author+, +:guid+,
     # +:published_at+ (ISO 8601), +:categories+, +:enclosures+, +:media+ and +:scraper+ (the scraper that matched it).
     # error_kind: the {Html2rss::ErrorKind} of the failure, nil unless +:error+.
+    # requests: one hash per wanted follow-up with +:id+, +:url+, +:relation+ and +:origin_url+; empty unless
+    # +:needs_requests+.
     class Result
       ##
       # @param articles [Array<Html2rss::Article>]
       # @return [Result]
       def self.ok(articles)
-        new(status: articles.empty? ? :empty : :ok, articles: articles.map { plain(_1) }, error_kind: nil)
+        new(status: articles.empty? ? :empty : :ok, articles: articles.map { plain(_1) }, error_kind: nil, requests: [])
+      end
+
+      ##
+      # @param requests [Array<Exchange::Request>] the follow-ups the kernel wants answered
+      # @return [Result]
+      def self.needs_requests(requests)
+        new(status: :needs_requests, articles: [], error_kind: nil, requests: requests.map(&:to_h))
       end
 
       ##
       # @param error [Html2rss::Error]
       # @return [Result]
       def self.failure(error)
-        new(status: :error, articles: [], error_kind: ErrorKind[error.kind])
+        new(status: :error, articles: [], error_kind: ErrorKind[error.kind], requests: [])
       end
 
       ##

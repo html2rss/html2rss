@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
+  let(:now) { Time.utc(2026, 11, 20, 23, 30) }
+
   it 'reads a date scattered over fragment lines and strips it from the lines', :aggregate_failures do
     lines = ['November', '25', ',', '2026', '| 20:15 PM', 'Body text stays.']
 
-    expect(described_class.earliest([], leftover_lines: lines).to_s).to start_with('2026-11-25T')
+    expect(described_class.earliest([], now:, leftover_lines: lines).to_s).to start_with('2026-11-25T')
     expect(described_class.without_dates(lines)).to eq(['Body text stays.'])
     expect(described_class.without_dates(nil)).to eq([])
   end
@@ -26,27 +28,25 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
   end
 
   describe '.local_today' do
-    it 'is the current calendar day in the zone, UTC when blank or invalid', :aggregate_failures do
-      allow(Time).to receive(:now).and_return(Time.utc(2026, 11, 20, 23, 30))
-
-      expect(described_class.local_today(time_zone: 'Asia/Tokyo')).to eq(Date.new(2026, 11, 21))
-      expect(described_class.local_today(time_zone: '')).to eq(Date.new(2026, 11, 20))
-      expect(described_class.local_today(time_zone: nil)).to eq(Date.new(2026, 11, 20))
-      expect(described_class.local_today(time_zone: 'Not/AZone')).to eq(Date.new(2026, 11, 20))
+    it 'is the calendar day of now in the zone, UTC when blank or invalid', :aggregate_failures do
+      expect(described_class.local_today(time_zone: 'Asia/Tokyo', now:)).to eq(Date.new(2026, 11, 21))
+      expect(described_class.local_today(time_zone: '', now:)).to eq(Date.new(2026, 11, 20))
+      expect(described_class.local_today(time_zone: nil, now:)).to eq(Date.new(2026, 11, 20))
+      expect(described_class.local_today(time_zone: 'Not/AZone', now:)).to eq(Date.new(2026, 11, 20))
     end
   end
 
   describe '.parse_datetime' do
     it 'reads a naive value in the time zone and keeps an explicit offset', :aggregate_failures do
-      expect(described_class.parse_datetime('2024-07-12T09:00:00', time_zone: 'Europe/Berlin').iso8601)
+      expect(described_class.parse_datetime('2024-07-12T09:00:00', time_zone: 'Europe/Berlin', now:).iso8601)
         .to eq('2024-07-12T09:00:00+02:00')
-      expect(described_class.parse_datetime('2024-07-12T09:00:00Z', time_zone: 'Europe/Berlin').offset).to eq(0)
-      expect(described_class.parse_datetime('2024-07-12T09:00:00+0500', time_zone: 'Europe/Berlin').hour).to eq(9)
+      expect(described_class.parse_datetime('2024-07-12T09:00:00Z', time_zone: 'Europe/Berlin', now:).offset).to eq(0)
+      expect(described_class.parse_datetime('2024-07-12T09:00:00+0500', time_zone: 'Europe/Berlin', now:).hour).to eq(9)
     end
 
     it 'keeps the instant of a named zone', :aggregate_failures do
-      gmt = described_class.parse_datetime('Fri, 12 Jul 2024 10:00:00 GMT', time_zone: 'Europe/Berlin')
-      est = described_class.parse_datetime('2024-07-12 10:00 EST', time_zone: 'Europe/Berlin')
+      gmt = described_class.parse_datetime('Fri, 12 Jul 2024 10:00:00 GMT', time_zone: 'Europe/Berlin', now:)
+      est = described_class.parse_datetime('2024-07-12 10:00 EST', time_zone: 'Europe/Berlin', now:)
       expect(gmt.iso8601).to eq('2024-07-12T10:00:00+00:00')
       expect(est.iso8601).to eq('2024-07-12T10:00:00-05:00')
     end
@@ -54,49 +54,89 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
     it 'reads text with an unknown zone word or a stray letter in the time zone', :aggregate_failures do
       ['12.07.2024 10:00 Uhr', '2024-07-12 10:00 horas', '2024-07-12 10:00 ET',
        '2024-07-12T10:00:00 Europe/Berlin', '2024-07-12 10:00 h'].each do |text|
-        expect(described_class.parse_datetime(text, time_zone: 'Europe/Berlin').iso8601)
+        expect(described_class.parse_datetime(text, time_zone: 'Europe/Berlin', now:).iso8601)
           .to eq('2024-07-12T10:00:00+02:00')
       end
     end
 
     it 'keeps a lowercase z as UTC' do
-      expect(described_class.parse_datetime('2024-07-12 10:00 z', time_zone: 'Europe/Berlin').offset).to eq(0)
+      expect(described_class.parse_datetime('2024-07-12 10:00 z', time_zone: 'Europe/Berlin', now:).offset).to eq(0)
     end
 
     it 'returns nil for nil and empty input', :aggregate_failures do
-      expect(described_class.parse_datetime(nil, time_zone: nil)).to be_nil
-      expect(described_class.parse_datetime('', time_zone: nil)).to be_nil
+      expect(described_class.parse_datetime(nil, time_zone: nil, now:)).to be_nil
+      expect(described_class.parse_datetime('', time_zone: nil, now:)).to be_nil
     end
 
     it 'reads a naive value as UTC without a time zone', :aggregate_failures do
-      expect(described_class.parse_datetime('2024-07-12T09:00:00', time_zone: nil).iso8601)
+      expect(described_class.parse_datetime('2024-07-12T09:00:00', time_zone: nil, now:).iso8601)
         .to eq('2024-07-12T09:00:00+00:00')
-      expect(described_class.parse_datetime('2024-07-12T09:00:00', time_zone: '').iso8601)
+      expect(described_class.parse_datetime('2024-07-12T09:00:00', time_zone: '', now:).iso8601)
         .to eq('2024-07-12T09:00:00+00:00')
     end
 
     it 'returns nil for blank, over-long, and unparseable text', :aggregate_failures do
       too_long = "2024-07-12#{' ' * Html2rss::AutoSource::ArticleRules::Description::MAX_DATE_CHARS}"
-      expect(described_class.parse_datetime('', time_zone: nil)).to be_nil
-      expect(described_class.parse_datetime(too_long, time_zone: nil)).to be_nil
-      expect(described_class.parse_datetime('not a date', time_zone: nil)).to be_nil
+      expect(described_class.parse_datetime('', time_zone: nil, now:)).to be_nil
+      expect(described_class.parse_datetime(too_long, time_zone: nil, now:)).to be_nil
+      expect(described_class.parse_datetime('not a date', time_zone: nil, now:)).to be_nil
+    end
+
+    it 'returns nil for an over-long partial date' do
+      text = "12 Jul#{' ' * Html2rss::AutoSource::ArticleRules::Description::MAX_DATE_CHARS}"
+
+      expect(described_class.parse_datetime(text, time_zone: nil, now:)).to be_nil
+    end
+
+    {
+      '10:30' => '2026-11-20T10:30:00+00:00',
+      '10:30:45.5' => '2026-11-20T10:30:45+00:00',
+      '10:30 +0200' => '2026-11-20T10:30:00+02:00',
+      '12th' => '2026-11-12T00:00:00+00:00',
+      'Jul' => '2026-07-01T00:00:00+00:00',
+      'Jul 12' => '2026-07-12T00:00:00+00:00',
+      '12 Jul 10:30' => '2026-07-12T10:30:00+00:00',
+      '-100' => '2026-04-10T00:00:00+00:00',
+      '100 10:30' => '2026-04-10T10:30:00+00:00',
+      '2026W471' => '2026-11-16T00:00:00+00:00',
+      'Monday' => nil,
+      'W47' => nil,
+      '31 Feb' => nil
+    }.each do |text, expected|
+      it "completes #{text.inspect} from now, not from the system clock" do
+        read = described_class.parse_datetime(text, time_zone: 'UTC', now:)
+
+        expect(read&.iso8601).to eq(expected)
+      end
+    end
+
+    it 'keeps the fraction of a second and the offset of a completed time', :aggregate_failures do
+      read = described_class.parse_datetime('10:30:45.5 +0200', time_zone: 'UTC', now:)
+
+      expect(read.sec_fraction).to eq(1 / 2r)
+      expect(read.offset).to eq(1 / 12r)
+    end
+
+    it 'completes a partial date from the day of now in the time zone' do
+      expect(described_class.parse_datetime('10:30', time_zone: 'Asia/Tokyo', now:).iso8601)
+        .to eq('2026-11-21T10:30:00+09:00')
     end
 
     it 'accepts text of exactly the maximum length' do
       max = Html2rss::AutoSource::ArticleRules::Description::MAX_DATE_CHARS
-      expect(described_class.parse_datetime("2024-07-12#{' ' * (max - 10)}", time_zone: nil)).not_to be_nil
+      expect(described_class.parse_datetime("2024-07-12#{' ' * (max - 10)}", time_zone: nil, now:)).not_to be_nil
     end
   end
 
   describe '.earliest' do
     it 'returns the earliest parseable datetime' do
       values = ['2026-03-28T12:00:00Z', 'not-a-date', '2026-01-01T00:00:00Z']
-      expect(described_class.earliest(values)).to eq(DateTime.parse('2026-01-01T00:00:00Z'))
+      expect(described_class.earliest(values, now:)).to eq(DateTime.parse('2026-01-01T00:00:00Z'))
     end
 
     it 'parses date-shaped leftover lines in the channel time zone', :aggregate_failures do
       result = described_class.earliest([], leftover_lines: ['12 March 2024 - News article'],
-                                            time_zone: 'Europe/Berlin')
+                                            time_zone: 'Europe/Berlin', now:)
 
       expect(result.to_date).to eq(Date.new(2024, 3, 12))
       expect(result.zone).to eq('+01:00')
@@ -104,11 +144,11 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
 
     it 'does not parse long teaser lines as dates' do
       teaser = "On 12 March 2024 the company ordered additional dual-fuel vessels for the Asia route #{'word ' * 40}"
-      expect(described_class.earliest([], leftover_lines: [teaser])).to be_nil
+      expect(described_class.earliest([], leftover_lines: [teaser], now:)).to be_nil
     end
 
     it 'falls back to UTC when the channel time zone is invalid', :aggregate_failures do
-      result = described_class.earliest([], leftover_lines: ['12 March 2024'], time_zone: 'Not/AZone')
+      result = described_class.earliest([], leftover_lines: ['12 March 2024'], time_zone: 'Not/AZone', now:)
 
       expect(result).to be_a(DateTime)
       expect(result.to_date).to eq(Date.new(2024, 3, 12))
@@ -116,7 +156,7 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
     end
 
     it 'picks standard time when the local clock time is ambiguous', :aggregate_failures do
-      result = described_class.earliest(['2024-10-27T02:30:00'], time_zone: 'Europe/Berlin')
+      result = described_class.earliest(['2024-10-27T02:30:00'], time_zone: 'Europe/Berlin', now:)
 
       expect(result).to be_a(DateTime)
       expect(result.zone).to eq('+01:00')
@@ -125,7 +165,7 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::Date do
     end
 
     it 'falls back to UTC when the local clock time does not exist', :aggregate_failures do
-      result = described_class.earliest(['2024-03-31T02:30:00'], time_zone: 'Europe/Berlin')
+      result = described_class.earliest(['2024-03-31T02:30:00'], time_zone: 'Europe/Berlin', now:)
 
       expect(result).to be_a(DateTime)
       expect(result.zone).to eq('+00:00')

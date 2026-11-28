@@ -42,11 +42,13 @@ module Html2rss
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @param body [String, nil] raw response body for direct sitemap XML parsing
         # @param opts [Hash] sitemap options
+        # @option opts [Time] :now the current time, which ages entries out (required)
         # @option opts [Float] :min_priority minimum priority score (default: 0.3)
         # @option opts [Integer] :max_age_days maximum entry age in days (default: 30)
         def initialize(parsed_body, url:, request_session: nil, body: nil, **opts)
           super(parsed_body, url: Html2rss::Url.from_absolute(url))
           @body = body
+          @now = opts.fetch(:now)
           @request_session = request_session
           @min_priority = opts.fetch(:min_priority, Scraper::Sitemap::Parser::DEFAULT_MIN_PRIORITY)
           @max_age_days = opts.fetch(:max_age_days, Scraper::Sitemap::Parser::DEFAULT_MAX_AGE_DAYS)
@@ -65,7 +67,7 @@ module Html2rss
 
         private
 
-        attr_reader :body, :request_session, :min_priority, :max_age_days
+        attr_reader :body, :request_session, :min_priority, :max_age_days, :now
 
         # rubocop:disable-next Metrics/MethodLength -- structured budget-exhausted warn
         def fetch_and_parse_entries
@@ -86,7 +88,7 @@ module Html2rss
         end
 
         def parse_sitemap_xml(xml_body)
-          result = Scraper::Sitemap::Parser.call(xml_body, min_priority:, max_age_days:)
+          result = parse(xml_body)
           return fetch_sub_sitemaps(result.sub_sitemap_urls) if result.sub_sitemap_urls.any?
 
           result.entries
@@ -96,8 +98,10 @@ module Html2rss
           return [] unless body
           return [] unless parsed_body.at_xpath('//*[local-name()="urlset" or local-name()="sitemapindex"]')
 
-          Scraper::Sitemap::Parser.call(body, min_priority:, max_age_days:).entries
+          parse(body).entries
         end
+
+        def parse(xml) = Scraper::Sitemap::Parser.call(xml, min_priority:, max_age_days:, now:)
 
         def fetch_sub_sitemaps(sub_urls)
           entries = []
@@ -114,7 +118,7 @@ module Html2rss
           xml = fetch_xml(sub_url)
           return [] unless xml
 
-          Scraper::Sitemap::Parser.call(xml, min_priority:, max_age_days:).entries
+          parse(xml).entries
         rescue Html2rss::RequestService::RequestBudgetExceeded
           Log.event(
             :warn, 'sitemap.fanout_budget_exhausted',

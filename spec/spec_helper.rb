@@ -38,7 +38,9 @@ require_relative 'support/cli_helpers'
 require_relative 'support/scraper_probe'
 
 # Load custom matchers and helpers
+require_relative 'support/helpers/clock_helpers'
 require_relative 'support/helpers/configuration_helpers'
+require_relative 'support/helpers/extraction_helpers'
 require_relative 'support/helpers/example_helpers'
 require_relative 'support/helpers/fixture_helpers'
 require_relative 'support/helpers/sst_test_helpers'
@@ -62,6 +64,8 @@ RSpec.configure do |config|
 
   config.include CliHelpers
   config.include FixtureHelpers
+  config.include ClockHelpers
+  config.include ExtractionHelpers
   config.include SstTestHelpers
   config.include McpTestHelpers
   config.include FeedTestHelpers

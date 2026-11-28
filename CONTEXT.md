@@ -18,20 +18,19 @@ References point left/down only; `Html` and `Article` never reference `AutoSourc
 
 ## Extraction kernel
 
-Experimental: `Html2rss::Extraction.call(html:, url:, limit:, keep_different_domain:, keep_sponsored:)` is not exposed through the CLI, MCP or web yet. The goal is one set of extraction heuristics shared by this gem and a ruby.wasm build.
+Experimental: `Html2rss::Extraction.call(page:, now:, responses: {}, **options)` is not exposed through the CLI, MCP or web yet. The goal is one set of extraction heuristics shared by this gem and a ruby.wasm build.
 
-- **Boundary:** an HTML string and an absolute URL in, `Extraction::Result` (plain hashes, strings, symbols, `ErrorKind`) out, no I/O. `Html2rss::Error` crosses as `status: :error` plus `error_kind`; `ContractError` and `InvalidOption` still raise.
-- **Scope today (T1):** one auto-source pass over the given page. A scraper that needs a follow-up fetch (native feed, WordPress API, sitemap, entry resolution) finds nothing. Selectors, `items_selector`, `resolution_scope` and `local_file_path` stay with `FeedPipeline`.
-- **Kernel proposes, host disposes:** the kernel will name the follow-up requests it wants; the host keeps request policy (budget, SSRF guard, strategy) and fetches them.
-- **One owner per rule:** `AutoSource.options` owns the option defaults, `Extraction.unique` and `Extraction.with_url_dates` own dedup, `limit` and the URL date fallback for every path; `Response.local_html` owns the in-memory page (`LocalFileStrategy` reads a file into it).
+- **Boundary:** `page` (`url`, `body`, optional `headers`), `now` (ISO 8601, no default) and `responses` in, `Extraction::Result` (plain hashes, strings, symbols, `ErrorKind`) out, no I/O and no clock read. `Html2rss::Error` crosses as `status: :error` plus `error_kind`; `ContractError` and `InvalidOption` still raise.
+- **Protocol:** the kernel is stateless and re-entered. A scraper that needs a follow-up (native feed, WordPress API, sitemap, oEmbed) ends its pass, and the kernel answers `status: :needs_requests` with `requests`: `{id:, url:, relation:, origin_url:}`. `id` is `"<relation> <absolute url>"`, deterministic, and keys the answer in `responses`.
+- **Answers:** the host fetches each request and calls again with every answer so far: `{url:, status:, headers:, body:}`, or `{error_kind:}` for a failure. Keys may be strings (`Extraction::Input` reads them once; an unreadable page or answer returns as `Input::InvalidError` data). Every host-reported failure replays as `Exchange::RequestFailed`, whatever its kind; `RequestBudgetExceeded` comes only from the kernel's own cap, counted by distinct URL. `Exchange` replays them to the scrapers through the `follow_up` they already call; a pass with a request pending skips the heuristic tiers, so they run only on the final round.
+- **Kernel proposes, host disposes:** the kernel owns only the request cap (`AutoSource.request_slots_for`). Budget, SSRF guard, redirects and strategy stay with the host; `FeedPipeline.drive` is the gem's host loop over `Extraction.run` and a `RequestSession`. An advertised feed's proof (`FeedAdvertisement`) is rebuilt by the host from the page, never carried by a request.
+- **One clock:** `now` becomes `AutoSource::Clock` (`now`, `time_zone`), the only clock any stage reads (year-less dates, URL dates, sitemap recency). `FeedPipeline` passes `Time.now`; `Assessment` and detection still do (T2b).
+- **Scope:** selectors, `items_selector`, `resolution_scope` and `local_file_path` stay with `FeedPipeline`.
+- **One owner per rule:** `AutoSource.options` owns the option defaults, `Extraction.unique` and `Extraction.with_url_dates` own dedup, `limit` and the URL date fallback for every path; `Response.local_html` owns the in-memory page.
 - **Load isolation:** `require 'html2rss'` no longer eager-loads, so an extraction loads no transport, MCP, CLI or server code (`spec/lib/html2rss/extraction_spec.rb` runs a fresh process).
-- **Two-tier gate:** host parity is byte-identical per kernel build (the same HTML gives the same result in the gem and in wasm); implementation changes are judged by the corpus ratchet (`spec/fixtures/auto_source/corpus/baseline.yml`).
+- **Two-tier gate:** host parity is byte-identical per kernel build (the same inputs give the same result in the gem and in wasm); implementation changes are judged by the corpus ratchet (`spec/fixtures/auto_source/corpus/baseline.yml`).
 - **Nokogiri is not kernel identity:** the contract is data in, data out; a different parser may replace it later.
-- **Planned:**
-  - T2: follow-up request protocol for native-feed, WordPress, sitemap and entry-resolution fetches.
-  - T3: `now` as an input, so URL date fallback and recency are deterministic.
-  - T4: JSON Schema and a `contract_version` for `Result`.
-  - T5: ruby.wasm build and CI.
+- **Planned:** T2b entry resolution through the protocol; T4 JSON Schema and a `contract_version` for `Result`; T5 ruby.wasm build and CI.
 
 ## Native feed preference
 

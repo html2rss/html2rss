@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe '#each' do
-    subject(:new) { described_class.new(parsed_body, url: 'https://example.com') }
+    subject(:new) { described_class.new(parsed_body, url: 'https://example.com', clock: clock_for) }
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/multi_link_block.html', encoding: Encoding::UTF_8)) }
     let(:articles) { new.each.to_a }
@@ -44,7 +44,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'chrome suppression' do
     subject(:articles_by_url) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.to_h { |article| [article.url.to_s, article] }
     end
 
@@ -74,7 +74,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'post-level ranking and contamination control' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: base_url)
+      scraper = described_class.new(parsed_body, url: base_url, clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -171,7 +171,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'non-regression baseline (product newsroom)' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://www.example.net')
+      scraper = described_class.new(parsed_body, url: 'https://www.example.net', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -214,7 +214,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: short recommended headline with article signals' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -243,7 +243,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: short utility headline with strong article signals' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -278,7 +278,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: publish marker counts as an article signal' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -302,7 +302,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: deep section permalinks with post-like suffixes' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -345,7 +345,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: deep taxonomy and account routes stay conservative' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -386,7 +386,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: bare year segments do not make utility routes content' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -426,7 +426,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: vanity CTA heading leak' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -455,7 +455,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'ordering and deduplication' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -502,7 +502,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: same-url dedupe keeps richer later duplicate' do
     subject(:articles) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a
     end
 
@@ -546,7 +546,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe comparator precedence' do
-    let(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com') }
+    let(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com', clock: clock_for) }
 
     let(:root_node) { Html2rss::Html::SST::Node.build(name: :article) }
     let(:primary_link) do
@@ -689,7 +689,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'regression: exact ties fall back to real DOM order' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -722,7 +722,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe perf shape' do
-    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com') }
+    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com', clock: clock_for) }
 
     let(:entries) do
       Array.new(4) do |index|
@@ -794,7 +794,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       )
       allow(Html2rss::AutoSource::ArticleExtractor).to receive(:call).and_return(article)
 
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       results = scraper.each.to_a
 
       expect(results.size).to eq(1)
@@ -804,7 +804,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe 'CSS class and ID scoring' do
     subject(:urls) do
-      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper = described_class.new(parsed_body, url: 'https://example.com', clock: clock_for)
       scraper.each.to_a.map { |article| article.url.to_s }
     end
 
@@ -852,7 +852,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'repeated-card group ranking' do
     subject(:urls) do
       page = Nokogiri::HTML.parse(File.read('spec/fixtures/auto_source/corpus/nested_card_grid_ranking.html'))
-      described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+      described_class.new(page, url: 'https://example.com', clock: clock_for).each.map { |article| article.url.to_s }
     end
 
     let(:grid_urls) { urls.grep(%r{/local/}) }
@@ -879,7 +879,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
             <section>#{Array.new(3) { article_card.call(_1) }.join}</section>
           </main></body></html>
         HTML
-        described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+        described_class.new(page, url: 'https://example.com', clock: clock_for).each.map { |article| article.url.to_s }
       end
 
       let(:plain_card) do
@@ -909,7 +909,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
             <section>#{lead_card}</section>
           </main></body></html>
         HTML
-        described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+        described_class.new(page, url: 'https://example.com', clock: clock_for).each.map { |article| article.url.to_s }
       end
 
       let(:plain_card) do
@@ -938,7 +938,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
             <section>#{Array.new(120) { plain_card.call(_1) }.join}</section>
           </main></body></html>
         HTML
-        described_class.new(page, url: 'https://example.com').each.map { |article| article.url.to_s }
+        described_class.new(page, url: 'https://example.com', clock: clock_for).each.map { |article| article.url.to_s }
       end
 
       let(:prominent_card) do

@@ -23,7 +23,8 @@ module Html2rss
           unless response.html_response?
 
         vocabulary ||= Vocabulary[Channel.language_for(response, channel)]
-        source = AutoSource.new(response, DEFAULT_CONFIG.merge(limit: CHEAP_LIMIT), vocabulary:)
+        clock = Clock.new(now: Time.now, time_zone: nil)
+        source = AutoSource.new(response, DEFAULT_CONFIG.merge(limit: CHEAP_LIMIT), vocabulary:, clock:)
         new(surface_category: category, articles_count: source.articles.size,
             admission_drops: source.admission_drops)
       end

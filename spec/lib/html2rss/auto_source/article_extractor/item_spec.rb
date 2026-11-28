@@ -650,7 +650,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor::Item do
       segment = build_segment(root: build_node(name: :h3, children: [link]), link:)
 
       expect do
-        described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC',
+        described_class.call(segment, base_url: 'https://example.com', clock: clock_for('UTC'),
                                       link_resolver: page_resolver)
       end
         .to raise_error(Html2rss::Html::SST::Index::InvalidError, /no live index/)

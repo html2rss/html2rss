@@ -2,12 +2,14 @@
 
 RSpec.describe Html2rss::AutoSource::ArticleRules::UrlDate do
   describe '.call' do
+    let(:now) { Time.utc(2026, 11, 20, 12) }
+
     before { allow(Html2rss::AutoSource::ArticleRules::Date).to receive(:local_today).and_return(Date.new(2026, 11, 20)) }
 
     fixture = File.join(__dir__, '../../../../fixtures/link_destination/newspaper4k_pubdate_urls.txt')
     File.readlines(fixture, chomp: true).grep_v(/\A#/).reject(&:empty?).map { _1.split(' ', 2) }.each do |label, url|
       it "labels #{url} as #{label == '1' ? 'dated' : 'undated'}" do
-        expect(!described_class.call(url, time_zone: 'UTC').nil?).to eq(label == '1')
+        expect(!described_class.call(url, time_zone: 'UTC', now:).nil?).to eq(label == '1')
       end
     end
 
@@ -29,7 +31,7 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::UrlDate do
       'https://xn--wgv71a119e.example/2026/11/20/slug' => '2026-11-20'
     }.each do |url, iso|
       it "reads #{iso} from #{url}" do
-        expect(described_class.call(url, time_zone: 'UTC').to_date.iso8601).to eq(iso)
+        expect(described_class.call(url, time_zone: 'UTC', now:).to_date.iso8601).to eq(iso)
       end
     end
 
@@ -62,57 +64,57 @@ RSpec.describe Html2rss::AutoSource::ArticleRules::UrlDate do
       'https://e.com/2026/11/20%2Fslug'
     ].each do |url|
       it "yields nothing for #{url}" do
-        expect(described_class.call(url, time_zone: 'UTC')).to be_nil
+        expect(described_class.call(url, time_zone: 'UTC', now:)).to be_nil
       end
     end
 
     it 'ignores digit-led segments that are not calendar years (unlike the routing shape)', :aggregate_failures do
-      expect(described_class.call('https://e.com/9999/01/01/slug', time_zone: 'UTC')).to be_nil
-      expect(described_class.call('https://e.com/58201224/slug', time_zone: 'UTC')).to be_nil
+      expect(described_class.call('https://e.com/9999/01/01/slug', time_zone: 'UTC', now:)).to be_nil
+      expect(described_class.call('https://e.com/58201224/slug', time_zone: 'UTC', now:)).to be_nil
     end
 
     it 'yields nothing for an invalid or opaque uri', :aggregate_failures do
-      expect(described_class.call('https://e.com/a?next=/2026/11/20/slug', time_zone: 'UTC')).to be_nil
-      expect(described_class.call('https://2026-11-20-x.example.com/a', time_zone: 'UTC')).to be_nil
-      expect(described_class.call('/2026/11/20/relative', time_zone: 'UTC')).to be_nil
-      expect(described_class.call('', time_zone: 'UTC')).to be_nil
-      expect(described_class.call('mailto:a@b.c', time_zone: 'UTC')).to be_nil
+      expect(described_class.call('https://e.com/a?next=/2026/11/20/slug', time_zone: 'UTC', now:)).to be_nil
+      expect(described_class.call('https://2026-11-20-x.example.com/a', time_zone: 'UTC', now:)).to be_nil
+      expect(described_class.call('/2026/11/20/relative', time_zone: 'UTC', now:)).to be_nil
+      expect(described_class.call('', time_zone: 'UTC', now:)).to be_nil
+      expect(described_class.call('mailto:a@b.c', time_zone: 'UTC', now:)).to be_nil
     end
 
     it 'judges the future bound against today in the configured time zone', :aggregate_failures do
-      rules_date = Html2rss::AutoSource::ArticleRules::Date
-      allow(rules_date).to receive(:local_today).with(time_zone: 'Pacific/Kiritimati').and_return(Date.new(2026, 11,
-                                                                                                           21))
+      zone = 'Pacific/Kiritimati'
+      allow(Html2rss::AutoSource::ArticleRules::Date).to receive(:local_today)
+        .with(time_zone: zone, now:).and_return(Date.new(2026, 11, 21))
 
-      expect(described_class.call('https://e.com/2026/11/22/a', time_zone: 'Pacific/Kiritimati')).not_to be_nil
-      expect(described_class.call('https://e.com/2026/11/23/a', time_zone: 'Pacific/Kiritimati')).to be_nil
+      expect(described_class.call('https://e.com/2026/11/22/a', time_zone: zone, now:)).not_to be_nil
+      expect(described_class.call('https://e.com/2026/11/23/a', time_zone: zone, now:)).to be_nil
     end
 
     it 'returns nil for nil' do
-      expect(described_class.call(nil, time_zone: 'UTC')).to be_nil
+      expect(described_class.call(nil, time_zone: 'UTC', now:)).to be_nil
     end
 
     it 'accepts an Html2rss::Url' do
       expect(described_class.call(Html2rss::Url.from_relative('/2026/11/20/a', 'https://e.com'),
-                                  time_zone: 'UTC').to_date)
+                                  time_zone: 'UTC', now:).to_date)
         .to eq(Date.new(2026, 11, 20))
     end
 
     it 'is local midnight in the configured time zone', :aggregate_failures do
-      result = described_class.call('https://e.com/2026/11/20/a', time_zone: 'Europe/Berlin')
+      result = described_class.call('https://e.com/2026/11/20/a', time_zone: 'Europe/Berlin', now:)
 
       expect([result.hour, result.min, result.sec, result.zone]).to eq([0, 0, 0, '+01:00'])
     end
 
     it 'localises the same way for strings and Url objects' do
       url = 'https://e.com/2026/11/20/a'
-      zoned = described_class.call(Html2rss::Url.from_relative(url, 'https://e.com'), time_zone: 'Asia/Tokyo')
+      zoned = described_class.call(Html2rss::Url.from_relative(url, 'https://e.com'), time_zone: 'Asia/Tokyo', now:)
 
-      expect(zoned).to eq(described_class.call(url, time_zone: 'Asia/Tokyo'))
+      expect(zoned).to eq(described_class.call(url, time_zone: 'Asia/Tokyo', now:))
     end
 
     it 'defaults to UTC midnight' do
-      expect(described_class.call('https://e.com/2026/11/20/a', time_zone: 'UTC').zone).to eq('+00:00')
+      expect(described_class.call('https://e.com/2026/11/20/a', time_zone: 'UTC', now:).zone).to eq('+00:00')
     end
   end
 end

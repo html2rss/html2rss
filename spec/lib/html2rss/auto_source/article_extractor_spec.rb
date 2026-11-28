@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::AutoSource::ArticleExtractor do
   it 'rejects a value that is not a segment' do
-    expect { described_class.call(Object.new, base_url: 'https://example.com', time_zone: 'UTC', link_resolver: page_resolver) }
+    expect { described_class.call(Object.new, base_url: 'https://example.com', clock: clock_for('UTC'), link_resolver: page_resolver) }
       .to raise_error(Html2rss::AutoSource::ArticleExtractor::InvalidError, 'segment is required')
   end
 
@@ -19,7 +19,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
         segment = Html2rss::AutoSource::Segment.build(
           root_node: root, primary_link: link, strategy: :semantic, position: 0
         )
-        article = described_class.call(segment, base_url: 'https://example.com', time_zone: extractor_time_zone,
+        article = described_class.call(segment, base_url: 'https://example.com', clock: clock_for(extractor_time_zone),
                                                 link_resolver: page_resolver)
         { title: article&.title, description: article&.description, published_at: article&.published_at,
           author: article&.author,
@@ -66,7 +66,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     let(:scraper_class) { Html2rss::AutoSource::Scraper::SemanticHtml }
     let(:article_for) do
       lambda do |**options|
-        described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+        described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                 link_resolver: page_resolver, scraper: scraper_class, **options)
       end
     end
@@ -101,7 +101,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
   describe 'in-heading kickers' do
     let(:title_for) do
       lambda do |html|
-        described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+        described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                 link_resolver: page_resolver)&.title
       end
     end
@@ -198,7 +198,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
   describe 'card kicker prefix' do
     let(:title_for) do
       lambda do |html|
-        described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+        described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                 link_resolver: page_resolver)&.title
       end
     end
@@ -218,14 +218,14 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
         expect(described_class.call(segment, base_url: 'https://example.com',
                                              link_resolver: page_resolver,
-                                             time_zone: 'UTC').title).to eq('Transit: Tram line extends')
+                                             clock: clock_for('UTC')).title).to eq('Transit: Tram line extends')
       end
 
       it 'raises rather than dropping the kicker prefix once the document is collected' do
         segment = build_orphan_segment(card)
         3.times { GC.start }
 
-        expect { described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC', link_resolver: page_resolver) }
+        expect { described_class.call(segment, base_url: 'https://example.com', clock: clock_for('UTC'), link_resolver: page_resolver) }
           .to raise_error(Html2rss::Html::SST::Index::InvalidError)
       end
     end
@@ -294,7 +294,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     subject(:id_for) do
       lambda do |href|
         html = %(<article><h2><a href="#{href}">Story Title</a></h2><p>Useful context paragraph here.</p></article>)
-        described_class.call(segment_for(html, href:), base_url: 'https://example.com', time_zone: 'UTC',
+        described_class.call(segment_for(html, href:), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                        link_resolver: page_resolver)&.id
       end
     end
@@ -331,7 +331,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
       end
 
       it 'reuses its URL of the primary link instead of resolving it again', :aggregate_failures do
-        article = described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC',
+        article = described_class.call(segment, base_url: 'https://example.com', clock: clock_for('UTC'),
                                                 link_resolver: resolver)
 
         expect(article.url.to_s).to eq('https://example.com/a?p=1')
@@ -342,7 +342,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
         broken = segment_for('<article><h2><a href="http://">Story Title</a></h2><p>Useful context here.</p></article>',
                              href: 'http://')
 
-        expect(described_class.call(broken, base_url: 'https://example.com', time_zone: 'UTC',
+        expect(described_class.call(broken, base_url: 'https://example.com', clock: clock_for('UTC'),
                                             link_resolver: resolver)).to be_nil
       end
     end
@@ -356,7 +356,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
       expect(described_class.call(segment_for(html), base_url: 'https://example.com',
                                                      link_resolver: page_resolver,
-                                                     time_zone: 'UTC').id).to eq('headline')
+                                                     clock: clock_for('UTC')).id).to eq('headline')
     end
 
     it 'skips an empty DOM id and falls back to the link path' do
@@ -364,7 +364,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
       expect(described_class.call(segment_for(html), base_url: 'https://example.com',
                                                      link_resolver: page_resolver,
-                                                     time_zone: 'UTC').id).to eq('/news/story')
+                                                     clock: clock_for('UTC')).id).to eq('/news/story')
     end
   end
 
@@ -381,7 +381,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                       link_resolver: page_resolver, scraper: Object)
 
     expect(article.title).to eq('Story Title')
@@ -397,7 +397,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
   describe 'published_at from a date chip inside the headline link' do
     def published_for(inner)
       html = %(<article><h3><a href="/news/story">#{inner}</a></h3></article>)
-      described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+      described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                               link_resolver: page_resolver)&.published_at
     end
 
@@ -410,7 +410,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     it 'reads a text date chip beside the headline link inside the heading' do
       html = %(<article><h3><a href="/news/story">Tram depot reopens</a> ) +
              %(<span class="date">12 November 2026</span></h3></article>)
-      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                         link_resolver: page_resolver)
       expect(article.published_at.to_s).to start_with('2026-11-12T00:00:00')
     end
@@ -418,7 +418,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     it 'reads a text date chip inside a card link with no heading' do
       html = %(<article><a href="/news/story"><span>Tram depot reopens</span>) +
              %(<span class="date">12 November 2026</span></a></article>)
-      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                         link_resolver: page_resolver)
       expect(article.published_at.to_s).to start_with('2026-11-12T00:00:00')
     end
@@ -426,23 +426,23 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     it 'keeps the exact instant of a time element wrapping the chip' do
       time = '<time datetime="2026-11-12T14:30:00Z">12 November 2026</time>'
       html = %(<article><h3><a href="/news/story"><span>Tram depot reopens</span>#{time}</a></h3></article>)
-      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'Europe/Berlin',
-                                                        link_resolver: page_resolver)
+      article = described_class.call(segment_for(html), base_url: 'https://example.com',
+                                                        clock: clock_for('Europe/Berlin'), link_resolver: page_resolver)
       expect(article.published_at.to_s).to eq('2026-11-12T14:30:00+00:00')
     end
 
     it 'reads a text date chip in the channel time zone' do
       html = %(<article><a href="/news/story"><span>Tram depot reopens</span>) +
              %(<span class="date">12 November 2026</span></a></article>)
-      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'Europe/Berlin',
-                                                        link_resolver: page_resolver)
+      article = described_class.call(segment_for(html), base_url: 'https://example.com',
+                                                        clock: clock_for('Europe/Berlin'), link_resolver: page_resolver)
       expect(article.published_at.to_s).to eq('2026-11-12T00:00:00+01:00')
     end
 
     it 'reads the lead paragraph inside a card anchor as the description', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       html = '<article><a href="/news/story"><span class="teaser__title">Tram depot reopens</span>' \
              '<p>Crews finished early.<time datetime="2026-11-12T07:25">07:25</time></p></a></article>'
-      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                         link_resolver: page_resolver)
       expect(article.title).to eq('Tram depot reopens')
       expect(article.description).to eq('Crews finished early.')
@@ -450,14 +450,14 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     it 'leaves the paragraphs the title is built from out of the description' do
       html = '<article><a href="/news/story"><p>Tram depot reopens</p><p>Crews finished early.</p></a></article>'
-      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                         link_resolver: page_resolver)
       expect(article.description).to be_nil
     end
 
     it 'keeps the paragraph beside a heading title inside the anchor' do
       html = '<article><a href="/news/story"><h3>Tram depot reopens</h3><p>Crews finished early.</p></a></article>'
-      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                         link_resolver: page_resolver)
       expect(article.description).to eq('Crews finished early.')
     end
@@ -465,7 +465,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     it 'leaves a kicker paragraph the title reads out of the description' do
       html = '<article><a href="/news/story"><p>Politics</p><span>Tram depot reopens</span>' \
              '<p>Crews finished early.</p></a></article>'
-      article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+      article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                         link_resolver: page_resolver)
       expect(article.description).to be_nil
     end
@@ -493,7 +493,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     expect(described_class.call(ranked, base_url: 'https://example.com',
                                         link_resolver: page_resolver,
-                                        time_zone: 'UTC')&.title).to eq('Linked card text here')
+                                        clock: clock_for('UTC'))&.title).to eq('Linked card text here')
   end
 
   it 'emits no article for a card without a primary link (no page#fragment URL)' do
@@ -501,7 +501,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
     root = Html2rss::Html::SST::Normalizer.call(html, vocabulary: all_scope).root.find { |n| n.name == :div }
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :cluster, position: 0)
 
-    expect(described_class.call(segment, base_url: 'https://example.com', time_zone: 'UTC',
+    expect(described_class.call(segment, base_url: 'https://example.com', clock: clock_for('UTC'),
                                          link_resolver: page_resolver)).to be_nil
   end
 
@@ -516,7 +516,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                       link_resolver: page_resolver)
 
     expect(article.title).to eq('Real Headline About The Story')
@@ -532,7 +532,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                       link_resolver: page_resolver)
 
     expect(article).to be_a(Html2rss::Article)
@@ -549,7 +549,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                       link_resolver: page_resolver)
 
     expect(article.title).to eq('story-has-edit-branch')
@@ -568,7 +568,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
       </body></html>
     HTML
 
-    article = described_class.call(segment_for(html), base_url: 'https://example.com', time_zone: 'UTC',
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', clock: clock_for('UTC'),
                                                       link_resolver: page_resolver)
 
     expect(article.title).to eq('Real Headline About The Story')
@@ -587,7 +587,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     article = described_class.call(segment_for(html, href: '/news/style'), base_url: 'https://example.com',
                                                                            link_resolver: page_resolver,
-                                                                           time_zone: 'UTC')
+                                                                           clock: clock_for('UTC'))
 
     expect(article.image.to_s).to include('hero-banner.jpg')
   end
@@ -605,7 +605,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     article = described_class.call(segment_for(html, href: '/news/media'), base_url: 'https://example.com',
                                                                            link_resolver: page_resolver,
-                                                                           time_zone: 'UTC')
+                                                                           clock: clock_for('UTC'))
     zip = article.enclosures.find { |enclosure| enclosure.type == 'application/zip' }
 
     expect(zip).not_to be_nil
@@ -618,7 +618,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     article = described_class.call(segment_for(html, href: '/news/embed'), base_url: 'https://example.com',
                                                                            link_resolver: page_resolver,
-                                                                           time_zone: 'UTC')
+                                                                           clock: clock_for('UTC'))
 
     expect(article.enclosures).to be_empty
   end
@@ -638,7 +638,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     article = described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com',
                                                                           link_resolver: page_resolver,
-                                                                          time_zone: 'UTC')
+                                                                          clock: clock_for('UTC'))
 
     expect(article.enclosures.map { [_1.url.to_s, _1.type] }).to eq(
       [%w[https://example.com/videos/clip.mp4 video/mp4],
@@ -663,7 +663,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     article = described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com',
                                                                           link_resolver: page_resolver,
-                                                                          time_zone: 'UTC')
+                                                                          clock: clock_for('UTC'))
 
     expect(article.enclosures.map { [_1.url.to_s, _1.type] }).to eq(
       [%w[https://example.com/stream/clip video/webm], %w[https://example.com/stream/episode audio/mpeg]]
@@ -686,7 +686,7 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
       HTML
       described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com',
                                                                   link_resolver: page_resolver,
-                                                                  time_zone: 'UTC').image.to_s
+                                                                  clock: clock_for('UTC')).image.to_s
     end
 
     expect(card.call('')).to eq('https://example.com/posters/clip.jpg')
@@ -708,6 +708,6 @@ RSpec.describe Html2rss::AutoSource::ArticleExtractor do
 
     expect(described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com',
                                                                        link_resolver: page_resolver,
-                                                                       time_zone: 'UTC').image).to be_nil
+                                                                       clock: clock_for('UTC')).image).to be_nil
   end
 end
